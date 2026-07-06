@@ -297,7 +297,7 @@ jobs:
           GITLEAKS_CONFIG: .gitleaks.toml
 
   build:
-    name: Docker Build
+    name: Docker Image (build + downloadable bundle)
     runs-on: ubuntu-latest
     needs:
       - backend-test
@@ -313,9 +313,35 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker images
+      - name: Compute tags
         run: |
-          docker compose -f docker-compose.prod.yml build --no-cache
-      - name: Verify images
+          echo "SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+          echo "OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+      - name: Build production images
         run: |
-          docker images | grep dsf-allowlist
+          REPO="ghcr.io/${OWNER_LC}/dsf-allowlist"
+          docker build --target prod -t "${REPO}-backend:${SHA}" -f backend/Dockerfile backend/
+          docker build --target prod --build-arg VITE_API_URL=/api/v1 \
+            -t "${REPO}-frontend:${SHA}" -f frontend/Dockerfile frontend/
+      - name: Export downloadable image bundle
+        run: |
+          REPO="ghcr.io/${OWNER_LC}/dsf-allowlist"
+          docker save "${REPO}-backend:${SHA}" "${REPO}-frontend:${SHA}" \
+            | gzip > "dsf-allowlist-images-${SHA}.tar.gz"
+          sha256sum "dsf-allowlist-images-${SHA}.tar.gz" > "dsf-allowlist-images-${SHA}.tar.gz.sha256"
+      - name: Smoke-test the bundle re-loads
+        run: |
+          REPO="ghcr.io/${OWNER_LC}/dsf-allowlist"
+          docker image rm -f "${REPO}-backend:${SHA}" "${REPO}-frontend:${SHA}"
+          gunzip -c "dsf-allowlist-images-${SHA}.tar.gz" | docker load
+          docker image inspect "${REPO}-backend:${SHA}" >/dev/null
+          docker image inspect "${REPO}-frontend:${SHA}" >/dev/null
+      - name: Upload image bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsf-allowlist-images-${{ env.SHA }}
+          path: |
+            dsf-allowlist-images-${{ env.SHA }}.tar.gz
+            dsf-allowlist-images-${{ env.SHA }}.tar.gz.sha256
+          retention-days: 30
+          if-no-files-found: error
