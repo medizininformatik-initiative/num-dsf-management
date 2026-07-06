@@ -77,6 +77,9 @@ docker compose -f docker-compose.prod.yml logs -f backend
 
 ## Run from a downloaded image (no build, offline-capable)
 
+> For a step-by-step walkthrough (including a local test on Windows), see
+> [RUN-FROM-IMAGE.md](RUN-FROM-IMAGE.md).
+
 Every push to `main` produces a **downloadable image bundle** as a CI artifact
 (`dsf-allowlist-images-<sha>.tar.gz`, on the workflow run's summary page). Each
 tagged **GitHub Release** additionally attaches that bundle, its `.sha256`, and a
