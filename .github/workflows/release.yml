@@ -45,3 +45,65 @@ jobs:
           docker push ${REPO}-frontend:latest
 
           echo "Docker images pushed: ${REPO}-backend:${TAG}, ${REPO}-frontend:${TAG}"
+
+      - name: Bundle images + run-kit for the Release
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          TAG="${{ steps.release.outputs.tag_name }}"
+          OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          REPO="ghcr.io/${OWNER_LC}/dsf-allowlist"
+          # 1) offline-loadable image bundle from the images just pushed
+          docker save "${REPO}-backend:${TAG}" "${REPO}-frontend:${TAG}" \
+            | gzip > "dsf-allowlist-images-${TAG}.tar.gz"
+          sha256sum "dsf-allowlist-images-${TAG}.tar.gz" > "dsf-allowlist-images-${TAG}.tar.gz.sha256"
+          # 2) run-kit: everything needed to run the loaded/pulled images
+          mkdir -p runkit/db
+          cp docker-compose.release.yml runkit/
+          cp nginx/nginx.prod.conf runkit/
+          cp .env.prod.example runkit/
+          cp -r db/migrations runkit/db/migrations
+          printf 'IMAGE_OWNER=%s\nIMAGE_TAG=%s\n' "${OWNER_LC}" "${TAG}" > runkit/.image.env
+          cat > runkit/README.md <<'EOF'
+          # DSF Allow-List - run from prebuilt images (no build step)
+
+          Prerequisites: Docker + Docker Compose, and TLS certs for nginx.
+
+          1. Load the images (offline), or let compose pull them (online):
+               docker load < dsf-allowlist-images-<tag>.tar.gz
+             (online instead: docker login ghcr.io -- images are pulled on up)
+
+          2. Configure secrets:
+               cp .env.prod.example .env.prod
+             Generate the required RS256 JWT keypair + TOTP key into .env.prod
+             (the backend refuses to start if any of these are empty):
+               openssl genrsa -out jwt_priv.pem 2048
+               openssl rsa -in jwt_priv.pem -pubout -out jwt_pub.pem
+               sed -i "s|^JWT_PRIVATE_KEY_BASE64=.*|JWT_PRIVATE_KEY_BASE64=$(base64 -w0 jwt_priv.pem)|" .env.prod
+               sed -i "s|^JWT_PUBLIC_KEY_BASE64=.*|JWT_PUBLIC_KEY_BASE64=$(base64 -w0 jwt_pub.pem)|" .env.prod
+               sed -i "s|^TOTP_ENCRYPTION_KEY=.*|TOTP_ENCRYPTION_KEY=$(openssl rand -hex 32)|" .env.prod
+               rm jwt_priv.pem jwt_pub.pem
+             Then set the remaining secrets in .env.prod: DB_ROOT_PASSWORD, DB_NAME,
+             DB_USER, DB_PASSWORD, REDIS_PASSWORD, SMTP_*, MAIL_FROM, IMI_ADMIN_EMAILS.
+
+          3. Add TLS certs:
+               mkdir -p certs   # server.crt + server.key (+ client-ca.crt for mTLS)
+
+          4. Start (.image.env carries IMAGE_OWNER/IMAGE_TAG, .env.prod the secrets):
+               docker compose --env-file .env.prod --env-file .image.env -f docker-compose.release.yml up -d
+
+          This bundle is the standard OTP/TOTP build; the cert-auth variant is a
+          separate build-time image and is not included here.
+          EOF
+          tar czf "dsf-allowlist-runkit-${TAG}.tar.gz" -C runkit .
+
+      - name: Attach assets to the GitHub Release
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.release.outputs.tag_name }}"
+          gh release upload "$TAG" \
+            "dsf-allowlist-images-${TAG}.tar.gz" \
+            "dsf-allowlist-images-${TAG}.tar.gz.sha256" \
+            "dsf-allowlist-runkit-${TAG}.tar.gz" \
+            --clobber
