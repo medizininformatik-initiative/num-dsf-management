@@ -1,0 +1,126 @@
+version: '3.9'
+
+# Run the DSF portal from PUBLISHED or DOWNLOADED images (no build step).
+#
+#   Online : docker compose --env-file .env.prod --env-file .image.env \
+#              -f docker-compose.release.yml up -d      # pulls from GHCR
+#   Offline: docker load < dsf-allowlist-images-<tag>.tar.gz    # then the same up
+#
+# Needs alongside this file: .env.prod (secrets), .image.env (IMAGE_OWNER +
+# IMAGE_TAG), nginx.prod.conf, certs/, db/migrations/.
+# The `--env-file` flags feed both the container env AND the ${...} interpolation
+# below (DB_*/REDIS_* come from .env.prod; IMAGE_* from .image.env).
+
+services:
+  nginx:
+    image: nginxinc/nginx-unprivileged:1.27-alpine
+    ports:
+      - '80:8080'
+      - '443:8443'
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    restart: always
+    networks: [frontend-net]
+    security_opt: ['no-new-privileges:true']
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: ['/tmp']
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  frontend:
+    image: ghcr.io/${IMAGE_OWNER}/dsf-allowlist-frontend:${IMAGE_TAG:-latest}
+    restart: always
+    networks: [frontend-net]
+    security_opt: ['no-new-privileges:true']
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: ['/tmp']
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  backend:
+    image: ghcr.io/${IMAGE_OWNER}/dsf-allowlist-backend:${IMAGE_TAG:-latest}
+    env_file: .env.prod
+    environment:
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--no-verbose',
+          '--tries=1',
+          '--spider',
+          'http://localhost:3000/health/ready',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: always
+    networks: [frontend-net, backend-net]
+    security_opt: ['no-new-privileges:true']
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: ['/tmp']
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  db:
+    image: mysql:8.0
+    platform: linux/amd64
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-p${DB_ROOT_PASSWORD}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: always
+    networks: [backend-net]
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: always
+    networks: [backend-net]
+
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  frontend-net:
+  backend-net:
+    internal: true
