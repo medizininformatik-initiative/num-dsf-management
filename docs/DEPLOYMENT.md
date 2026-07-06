@@ -75,6 +75,58 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml logs -f backend
 ```
 
+## Run from a downloaded image (no build, offline-capable)
+
+Every push to `main` produces a **downloadable image bundle** as a CI artifact
+(`dsf-allowlist-images-<sha>.tar.gz`, on the workflow run's summary page). Each
+tagged **GitHub Release** additionally attaches that bundle, its `.sha256`, and a
+**run-kit** (`dsf-allowlist-runkit-<tag>.tar.gz`) as downloadable assets. The
+run-kit contains `docker-compose.release.yml`, the nginx configs,
+`.env.prod.example`, `db/migrations/`, and a preset `.image.env`
+(`IMAGE_OWNER`/`IMAGE_TAG`).
+
+Run it without building anything:
+
+```bash
+# 1. Download the image bundle + run-kit from the Release page, then:
+sha256sum -c dsf-allowlist-images-<tag>.tar.gz.sha256
+docker load < dsf-allowlist-images-<tag>.tar.gz      # loads backend + frontend images
+
+# 2. Unpack the run-kit and configure
+tar xzf dsf-allowlist-runkit-<tag>.tar.gz
+cp .env.prod.example .env.prod
+
+# Generate the required RS256 JWT keypair + TOTP key straight into .env.prod
+# (the backend refuses to start if any of these are empty):
+openssl genrsa -out jwt_priv.pem 2048
+openssl rsa -in jwt_priv.pem -pubout -out jwt_pub.pem
+sed -i "s|^JWT_PRIVATE_KEY_BASE64=.*|JWT_PRIVATE_KEY_BASE64=$(base64 -w0 jwt_priv.pem)|" .env.prod
+sed -i "s|^JWT_PUBLIC_KEY_BASE64=.*|JWT_PUBLIC_KEY_BASE64=$(base64 -w0 jwt_pub.pem)|" .env.prod
+sed -i "s|^TOTP_ENCRYPTION_KEY=.*|TOTP_ENCRYPTION_KEY=$(openssl rand -hex 32)|" .env.prod
+rm jwt_priv.pem jwt_pub.pem
+
+# Then edit .env.prod and set the remaining secrets:
+#   DB_ROOT_PASSWORD, DB_NAME, DB_USER, DB_PASSWORD, REDIS_PASSWORD,
+#   SMTP_*, MAIL_FROM, IMI_ADMIN_EMAILS, DSF_ENVIRONMENT.
+mkdir -p certs                                        # add server.crt/key (+ client-ca.crt)
+
+# 3. Start — .image.env carries IMAGE_OWNER/IMAGE_TAG; .env.prod carries secrets
+docker compose --env-file .env.prod --env-file .image.env -f docker-compose.release.yml up -d
+```
+
+Or pull from the registry instead of loading the file (online):
+
+```bash
+docker pull ghcr.io/<owner>/dsf-allowlist-backend:<tag>
+docker pull ghcr.io/<owner>/dsf-allowlist-frontend:<tag>
+```
+
+`docker-compose.release.yml` uses `image:` (no `build:`), so it runs the loaded or
+pulled images directly; nginx uses the stock unprivileged image with the mounted
+config. The bundled frontend image is the standard OTP/TOTP build; the cert-auth
+variant (`VITE_AUTH_MODE=cert`) is baked at build time, so it is not part of the
+downloadable bundle — build it locally via `docker-compose.cert-auth.yml`.
+
 ## Update Process
 
 ```bash
