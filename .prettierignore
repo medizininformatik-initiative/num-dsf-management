@@ -26,3 +26,6 @@ CHANGELOG.md
 # Carries an in-flight uncommitted change; exclude from the format gate so the
 # committed (unformatted) version does not fail CI. Remove once that change lands.
 backend/src/index.ts
+
+# Graphify knowledge graph (generated; graph.json is committed but not Prettier-managed)
+graphify-out/
