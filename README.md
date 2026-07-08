@@ -361,9 +361,12 @@ Each migration is idempotent (uses `information_schema` checks via `PREPARE` / `
 
 ## Engineering principles
 
-> Built with AI assistance under light guardrails
-> ([Karpathy-style guidelines](https://github.com/multica-ai/andrej-karpathy-skills)):
-> **Think before coding** · **Simplicity first (YAGNI)** · **Surgical changes** · **Goal-driven & verified**
+Built with AI assistance under light, [Karpathy-style guardrails](https://github.com/multica-ai/andrej-karpathy-skills):
+
+![Think before coding](https://img.shields.io/badge/Think-before%20coding-3a6fb0.svg)
+![Simplicity first (YAGNI)](https://img.shields.io/badge/Simplicity-first%20%28YAGNI%29-3a6fb0.svg)
+![Surgical changes](https://img.shields.io/badge/Surgical-changes-3a6fb0.svg)
+![Goal-driven and verified](https://img.shields.io/badge/Goal-driven%20%26%20verified-3a6fb0.svg)
 
 ---
 
