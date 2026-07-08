@@ -17,13 +17,7 @@
 
   <br />
 
-  <a href="https://www.medizin.uni-muenster.de/imi/das-institut.html"><img src="frontend/public/logos/IMI-Logo-grad-eng.png" alt="IMI" height="40" /></a>
-  &nbsp;&nbsp;
-  <a href="https://medic.uni-muenster.de/"><img src="frontend/public/logos/Logo_MeDIC_RGB_1000pxl_WEB_transp.png" alt="MeDIC" height="36" /></a>
-  &nbsp;&nbsp;
-  <img src="frontend/public/logos/NUM-LOGO-POS-DE-RGB_neu.png" alt="NUM" height="28" />
-  &nbsp;&nbsp;
-  <img src="frontend/public/logos/dsf-logo.svg" alt="DSF" height="28" />
+  <img src="docs/partner-logos.png" alt="Institute of Medical Informatics (University of Münster) · MeDIC · NUM · Data Sharing Framework" width="558" />
 </div>
 
 ---
