@@ -359,6 +359,14 @@ Each migration is idempotent (uses `information_schema` checks via `PREPARE` / `
 
 ---
 
+## Engineering principles
+
+> Built with AI assistance under light guardrails
+> ([Karpathy-style guidelines](https://github.com/multica-ai/andrej-karpathy-skills)):
+> **Think before coding** · **Simplicity first (YAGNI)** · **Surgical changes** · **Goal-driven & verified**
+
+---
+
 ## License
 
 Apache 2.0 — Institute of Medical Informatics Muenster (IMI), University of Muenster. See [`LICENSE`](LICENSE).
