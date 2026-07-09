@@ -103,6 +103,10 @@ Each Instance owns exactly one Organization. The Organization has many Contacts,
 | ![Network map](docs/screenshots/02-map.png)<br>**Network map**: cross-instance allow-list across all participating organizations, with city clusters and verbund peer edges. | ![Approval review](docs/screenshots/03-admin-approval.png)<br>**Approval review**: IMI admins review and action pending submissions with the full snapshot in context. |
 | ![Audit log](docs/screenshots/04-audit.png)<br>**Audit log**: append-only operations history, scoped per instance, filterable by resource and operation. | ![Sign in](docs/screenshots/05-login.png)<br>**Sign in**: passwordless email + OTP + TOTP, plus optional client-certificate sign-in. |
 
+![Process Marketplace](docs/screenshots/06-marketplace.png)
+
+**Process Marketplace**: a curated registry of DSF BPMN processes with approval status, license, and star counts. Admins add processes, edit their status, and remove entries.
+
 ---
 
 ## Quick start
