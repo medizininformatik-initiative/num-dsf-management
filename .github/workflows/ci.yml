@@ -186,7 +186,18 @@ jobs:
       - name: Disable nginx rate limits for CI
         run: sed -i '/limit_req/d' nginx/nginx.conf
       - name: Start docker stack
-        run: docker compose up -d --wait
+        run: |
+          # The ts-node-dev backend can occasionally exceed its healthcheck
+          # window on a cold CI runner. Retry once, and dump backend logs on
+          # failure so a real problem (not just a slow start) is diagnosable.
+          for attempt in 1 2; do
+            if docker compose up -d --wait; then exit 0; fi
+            echo "::warning::stack not healthy on attempt ${attempt}; backend logs:"
+            docker compose logs --tail=150 backend || true
+            docker compose down -v || true
+          done
+          echo "::error::docker stack failed to become healthy after 2 attempts"
+          exit 1
       - name: Apply migrations
         run: |
           DB_PW=$(grep ^DB_PASSWORD .env | cut -d= -f2)
@@ -243,7 +254,18 @@ jobs:
       - name: Disable nginx rate limits for CI
         run: sed -i '/limit_req/d' nginx/nginx.conf
       - name: Start docker stack
-        run: docker compose up -d --wait
+        run: |
+          # The ts-node-dev backend can occasionally exceed its healthcheck
+          # window on a cold CI runner. Retry once, and dump backend logs on
+          # failure so a real problem (not just a slow start) is diagnosable.
+          for attempt in 1 2; do
+            if docker compose up -d --wait; then exit 0; fi
+            echo "::warning::stack not healthy on attempt ${attempt}; backend logs:"
+            docker compose logs --tail=150 backend || true
+            docker compose down -v || true
+          done
+          echo "::error::docker stack failed to become healthy after 2 attempts"
+          exit 1
       - name: Apply migrations
         run: |
           DB_PW=$(grep ^DB_PASSWORD .env | cut -d= -f2)
