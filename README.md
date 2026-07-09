@@ -94,18 +94,20 @@ Each Instance owns exactly one Organization. The Organization has many Contacts,
 
 ## Screenshots
 
-![Entity-graph canvas](docs/screenshots/01-canvas.png)
-
-**Entity-graph canvas**: every entity for one DSF instance edited on a single canvas, with live SVG relations between organization, contacts, endpoints, certificates, and memberships.
-
-| | |
-|---|---|
-| ![Network map](docs/screenshots/02-map.png)<br>**Network map**: cross-instance allow-list across all participating organizations, with city clusters and verbund peer edges. | ![Approval review](docs/screenshots/03-admin-approval.png)<br>**Approval review**: IMI admins review and action pending submissions with the full snapshot in context. |
-| ![Audit log](docs/screenshots/04-audit.png)<br>**Audit log**: append-only operations history, scoped per instance, filterable by resource and operation. | ![Sign in](docs/screenshots/05-login.png)<br>**Sign in**: passwordless email + OTP + TOTP, plus optional client-certificate sign-in. |
-
-![Process Marketplace](docs/screenshots/06-marketplace.png)
-
-**Process Marketplace**: a curated registry of DSF BPMN processes with approval status, license, and star counts. Admins add processes, edit their status, and remove entries.
+<div align="center">
+<table>
+<tr>
+<td width="33%" valign="top"><a href="docs/screenshots/01-canvas.png"><img src="docs/screenshots/01-canvas.png" width="100%" alt="Entity-graph canvas" /></a><br /><sub>🧩 <b>Entity canvas</b> · one page, live SVG relations</sub></td>
+<td width="33%" valign="top"><a href="docs/screenshots/02-map.png"><img src="docs/screenshots/02-map.png" width="100%" alt="Network map" /></a><br /><sub>🗺 <b>Network map</b> · federation across sites</sub></td>
+<td width="33%" valign="top"><a href="docs/screenshots/03-admin-approval.png"><img src="docs/screenshots/03-admin-approval.png" width="100%" alt="Approval review" /></a><br /><sub>✅ <b>Approval review</b> · 4-eyes IMI</sub></td>
+</tr>
+<tr>
+<td valign="top"><a href="docs/screenshots/04-audit.png"><img src="docs/screenshots/04-audit.png" width="100%" alt="Audit log" /></a><br /><sub>📜 <b>Audit log</b> · append-only history</sub></td>
+<td valign="top"><a href="docs/screenshots/05-login.png"><img src="docs/screenshots/05-login.png" width="100%" alt="Sign in" /></a><br /><sub>🔐 <b>Sign in</b> · OTP + TOTP + mTLS</sub></td>
+<td valign="top"><a href="docs/screenshots/06-marketplace.png"><img src="docs/screenshots/06-marketplace.png" width="100%" alt="Process marketplace" /></a><br /><sub>📦 <b>Marketplace</b> · DSF BPMN processes</sub></td>
+</tr>
+</table>
+</div>
 
 ---
 
