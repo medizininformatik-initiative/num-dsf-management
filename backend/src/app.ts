@@ -69,6 +69,12 @@ app.use(
   }),
 );
 
+// Onboarding import reads its own raw body (see onboarding.routes.ts) — it
+// must be mounted before the global json/urlencoded parsers below, otherwise
+// an application/json upload is already parsed into an object by the time
+// it gets there and the raw Buffer read breaks.
+app.use('/api/v1/admin/onboarding', onboardingRouter);
+
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(cookieParser());
@@ -121,7 +127,6 @@ app.use('/api/v1/admin/promotions', adminPromotionsRouter);
 app.use('/api/v1/admin/marketplace', adminMarketplaceRouter);
 app.use('/api/v1/admin/ca-blacklist', adminCaBlacklistRouter);
 app.use('/api/v1/admin/bundle-versions', adminBundleVersionsRouter);
-app.use('/api/v1/admin/onboarding', onboardingRouter);
 app.use('/api/v1/admin', adminRouter);
 
 // Marketplace (read, auth required)

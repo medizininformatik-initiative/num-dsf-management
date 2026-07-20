@@ -103,6 +103,47 @@ describe('POST /api/v1/admin/onboarding/import', () => {
     expect(res.body.data.rows).toHaveLength(2);
   });
 
+  it('admin + valid JSON array body (Content-Type: application/json) → 200 with created summary', async () => {
+    const token = getTestToken(adminEmail, adminUserId);
+    const idA = `import-json-a-${uuidv4().slice(0, 8)}.example.de`;
+    const idB = `import-json-b-${uuidv4().slice(0, 8)}.example.de`;
+    const emailA = `import-json-a-${uuidv4().slice(0, 8)}@example.de`;
+    const emailB = `import-json-b-${uuidv4().slice(0, 8)}@example.de`;
+    identifiers.push(idA, idB);
+    emails.push(emailA, emailB);
+
+    const rows = [
+      {
+        organizationIdentifier: idA,
+        organizationName: 'Import JSON Org A',
+        contactEmail: emailA,
+        clientCertFingerprint: FP_A,
+      },
+      {
+        organizationIdentifier: idB,
+        organizationName: 'Import JSON Org B',
+        contactEmail: emailB,
+        clientCertFingerprint: FP_B,
+      },
+    ];
+
+    const res = await request(app)
+      .post('/api/v1/admin/onboarding/import')
+      .set('Authorization', `Bearer ${token}`)
+      .set('Content-Type', 'application/json')
+      .send(rows);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.summary).toEqual({ created: 2, updated: 0, failed: 0 });
+    expect(res.body.data.parseErrors).toEqual([]);
+    expect(res.body.data.rows).toHaveLength(2);
+
+    const orgA = await db('organizations').where({ identifier: idA }).first();
+    const orgB = await db('organizations').where({ identifier: idB }).first();
+    expect(orgA.client_cert_fingerprint).toBe(FP_A);
+    expect(orgB.client_cert_fingerprint).toBe(FP_B);
+  });
+
   it('returns 400 PEM_NOT_ALLOWED when the body contains a PEM header', async () => {
     const token = getTestToken(adminEmail, adminUserId);
     // Header split across concatenation so the secret scanner does not flag
