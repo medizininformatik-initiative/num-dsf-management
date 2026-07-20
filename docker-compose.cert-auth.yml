@@ -117,6 +117,10 @@ services:
   db:
     image: mysql:8.0
     platform: linux/amd64
+    # log-bin-trust-function-creators lets the trigger-creating migrations (013,
+    # 015) apply cleanly; mirrors docker-compose.yml (dev).
+    command:
+      - --log-bin-trust-function-creators=ON
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
@@ -124,11 +128,20 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - mysql-data:/var/lib/mysql
+      # Mount the migrations so a fresh data volume self-initializes the full
+      # schema on first boot. Init scripts run once, in filename order, only
+      # while the volume is empty; later migrations are applied manually.
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-p${DB_ROOT_PASSWORD}']
+      # Probe over TCP (127.0.0.1), not the Unix socket: during first-time init
+      # the socket answers pings while TCP 3306 is still refused, so a socket
+      # ping reports healthy before the backend can connect. Running all
+      # migrations at init makes that window longer, so start_period is generous.
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-u', 'root', '-p${DB_ROOT_PASSWORD}']
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 40s
     restart: always
     networks:
       - backend-net
