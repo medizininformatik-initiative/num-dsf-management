@@ -58,6 +58,19 @@ export const stepUpTotpRateLimit = rateLimit({
   message: { error: { code: 'RATE_LIMITED', message: 'Too many attempts. Please wait.' } },
 });
 
+// Bulk cert-onboarding import is a heavy, DB-writing admin action (up to
+// 1000 rows per call); a modest per-admin cap bounds a runaway or scripted
+// re-import without blocking a legitimate multi-file onboarding session.
+export const onboardingImportRateLimit = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_ONBOARDING_WINDOW_MS || '900000'),
+  max: parseInt(process.env.RATE_LIMIT_ONBOARDING_MAX || '10'),
+  store: createRedisStore('onboarding-import'),
+  keyGenerator: (req) => `user:${(req as { user?: { id: string } }).user?.id || req.ip}`,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: 'Too many import attempts. Please wait.' } },
+});
+
 export const apiRateLimit = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_API_WINDOW_MS || '60000'),
   max: parseInt(process.env.RATE_LIMIT_API_MAX || '100'),
