@@ -43,6 +43,7 @@ All configuration flows through env vars (no hardcoded secrets). Copy `.env.exam
 
 **Admin team:**
 - `IMI_ADMIN_EMAILS` — comma-separated list. Each admin's email **domain** is treated as their "site" for the 4-eyes approval rule.
+- `IMI_ADMIN_CERT_FINGERPRINTS` (cert-auth variant only). Comma-separated `email=fingerprint` pairs that let IMI admins sign in by client certificate on the login-screen-free box. The fingerprint is the SHA-512 hash of the admin's client cert (128 hex chars; colons and case are ignored). It is re-seeded on every boot, so pairs can be appended later. Use the same address here and in `IMI_ADMIN_EMAILS`: the first grants the login, the second grants the admin role.
 
 **Approval workflow:**
 - `APPROVAL_SILENT_CONSENT_DAYS` — number of days a single-approved request waits before auto-approving via silent consent (Schweigen als Zustimmung). Default `7`.
@@ -139,7 +140,7 @@ docker compose -f docker-compose.prod.yml up -d --build --no-deps backend fronte
 
 ## Database migrations
 
-Migrations live at `db/migrations/*.sql` (NOT under `backend/src/`). They run automatically when the MySQL container starts (mounted at `/docker-entrypoint-initdb.d/` per `docker-compose.prod.yml`).
+Migrations live at `db/migrations/*.sql` (NOT under `backend/src/`). The dev and cert-auth stacks mount this directory into the MySQL container at `/docker-entrypoint-initdb.d/`, so on a fresh data volume every migration runs once, in filename order, at first init. The `prod` and `release` composes do not auto-mount them; apply them with the command below (the release run-kit ships `db/migrations/` for exactly this).
 
 To apply a NEW migration to a running production DB without restarting:
 
@@ -153,33 +154,178 @@ Each migration is a single `.sql` file with a 3-digit prefix. Files are applied 
 ## Client-certificate sign-in (mTLS)
 
 The portal supports two passwordless authentication paths:
-1. **Email + OTP + TOTP** (default).
-2. **Browser client certificate**, matched by SHA-256 thumbprint against `organizations.client_cert_thumbprint`.
+1. **Email + OTP + TOTP** (default OTP/TOTP stack).
+2. **Browser client certificate**, which signs the user in with no login screen (cert-auth stack).
 
-For (2) to work in production, the operator must:
+Two distinct certificate hashes are in play; do not confuse them:
 
-- Mount `/etc/nginx/certs/server.crt` and `/etc/nginx/certs/server.key` (the public TLS cert/key for the HTTPS listener).
-- Mount `/etc/nginx/certs/client-ca.crt` — the CA whose certs you trust to issue admin/site client certs. With `ssl_verify_client optional_no_ca`, even self-signed test certs pass through to the backend, which authenticates by thumbprint match.
+- **Human sign-in** matches the client cert's **SHA-512 fingerprint** against `admin_cert_fingerprints` (admins are checked first) and then `organizations.client_cert_fingerprint` (per site). This is the allow-list gate for logging in.
+- **FHIR bundle download** by a DSF process still matches the machine cert's **SHA-256 thumbprint** against `organizations.client_cert_thumbprint`. That path is unchanged and independent of sign-in.
 
-The HTTP vhost (port 80) clears any incoming `X-Client-Cert` header to prevent forgery; production should redirect HTTP→HTTPS.
+For the browser sign-in to work, nginx terminates TLS, requests the client cert, and forwards it to the backend:
 
-To register a thumbprint, the instance owner uploads their cert via the Organization edit modal (the `clientCertThumbprint` field). Admins cannot modify another user's thumbprint.
+- Mount `/etc/nginx/certs/server.crt` and `/etc/nginx/certs/server.key` (the TLS cert/key for the HTTPS listener).
+- Mount `/etc/nginx/certs/client-ca.crt`. With `ssl_verify_client optional_no_ca`, even a self-signed DSF leaf cert completes the handshake and is forwarded to the backend; the fingerprint match is the real gate.
+
+nginx forwards the URL-encoded PEM as `X-Client-Cert` and the verify result as `X-Client-Verify`. The backend trusts the cert only when `X-Client-Verify: SUCCESS`, so nginx must be the only ingress; the HTTP vhost clears these headers and redirects to HTTPS.
+
+Computing a certificate's SHA-512 fingerprint (the value the allow-list stores):
+
+```bash
+# GnuTLS certtool (the value shown to operators)
+certtool --fingerprint --hash=sha512 --infile=client_certificate.pem
+
+# OpenSSL equivalent: SHA-512 of the DER encoding
+openssl x509 -in client_certificate.pem -outform DER | openssl dgst -sha512
+```
+
+Both print 128 hex characters (certtool colon-separates them). The portal normalizes on input, so colons and letter case do not matter.
+
+A per-site login certificate is registered either by the site itself in the Organization edit modal, or in bulk by an admin (see the onboarding section below).
 
 ### Certificate-auth deployment variant (login-screen-free)
 
-An alternative, site-facing stack that **skips the login screen entirely** and signs users in automatically by client certificate at the reverse proxy (see ADR-005). The standard OTP/TOTP stack (`docker-compose.prod.yml`) is unchanged; IMI operators continue to use it.
+`docker-compose.cert-auth.yml` is a site-facing stack that skips the login screen and signs users in by client certificate at nginx (see ADR-005). It differs from `docker-compose.prod.yml` in only two ways: the frontend is built with `VITE_AUTH_MODE=cert` (no login UI; `AuthBootstrap` calls `/auth/client-cert-login` automatically), and nginx mounts `nginx/nginx.cert-auth.conf`, which returns `403` for every OTP/TOTP endpoint so they cannot be reached even by a crafted request. The two stacks run independently.
 
-Prerequisite: each participating organization has a designated login certificate in `organizations.client_cert_thumbprint` (set in the Organization modal of the standard deployment). The certificate's SHA-256 thumbprint is the allow-list gate.
+IMI admins also sign in on this box by their own client certificate, seeded via `IMI_ADMIN_CERT_FINGERPRINTS`. There is no separate OTP deployment to maintain for admins and no OTP fallback: a browser that presents an unregistered cert (or none) lands on a status page explaining how to get registered.
+
+### Debian install, step by step (cert-auth variant)
+
+First-time install on a fresh Debian host that already has Docker Engine and the Compose plugin, plus the server TLS certificate and key. This brings up the login-screen-free stack, bootstraps the first admin by certificate, and leaves you ready to onboard sites.
+
+**1. Get the code onto the box**
 
 ```bash
-docker compose -f docker-compose.cert-auth.yml up -d --build
+git clone <repo-url> dsf-allowlist
+cd dsf-allowlist
 ```
 
-Differences vs. `docker-compose.prod.yml`:
-- the frontend is built with `VITE_AUTH_MODE=cert` — no login screen; `AuthBootstrap` auto-calls `/auth/client-cert-login`;
-- nginx mounts `nginx/nginx.cert-auth.conf`, which additionally returns `403` for the OTP/TOTP endpoints so they cannot be used even by a crafted request.
+(Or unpack a release run-kit; its compose file and `db/migrations/` are included.)
 
-A browser must present a client certificate whose thumbprint is registered; otherwise the user sees a status page explaining how to get registered. There is **no OTP fallback** in this variant — IMI admins (who have no organization) use the standard deployment.
+**2. Place the TLS material**
+
+```bash
+mkdir -p certs
+cp /path/to/server.crt certs/server.crt
+cp /path/to/server.key certs/server.key
+# Trust anchor for client certs. With optional_no_ca any readable PEM works;
+# if you have no dedicated client CA, the server cert is an acceptable placeholder.
+cp /path/to/client-ca.crt certs/client-ca.crt 2>/dev/null || cp certs/server.crt certs/client-ca.crt
+chmod 600 certs/server.key
+```
+
+**3. Create `.env.prod`**
+
+```bash
+cp .env.prod.example .env.prod
+# Generate the RS256 JWT keypair + TOTP key straight into .env.prod
+# (the backend refuses to start if any of these are empty):
+openssl genrsa -out jwt_priv.pem 2048
+openssl rsa -in jwt_priv.pem -pubout -out jwt_pub.pem
+sed -i "s|^JWT_PRIVATE_KEY_BASE64=.*|JWT_PRIVATE_KEY_BASE64=$(base64 -w0 jwt_priv.pem)|" .env.prod
+sed -i "s|^JWT_PUBLIC_KEY_BASE64=.*|JWT_PUBLIC_KEY_BASE64=$(base64 -w0 jwt_pub.pem)|" .env.prod
+sed -i "s|^TOTP_ENCRYPTION_KEY=.*|TOTP_ENCRYPTION_KEY=$(openssl rand -hex 32)|" .env.prod
+rm jwt_priv.pem jwt_pub.pem
+```
+
+Then edit `.env.prod` and set at least `DB_ROOT_PASSWORD`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `REDIS_PASSWORD`, `SMTP_*`, `MAIL_FROM`, `DSF_ENVIRONMENT`, and the two admin variables in step 4.
+
+**4. Bootstrap the first admin by certificate**
+
+The admin needs both variables: `IMI_ADMIN_EMAILS` grants the admin role, `IMI_ADMIN_CERT_FINGERPRINTS` lets that same admin sign in by cert. Compute the SHA-512 fingerprint of the admin's own client certificate and register the pair.
+
+```bash
+FP=$(certtool --fingerprint --hash=sha512 --infile=admin-client.pem | tr -d ': \n')
+# Set in .env.prod (same address in both):
+#   IMI_ADMIN_EMAILS=dsf-admin@imi.uni-muenster.de
+#   IMI_ADMIN_CERT_FINGERPRINTS=dsf-admin@imi.uni-muenster.de=$FP
+```
+
+**5. Start the stack**
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.cert-auth.yml up -d --build
+```
+
+On first boot the MySQL container runs every file in `db/migrations/` in order (this creates the SHA-512 fingerprint column and the admin cert table); the backend then seeds the admin grant and the admin cert fingerprint and becomes healthy, and nginx starts.
+
+**6. Verify**
+
+```bash
+curl -k https://localhost/health          # backend liveness through nginx
+docker compose -f docker-compose.cert-auth.yml logs -f backend
+```
+
+Open the site in a browser that has the admin client certificate installed. You should land in the app with no login screen. If you see the status page instead, the presented cert's fingerprint is not the one in `IMI_ADMIN_CERT_FINGERPRINTS`; re-check step 4.
+
+**7. Onboard the participating sites** (see "Onboarding sites in bulk" below).
+
+### Fronting the app with your own Apache2 instead of the bundled nginx
+
+The bundled nginx already performs the client-cert authentication, and it is the tested path. If you must terminate TLS at an existing Apache2 on the host, Apache has to reproduce exactly what `nginx/nginx.cert-auth.conf` does, because the backend trusts these headers:
+
+- Request the client cert without a hard CA requirement: `SSLVerifyClient optional_no_ca` (or `SSLVerifyClient require` if you do run a common CA), and `SSLOptions +ExportCertData` so the PEM is available.
+- Forward the cert and the verify result on every proxied request:
+  ```apache
+  RequestHeader set X-Client-Verify "%{SSL_CLIENT_VERIFY}s"
+  RequestHeader set X-Client-Cert "%{SSL_CLIENT_CERT}s"
+  ```
+  The backend accepts a URL-encoded or a raw PEM, so the mod_headers value above works as is.
+- Return `403` for `/auth/request-otp`, `/auth/verify-otp`, `/auth/verify-totp`, `/auth/setup-totp`, and `/auth/confirm-totp` so the OTP path stays closed.
+- Ensure no other vhost or location can inject `X-Client-Cert` / `X-Client-Verify`, and that Apache is the only ingress to the app containers (do not publish the backend or the internal nginx ports).
+
+The security model is identical to the nginx variant: the SHA-512 fingerprint match is the gate, and it is only sound if the front proxy is the sole entry point.
+
+### Onboarding sites in bulk (admin upload)
+
+Once an admin can sign in, new sites are onboarded from **Administration > Onboarding** (`/app/admin/onboarding`) by uploading a CSV or JSON file. Each row creates or updates a complete site in one transaction: the organization, its instance, the contact user, the allow-list entry, and the client-certificate fingerprint. Re-uploading the same file is idempotent (existing sites are updated, not duplicated).
+
+Columns (CSV header row) or object keys (JSON):
+
+| Field | Required | Notes |
+|---|---|---|
+| `organizationIdentifier` | yes | FQDN, e.g. `ukm.de`. Lower-cased. Primary key of the site. |
+| `organizationName` | yes | 1 to 255 characters. |
+| `contactEmail` | yes | Becomes the site's login user and allow-list entry. |
+| `clientCertFingerprint` | yes | SHA-512 fingerprint of the site's browser client cert (128 hex; colons and case are ignored). |
+| `city` | no | Up to 100 characters. |
+| `countryCode` | no | Two letters, e.g. `DE`. |
+
+CSV example:
+
+```csv
+organizationIdentifier,organizationName,contactEmail,clientCertFingerprint,city,countryCode
+ukm.de,Uniklinik Muenster,dsf@ukm.de,3f1c...<128 hex>...,Muenster,DE
+```
+
+JSON example:
+
+```json
+[
+  {
+    "organizationIdentifier": "ukm.de",
+    "organizationName": "Uniklinik Muenster",
+    "contactEmail": "dsf@ukm.de",
+    "clientCertFingerprint": "3f1c...<128 hex>...",
+    "city": "Muenster",
+    "countryCode": "DE"
+  }
+]
+```
+
+The upload is admin-only and hardened at the boundary:
+
+- The endpoint (`POST /api/v1/admin/onboarding/import`) requires an authenticated IMI admin; anyone else gets `403`.
+- It is rate-limited (10 requests per 15 minutes per user).
+- The body is capped at 1 MB (`413`) and 1000 rows (`413`).
+- A file that contains a PEM block (`-----BEGIN`) is rejected outright (`400`), so a private key or certificate body is never accepted here.
+- Cells that start with a formula character (`=`, `+`, `-`, `@`) or a leading tab/CR are rejected, which blocks CSV/spreadsheet formula injection.
+- A fingerprint already registered to a different organization is refused for that row (`FINGERPRINT_IN_USE`); a unique index enforces it as a backstop.
+- Every imported row is written to the append-only audit log with only the first 16 characters of the fingerprint, never the full value.
+
+A row that fails validation does not abort the import: the response reports a per-row result (`created` / `updated` / `failed` with the reason) plus a summary, and the UI shows the same table so an admin can fix and re-upload only the bad rows.
+
+How a site obtains its fingerprint: it runs `certtool --fingerprint --hash=sha512 --infile=client_certificate.pem` on its browser client certificate and sends you that value plus the minimal org data above. After import, the site reaches the portal with its certificate and no login screen.
 
 ## Scheduled jobs
 

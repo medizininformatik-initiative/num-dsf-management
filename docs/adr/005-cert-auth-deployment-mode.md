@@ -1,8 +1,16 @@
 # ADR-005 — Certificate-auth deployment mode (login-screen-free)
 
-- Status: Accepted
+- Status: Accepted (partially superseded 2026-07)
 - Date: 2026-06-23
 - Deciders: IMI Münster team
+
+> **Update 2026-07:** Two points below were superseded. The sign-in gate is now
+> the client cert **SHA-512 fingerprint** (`organizations.client_cert_fingerprint`),
+> not the SHA-256 thumbprint (the thumbprint still gates FHIR bundle download only).
+> And **admins do sign in by certificate** on this box via `admin_cert_fingerprints`,
+> seeded from `IMI_ADMIN_CERT_FINGERPRINTS`, so a separate OTP deployment for admins
+> is no longer required. Bulk site onboarding by fingerprint upload was added at
+> `/app/admin/onboarding`. See docs/DEPLOYMENT.md for the current flow.
 
 ## Context
 
