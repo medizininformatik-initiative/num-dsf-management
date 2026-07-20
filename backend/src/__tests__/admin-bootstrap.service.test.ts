@@ -5,12 +5,21 @@
  * returns before touching IMI_ADMIN_EMAILS). The test seeds its own grant so
  * the precondition holds regardless of whether the DB was data-seeded.
  *
- * Dependencies: db/connection, admin-bootstrap.service, lib/adminGrants
+ * Also covers bootstrapAdminCertFingerprints(): valid `email=fingerprint`
+ * pairs from IMI_ADMIN_CERT_FINGERPRINTS are inserted into
+ * admin_cert_fingerprints, invalid entries are skipped, and re-running does
+ * not duplicate rows (onConflict('fingerprint').ignore()).
+ *
+ * Dependencies: db/connection, admin-bootstrap.service, lib/adminGrants, crypto
  */
+import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/connection';
 import { signGrant } from '../lib/adminGrants';
-import { bootstrapAdminGrants } from '../services/admin-bootstrap.service';
+import {
+  bootstrapAdminGrants,
+  bootstrapAdminCertFingerprints,
+} from '../services/admin-bootstrap.service';
 
 describe('admin-bootstrap.service – bootstrapAdminGrants idempotent no-op', () => {
   const seededEmail = `bootstrap-test-${Date.now()}@example.de`;
@@ -47,5 +56,38 @@ describe('admin-bootstrap.service – bootstrapAdminGrants idempotent no-op', ()
 
     const after = await grantCount();
     expect(after).toBe(before);
+  });
+});
+
+describe('admin-bootstrap.service – bootstrapAdminCertFingerprints', () => {
+  const validEmail = `cert-bootstrap-test-${Date.now()}@example.de`;
+  const invalidEmail = `cert-bootstrap-bad-${Date.now()}@example.de`;
+  const validFingerprint = crypto.createHash('sha512').update(validEmail).digest('hex');
+
+  beforeAll(() => {
+    process.env.IMI_ADMIN_CERT_FINGERPRINTS = `${validEmail}=${validFingerprint},${invalidEmail}=nothex`;
+  });
+
+  afterAll(async () => {
+    delete process.env.IMI_ADMIN_CERT_FINGERPRINTS;
+    await db('admin_cert_fingerprints').where({ email: validEmail }).del();
+  });
+
+  it('seeds the valid fingerprint and skips the invalid one', async () => {
+    await bootstrapAdminCertFingerprints();
+
+    const validRow = await db('admin_cert_fingerprints').where({ email: validEmail }).first();
+    expect(validRow).toBeDefined();
+    expect(validRow.fingerprint).toBe(validFingerprint);
+
+    const invalidRow = await db('admin_cert_fingerprints').where({ email: invalidEmail }).first();
+    expect(invalidRow).toBeUndefined();
+  });
+
+  it('running the bootstrap again does not duplicate the row', async () => {
+    await bootstrapAdminCertFingerprints();
+
+    const rows = await db('admin_cert_fingerprints').where({ email: validEmail });
+    expect(rows).toHaveLength(1);
   });
 });
