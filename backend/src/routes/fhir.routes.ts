@@ -1,6 +1,8 @@
 /**
  * fhir.routes.ts – FHIR-compatible Bundle endpoint for DSF process
- * Authenticates via client certificate thumbprint (mTLS).
+ * Authenticates via client certificate (mTLS): matches the SHA-512
+ * fingerprint first, falling back to the SHA-256 thumbprint for
+ * organizations onboarded before the SHA-512 migration.
  * No JWT auth required — this is a machine-to-machine endpoint.
  * Dependencies: express, fhir.service, audit.service, db/connection, clientCert lib
  */
@@ -13,13 +15,23 @@ import { extractClientCert } from '../lib/clientCert';
 export const fhirRouter = Router();
 
 /**
- * Lookup the organization that is registered for the given client cert thumbprint.
- * Returns the org row or null if not found.
+ * Lookup the organization registered for the given client cert: match the
+ * SHA-512 fingerprint first, then fall back to the SHA-256 thumbprint so
+ * organizations onboarded before the SHA-512 migration keep working.
+ * Returns the org row or null if neither matches.
  */
-async function findOrgByThumbprint(thumbprint: string) {
-  // Coalesce the resolved row, not the (always-truthy) query promise.
-  const row = await db('organizations').where({ client_cert_thumbprint: thumbprint }).first();
-  return row ?? null;
+async function findOrgByClientCert(cert: { fingerprint: string | null; thumbprint: string }) {
+  if (cert.fingerprint) {
+    // Coalesce the resolved row, not the (always-truthy) query promise.
+    const byFingerprint = await db('organizations')
+      .where({ client_cert_fingerprint: cert.fingerprint })
+      .first();
+    if (byFingerprint) return byFingerprint;
+  }
+  const byThumbprint = await db('organizations')
+    .where({ client_cert_thumbprint: cert.thumbprint })
+    .first();
+  return byThumbprint ?? null;
 }
 
 // GET /fhir/Bundle/:endpointId — Fetch a specific bundle by endpoint identifier
@@ -46,7 +58,7 @@ fhirRouter.get('/Bundle/:endpointId', async (req: Request, res: Response) => {
       });
     }
 
-    const org = await findOrgByThumbprint(cert.thumbprint);
+    const org = await findOrgByClientCert(cert);
     if (!org) {
       return res.status(403).json({
         resourceType: 'OperationOutcome',
@@ -59,6 +71,12 @@ fhirRouter.get('/Bundle/:endpointId', async (req: Request, res: Response) => {
         ],
       });
     }
+    // Deterministic given client_cert_fingerprint is UNIQUE: if this org's
+    // fingerprint equals the presented cert's, the fingerprint lookup above
+    // is what found it — the thumbprint fallback only runs when that lookup
+    // returns no row.
+    const match =
+      cert.fingerprint && org.client_cert_fingerprint === cert.fingerprint ? 'sha512' : 'sha256';
 
     // Scope the bundle to the caller's own instance + the requested endpoint.
     // generateBundle filters endpoints by `(instance_id, identifier)`, so a
@@ -71,14 +89,19 @@ fhirRouter.get('/Bundle/:endpointId', async (req: Request, res: Response) => {
 
     // Audit: record the download (non-blocking — failure must not disrupt the response).
     // userEmail intentionally omitted — this caller is a client cert, not a user.
-    // The thumbprint goes into diffJson so audit-by-user queries stay clean
-    // (filtering 'cert:...' polluted the user_email column previously).
+    // The matched id goes into diffJson, masked to a 16-char prefix, so
+    // audit-by-user queries stay clean (filtering 'cert:...' polluted the
+    // user_email column previously) and the full cert/pem is never logged.
     writeAuditLog({
       instanceId: org.instance_id,
       resourceType: 'CERTIFICATE',
       resourceId: req.params.endpointId,
       operation: 'CREATE',
-      diffJson: { authMethod: 'client_cert', thumbprintPrefix: cert.thumbprint.slice(0, 16) },
+      diffJson: {
+        authMethod: 'client_cert',
+        match,
+        idPrefix: (cert.fingerprint ?? cert.thumbprint).slice(0, 16),
+      },
       ipAddress: req.ip || 'unknown',
     }).catch(() => {});
 
@@ -121,7 +144,7 @@ fhirRouter.get('/Bundle', async (req: Request, res: Response) => {
       });
     }
 
-    const org = await findOrgByThumbprint(cert.thumbprint);
+    const org = await findOrgByClientCert(cert);
     if (!org) {
       return res.status(403).json({
         resourceType: 'OperationOutcome',
