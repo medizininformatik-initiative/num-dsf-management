@@ -777,6 +777,34 @@ export const de: Record<TranslationKey, string> = {
   changed: 'Geändert',
   details: 'Details',
 
+  // ─── Onboarding-Import (Massen-Upload CSV/JSON) ───────────────────────────
+  adminOnboardingNavLabel: 'Onboarding',
+  adminOnboardingTitle: 'Massen-Onboarding-Import',
+  adminOnboardingIntro:
+    'Lade eine CSV- oder JSON-Datei mit den Spalten organizationIdentifier, organizationName, contactEmail und clientCertFingerprint hoch (optional zusätzlich city und countryCode). Der Fingerabdruck ist der SHA-512-Fingerabdruck des Client-Zertifikats.',
+  adminOnboardingFileLabel: 'Datei',
+  adminOnboardingNoFileChosen: 'Keine Datei ausgewählt',
+  adminOnboardingImportBtn: 'Importieren',
+  adminOnboardingImporting: 'Importiere…',
+  adminOnboardingSuccessToast: 'Onboarding-Import abgeschlossen.',
+  adminOnboardingSummary: '{created} erstellt, {updated} aktualisiert, {failed} fehlgeschlagen',
+  adminOnboardingColIdentifier: 'Kennung',
+  adminOnboardingColAction: 'Aktion',
+  adminOnboardingColStatus: 'Status',
+  adminOnboardingColIssue: 'Problem',
+  adminOnboardingActionCreated: 'Erstellt',
+  adminOnboardingActionUpdated: 'Aktualisiert',
+  adminOnboardingActionFailed: 'Fehlgeschlagen',
+  adminOnboardingParseErrorsTitle: 'Beim Einlesen übersprungene Zeilen',
+  adminOnboardingParseErrorsRow: 'Zeile {row}',
+  adminOnboardingErrorFileTooLarge: 'Die Datei ist zu groß.',
+  adminOnboardingErrorPemNotAllowed: 'PEM-Inhalte sind in dieser Datei nicht erlaubt.',
+  adminOnboardingErrorUnsupportedFormat:
+    'Nicht unterstütztes Dateiformat. Bitte CSV oder JSON verwenden.',
+  adminOnboardingErrorTooManyRows: 'Die Datei enthält zu viele Zeilen.',
+  adminOnboardingErrorEmptyBody: 'Die Datei ist leer.',
+  adminOnboardingImportFailed: 'Import fehlgeschlagen.',
+
   // CommandPalette
   cmdPlaceholder: 'Befehl eingeben…',
   cmdNoResults: 'Keine Befehle gefunden.',

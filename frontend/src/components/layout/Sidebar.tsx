@@ -346,6 +346,11 @@ export function Sidebar() {
                     icon: 'history',
                     label: t('bundleVersionsNavLabel'),
                   },
+                  {
+                    to: '/app/admin/onboarding',
+                    icon: 'upload',
+                    label: t('adminOnboardingNavLabel'),
+                  },
                   { to: '/app/audit', icon: 'fact_check', label: t('auditLog') },
                 ].map((item) => {
                   const isActive = pathname === item.to;

@@ -768,6 +768,33 @@ export const en = {
   changed: 'Changed',
   details: 'Details',
 
+  // ─── Onboarding Import (bulk CSV/JSON upload) ─────────────────────────────
+  adminOnboardingNavLabel: 'Onboarding',
+  adminOnboardingTitle: 'Bulk Onboarding Import',
+  adminOnboardingIntro:
+    'Upload a CSV or JSON file with organizationIdentifier, organizationName, contactEmail, and clientCertFingerprint columns (plus optional city and countryCode). The fingerprint is the SHA-512 client-certificate fingerprint.',
+  adminOnboardingFileLabel: 'File',
+  adminOnboardingNoFileChosen: 'No file chosen',
+  adminOnboardingImportBtn: 'Import',
+  adminOnboardingImporting: 'Importing…',
+  adminOnboardingSuccessToast: 'Onboarding import completed.',
+  adminOnboardingSummary: '{created} created, {updated} updated, {failed} failed',
+  adminOnboardingColIdentifier: 'Identifier',
+  adminOnboardingColAction: 'Action',
+  adminOnboardingColStatus: 'Status',
+  adminOnboardingColIssue: 'Issue',
+  adminOnboardingActionCreated: 'Created',
+  adminOnboardingActionUpdated: 'Updated',
+  adminOnboardingActionFailed: 'Failed',
+  adminOnboardingParseErrorsTitle: 'Rows skipped at parse time',
+  adminOnboardingParseErrorsRow: 'Row {row}',
+  adminOnboardingErrorFileTooLarge: 'The file is too large.',
+  adminOnboardingErrorPemNotAllowed: 'PEM content is not allowed in this file.',
+  adminOnboardingErrorUnsupportedFormat: 'Unsupported file format. Use CSV or JSON.',
+  adminOnboardingErrorTooManyRows: 'The file has too many rows.',
+  adminOnboardingErrorEmptyBody: 'The file is empty.',
+  adminOnboardingImportFailed: 'Import failed.',
+
   // CommandPalette
   cmdPlaceholder: 'Type a command…',
   cmdNoResults: 'No commands found.',
