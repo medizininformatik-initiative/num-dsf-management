@@ -306,6 +306,52 @@ export async function refreshAccessToken(
   return createTokenPair({ id: user.id, email: user.email, totpEnabled: user.totp_enabled });
 }
 
+/**
+ * Resolve a caller authenticated via client certificate: match the SHA-512
+ * fingerprint against admins first, then organizations.
+ *
+ * Admin path: the fingerprint is pre-registered in admin_cert_fingerprints
+ * (out of band, by an existing admin). Ensures the users + email_whitelist
+ * rows exist for that email — the same idempotent bootstrap dev-login uses —
+ * so a first-time admin cert can log in without a prior OTP signup.
+ * Admin-ness itself comes from admin_grants (seeded separately); this
+ * function does not grant it.
+ *
+ * Org path: mirrors the previous thumbprint-based org-login resolution
+ * (organizations → instances → users), now keyed by client_cert_fingerprint.
+ *
+ * @returns null if the fingerprint matches neither an admin nor an organization.
+ */
+export async function resolveCertLogin(fingerprint: string): Promise<{
+  kind: 'admin' | 'org';
+  user: { id: string; email: string };
+  instanceId?: string;
+} | null> {
+  const adminCert = await db('admin_cert_fingerprints').where({ fingerprint }).first();
+  if (adminCert) {
+    const email = String(adminCert.email).toLowerCase().trim();
+    await db('email_whitelist')
+      .insert({ id: uuidv4(), email, created_by: 'cert-login', created_at: new Date() })
+      .onConflict('email')
+      .ignore();
+    await db('users')
+      .insert({ id: uuidv4(), email, totp_enabled: true, created_at: new Date() })
+      .onConflict('email')
+      .ignore();
+    const user = await db('users').where({ email }).first();
+    if (!user) return null;
+    return { kind: 'admin', user: { id: user.id, email: user.email } };
+  }
+
+  const org = await db('organizations').where({ client_cert_fingerprint: fingerprint }).first();
+  if (!org) return null;
+  const instance = await db('instances').where({ id: org.instance_id }).first();
+  if (!instance) return null;
+  const user = await db('users').where({ id: instance.user_id }).first();
+  if (!user) return null;
+  return { kind: 'org', user: { id: user.id, email: user.email }, instanceId: instance.id };
+}
+
 // Logout: revoke refresh token
 export async function logout(
   refreshToken: string,

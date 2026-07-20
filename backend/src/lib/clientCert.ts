@@ -1,13 +1,24 @@
 /**
  * clientCert.ts – Pure helpers for client-certificate authentication.
  * Used by the mTLS-protected /fhir routes AND the /auth/client-cert-login
- * endpoint, which both authenticate a caller via the same thumbprint match.
+ * endpoint. FHIR still matches organizations by the SHA-256 `thumbprint`;
+ * the human login matches by the SHA-512 `fingerprint` (lib/certFingerprint),
+ * resolved against admins first, then organizations (auth.service.resolveCertLogin).
  */
 import crypto from 'crypto';
 import type { Request } from 'express';
+import { sha512FingerprintFromPem } from './certFingerprint';
 
 export interface ClientCertInfo {
   thumbprint: string;
+  /**
+   * SHA-512 fingerprint used by the human cert-login match. Null when the
+   * presented bytes base64-decode but do not parse as a valid X.509
+   * certificate (e.g. a private key, or malformed DER). The SHA-256
+   * `thumbprint` above is a raw-byte hash with no such failure mode, so
+   * FHIR's thumbprint match is unaffected by a null fingerprint here.
+   */
+  fingerprint: string | null;
   pem: string;
 }
 
@@ -45,5 +56,11 @@ export function extractClientCert(req: Request): ClientCertInfo | null {
   );
   if (der.length === 0) return null;
   const thumbprint = crypto.createHash('sha256').update(der).digest('hex');
-  return { thumbprint, pem };
+  let fingerprint: string | null;
+  try {
+    fingerprint = sha512FingerprintFromPem(pem);
+  } catch {
+    fingerprint = null;
+  }
+  return { thumbprint, fingerprint, pem };
 }

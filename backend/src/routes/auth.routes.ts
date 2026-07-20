@@ -24,6 +24,7 @@ import {
   logout,
   verifyTempToken,
   createTokenPair,
+  resolveCertLogin,
 } from '../services/auth.service';
 import { generateTotpSetup, saveTotpSecret } from '../services/totp.service';
 import { writeAuditLog } from '../services/audit.service';
@@ -259,7 +260,8 @@ if (isDevEnv() && process.env.DEV_AUTO_LOGIN === 'true') {
   );
 }
 
-// POST /auth/client-cert-login → authenticate by client certificate thumbprint
+// POST /auth/client-cert-login → authenticate by client certificate SHA-512
+// fingerprint (admins first, then organizations — see resolveCertLogin)
 authRouter.post(
   '/client-cert-login',
   ...verifyLimiter,
@@ -275,16 +277,14 @@ authRouter.post(
       return;
     }
     const cert = extractClientCert(req);
-    if (!cert) {
+    if (!cert || !cert.fingerprint) {
       res
         .status(401)
         .json({ error: { code: 'NO_CLIENT_CERT', message: 'No client certificate presented.' } });
       return;
     }
-    const org = await db('organizations')
-      .where({ client_cert_thumbprint: cert.thumbprint })
-      .first();
-    if (!org) {
+    const resolved = await resolveCertLogin(cert.fingerprint);
+    if (!resolved) {
       res.status(401).json({
         error: {
           code: 'CERT_NOT_REGISTERED',
@@ -293,18 +293,7 @@ authRouter.post(
       });
       return;
     }
-    const instance = await db('instances').where({ id: org.instance_id }).first();
-    if (!instance) {
-      res.status(401).json({
-        error: { code: 'NO_INSTANCE', message: 'Organization has no associated instance.' },
-      });
-      return;
-    }
-    const user = await db('users').where({ id: instance.user_id }).first();
-    if (!user) {
-      res.status(401).json({ error: { code: 'NO_USER', message: 'Instance has no owner.' } });
-      return;
-    }
+    const { user, instanceId } = resolved;
 
     const wl = await db('email_whitelist').where({ email: user.email }).first();
     if (!wl || wl.locked_at) {
@@ -321,7 +310,7 @@ authRouter.post(
 
     writeAuditLog({
       userEmail: user.email,
-      instanceId: instance.id,
+      instanceId,
       resourceType: 'AUTH',
       operation: 'LOGIN',
       ipAddress: req.ip || 'unknown',
