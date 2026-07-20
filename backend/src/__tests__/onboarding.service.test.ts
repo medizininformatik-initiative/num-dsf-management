@@ -7,7 +7,14 @@
  * unsupported format) which are the only conditions allowed to throw.
  * No DB.
  */
-import { parseOnboardingFile } from '../services/onboarding.service';
+import { v4 as uuidv4 } from 'uuid';
+import { db } from '../db/connection';
+import {
+  parseOnboardingFile,
+  importSites,
+  onboardingRowSchema,
+  type OnboardingRow,
+} from '../services/onboarding.service';
 
 const FP_A = 'a'.repeat(128);
 const FP_B = 'b'.repeat(128);
@@ -15,6 +22,16 @@ const HEADER = 'organizationIdentifier,organizationName,contactEmail,clientCertF
 
 function csvOf(rows: string[]): string {
   return [HEADER, ...rows].join('\n');
+}
+
+function importRow(overrides: Partial<OnboardingRow> = {}): OnboardingRow {
+  return onboardingRowSchema.parse({
+    organizationIdentifier: `import-${Date.now()}-${uuidv4().slice(0, 8)}.example.de`,
+    organizationName: 'Import Test Org',
+    contactEmail: `import-${uuidv4().slice(0, 8)}@example.de`,
+    clientCertFingerprint: 'c'.repeat(128),
+    ...overrides,
+  });
 }
 
 describe('parseOnboardingFile — valid input', () => {
@@ -163,5 +180,113 @@ describe('parseOnboardingFile — file-level guards (throw)', () => {
     );
     const csv = csvOf(rows);
     expect(() => parseOnboardingFile(Buffer.from(csv), 'text/csv')).toThrow('TOO_MANY_ROWS');
+  });
+});
+
+describe('importSites', () => {
+  const ACTOR_EMAIL = 'importer@imi.uni-muenster.de';
+  const IP = '127.0.0.1';
+  const identifiers: string[] = [];
+  const emails: string[] = [];
+
+  function track(row: OnboardingRow): OnboardingRow {
+    identifiers.push(row.organizationIdentifier);
+    emails.push(row.contactEmail);
+    return row;
+  }
+
+  afterEach(async () => {
+    if (identifiers.length) {
+      await db('audit_logs')
+        .where({ resource_type: 'ORGANIZATION' })
+        .whereIn('resource_id', identifiers)
+        .del();
+    }
+    if (emails.length) {
+      // users → instances → organizations all cascade on delete, so removing
+      // the users row cleans up everything this test created for that email.
+      await db('users').whereIn('email', emails).del();
+      await db('email_whitelist').whereIn('email', emails).del();
+    }
+    identifiers.length = 0;
+    emails.length = 0;
+  });
+
+  it('creates a brand-new site: org + instance + user + whitelist, with an audit row', async () => {
+    const row = track(importRow());
+
+    const result = await importSites([row], ACTOR_EMAIL, IP);
+
+    expect(result.rows).toEqual([
+      { identifier: row.organizationIdentifier, action: 'created', ok: true },
+    ]);
+    expect(result.summary).toEqual({ created: 1, updated: 0, failed: 0 });
+
+    const org = await db('organizations').where({ identifier: row.organizationIdentifier }).first();
+    expect(org).toBeTruthy();
+    expect(org.client_cert_fingerprint).toBe(row.clientCertFingerprint);
+    expect(!!org.active).toBe(true);
+
+    const user = await db('users').where({ email: row.contactEmail }).first();
+    expect(user).toBeTruthy();
+    const whitelisted = await db('email_whitelist').where({ email: row.contactEmail }).first();
+    expect(whitelisted).toBeTruthy();
+    const instance = await db('instances').where({ id: org.instance_id }).first();
+    expect(instance).toBeTruthy();
+    expect(instance.user_id).toBe(user.id);
+
+    const audit = await db('audit_logs')
+      .where({ resource_type: 'ORGANIZATION', resource_id: row.organizationIdentifier })
+      .first();
+    expect(audit).toBeTruthy();
+    expect(audit.operation).toBe('CREATE');
+  });
+
+  it('re-importing the same row updates in place without duplicating org/instance', async () => {
+    const row = track(importRow());
+
+    const first = await importSites([row], ACTOR_EMAIL, IP);
+    expect(first.rows[0]).toMatchObject({ action: 'created', ok: true });
+
+    const second = await importSites([row], ACTOR_EMAIL, IP);
+    expect(second.rows).toEqual([
+      { identifier: row.organizationIdentifier, action: 'updated', ok: true },
+    ]);
+    expect(second.summary).toEqual({ created: 0, updated: 1, failed: 0 });
+
+    const orgs = await db('organizations').where({ identifier: row.organizationIdentifier });
+    expect(orgs).toHaveLength(1);
+    const instances = await db('instances').where({ id: orgs[0].instance_id });
+    expect(instances).toHaveLength(1);
+  });
+
+  it("fails the second row with FINGERPRINT_IN_USE when it reuses another identifier's fingerprint, first row stays ok", async () => {
+    const sharedFp = 'd'.repeat(128);
+    const rowA = track(importRow({ clientCertFingerprint: sharedFp }));
+    const rowB = track(importRow({ clientCertFingerprint: sharedFp }));
+
+    const result = await importSites([rowA, rowB], ACTOR_EMAIL, IP);
+
+    expect(result.rows[0]).toEqual({
+      identifier: rowA.organizationIdentifier,
+      action: 'created',
+      ok: true,
+    });
+    expect(result.rows[1]).toMatchObject({
+      identifier: rowB.organizationIdentifier,
+      action: 'failed',
+      ok: false,
+      issue: 'FINGERPRINT_IN_USE',
+    });
+    expect(result.summary).toEqual({ created: 1, updated: 0, failed: 1 });
+
+    const orgA = await db('organizations')
+      .where({ identifier: rowA.organizationIdentifier })
+      .first();
+    expect(orgA).toBeTruthy();
+    const orgB = await db('organizations')
+      .where({ identifier: rowB.organizationIdentifier })
+      .first();
+    expect(orgB).toBeFalsy();
   });
 });
