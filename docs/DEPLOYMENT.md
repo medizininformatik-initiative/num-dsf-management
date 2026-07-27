@@ -264,14 +264,29 @@ Open the site in a browser that has the admin client certificate installed. You 
 
 The bundled nginx already performs the client-cert authentication, and it is the tested path. If you must terminate TLS at an existing Apache2 on the host, Apache has to reproduce exactly what `nginx/nginx.cert-auth.conf` does, because the backend trusts these headers:
 
-- Request the client cert without a hard CA requirement: `SSLVerifyClient optional_no_ca` (or `SSLVerifyClient require` if you do run a common CA), and `SSLOptions +ExportCertData` so the PEM is available.
-- Forward the cert and the verify result on every proxied request:
+- Enable `proxy`, `proxy_http` and `headers`, and put the app in its **own** vhost file with an explicit `ServerName` so the distribution's default vhosts stay untouched.
+- Request the client cert without a hard CA requirement: `SSLVerifyClient optional_no_ca`, plus `SSLOptions +StdEnvVars +ExportCertData` so the PEM is available.
+- Clear the headers first, then set them from mod_ssl. Clearing is the security control: without it a client could simply send `X-Client-Verify: SUCCESS` plus someone else's certificate.
   ```apache
-  RequestHeader set X-Client-Verify "%{SSL_CLIENT_VERIFY}s"
-  RequestHeader set X-Client-Cert "%{SSL_CLIENT_CERT}s"
+  RequestHeader unset X-Client-Cert
+  RequestHeader unset X-Client-Verify
+  RequestHeader unset X-Ssl-Client-Cert
+  RequestHeader set X-Client-Verify "SUCCESS" "expr=%{SSL:SSL_CLIENT_VERIFY} =~ /^(SUCCESS|GENEROUS|FAILED:(self.signed|unable to ))/"
+  RequestHeader set X-Client-Cert "expr=%{escape:%{SSL:SSL_CLIENT_CERT}}" "expr=%{SSL:SSL_CLIENT_VERIFY} =~ /^(SUCCESS|GENEROUS|FAILED:(self.signed|unable to ))/"
   ```
-  The backend accepts a URL-encoded or a raw PEM, so the mod_headers value above works as is.
+  `%{escape:...}` percent-encodes the PEM, which is what nginx's `$ssl_client_escaped_cert` does and what the backend's `decodeURIComponent` expects. A raw `%{SSL_CLIENT_CERT}s` would put bare newlines into a header.
+- **Accepting `FAILED:self-signed` is required, not sloppy.** nginx with `optional_no_ca` skips chain validation entirely and reports `SUCCESS`. Apache still reports the OpenSSL result, and under TLS 1.3 a self-signed client cert arrives as `FAILED:self-signed certificate` rather than `GENEROUS`, so a `SUCCESS|GENEROUS`-only match silently drops every DSF certificate. The pattern above admits exactly the self-signed and unknown-issuer cases that `optional_no_ca` is meant to allow, while still rejecting `FAILED:certificate has expired` and `FAILED:certificate revoked`. The real gate stays the SHA-512 fingerprint match.
 - Return `403` for `/auth/request-otp`, `/auth/verify-otp`, `/auth/verify-totp`, `/auth/setup-totp`, and `/auth/confirm-totp` so the OTP path stays closed.
+- Proxy `/api/`, `/auth/`, `/fhir/` and `/health` to the backend and `/` to the frontend (the frontend image does its own SPA fallback, so no 404 rewriting is needed). Set `RequestHeader set X-Forwarded-Proto "https"` so the session cookie stays `secure`.
+
+To debug a cert that will not authenticate, log both layers for one request and compare them:
+
+```apache
+LogFormat "verify=[%{SSL_CLIENT_VERIFY}x] dn=[%{SSL_CLIENT_S_DN}x] hdr_verify=[%{X-Client-Verify}i]" dsfdebug
+CustomLog ${APACHE_LOG_DIR}/dsf-debug.log dsfdebug
+```
+
+An empty `dn` means the cert never reached Apache (TLS layer); a populated `dn` with `hdr_verify=[-]` means the `expr=` condition did not match. Remove the debug log afterwards, since it can record the full certificate.
 - Ensure no other vhost or location can inject `X-Client-Cert` / `X-Client-Verify`, and that Apache is the only ingress to the app containers (do not publish the backend or the internal nginx ports).
 
 The security model is identical to the nginx variant: the SHA-512 fingerprint match is the gate, and it is only sound if the front proxy is the sole entry point.
