@@ -8,7 +8,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { caBlacklistApi, type CaBlacklistRow, type KnownCaRow } from '../api/caBlacklist.api';
 import { useI18n } from '../stores/i18n.store';
-import { getErrorMessage } from '../lib/getErrorMessage';
+import { getErrorMessageForStepUp } from '../lib/getErrorMessage';
+import { needsTotpStepUp } from '../lib/authMode';
 
 export function AdminCaBlacklistPage() {
   const { t } = useI18n();
@@ -22,7 +23,10 @@ export function AdminCaBlacklistPage() {
   const [totpCode, setTotpCode] = useState('');
 
   const addMut = useMutation({
-    mutationFn: () => caBlacklistApi.add({ subjectDn, reason, totpCode }).then((r) => r.data),
+    mutationFn: () =>
+      caBlacklistApi
+        .add({ subjectDn, reason, ...(needsTotpStepUp() ? { totpCode } : {}) })
+        .then((r) => r.data),
     onSuccess: () => {
       setSubjectDn('');
       setReason('');
@@ -30,17 +34,23 @@ export function AdminCaBlacklistPage() {
       toast.success(t('caBlacklistAddedToast'));
       qc.invalidateQueries({ queryKey: ['ca-blacklist'] });
     },
-    onError: (err: unknown) => toast.error(getErrorMessage(err, t('caBlacklistAddFailed'))),
+    onError: (err: unknown) =>
+      toast.error(
+        getErrorMessageForStepUp(err, t('caBlacklistAddFailed'), t('certStepUpFailedToast')),
+      ),
   });
 
   const removeMut = useMutation({
-    mutationFn: (id: string) => caBlacklistApi.remove(id, totpCode),
+    mutationFn: (id: string) => caBlacklistApi.remove(id, needsTotpStepUp() ? totpCode : undefined),
     onSuccess: () => {
       setTotpCode('');
       toast.success(t('caBlacklistRemovedToast'));
       qc.invalidateQueries({ queryKey: ['ca-blacklist'] });
     },
-    onError: (err: unknown) => toast.error(getErrorMessage(err, t('caBlacklistRemoveFailed'))),
+    onError: (err: unknown) =>
+      toast.error(
+        getErrorMessageForStepUp(err, t('caBlacklistRemoveFailed'), t('certStepUpFailedToast')),
+      ),
   });
 
   const blacklist: CaBlacklistRow[] = data?.blacklist ?? [];
@@ -48,7 +58,7 @@ export function AdminCaBlacklistPage() {
 
   // Mirror the backend addSchema: subjectDn must be 3–500 chars.
   const subjectDnValid = subjectDn.length >= 3 && subjectDn.length <= 500;
-  const totpValid = totpCode.length === 6;
+  const totpValid = !needsTotpStepUp() || totpCode.length === 6;
 
   return (
     <div className="p-8 max-w-4xl mx-auto" data-testid="admin-ca-blacklist">
@@ -98,21 +108,23 @@ export function AdminCaBlacklistPage() {
               placeholder={t('caReasonPlaceholder')}
             />
           </label>
-          <label>
-            <span className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
-              {t('caBlacklistTotpLabel')}
-            </span>
-            <input
-              className="w-28 px-3 py-2 text-sm rounded-lg border font-mono tracking-[4px] text-center"
-              style={{ borderColor: 'var(--border)', background: 'var(--bg-input)' }}
-              value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="000000"
-              data-testid="ca-blacklist-totp-input"
-            />
-          </label>
+          {needsTotpStepUp() && (
+            <label>
+              <span className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                {t('caBlacklistTotpLabel')}
+              </span>
+              <input
+                className="w-28 px-3 py-2 text-sm rounded-lg border font-mono tracking-[4px] text-center"
+                style={{ borderColor: 'var(--border)', background: 'var(--bg-input)' }}
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="000000"
+                data-testid="ca-blacklist-totp-input"
+              />
+            </label>
+          )}
           <button
             type="button"
             onClick={() => subjectDnValid && totpValid && addMut.mutate()}

@@ -1,9 +1,11 @@
 /**
  * AdminCaBlacklistPage.test.tsx — admin CA-blacklist manager. caBlacklistApi
  * is mocked with one blacklist row; asserts the title, the mocked row's DN,
- * and that add includes the 6-digit TOTP step-up code in its request.
+ * and that add includes the 6-digit TOTP step-up code in its request. A
+ * separate describe block mocks lib/authMode to exercise cert mode, where the
+ * TOTP field is not rendered and add omits totpCode entirely.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../../test/renderWithProviders';
 
@@ -35,8 +37,21 @@ vi.mock('../../api/caBlacklist.api', () => ({
   },
 }));
 
+// Defaults to OTP mode (cert: false) so the existing tests below run through
+// the real needsTotpStepUp()===true behaviour unchanged; the cert mode
+// describe block flips this before rendering.
+const authMode = vi.hoisted(() => ({ cert: false }));
+vi.mock('../../lib/authMode', () => ({
+  isCertMode: () => authMode.cert,
+  needsTotpStepUp: () => !authMode.cert,
+}));
+
 import { AdminCaBlacklistPage } from '../AdminCaBlacklistPage';
 import { caBlacklistApi } from '../../api/caBlacklist.api';
+
+beforeEach(() => {
+  authMode.cert = false;
+});
 
 describe('AdminCaBlacklistPage', () => {
   it('renders the title and a blacklisted CA row', async () => {
@@ -68,5 +83,34 @@ describe('AdminCaBlacklistPage', () => {
         expect.objectContaining({ subjectDn: 'CN=New CA,O=Test,C=DE', totpCode: '123456' }),
       ),
     );
+  });
+});
+
+describe('AdminCaBlacklistPage (cert mode)', () => {
+  beforeEach(() => {
+    authMode.cert = true;
+  });
+
+  it('renders no TOTP field and add sends no totpCode', async () => {
+    addMock.mockClear();
+    renderWithProviders(<AdminCaBlacklistPage />);
+    await screen.findByText('CN=Bad CA');
+
+    expect(screen.queryByTestId('ca-blacklist-totp-input')).not.toBeInTheDocument();
+    expect(screen.queryByText('TOTP code')).not.toBeInTheDocument();
+
+    const subjectInput = screen.getByTestId('ca-blacklist-subject-input');
+    const addBtn = screen.getByTestId('ca-blacklist-add-btn') as HTMLButtonElement;
+
+    fireEvent.change(subjectInput, { target: { value: 'CN=New CA,O=Test,C=DE' } });
+    // No TOTP code needed — the subject DN alone enables the button.
+    expect(addBtn).not.toBeDisabled();
+
+    fireEvent.click(addBtn);
+
+    await waitFor(() => expect(addMock).toHaveBeenCalledTimes(1));
+    const arg = addMock.mock.calls[0][0];
+    expect(arg).toEqual({ subjectDn: 'CN=New CA,O=Test,C=DE', reason: '' });
+    expect(Object.prototype.hasOwnProperty.call(arg, 'totpCode')).toBe(false);
   });
 });

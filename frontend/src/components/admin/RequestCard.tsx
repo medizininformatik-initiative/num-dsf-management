@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 import { useApproveRequest, useRejectRequest } from '../../hooks/useAdmin';
 import type { ApprovalSignature } from '../../api/admin.api';
 import { useI18n } from '../../stores/i18n.store';
-import { getErrorMessage } from '../../lib/getErrorMessage';
+import { getErrorMessageForStepUp } from '../../lib/getErrorMessage';
+import { needsTotpStepUp } from '../../lib/authMode';
 import { relTime } from '../../lib/dateUtils';
 import { parseSnapshot } from './parseSnapshot';
 import { SnapshotView } from './SnapshotView';
@@ -63,16 +64,23 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
 
   async function handleApprove() {
     if (approveMut.isPending || rejectMut.isPending) return;
-    if (!totpCode || totpCode.length !== 6) {
+    if (needsTotpStepUp() && (!totpCode || totpCode.length !== 6)) {
       toast.error(t('adminToastTotpRequired'));
       return;
     }
     try {
-      await approveMut.mutateAsync({ requestId: request.id, totpCode });
+      await approveMut.mutateAsync({
+        requestId: request.id,
+        ...(needsTotpStepUp() ? { totpCode } : {}),
+      });
       toast.success(t('adminToastApproveSuccess'));
       setTotpCode('');
     } catch (err: unknown) {
-      const msg = getErrorMessage(err, t('adminToastApproveFailed'));
+      const msg = getErrorMessageForStepUp(
+        err,
+        t('adminToastApproveFailed'),
+        t('certStepUpFailedToast'),
+      );
       toast.error(msg);
     }
   }
@@ -83,18 +91,26 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
       toast.error(t('adminToastReasonRequired'));
       return;
     }
-    if (!totpCode || totpCode.length !== 6) {
+    if (needsTotpStepUp() && (!totpCode || totpCode.length !== 6)) {
       toast.error(t('adminToastTotpRequired'));
       return;
     }
     try {
-      await rejectMut.mutateAsync({ requestId: request.id, comment: comment.trim(), totpCode });
+      await rejectMut.mutateAsync({
+        requestId: request.id,
+        comment: comment.trim(),
+        ...(needsTotpStepUp() ? { totpCode } : {}),
+      });
       toast.success(t('adminToastRejectSuccess'));
       setRejecting(false);
       setComment('');
       setTotpCode('');
     } catch (err: unknown) {
-      const msg = getErrorMessage(err, t('adminToastRejectFailed'));
+      const msg = getErrorMessageForStepUp(
+        err,
+        t('adminToastRejectFailed'),
+        t('certStepUpFailedToast'),
+      );
       toast.error(msg);
     }
   }
@@ -336,36 +352,39 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
         </div>
       )}
 
-      {/* TOTP confirmation input */}
-      <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: '18px', color: 'var(--accent)' }}
-        >
-          lock
-        </span>
-        <input
-          type="text"
-          value={totpCode}
-          onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-          placeholder={t('adminTotpPlaceholder')}
-          maxLength={6}
-          style={{
-            width: '180px',
-            padding: '8px 12px',
-            borderRadius: '10px',
-            border: '1px solid #e2e8f0',
-            fontSize: '14px',
-            fontFamily: 'monospace',
-            letterSpacing: '4px',
-            textAlign: 'center',
-            outline: 'none',
-          }}
-        />
-        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-          {t('adminTotpRequired')}
-        </span>
-      </div>
+      {/* TOTP confirmation input — cert-mode sessions prove possession via the
+          client certificate instead, so no code is needed here. */}
+      {needsTotpStepUp() && (
+        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: '18px', color: 'var(--accent)' }}
+          >
+            lock
+          </span>
+          <input
+            type="text"
+            value={totpCode}
+            onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder={t('adminTotpPlaceholder')}
+            maxLength={6}
+            style={{
+              width: '180px',
+              padding: '8px 12px',
+              borderRadius: '10px',
+              border: '1px solid #e2e8f0',
+              fontSize: '14px',
+              fontFamily: 'monospace',
+              letterSpacing: '4px',
+              textAlign: 'center',
+              outline: 'none',
+            }}
+          />
+          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+            {t('adminTotpRequired')}
+          </span>
+        </div>
+      )}
 
       {/* Expand toggle */}
       <button

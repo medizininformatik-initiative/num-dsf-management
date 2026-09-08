@@ -15,3 +15,14 @@ export function isCertMode(): boolean {
 export function reauthRedirect(): void {
   window.location.replace(isCertMode() ? '/' : '/login');
 }
+
+/**
+ * Whether a sensitive admin write (approve/reject, user/promotion management,
+ * CA blacklist, marketplace, cert-thumbprint changes, ...) must be confirmed
+ * with a TOTP code. Cert-mode sessions instead prove possession via the client
+ * certificate the reverse proxy re-verifies on every request, so no TOTP
+ * step-up is needed there.
+ */
+export function needsTotpStepUp(): boolean {
+  return !isCertMode();
+}

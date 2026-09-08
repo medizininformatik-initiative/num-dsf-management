@@ -73,7 +73,7 @@ export interface MarketplaceMetaBody {
   requiredRoles?: string[];
   messageNames?: string[];
   artifactUrl?: string | null;
-  totpCode: string;
+  totpCode?: string;
 }
 
 export const marketplaceApi = {
@@ -81,12 +81,15 @@ export const marketplaceApi = {
     api.get<{ data: MarketplaceEntry[] }>('/marketplace'),
   getBySlug: (slug: string) =>
     api.get<{ data: MarketplaceDetail }>(`/marketplace/${encodeURIComponent(slug)}`),
-  add: (body: { gitUrl: string; status: string; totpCode: string }) =>
+  // Cert-mode callers build these bodies without a totpCode key at all (the
+  // backend step-up check re-verifies the forwarded client certificate
+  // instead), so the bodies below are passed through as the caller built them.
+  add: (body: { gitUrl: string; status: string; totpCode?: string }) =>
     api.post<{ data: MarketplaceEntry }>('/admin/marketplace', body),
-  patch: (id: string, body: { status: string; totpCode: string }) =>
+  patch: (id: string, body: { status: string; totpCode?: string }) =>
     api.patch<{ data: MarketplaceEntry }>(`/admin/marketplace/${id}`, body),
   updateMeta: (id: string, body: MarketplaceMetaBody) =>
     api.patch<{ data: MarketplaceEntry }>(`/admin/marketplace/${encodeURIComponent(id)}/meta`, body),
-  remove: (id: string, body: { totpCode: string }) =>
+  remove: (id: string, body: { totpCode?: string }) =>
     api.delete<{ data: { deleted: true } }>(`/admin/marketplace/${id}`, { data: body }),
 };

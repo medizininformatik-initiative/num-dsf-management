@@ -14,7 +14,8 @@ import { FormField, selectClass, inputClass, ModalFooter } from './FormField';
 import { marketplaceEditFormSchema, MarketplaceEditForm } from '../../schemas/marketplace.schema';
 import { useUpdateMarketplaceMeta } from '../../hooks/useMarketplace';
 import { useI18n } from '../../stores/i18n.store';
-import { getErrorMessage } from '../../lib/getErrorMessage';
+import { getErrorMessageForStepUp } from '../../lib/getErrorMessage';
+import { needsTotpStepUp } from '../../lib/authMode';
 import type { MarketplaceEntry, MarketplaceMetaBody } from '../../api/marketplace.api';
 
 interface Props {
@@ -89,14 +90,18 @@ export function MarketplaceEditStatusModal({
       requiredRoles: splitCsv(data.requiredRoles),
       messageNames: splitCsv(data.messageNames),
       artifactUrl: data.artifactUrl?.trim() ? data.artifactUrl.trim() : null,
-      totpCode: data.totpCode,
+      ...(needsTotpStepUp() ? { totpCode: data.totpCode } : {}),
     };
     try {
       await updateMut.mutateAsync({ id: entryId, slug, body });
       toast.success(t('marketplaceEditMeta'));
       onClose();
     } catch (err: unknown) {
-      const msg = getErrorMessage(err, t('genericActionFailed'));
+      const msg = getErrorMessageForStepUp(
+        err,
+        t('genericActionFailed'),
+        t('certStepUpFailedToast'),
+      );
       toast.error(msg);
     }
   }
@@ -154,16 +159,18 @@ export function MarketplaceEditStatusModal({
           <input {...register('artifactUrl')} className={inputClass} />
         </FormField>
 
-        <FormField label={t('totpCodeLabel')} required error={errors.totpCode?.message}>
-          <input
-            {...register('totpCode')}
-            className={inputClass}
-            maxLength={6}
-            inputMode="numeric"
-            placeholder="000000"
-            style={{ fontFamily: 'monospace', letterSpacing: '4px', textAlign: 'center' }}
-          />
-        </FormField>
+        {needsTotpStepUp() && (
+          <FormField label={t('totpCodeLabel')} required error={errors.totpCode?.message}>
+            <input
+              {...register('totpCode')}
+              className={inputClass}
+              maxLength={6}
+              inputMode="numeric"
+              placeholder="000000"
+              style={{ fontFamily: 'monospace', letterSpacing: '4px', textAlign: 'center' }}
+            />
+          </FormField>
+        )}
 
         <ModalFooter
           onCancel={onClose}

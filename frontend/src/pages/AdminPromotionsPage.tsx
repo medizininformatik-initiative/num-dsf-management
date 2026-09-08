@@ -11,7 +11,8 @@ import { toast } from 'sonner';
 import { adminPromotionsApi, type PromotionRequest } from '../api/admin.api';
 import { useI18n } from '../stores/i18n.store';
 import { useMe } from '../hooks/useMe';
-import { getErrorMessage } from '../lib/getErrorMessage';
+import { getErrorMessageForStepUp } from '../lib/getErrorMessage';
+import { needsTotpStepUp } from '../lib/authMode';
 import { relTime } from '../lib/dateUtils';
 import { useToastMutation } from '../hooks/useToastMutation';
 
@@ -39,7 +40,7 @@ export function AdminPromotionsPage() {
   const [reason, setReason] = useState('');
 
   const mutApprove = useMutation({
-    mutationFn: (vars: { id: string; totpCode: string }) =>
+    mutationFn: (vars: { id: string; totpCode?: string }) =>
       adminPromotionsApi.approve(vars.id, vars.totpCode),
     onSuccess: () => {
       toast.success(t('promotionApprovedToast'));
@@ -47,20 +48,24 @@ export function AdminPromotionsPage() {
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
     onError: (err: unknown) => {
-      const msg = getErrorMessage(err, t('genericActionFailed'));
+      const msg = getErrorMessageForStepUp(
+        err,
+        t('genericActionFailed'),
+        t('certStepUpFailedToast'),
+      );
       toast.error(msg);
     },
   });
 
   const mutReject = useToastMutation({
-    mutationFn: (vars: { id: string; reason: string; totpCode: string }) =>
+    mutationFn: (vars: { id: string; reason: string; totpCode?: string }) =>
       adminPromotionsApi.reject(vars.id, vars.reason, vars.totpCode),
     successMessage: t('promotionRejectedToast'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'promotions'] }),
   });
 
   const mutCancel = useToastMutation({
-    mutationFn: (vars: { id: string; totpCode: string }) =>
+    mutationFn: (vars: { id: string; totpCode?: string }) =>
       adminPromotionsApi.cancel(vars.id, vars.totpCode),
     successMessage: t('promotionCancelledToast'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'promotions'] }),
@@ -83,20 +88,22 @@ export function AdminPromotionsPage() {
   }
 
   function execute() {
-    if (!pending || totpCode.length !== 6) {
+    if (!pending) return;
+    if (needsTotpStepUp() && totpCode.length !== 6) {
       toast.error(t('totpRequired'));
       return;
     }
+    const totpField = needsTotpStepUp() ? { totpCode } : {};
     if (pending.kind === 'approve') {
-      mutApprove.mutate({ id: pending.req.id, totpCode }, { onSettled: reset });
+      mutApprove.mutate({ id: pending.req.id, ...totpField }, { onSettled: reset });
     } else if (pending.kind === 'reject') {
       if (!reason.trim()) {
         toast.error(t('adminPromotionsRejectReasonRequired'));
         return;
       }
-      mutReject.mutate({ id: pending.req.id, reason, totpCode }, { onSettled: reset });
+      mutReject.mutate({ id: pending.req.id, reason, ...totpField }, { onSettled: reset });
     } else if (pending.kind === 'cancel') {
-      mutCancel.mutate({ id: pending.req.id, totpCode }, { onSettled: reset });
+      mutCancel.mutate({ id: pending.req.id, ...totpField }, { onSettled: reset });
     }
   }
 
@@ -293,24 +300,26 @@ export function AdminPromotionsPage() {
                 }}
               />
             )}
-            <input
-              value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000"
-              maxLength={6}
-              style={{
-                width: '180px',
-                padding: '8px 12px',
-                borderRadius: '10px',
-                border: '1px solid var(--border)',
-                fontFamily: 'monospace',
-                letterSpacing: '4px',
-                textAlign: 'center',
-                fontSize: '14px',
-                background: 'var(--bg-page)',
-                color: 'var(--text-primary)',
-              }}
-            />
+            {needsTotpStepUp() && (
+              <input
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                maxLength={6}
+                style={{
+                  width: '180px',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  fontFamily: 'monospace',
+                  letterSpacing: '4px',
+                  textAlign: 'center',
+                  fontSize: '14px',
+                  background: 'var(--bg-page)',
+                  color: 'var(--text-primary)',
+                }}
+              />
+            )}
             <div
               style={{ marginTop: '12px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}
             >

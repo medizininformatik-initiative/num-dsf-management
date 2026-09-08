@@ -8,6 +8,8 @@
  * tweaking the signatures prop and the hoisted mutation state. useAdmin and
  * sonner are mocked so no network/toast side effects occur; the real i18n
  * translator and relTime run so asserted text is the actual rendered output.
+ * A separate describe block mocks lib/authMode to exercise cert mode, where
+ * the TOTP input is not rendered and approve/reject omit totpCode entirely.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
@@ -37,6 +39,15 @@ const toastError = vi.hoisted(() => vi.fn());
 const toastSuccess = vi.hoisted(() => vi.fn());
 vi.mock('sonner', () => ({
   toast: { error: toastError, success: toastSuccess },
+}));
+
+// Defaults to OTP mode (cert: false) so every existing test below runs
+// through the real needsTotpStepUp()===true behaviour unchanged; the cert
+// mode describe block flips this before rendering.
+const authMode = vi.hoisted(() => ({ cert: false }));
+vi.mock('../../../lib/authMode', () => ({
+  isCertMode: () => authMode.cert,
+  needsTotpStepUp: () => !authMode.cert,
 }));
 
 import { RequestCard } from '../RequestCard';
@@ -91,6 +102,7 @@ beforeEach(() => {
   toastSuccess.mockReset();
   state.approvePending = false;
   state.rejectPending = false;
+  authMode.cert = false;
   approveMutateAsync.mockResolvedValue({ data: { status: 'APPROVED' } });
   rejectMutateAsync.mockResolvedValue(undefined);
 });
@@ -221,5 +233,44 @@ describe('RequestCard', () => {
     });
     fireEvent.click(approveBtn);
     expect(approveMutateAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe('RequestCard (cert mode)', () => {
+  beforeEach(() => {
+    authMode.cert = true;
+  });
+
+  it('renders no TOTP input and approves with only { requestId } (no totpCode key)', async () => {
+    renderWithProviders(<RequestCard request={makeRequest()} meEmail="op@imi.de" />);
+
+    expect(screen.queryByPlaceholderText(t('adminTotpPlaceholder'))).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: t('adminApproveBtn') }));
+
+    await waitFor(() => expect(approveMutateAsync).toHaveBeenCalledTimes(1), { timeout: 4000 });
+    const arg = approveMutateAsync.mock.calls[0][0];
+    expect(arg).toEqual({ requestId: 'req-1' });
+    expect(Object.prototype.hasOwnProperty.call(arg, 'totpCode')).toBe(false);
+    expect(toastSuccess).toHaveBeenCalledWith(t('adminToastApproveSuccess'));
+  });
+
+  it('rejects with only { requestId, comment } (no totpCode key)', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<RequestCard request={makeRequest()} meEmail="op@imi.de" />);
+
+    await user.click(screen.getByRole('button', { name: t('adminRejectBtn') }));
+    expect(screen.queryByPlaceholderText(t('adminTotpPlaceholder'))).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(t('adminRejectionReasonPlaceholder')), {
+      target: { value: 'Missing endpoint TLS metadata' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: t('adminConfirmRejectBtn') }));
+
+    await waitFor(() => expect(rejectMutateAsync).toHaveBeenCalledTimes(1), { timeout: 4000 });
+    const arg = rejectMutateAsync.mock.calls[0][0];
+    expect(arg).toEqual({ requestId: 'req-1', comment: 'Missing endpoint TLS metadata' });
+    expect(Object.prototype.hasOwnProperty.call(arg, 'totpCode')).toBe(false);
+    expect(toastSuccess).toHaveBeenCalledWith(t('adminToastRejectSuccess'));
   });
 });

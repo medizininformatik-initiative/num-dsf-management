@@ -33,15 +33,19 @@ export const caBlacklistApi = {
       `${BASE}/admin/ca-blacklist`,
       { headers: authHeader() },
     ),
-  add: (body: { subjectDn: string; fingerprint?: string; reason?: string; totpCode: string }) =>
+  add: (body: { subjectDn: string; fingerprint?: string; reason?: string; totpCode?: string }) =>
     axios.post<{ data: { id: string } }>(
       `${BASE}/admin/ca-blacklist`,
-      body,
+      // Cert-mode sessions omit totpCode; drop a stray undefined value so the
+      // request matches a caller that never set the key at all.
+      body.totpCode !== undefined
+        ? body
+        : { subjectDn: body.subjectDn, fingerprint: body.fingerprint, reason: body.reason },
       { headers: authHeader() },
     ),
-  remove: (id: string, totpCode: string) =>
+  remove: (id: string, totpCode?: string) =>
     axios.delete<{ data: { deleted: true } }>(
       `${BASE}/admin/ca-blacklist/${id}`,
-      { headers: authHeader(), data: { totpCode } },
+      { headers: authHeader(), data: totpCode !== undefined ? { totpCode } : {} },
     ),
 };

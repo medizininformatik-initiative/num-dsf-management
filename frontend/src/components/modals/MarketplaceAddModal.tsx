@@ -11,7 +11,8 @@ import { FormField, inputClass, selectClass, ModalFooter } from './FormField';
 import { marketplaceAddFormSchema, MarketplaceAddForm } from '../../schemas/marketplace.schema';
 import { useAddMarketplace } from '../../hooks/useMarketplace';
 import { useI18n } from '../../stores/i18n.store';
-import { getErrorMessage } from '../../lib/getErrorMessage';
+import { getErrorMessageForStepUp } from '../../lib/getErrorMessage';
+import { needsTotpStepUp } from '../../lib/authMode';
 
 interface Props {
   open: boolean;
@@ -38,11 +39,16 @@ export function MarketplaceAddModal({ open, onClose }: Props) {
 
   async function onSubmit(data: MarketplaceAddForm) {
     try {
-      await addMut.mutateAsync(data);
+      const body = needsTotpStepUp() ? data : { gitUrl: data.gitUrl, status: data.status };
+      await addMut.mutateAsync(body);
       toast.success(t('marketplaceAdd'));
       onClose();
     } catch (err: unknown) {
-      const msg = getErrorMessage(err, t('genericActionFailed'));
+      const msg = getErrorMessageForStepUp(
+        err,
+        t('genericActionFailed'),
+        t('certStepUpFailedToast'),
+      );
       toast.error(msg);
     }
   }
@@ -66,16 +72,18 @@ export function MarketplaceAddModal({ open, onClose }: Props) {
           </select>
         </FormField>
 
-        <FormField label={t('totpCodeLabel')} required error={errors.totpCode?.message}>
-          <input
-            {...register('totpCode')}
-            className={inputClass}
-            maxLength={6}
-            inputMode="numeric"
-            placeholder="000000"
-            style={{ fontFamily: 'monospace', letterSpacing: '4px', textAlign: 'center' }}
-          />
-        </FormField>
+        {needsTotpStepUp() && (
+          <FormField label={t('totpCodeLabel')} required error={errors.totpCode?.message}>
+            <input
+              {...register('totpCode')}
+              className={inputClass}
+              maxLength={6}
+              inputMode="numeric"
+              placeholder="000000"
+              style={{ fontFamily: 'monospace', letterSpacing: '4px', textAlign: 'center' }}
+            />
+          </FormField>
+        )}
 
         <ModalFooter
           onCancel={onClose}

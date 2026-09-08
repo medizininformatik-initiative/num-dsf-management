@@ -11,6 +11,7 @@ import { adminUsersApi, adminPromotionsApi, type WhitelistEntry } from '../api/a
 import { useI18n } from '../stores/i18n.store';
 import { useMe } from '../hooks/useMe';
 import { useToastMutation } from '../hooks/useToastMutation';
+import { needsTotpStepUp } from '../lib/authMode';
 
 type ActionKind = 'add' | 'lock' | 'unlock' | 'demote' | 'remove' | 'promote';
 
@@ -38,42 +39,42 @@ export function AdminUsersPage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ['admin', 'users'] });
 
   const mutAdd = useToastMutation({
-    mutationFn: (vars: { email: string; totpCode: string }) =>
+    mutationFn: (vars: { email: string; totpCode?: string }) =>
       adminUsersApi.add(vars.email, vars.totpCode),
     successMessage: t('adminUsersAddedToast'),
     onSuccess: invalidate,
   });
 
   const mutLock = useToastMutation({
-    mutationFn: (vars: { email: string; reason: string; totpCode: string }) =>
+    mutationFn: (vars: { email: string; reason: string; totpCode?: string }) =>
       adminUsersApi.lock(vars.email, vars.reason, vars.totpCode),
     successMessage: t('adminUsersLockedToast'),
     onSuccess: invalidate,
   });
 
   const mutUnlock = useToastMutation({
-    mutationFn: (vars: { email: string; totpCode: string }) =>
+    mutationFn: (vars: { email: string; totpCode?: string }) =>
       adminUsersApi.unlock(vars.email, vars.totpCode),
     successMessage: t('adminUsersUnlockedToast'),
     onSuccess: invalidate,
   });
 
   const mutDemote = useToastMutation({
-    mutationFn: (vars: { email: string; totpCode: string }) =>
+    mutationFn: (vars: { email: string; totpCode?: string }) =>
       adminUsersApi.demote(vars.email, vars.totpCode),
     successMessage: t('adminUsersDemotedToast'),
     onSuccess: invalidate,
   });
 
   const mutRemove = useToastMutation({
-    mutationFn: (vars: { email: string; totpCode: string }) =>
+    mutationFn: (vars: { email: string; totpCode?: string }) =>
       adminUsersApi.remove(vars.email, vars.totpCode),
     successMessage: t('adminUsersRemovedToast'),
     onSuccess: invalidate,
   });
 
   const mutPromote = useToastMutation({
-    mutationFn: (vars: { email: string; totpCode: string }) =>
+    mutationFn: (vars: { email: string; totpCode?: string }) =>
       adminPromotionsApi.create(vars.email, vars.totpCode),
     successMessage: t('adminUsersPromoteRequestedToast'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'promotions'] }),
@@ -100,22 +101,27 @@ export function AdminUsersPage() {
   }
 
   function execute() {
-    if (!pending || totpCode.length !== 6) {
+    if (!pending) return;
+    if (needsTotpStepUp() && totpCode.length !== 6) {
       toast.error(t('totpRequired'));
       return;
     }
+    const totpField = needsTotpStepUp() ? { totpCode } : {};
     if (pending.kind === 'add') {
-      mutAdd.mutate({ email: newEmail, totpCode }, { onSettled: reset });
+      mutAdd.mutate({ email: newEmail, ...totpField }, { onSettled: reset });
     } else if (pending.kind === 'lock') {
-      mutLock.mutate({ email: pending.email!, reason: lockReason, totpCode }, { onSettled: reset });
+      mutLock.mutate(
+        { email: pending.email!, reason: lockReason, ...totpField },
+        { onSettled: reset },
+      );
     } else if (pending.kind === 'unlock') {
-      mutUnlock.mutate({ email: pending.email!, totpCode }, { onSettled: reset });
+      mutUnlock.mutate({ email: pending.email!, ...totpField }, { onSettled: reset });
     } else if (pending.kind === 'demote') {
-      mutDemote.mutate({ email: pending.email!, totpCode }, { onSettled: reset });
+      mutDemote.mutate({ email: pending.email!, ...totpField }, { onSettled: reset });
     } else if (pending.kind === 'remove') {
-      mutRemove.mutate({ email: pending.email!, totpCode }, { onSettled: reset });
+      mutRemove.mutate({ email: pending.email!, ...totpField }, { onSettled: reset });
     } else if (pending.kind === 'promote') {
-      mutPromote.mutate({ email: pending.email!, totpCode }, { onSettled: reset });
+      mutPromote.mutate({ email: pending.email!, ...totpField }, { onSettled: reset });
     }
   }
 
@@ -257,24 +263,26 @@ export function AdminUsersPage() {
               }}
             />
           )}
-          <input
-            value={totpCode}
-            onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            placeholder="000000"
-            maxLength={6}
-            style={{
-              width: '180px',
-              padding: '8px 12px',
-              borderRadius: '10px',
-              border: '1px solid var(--border)',
-              fontFamily: 'monospace',
-              letterSpacing: '4px',
-              textAlign: 'center',
-              fontSize: '14px',
-              background: 'var(--bg-page)',
-              color: 'var(--text-primary)',
-            }}
-          />
+          {needsTotpStepUp() && (
+            <input
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              maxLength={6}
+              style={{
+                width: '180px',
+                padding: '8px 12px',
+                borderRadius: '10px',
+                border: '1px solid var(--border)',
+                fontFamily: 'monospace',
+                letterSpacing: '4px',
+                textAlign: 'center',
+                fontSize: '14px',
+                background: 'var(--bg-page)',
+                color: 'var(--text-primary)',
+              }}
+            />
+          )}
           <div
             style={{ marginTop: '12px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}
           >

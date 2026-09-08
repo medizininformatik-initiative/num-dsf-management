@@ -12,7 +12,8 @@ import { organizationSchema, OrganizationFormData } from '../../schemas/organiza
 import { useUpdateOrganization } from '../../hooks/useOrganization';
 import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
 import { useI18n } from '../../stores/i18n.store';
-import { getErrorMessage } from '../../lib/getErrorMessage';
+import { getErrorMessageForStepUp } from '../../lib/getErrorMessage';
+import { needsTotpStepUp } from '../../lib/authMode';
 
 interface Props {
   open: boolean;
@@ -49,7 +50,8 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
       await new Promise<void>((resolve, reject) => {
         guard(async () => {
           try {
-            await mutateAsync({ ...data, totpCode });
+            const payload = needsTotpStepUp() ? { ...data, totpCode } : data;
+            await mutateAsync(payload);
             resolve();
           } catch (e) {
             reject(e);
@@ -60,7 +62,9 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
       onClose();
       reset();
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err, t('orgModalSaveFailed')));
+      toast.error(
+        getErrorMessageForStepUp(err, t('orgModalSaveFailed'), t('certStepUpFailedToast')),
+      );
     }
   }
 
@@ -175,21 +179,22 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
             maxLength={128}
           />
         </FormField>
-        {watch('clientCertThumbprint') !== (defaultValues?.clientCertThumbprint ?? '') && (
-          <FormField
-            label={t('orgModalThumbprintTotpLabel')}
-            hint={t('orgModalThumbprintTotpHint')}
-          >
-            <input
-              type="text"
-              value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              maxLength={6}
-              placeholder="000000"
-              style={{ fontFamily: 'monospace', letterSpacing: '4px', textAlign: 'center' }}
-            />
-          </FormField>
-        )}
+        {needsTotpStepUp() &&
+          watch('clientCertThumbprint') !== (defaultValues?.clientCertThumbprint ?? '') && (
+            <FormField
+              label={t('orgModalThumbprintTotpLabel')}
+              hint={t('orgModalThumbprintTotpHint')}
+            >
+              <input
+                type="text"
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                maxLength={6}
+                placeholder="000000"
+                style={{ fontFamily: 'monospace', letterSpacing: '4px', textAlign: 'center' }}
+              />
+            </FormField>
+          )}
         <ModalFooter onCancel={onClose} loading={isPending} submitLabel={t('orgModalSaveBtn')} />
       </form>
     </Modal>

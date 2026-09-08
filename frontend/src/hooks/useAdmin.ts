@@ -29,7 +29,7 @@ export function useApproveRequest() {
   return useMutation<
     { data: { status: 'PENDING' | 'APPROVED'; reason?: string } },
     Error,
-    { requestId: string; totpCode: string }
+    { requestId: string; totpCode?: string }
   >({
     mutationFn: ({ requestId, totpCode }) =>
       adminApi.approveRequest(requestId, totpCode).then((r) => r.data),
@@ -47,7 +47,7 @@ export function useRejectRequest() {
     }: {
       requestId: string;
       comment: string;
-      totpCode: string;
+      totpCode?: string;
     }) => adminApi.rejectRequest(requestId, comment, totpCode),
     onSuccess: () => invalidateAfterDecision(qc),
   });

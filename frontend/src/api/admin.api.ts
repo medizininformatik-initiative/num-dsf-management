@@ -12,6 +12,12 @@ function authHeader() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+// Cert-mode sessions omit totpCode entirely — the backend step-up check
+// re-verifies the forwarded client certificate instead of a TOTP code.
+function withTotp(totpCode?: string): { totpCode: string } | Record<string, never> {
+  return totpCode !== undefined ? { totpCode } : {};
+}
+
 const api = {
   get: <T>(url: string) => axios.get<T>(`${BASE}${url}`, { headers: authHeader() }),
   post: <T = unknown>(url: string, data?: unknown) => axios.post<T>(`${BASE}${url}`, data, { headers: authHeader() }),
@@ -41,13 +47,13 @@ export const adminApi = {
   getPendingApprovals: () =>
     api.get<{ data: PendingRequest[] }>('/admin/approval/pending'),
 
-  approveRequest: (requestId: string, totpCode: string) =>
+  approveRequest: (requestId: string, totpCode?: string) =>
     api.post<{ data: { status: 'PENDING' | 'APPROVED'; reason?: string } }>(
-      `/admin/approval/${requestId}/approve`, { totpCode }
+      `/admin/approval/${requestId}/approve`, withTotp(totpCode)
     ),
 
-  rejectRequest: (requestId: string, comment: string, totpCode: string) =>
-    api.post<{ data: { id: string; status: string } }>(`/admin/approval/${requestId}/reject`, { comment, totpCode }),
+  rejectRequest: (requestId: string, comment: string, totpCode?: string) =>
+    api.post<{ data: { id: string; status: string } }>(`/admin/approval/${requestId}/reject`, { comment, ...withTotp(totpCode) }),
 };
 
 export interface WhitelistEntry {
@@ -65,24 +71,24 @@ export const adminUsersApi = {
     const res = await api.get<{ data: WhitelistEntry[] }>('/admin/users');
     return res.data.data;
   },
-  add: async (email: string, totpCode: string) => {
-    const res = await api.post<{ data: { ok: true } }>('/admin/users', { email, totpCode });
+  add: async (email: string, totpCode?: string) => {
+    const res = await api.post<{ data: { ok: true } }>('/admin/users', { email, ...withTotp(totpCode) });
     return res.data.data;
   },
-  lock: async (email: string, reason: string, totpCode: string) => {
-    const res = await api.post(`/admin/users/${encodeURIComponent(email)}/lock`, { reason, totpCode });
+  lock: async (email: string, reason: string, totpCode?: string) => {
+    const res = await api.post(`/admin/users/${encodeURIComponent(email)}/lock`, { reason, ...withTotp(totpCode) });
     return res.data;
   },
-  unlock: async (email: string, totpCode: string) => {
-    const res = await api.post(`/admin/users/${encodeURIComponent(email)}/unlock`, { totpCode });
+  unlock: async (email: string, totpCode?: string) => {
+    const res = await api.post(`/admin/users/${encodeURIComponent(email)}/unlock`, withTotp(totpCode));
     return res.data;
   },
-  demote: async (email: string, totpCode: string) => {
-    const res = await api.post(`/admin/users/${encodeURIComponent(email)}/demote`, { totpCode });
+  demote: async (email: string, totpCode?: string) => {
+    const res = await api.post(`/admin/users/${encodeURIComponent(email)}/demote`, withTotp(totpCode));
     return res.data;
   },
-  remove: async (email: string, totpCode: string) => {
-    const res = await api.delete(`/admin/users/${encodeURIComponent(email)}`, { data: { totpCode } });
+  remove: async (email: string, totpCode?: string) => {
+    const res = await api.delete(`/admin/users/${encodeURIComponent(email)}`, { data: withTotp(totpCode) });
     return res.data;
   },
 };
@@ -105,17 +111,17 @@ export const adminPromotionsApi = {
     const res = await api.get<{ data: PromotionRequest[] }>('/admin/promotions');
     return res.data.data;
   },
-  create: async (targetEmail: string, totpCode: string) => {
-    const res = await api.post<{ data: { id: string } }>('/admin/promotions', { targetEmail, totpCode });
+  create: async (targetEmail: string, totpCode?: string) => {
+    const res = await api.post<{ data: { id: string } }>('/admin/promotions', { targetEmail, ...withTotp(totpCode) });
     return res.data.data;
   },
-  approve: async (id: string, totpCode: string) => {
-    return api.post(`/admin/promotions/${encodeURIComponent(id)}/approve`, { totpCode });
+  approve: async (id: string, totpCode?: string) => {
+    return api.post(`/admin/promotions/${encodeURIComponent(id)}/approve`, withTotp(totpCode));
   },
-  reject: async (id: string, reason: string, totpCode: string) => {
-    return api.post(`/admin/promotions/${encodeURIComponent(id)}/reject`, { reason, totpCode });
+  reject: async (id: string, reason: string, totpCode?: string) => {
+    return api.post(`/admin/promotions/${encodeURIComponent(id)}/reject`, { reason, ...withTotp(totpCode) });
   },
-  cancel: async (id: string, totpCode: string) => {
-    return api.post(`/admin/promotions/${encodeURIComponent(id)}/cancel`, { totpCode });
+  cancel: async (id: string, totpCode?: string) => {
+    return api.post(`/admin/promotions/${encodeURIComponent(id)}/cancel`, withTotp(totpCode));
   },
 };

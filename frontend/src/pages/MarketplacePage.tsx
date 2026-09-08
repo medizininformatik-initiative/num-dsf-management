@@ -9,7 +9,8 @@ import { toast } from 'sonner';
 import { useMarketplace, useDeleteMarketplaceEntry } from '../hooks/useMarketplace';
 import { useMe } from '../hooks/useMe';
 import { useI18n } from '../stores/i18n.store';
-import { getErrorMessage } from '../lib/getErrorMessage';
+import { getErrorMessageForStepUp } from '../lib/getErrorMessage';
+import { needsTotpStepUp } from '../lib/authMode';
 import { MarketplaceCard } from '../components/marketplace/MarketplaceCard';
 import { MarketplaceAddModal } from '../components/modals/MarketplaceAddModal';
 import { MarketplaceEditStatusModal } from '../components/modals/MarketplaceEditStatusModal';
@@ -58,17 +59,23 @@ export function MarketplacePage() {
   ];
 
   async function handleDelete() {
-    if (!deleteTarget || deleteTotpCode.length !== 6) {
+    if (!deleteTarget) return;
+    if (needsTotpStepUp() && deleteTotpCode.length !== 6) {
       toast.error(t('totpRequired'));
       return;
     }
     try {
-      await deleteMut.mutateAsync({ id: deleteTarget.id, body: { totpCode: deleteTotpCode } });
+      const body = needsTotpStepUp() ? { totpCode: deleteTotpCode } : {};
+      await deleteMut.mutateAsync({ id: deleteTarget.id, body });
       toast.success(t('marketplaceDelete'));
       setDeleteTarget(null);
       setDeleteTotpCode('');
     } catch (err: unknown) {
-      const msg = getErrorMessage(err, t('genericActionFailed'));
+      const msg = getErrorMessageForStepUp(
+        err,
+        t('genericActionFailed'),
+        t('certStepUpFailedToast'),
+      );
       toast.error(msg);
     }
   }
@@ -313,26 +320,28 @@ export function MarketplacePage() {
             >
               {deleteTarget.name || deleteTarget.gitUrl}
             </p>
-            <input
-              value={deleteTotpCode}
-              onChange={(e) => setDeleteTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000"
-              maxLength={6}
-              style={{
-                width: '180px',
-                display: 'block',
-                padding: '8px 12px',
-                borderRadius: '10px',
-                border: '1px solid var(--border)',
-                fontFamily: 'monospace',
-                letterSpacing: '4px',
-                textAlign: 'center',
-                fontSize: '14px',
-                background: 'var(--bg-page)',
-                color: 'var(--text-primary)',
-                marginBottom: '16px',
-              }}
-            />
+            {needsTotpStepUp() && (
+              <input
+                value={deleteTotpCode}
+                onChange={(e) => setDeleteTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                maxLength={6}
+                style={{
+                  width: '180px',
+                  display: 'block',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  fontFamily: 'monospace',
+                  letterSpacing: '4px',
+                  textAlign: 'center',
+                  fontSize: '14px',
+                  background: 'var(--bg-page)',
+                  color: 'var(--text-primary)',
+                  marginBottom: '16px',
+                }}
+              />
+            )}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => {
