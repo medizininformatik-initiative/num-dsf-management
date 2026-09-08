@@ -165,7 +165,7 @@ describe('POST /auth/client-cert-login', () => {
 });
 
 describe('POST /auth/client-cert-login — SHA-512 fingerprint resolution', () => {
-  const adminEmail = 'cert-admin@imi.uni-muenster.de';
+  const adminEmail = 'cert-admin@imi-test.example.de';
   const orgUserId = uuidv4();
   const orgInstanceId = uuidv4();
   const orgIdentifier = 'cert-fp-org.example.de';
