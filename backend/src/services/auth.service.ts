@@ -17,6 +17,7 @@ import { writeAuditLog } from './audit.service';
 import type { AuthUser, JwtPayload, TempTokenPayload } from '../types/auth.types';
 import { REFRESH_TOKEN_TTL_SEC as REFRESH_TTL_SEC } from '../lib/time';
 import { logger } from '../lib/logger';
+import { isValidSha512Fingerprint } from '../lib/certFingerprint';
 
 // JWT keys loaded from Base64 env vars
 const JWT_PRIVATE_KEY = Buffer.from(process.env.JWT_PRIVATE_KEY_BASE64 || '', 'base64').toString(
@@ -31,7 +32,10 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 
 function signAccessToken(user: AuthUser): string {
   return jwt.sign(
-    { sub: user.id, email: user.email } as Omit<JwtPayload, 'iat' | 'exp'>,
+    { sub: user.id, email: user.email, amr: user.authMethod ?? 'otp' } as Omit<
+      JwtPayload,
+      'iat' | 'exp'
+    >,
     JWT_PRIVATE_KEY,
     { algorithm: 'RS256', expiresIn: JWT_EXPIRES_IN } as any,
   );
@@ -250,6 +254,15 @@ export async function createTokenPair(
  * Rotate the refresh token and mint a new access/refresh pair.
  * Re-checks the whitelist/lock and idle timeout on every rotation; fails soft
  * if Redis is unreachable. Side-effects: deletes the old token, stores a new one.
+ *
+ * `opts.certFingerprint` lets a cert-authenticated session re-prove possession
+ * of its client certificate on refresh instead of silently degrading to an
+ * OTP-equivalent long-lived session: when it is a valid SHA-512 fingerprint
+ * AND resolveCertLogin resolves it to this same user, the new pair is minted
+ * with amr:'cert'; otherwise (no fingerprint, invalid, or resolves to someone
+ * else) it falls back to amr:'otp'. The Redis refresh-record format (hash →
+ * userId) is unchanged either way.
+ *
  * @throws INVALID_REFRESH_TOKEN if the presented token is unknown.
  * @throws USER_NOT_FOUND if the token's user no longer exists.
  * @throws ACCOUNT_LOCKED if the account was de-whitelisted or locked.
@@ -257,6 +270,7 @@ export async function createTokenPair(
  */
 export async function refreshAccessToken(
   refreshToken: string,
+  opts?: { certFingerprint?: string | null },
 ): Promise<{ accessToken: string; refreshToken: string }> {
   const hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
   const userId = await getRefreshToken(hash);
@@ -299,11 +313,27 @@ export async function refreshAccessToken(
     throw new Error('SESSION_EXPIRED');
   }
 
+  // Re-prove cert possession: only carry amr:'cert' forward when the caller
+  // presented a fingerprint on THIS request that still resolves to THIS user.
+  // A cert session that refreshes without its cert (or with someone else's)
+  // degrades to 'otp' rather than silently keeping the cert claim forever.
+  let authMethod: 'otp' | 'cert' = 'otp';
+  const fp = opts?.certFingerprint;
+  if (fp && isValidSha512Fingerprint(fp)) {
+    const resolved = await resolveCertLogin(fp);
+    if (resolved?.user.id === user.id) authMethod = 'cert';
+  }
+
   // Rotate: delete old token and issue a new pair. createTokenPair is the
   // single mint path (signs + mints + hashes + stores), so rotation and
   // initial issuance can't drift apart.
   await deleteRefreshToken(hash);
-  return createTokenPair({ id: user.id, email: user.email, totpEnabled: user.totp_enabled });
+  return createTokenPair({
+    id: user.id,
+    email: user.email,
+    totpEnabled: user.totp_enabled,
+    authMethod,
+  });
 }
 
 /**

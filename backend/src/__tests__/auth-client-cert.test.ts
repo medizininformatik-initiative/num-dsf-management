@@ -9,11 +9,18 @@
  * on organizations.client_cert_fingerprint logs in as the org's user, an
  * unknown fingerprint is a 401, and the X-Client-Verify guard still rejects
  * before any DB lookup runs.
+ *
+ * Also covers the amr ("authentication method reference") claim: a
+ * client-cert login mints an access token with amr:'cert', and /auth/refresh
+ * preserves 'cert' only when the cert headers are re-presented and still
+ * resolve to the same user, otherwise falling back to 'otp'.
  */
 import express from 'express';
 import request from 'supertest';
 import crypto from 'crypto';
 import forge from 'node-forge';
+import jwt from 'jsonwebtoken';
+import cookieParser from 'cookie-parser';
 import { db } from '../db/connection';
 import * as dbConnection from '../db/connection';
 import { authRouter } from '../routes/auth.routes';
@@ -55,6 +62,16 @@ function thumbprintOf(pem: string): string {
 function appWith() {
   const app = express();
   app.use(express.json());
+  app.use('/auth', authRouter);
+  return app;
+}
+
+// Same as appWith() plus cookie-parser (mirrors app.ts) — /auth/refresh reads
+// req.cookies.refreshToken, which only exists once cookie-parser has run.
+function appWithCookies() {
+  const app = express();
+  app.use(express.json());
+  app.use(cookieParser());
   app.use('/auth', authRouter);
   return app;
 }
@@ -245,5 +262,68 @@ describe('POST /auth/client-cert-login — SHA-512 fingerprint resolution', () =
     expect(res.body.error.code).toBe('NO_CLIENT_CERT');
     expect(dbSpy).not.toHaveBeenCalled();
     dbSpy.mockRestore();
+  });
+});
+
+describe('POST /auth/client-cert-login — amr claim, carried through /auth/refresh', () => {
+  const amrAdminEmail = 'cert-amr-admin@imi.uni-muenster.de';
+  const amrPem = makeSelfSignedCert('cert-amr-admin.example.de');
+  const amrFingerprint = sha512FingerprintFromPem(amrPem);
+
+  beforeAll(async () => {
+    await db('admin_cert_fingerprints').insert({
+      id: uuidv4(),
+      email: amrAdminEmail,
+      fingerprint: amrFingerprint,
+      created_at: new Date(),
+      created_by: 'test',
+    });
+  });
+
+  afterAll(async () => {
+    await db('admin_cert_fingerprints').where({ email: amrAdminEmail }).del();
+    await db('users').where({ email: amrAdminEmail }).del();
+    await db('email_whitelist').where({ email: amrAdminEmail }).del();
+  });
+
+  it('mints an access token with amr:"cert"', async () => {
+    const res = await request(appWithCookies())
+      .post('/auth/client-cert-login')
+      .set('x-client-verify', 'SUCCESS')
+      .set('x-client-cert', encodeURIComponent(amrPem));
+    expect(res.status).toBe(200);
+    const decoded = jwt.decode(res.body.data.accessToken) as { amr?: string } | null;
+    expect(decoded?.amr).toBe('cert');
+  });
+
+  it('keeps amr:"cert" on /auth/refresh when the cert headers are re-presented', async () => {
+    const agent = request.agent(appWithCookies());
+    const loginRes = await agent
+      .post('/auth/client-cert-login')
+      .set('x-client-verify', 'SUCCESS')
+      .set('x-client-cert', encodeURIComponent(amrPem));
+    expect(loginRes.status).toBe(200);
+
+    const refreshRes = await agent
+      .post('/auth/refresh')
+      .set('x-client-verify', 'SUCCESS')
+      .set('x-client-cert', encodeURIComponent(amrPem));
+    expect(refreshRes.status).toBe(200);
+    const decoded = jwt.decode(refreshRes.body.data.accessToken) as { amr?: string } | null;
+    expect(decoded?.amr).toBe('cert');
+  });
+
+  it('falls back to amr:"otp" on /auth/refresh without the cert headers', async () => {
+    const agent = request.agent(appWithCookies());
+    const loginRes = await agent
+      .post('/auth/client-cert-login')
+      .set('x-client-verify', 'SUCCESS')
+      .set('x-client-cert', encodeURIComponent(amrPem));
+    expect(loginRes.status).toBe(200);
+
+    const refreshRes = await agent.post('/auth/refresh'); // no cert headers this time
+    expect(refreshRes.status).toBe(200);
+    const decoded = jwt.decode(refreshRes.body.data.accessToken) as { amr?: string } | null;
+    expect(decoded?.amr).toBe('otp');
   });
 });

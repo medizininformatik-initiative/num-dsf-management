@@ -187,7 +187,10 @@ authRouter.post('/refresh', ...refreshLimiter, async (req: Request, res: Respons
     return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'No refresh token' } });
   }
   try {
-    const { accessToken, refreshToken: newRefreshToken } = await refreshAccessToken(refreshToken);
+    const certFingerprint = extractClientCert(req)?.fingerprint ?? null;
+    const { accessToken, refreshToken: newRefreshToken } = await refreshAccessToken(refreshToken, {
+      certFingerprint,
+    });
     res.cookie('refreshToken', newRefreshToken, REFRESH_COOKIE_OPTIONS);
     res.json({ data: { accessToken } });
   } catch {
@@ -305,6 +308,7 @@ authRouter.post(
       id: user.id,
       email: user.email,
       totpEnabled: true,
+      authMethod: 'cert',
     });
     res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
 

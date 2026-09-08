@@ -7,7 +7,8 @@
  * service's RS256 public key, so a real seeded user is minted via getTestToken.
  *
  *   • a valid Bearer token calls next() once, leaves res untouched, and
- *     populates req.user with { id, email } from the token claims.
+ *     populates req.user with { id, email, authMethod } from the token claims
+ *     (authMethod defaults to 'otp' when the token carries no amr claim).
  *   • a missing Authorization header → 401 UNAUTHORIZED, next() never called.
  *   • a malformed / garbage Bearer value → 401 UNAUTHORIZED, next() never called.
  *   • a token signed with a foreign RSA key → 401 UNAUTHORIZED, next() never
@@ -79,7 +80,7 @@ describe('auth.middleware – requireAuth', () => {
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(spy.statusCode).toBeNull();
-    expect(req.user).toEqual({ id: userId, email });
+    expect(req.user).toEqual({ id: userId, email, authMethod: 'otp' });
   });
 
   it('rejects a missing Authorization header with 401 and never calls next()', () => {

@@ -51,7 +51,7 @@ function buildApp(user: { id: string; email: string }) {
   app.get(
     '/probe/:id',
     (req: Request, _res: Response, next: NextFunction) => {
-      req.user = user;
+      req.user = { ...user, authMethod: 'otp' };
       next();
     },
     requireInstanceOwnership,

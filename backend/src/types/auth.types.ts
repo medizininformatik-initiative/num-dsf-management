@@ -7,11 +7,16 @@ export interface AuthUser {
   id: string;
   email: string;
   totpEnabled: boolean;
+  // How this session authenticated — carried into the access token's `amr`
+  // claim. Defaults to 'otp' when omitted (every mint site except
+  // /auth/client-cert-login and a cert-verified /auth/refresh).
+  authMethod?: 'otp' | 'cert';
 }
 
 export interface JwtPayload {
   sub: string; // user.id
   email: string;
+  amr?: 'otp' | 'cert'; // authentication method reference
   iat: number;
   exp: number;
 }
