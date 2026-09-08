@@ -17,6 +17,15 @@
  * Use AFTER requireAuth (relies on req.user) and behind the step-up rate
  * limiter so a stolen access token cannot grind the 6-digit code space.
  *
+ * Residual risk (accepted): the cert branch is non-interactive. The browser
+ * attaches the client certificate to every request on its own, so unlike a
+ * typed TOTP code it does not prove the user intended this particular write.
+ * Script running inside the page, for example from an XSS bug or a
+ * malicious browser extension, can trigger an admin write under this guard
+ * the same way a genuine click would. The Content-Security-Policy and the
+ * same-origin session cookie are the controls for this path; see
+ * docs/DEPLOYMENT.md's cert-auth section for the operator-facing note.
+ *
  * Dependencies: express, totp.service, lib/clientCert, auth.service,
  * db/connection
  */

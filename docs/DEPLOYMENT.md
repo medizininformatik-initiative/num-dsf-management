@@ -227,6 +227,8 @@ A per-site login certificate is registered either by the site itself in the Orga
 
 IMI admins also sign in on this box by their own client certificate, seeded via `IMI_ADMIN_CERT_FINGERPRINTS`. There is no separate OTP deployment to maintain for admins and no OTP fallback: a browser that presents an unregistered cert (or none) lands on a status page explaining how to get registered.
 
+**Accepted residual risk:** sensitive admin writes (approving a request, editing another org's data) still require step-up re-verification, but on this stack that step-up is a re-presented client certificate instead of a typed TOTP code. Certificate step-up is non-interactive: the browser attaches the certificate to every request on its own, so it does not prove the admin intended this particular action the way entering a fresh TOTP code does. Script running inside the page, for example from an XSS bug or a malicious browser extension, could perform an admin write under this guard the same way a genuine click would. The Content-Security-Policy and the same-origin session cookie are the controls for this path, so admins using the cert profile should keep browser extensions to a minimum.
+
 ### Debian install, step by step (cert-auth variant)
 
 First-time install on a fresh Debian host that already has Docker Engine and the Compose plugin, plus the server TLS certificate and key. This brings up the login-screen-free stack, bootstraps the first admin by certificate, and leaves you ready to onboard sites.
