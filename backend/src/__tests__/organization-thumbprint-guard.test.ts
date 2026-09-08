@@ -22,6 +22,7 @@ jest.mock('../middleware/auth.middleware', () => ({
 // so the guard tests focus on the authorization logic, not on TOTP plumbing.
 jest.mock('../services/totp.service', () => ({
   verifyTotpCode: jest.fn().mockResolvedValue(true),
+  isDevTotpBypassActive: jest.fn().mockReturnValue(false),
 }));
 
 import { organizationRouter } from '../routes/organization.routes';

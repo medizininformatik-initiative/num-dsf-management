@@ -30,7 +30,7 @@
  * db/connection
  */
 import { Request, Response, NextFunction } from 'express';
-import { verifyTotpCode } from '../services/totp.service';
+import { verifyTotpCode, isDevTotpBypassActive } from '../services/totp.service';
 import { extractClientCert } from '../lib/clientCert';
 import { resolveCertLogin } from '../services/auth.service';
 import { db } from '../db/connection';
@@ -72,20 +72,29 @@ export async function checkStepUp(req: Request): Promise<StepUpResult> {
     };
   }
 
-  const user = (await db('users')
-    .where({ id: req.user!.id })
-    .select('totp_enabled', 'totp_secret')
-    .first()) as { totp_enabled: boolean | number; totp_secret: string | null } | undefined;
-  // Covers both: TOTP never enabled, and enabled but the secret was never
-  // persisted (e.g. setup started but not completed). Either way there is
-  // no secret to verify against, so this is a config problem, not a wrong code.
-  if (!user?.totp_enabled || !user?.totp_secret) {
-    return {
-      ok: false,
-      status: 403,
-      code: 'TOTP_NOT_CONFIGURED',
-      message: 'TOTP is not configured.',
-    };
+  // The dev TOTP bypass (totp.service.verifyTotpCode) short-circuits to valid
+  // for any 6-digit code, so the config pre-check below would reject it before
+  // that ever runs: CI seeds users with totp_enabled: true and no persisted
+  // secret and sends a fixed dev code, relying on the bypass alone. Skip the
+  // pre-check in that case only — the bypass predicate already re-derives the
+  // same NODE_ENV/DEV_AUTO_LOGIN/DEV_TOTP_BYPASS allowlist, so this never
+  // widens what is accepted when the bypass is inactive.
+  if (!isDevTotpBypassActive()) {
+    const user = (await db('users')
+      .where({ id: req.user!.id })
+      .select('totp_enabled', 'totp_secret')
+      .first()) as { totp_enabled: boolean | number; totp_secret: string | null } | undefined;
+    // Covers both: TOTP never enabled, and enabled but the secret was never
+    // persisted (e.g. setup started but not completed). Either way there is
+    // no secret to verify against, so this is a config problem, not a wrong code.
+    if (!user?.totp_enabled || !user?.totp_secret) {
+      return {
+        ok: false,
+        status: 403,
+        code: 'TOTP_NOT_CONFIGURED',
+        message: 'TOTP is not configured.',
+      };
+    }
   }
 
   const valid = await verifyTotpCode(req.user!.id, code);

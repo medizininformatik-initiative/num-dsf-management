@@ -20,6 +20,7 @@ jest.mock('../services/marketplace-sync.service', () => ({
 
 jest.mock('../services/totp.service', () => ({
   verifyTotpCode: jest.fn().mockResolvedValue(true),
+  isDevTotpBypassActive: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../middleware/auth.middleware', () => ({

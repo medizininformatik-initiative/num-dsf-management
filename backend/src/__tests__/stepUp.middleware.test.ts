@@ -155,6 +155,30 @@ describe('checkStepUp — otp sessions', () => {
     }
   });
 
+  it('(b3) accepts the dev TOTP bypass even when totp_enabled is true but no secret was ever saved', async () => {
+    const bypassUserId = uuidv4();
+    const bypassEmail = `stepup-bypass-${Date.now()}@example.de`;
+    await db('users').insert({
+      id: bypassUserId,
+      email: bypassEmail,
+      totp_enabled: true,
+      created_at: new Date(),
+    });
+    const savedNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'test';
+    process.env.DEV_AUTO_LOGIN = 'true';
+    process.env.DEV_TOTP_BYPASS = 'true';
+    try {
+      const result = await checkStepUp(makeReq(bypassUserId, 'otp', { totpCode: '123456' }));
+      expect(result).toEqual({ ok: true });
+    } finally {
+      process.env.NODE_ENV = savedNodeEnv;
+      delete process.env.DEV_AUTO_LOGIN;
+      delete process.env.DEV_TOTP_BYPASS;
+      await db('users').where({ id: bypassUserId }).del();
+    }
+  });
+
   it('accepts a fresh valid TOTP code', async () => {
     const code = speakeasy.totp({ secret, encoding: 'base32' });
     const result = await checkStepUp(makeReq(userId, 'otp', { totpCode: code }));

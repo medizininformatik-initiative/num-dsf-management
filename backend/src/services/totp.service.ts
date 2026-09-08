@@ -56,16 +56,21 @@ export async function saveTotpSecret(userId: string, plainSecret: string): Promi
   await db('users').where({ id: userId }).update({ totp_secret: encrypted });
 }
 
+// Dev shortcut: bypass TOTP entirely. Only honored when DEV_AUTO_LOGIN=true,
+// DEV_TOTP_BYPASS=true, and NODE_ENV is on the development/test allowlist
+// (isDevEnv) — an unrecognized NODE_ENV like 'staging' must NOT activate it,
+// matching the same allowlist the dev-login route enforces.
+//
+// Exported so other guards on the same step-up path (stepUp.middleware) can
+// check it before touching the DB, instead of re-deriving the condition.
+export function isDevTotpBypassActive(): boolean {
+  return (
+    isDevEnv() && process.env.DEV_AUTO_LOGIN === 'true' && process.env.DEV_TOTP_BYPASS === 'true'
+  );
+}
+
 export async function verifyTotpCode(userId: string, code: string): Promise<boolean> {
-  // Dev shortcut: bypass TOTP entirely. Only honored when DEV_AUTO_LOGIN=true,
-  // DEV_TOTP_BYPASS=true, and NODE_ENV is on the development/test allowlist
-  // (isDevEnv) — an unrecognized NODE_ENV like 'staging' must NOT activate it,
-  // matching the same allowlist the dev-login route enforces.
-  if (
-    isDevEnv() &&
-    process.env.DEV_AUTO_LOGIN === 'true' &&
-    process.env.DEV_TOTP_BYPASS === 'true'
-  ) {
+  if (isDevTotpBypassActive()) {
     return true;
   }
 
