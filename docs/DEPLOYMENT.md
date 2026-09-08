@@ -138,6 +138,44 @@ git pull
 docker compose -f docker-compose.prod.yml up -d --build --no-deps backend frontend
 ```
 
+For a server with no git that instead unpacks a downloaded zip, see "Updating a zip-based deployment" right below.
+
+### Updating a zip-based deployment (no git on the server)
+
+This server has no git; the operator downloads the `main` branch as a zip, unpacks it next to the running stack, and lets `scripts/update-server.sh` apply it in place. Run the script with `--help` for the full step list and environment overrides.
+
+**1. Get the new tree onto the server**
+
+The repository is private, so download the zip from a browser session that is already logged in to GitHub, or with a personal access token:
+
+```bash
+# Browser: https://github.com/Mukeyii/num-dsf-allowlist/archive/refs/heads/main.zip
+# then copy the file to the server (scp/sftp), or from the server itself with a token:
+curl -L -H "Authorization: token <TOKEN>" \
+  -o /tmp/dsf-main.zip \
+  https://github.com/Mukeyii/num-dsf-allowlist/archive/refs/heads/main.zip
+
+mkdir -p /tmp/dsf-new
+unzip -q /tmp/dsf-main.zip -d /tmp/dsf-new
+# unpacks to /tmp/dsf-new/num-dsf-allowlist-main
+```
+
+**2. Preview, then apply**
+
+```bash
+cd /opt/dsf-allowlist
+scripts/update-server.sh /tmp/dsf-new/num-dsf-allowlist-main --dry-run
+scripts/update-server.sh /tmp/dsf-new/num-dsf-allowlist-main
+```
+
+The dry run reports exactly which files rsync would change and which migrations are pending, without touching anything (no copy, no database, no rebuild). Review it before running for real.
+
+**What the script preserves.** `.env.prod`, `.env`, `docker-compose.apache.yml` (the Apache override, which is not part of the repo), `hackathon/`, `.migrations-applied`, `certs/`, `node_modules/` and `.git/` are all excluded from the copy, so a server-local file is never overwritten by the new tree. No `--delete` is ever used, so files removed from the repo are simply left behind on the server.
+
+**How `.migrations-applied` works.** This file lists every migration basename already applied to this database, one per line. The first time the script runs against a given server it does not exist yet, so the script infers a baseline from whatever is currently in `db/migrations/` (those were applied at first init) and prints a warning; from then on, each migration the script applies successfully is appended to the file. If a migration is ever applied by hand outside the script (for example while debugging), add its basename to `/opt/dsf-allowlist/.migrations-applied` on its own line afterwards, otherwise the script will try to apply it again on the next update and fail on a duplicate.
+
+**Rollback.** Keep the previous zip around. To roll back the code, unpack that older zip and re-run the script with it; database migrations are forward-only, so a rollback never undoes a migration that was already applied.
+
 ## Database migrations
 
 Migrations live at `db/migrations/*.sql` (NOT under `backend/src/`). The dev and cert-auth stacks mount this directory into the MySQL container at `/docker-entrypoint-initdb.d/`, so on a fresh data volume every migration runs once, in filename order, at first init. The `prod` and `release` composes do not auto-mount them; apply them with the command below (the release run-kit ships `db/migrations/` for exactly this).
