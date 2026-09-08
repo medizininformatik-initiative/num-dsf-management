@@ -1,5 +1,3 @@
-version: '3.9'
-
 # Certificate-auth deployment variant (login-screen-free). See ADR-005 and
 # docs/DEPLOYMENT.md. Differs from docker-compose.prod.yml only in: nginx mounts
 # nginx.cert-auth.conf, and the frontend is built with VITE_AUTH_MODE=cert.
