@@ -67,7 +67,7 @@ bash scripts/generate-keys.sh
 
 # 4. Seed admin email
 docker compose -f docker-compose.prod.yml run --rm backend \
-  npx ts-node src/db/seed-whitelist.ts admin@imi.uni-muenster.de
+  node dist/db/seed-whitelist.js admin@imi.uni-muenster.de
 
 # 5. Start
 docker compose -f docker-compose.prod.yml up -d --build
@@ -341,6 +341,35 @@ The upload is admin-only and hardened at the boundary:
 A row that fails validation does not abort the import: the response reports a per-row result (`created` / `updated` / `failed` with the reason) plus a summary, and the UI shows the same table so an admin can fix and re-upload only the bad rows.
 
 How a site obtains its fingerprint: it runs `certtool --fingerprint --hash=sha512 --infile=client_certificate.pem` on its browser client certificate and sends you that value plus the minimal org data above. After import, the site reaches the portal with its certificate and no login screen.
+
+### Hackathon / demo seed
+
+`scripts/hackathon-prepare.sh` prepares a repeatable demo environment on the cert-auth stack: N fictional users (default 3), each with a freshly generated self-signed client certificate, a complete dummy site (organization, contacts, endpoints with IPs, a certificate, memberships), and a PENDING approval request already waiting for review.
+
+```bash
+scripts/hackathon-prepare.sh              # 3 users, output in /opt/dsf-allowlist/hackathon
+scripts/hackathon-prepare.sh 5 /opt/dsf-allowlist/hackathon-2026
+```
+
+What it creates, per user:
+
+- `hack<i>@klinik-<i>.example.de` / `klinik-<i>.example.de`, all under the fictional `.example.de` domain and RFC 5737 test IP ranges, never real data.
+- A self-signed client certificate, key, and `.p12` bundle (password printed once in the script's summary unless `HACKATHON_P12_PASSWORD` is set) for importing into a browser.
+- IMI admin rights for every user, each on a different email domain. The 4-eyes approval rule (site identity = email domain, see `lib/approvalState.ts`) is domain-based, so any two hackathon users can approve or reject each other's onboarding requests.
+- A `manifest.json` (consumed by `backend/src/db/seed-hackathon.ts`, the actual database writer) and an `onboarding.csv` as a bonus, ready to upload at `/app/admin/onboarding` if you would rather demo the bulk-import UI with the same data.
+
+The script is idempotent: re-running it regenerates every certificate and key from scratch and re-seeds the database. Any `.p12` already handed out from an earlier run stops working the moment the script re-runs, so redistribute the new files after every run.
+
+Running the script again with a smaller N does not remove the extra users from a larger previous run; delete those manually. To remove a seeded hackathon user, delete its email everywhere it is referenced. `users` cascades to the instance, organization, contacts, endpoints, certificates, memberships, and approval request, so that single delete does most of the work; `admin_grants`, `admin_cert_fingerprints`, and `email_whitelist` are not linked by a foreign key and need their own delete:
+
+```sql
+DELETE FROM admin_grants WHERE email = 'hack1@klinik-eins.example.de';
+DELETE FROM admin_cert_fingerprints WHERE email = 'hack1@klinik-eins.example.de';
+DELETE FROM email_whitelist WHERE email = 'hack1@klinik-eins.example.de';
+DELETE FROM users WHERE email = 'hack1@klinik-eins.example.de';
+```
+
+The audit log entries the seed writes are not removed by this (`audit_logs` is append-only, see the Admin grants section below); that is expected and matches how every other mutation in this portal is audited.
 
 ## Scheduled jobs
 

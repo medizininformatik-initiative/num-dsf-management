@@ -125,7 +125,7 @@ On first boot the backend bootstraps admin grants from `IMI_ADMIN_EMAILS`
 
 ```bash
 docker compose --env-file .env.prod --env-file .image.env -f docker-compose.release.yml \
-  run --rm backend npx ts-node src/db/seed-whitelist.ts you@example.com
+  run --rm backend node dist/db/seed-whitelist.js you@example.com
 ```
 
 ---
