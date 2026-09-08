@@ -17,6 +17,7 @@ import {
   type HackathonUser,
 } from '../db/hackathon/manifestSchema';
 import { buildSiteRows, buildCertificateRow } from '../db/hackathon/buildSiteRows';
+import { assertSeedAllowed } from '../db/seed-hackathon';
 
 function makeSelfSignedCert(cn: string): string {
   const keys = forge.pki.rsa.generateKeyPair({ bits: 1024 });
@@ -323,5 +324,39 @@ describe('buildCertificateRow', () => {
   it('throws INVALID_PEM for a malformed certificate body', () => {
     const pem = '-----BEGIN CERTIFICATE-----\nnot base64 der at all\n-----END CERTIFICATE-----';
     expect(() => buildCertificateRow('klinik-eins.example.de', pem)).toThrow('INVALID_PEM');
+  });
+});
+
+describe('assertSeedAllowed', () => {
+  let exitSpy: jest.SpyInstance;
+  let errorSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    exitSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it('refuses a PRODUCTION environment without the override', () => {
+    assertSeedAllowed({ DSF_ENVIRONMENT: 'PRODUCTION' });
+
+    expect(errorSpy).toHaveBeenCalled();
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('allows a PRODUCTION environment when HACKATHON_ALLOW_PRODUCTION=1', () => {
+    assertSeedAllowed({ DSF_ENVIRONMENT: 'PRODUCTION', HACKATHON_ALLOW_PRODUCTION: '1' });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it('allows a TEST environment without the override', () => {
+    assertSeedAllowed({ DSF_ENVIRONMENT: 'TEST' });
+
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 });

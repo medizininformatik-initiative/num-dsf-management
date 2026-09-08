@@ -42,6 +42,22 @@ const SEEDED_BY = 'SYSTEM:hackathon';
 // RFC 5737 (TEST-NET-2) — used only as the audit log's ip_address, never a real address.
 const SEED_IP = '198.51.100.1';
 
+/**
+ * Refuses to run against a PRODUCTION environment unless explicitly
+ * overridden. This seed grants every fictional user full IMI admin rights
+ * (see hackathon-prepare.sh), so running it against a real deployment by
+ * accident would hand out real admin access.
+ */
+export function assertSeedAllowed(env: NodeJS.ProcessEnv): void {
+  if (env.DSF_ENVIRONMENT === 'PRODUCTION' && env.HACKATHON_ALLOW_PRODUCTION !== '1') {
+    console.error(
+      'Refusing to run the hackathon seed: DSF_ENVIRONMENT=PRODUCTION. This seed creates full ' +
+        'IMI admins. Set HACKATHON_ALLOW_PRODUCTION=1 to override.',
+    );
+    process.exit(1);
+  }
+}
+
 interface SeedSummaryRow {
   email: string;
   org: string;
@@ -221,6 +237,8 @@ async function seedUser(user: HackathonUser, parentOrganization: string): Promis
 }
 
 async function main(): Promise<void> {
+  assertSeedAllowed(process.env);
+
   const manifestPath = process.argv[2];
   if (!manifestPath) {
     console.error('Usage: node dist/db/seed-hackathon.js <manifest.json>');
@@ -268,7 +286,10 @@ async function main(): Promise<void> {
   process.exit(0);
 }
 
-main().catch((err) => {
-  console.error('Hackathon seed failed:', err);
-  process.exit(1);
-});
+// Run when invoked directly, skip when imported (e.g. by tests).
+if (require.main === module) {
+  main().catch((err) => {
+    console.error('Hackathon seed failed:', err);
+    process.exit(1);
+  });
+}

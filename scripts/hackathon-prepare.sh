@@ -25,6 +25,7 @@
 # with a key that no longer exists anywhere and STOPS WORKING the moment you
 # re-run this script — re-distribute the new .p12 files after every run.
 set -euo pipefail
+umask 077
 
 # Run on a real Debian server (this script's target), this is a no-op.
 # It only matters if someone dry-runs this under Git Bash on Windows first,
@@ -223,9 +224,12 @@ fi
 
 log "Wrote ${MANIFEST_FILE} and ${ONBOARDING_CSV}"
 
+log "WARNING: the ${N} generated user(s) are full IMI admins, each on a different email domain."
+
 log "Seeding the database (${N} user(s))..."
 # shellcheck disable=SC2086  # DSF_COMPOSE is a multi-word command prefix by design
-$DSF_COMPOSE run --rm -v "${OUT_DIR}:/hackathon:ro" backend \
+$DSF_COMPOSE run --rm -e HACKATHON_ALLOW_PRODUCTION="${HACKATHON_ALLOW_PRODUCTION:-}" \
+  -v "${OUT_DIR}:/hackathon:ro" backend \
   node dist/db/seed-hackathon.js /hackathon/manifest.json
 
 echo
