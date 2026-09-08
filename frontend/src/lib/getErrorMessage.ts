@@ -14,7 +14,27 @@ interface ZodIssueLike {
   message?: unknown;
 }
 interface ApiErrorShape {
-  response?: { data?: { error?: { message?: string; details?: unknown } } };
+  response?: { data?: { error?: { code?: string; message?: string; details?: unknown } } };
+}
+
+/** Pull the backend's `error.code` out of an axios error, if present. */
+export function getErrorCode(err: unknown): string | undefined {
+  return (err as ApiErrorShape)?.response?.data?.error?.code;
+}
+
+/**
+ * Like getErrorMessage, but maps the `CERT_STEP_UP_FAILED` code — returned
+ * when a certificate-mode step-up re-verification fails — to `stepUpMessage`
+ * instead of the (missing) backend message, before falling back to the usual
+ * message/details extraction for every other error.
+ */
+export function getErrorMessageForStepUp(
+  err: unknown,
+  fallback: string,
+  stepUpMessage: string,
+): string {
+  if (getErrorCode(err) === 'CERT_STEP_UP_FAILED') return stepUpMessage;
+  return getErrorMessage(err, fallback);
 }
 
 export function getErrorMessage(err: unknown, fallback: string): string {

@@ -57,6 +57,8 @@ export const de: Record<TranslationKey, string> = {
   totpCodeLabel: 'TOTP-Code',
   totpDigitsRequired: '6 Ziffern erforderlich',
   genericActionFailed: 'Aktion fehlgeschlagen',
+  certStepUpFailedToast:
+    'Die erneute Zertifikatsprüfung ist fehlgeschlagen. Seite neu laden und erneut versuchen.',
   instances: 'Instanzen',
   newInstance: '+ Neue Instanz',
   noInstanceSelected: 'Keine Instanz ausgewählt',

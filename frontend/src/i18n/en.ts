@@ -56,6 +56,7 @@ export const en = {
   totpCodeLabel: 'TOTP Code',
   totpDigitsRequired: '6 digits required',
   genericActionFailed: 'Action failed',
+  certStepUpFailedToast: 'Certificate re-verification failed. Reload the page and try again.',
   instances: 'Instances',
   newInstance: '+ New instance',
   noInstanceSelected: 'No instance selected',
