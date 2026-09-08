@@ -22,7 +22,9 @@ const addSchema = z.object({
     .regex(/^[A-Fa-f0-9]{64}$/)
     .optional(),
   reason: z.string().max(2000).optional(),
-  totpCode: z.string().length(6),
+  // Optional — requireFreshTotp (requireStepUp) enforces it, and also accepts
+  // a re-presented client cert in place of a code for cert-authenticated sessions.
+  totpCode: z.string().length(6).optional(),
 });
 
 export const adminCaBlacklistRouter = Router();

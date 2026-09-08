@@ -3,6 +3,11 @@
  * Covers: GET list, POST create (validation, normalization, duplicate),
  * PATCH status update (with audit log), DELETE (removes entry).
  *
+ * The injected req.user has no DB row of its own by default (requireAuth is
+ * mocked to a passthrough), but the shared step-up guard (checkStepUp) now
+ * looks up users.totp_enabled before accepting a totpCode, so this suite
+ * seeds a real row for ADMIN_ID with totp_enabled:true in beforeAll.
+ *
  * Dependencies: app, db/connection, supertest
  */
 
@@ -60,12 +65,22 @@ function buildTestApp() {
 const testApp = buildTestApp();
 
 describe('Marketplace REST routes', () => {
+  // checkStepUp requires a real users row with totp_enabled:true for the
+  // injected ADMIN_ID before it will accept a totpCode.
+  beforeAll(async () => {
+    await db('users')
+      .insert({ id: ADMIN_ID, email: ADMIN_EMAIL, totp_enabled: true, created_at: new Date() })
+      .onConflict('id')
+      .ignore();
+  });
+
   // Clean up any rows this test suite inserts so reruns are idempotent.
   afterAll(async () => {
     await db('marketplace_entries')
       .whereIn('git_url', ['https://github.com/Foo/Bar', 'https://github.com/Other/Repo'])
       .del();
     await db('audit_logs').where({ user_email: ADMIN_EMAIL }).del();
+    await db('users').where({ id: ADMIN_ID }).del();
   });
 
   describe('GET /api/v1/marketplace', () => {

@@ -13,16 +13,22 @@ const githubUrlRegex = /^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+
 export const createMarketplaceSchema = z.object({
   gitUrl: z.string().regex(githubUrlRegex, 'Must be a https://github.com/owner/repo URL'),
   status: STATUS.optional().default('APPROVED'),
-  totpCode: z.string().length(6),
+  // Optional — checkStepUp enforces it, and also accepts a re-presented
+  // client cert in place of a code for cert-authenticated sessions.
+  totpCode: z.string().length(6).optional(),
 });
 
 export const patchMarketplaceSchema = z.object({
   status: STATUS,
-  totpCode: z.string().length(6),
+  // Optional — checkStepUp enforces it, and also accepts a re-presented
+  // client cert in place of a code for cert-authenticated sessions.
+  totpCode: z.string().length(6).optional(),
 });
 
 export const deleteMarketplaceSchema = z.object({
-  totpCode: z.string().length(6),
+  // Optional — checkStepUp enforces it, and also accepts a re-presented
+  // client cert in place of a code for cert-authenticated sessions.
+  totpCode: z.string().length(6).optional(),
 });
 
 /**
@@ -63,5 +69,7 @@ export const patchMarketplaceMetaSchema = z.object({
   advisoryText: z.string().nullable().optional(),
   advisorySeverity: ADVISORY_SEVERITY.nullable().optional(),
   supersededBy: z.string().nullable().optional(),
-  totpCode: z.string().length(6),
+  // Optional — checkStepUp enforces it, and also accepts a re-presented
+  // client cert in place of a code for cert-authenticated sessions.
+  totpCode: z.string().length(6).optional(),
 });

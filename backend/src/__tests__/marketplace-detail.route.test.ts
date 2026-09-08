@@ -4,6 +4,11 @@
  * Covers: GET /:slug (200 with releases, 404 unknown, 401 no auth),
  * PATCH /:id/meta (200 update, 400 TOTP_REQUIRED, 404 unknown id, 403 non-admin).
  *
+ * The injected req.user has no DB row of its own by default (requireAuth is
+ * mocked to a passthrough), but the shared step-up guard (checkStepUp) now
+ * looks up users.totp_enabled before accepting a totpCode, so this suite
+ * seeds a real row for ADMIN_ID with totp_enabled:true in beforeAll.
+ *
  * Dependencies: app, db/connection, supertest
  */
 
@@ -73,6 +78,12 @@ const relOld = uuidv4();
 const relNew = uuidv4();
 
 beforeAll(async () => {
+  // checkStepUp requires a real users row with totp_enabled:true for the
+  // injected ADMIN_ID before it will accept a totpCode.
+  await db('users')
+    .insert({ id: ADMIN_ID, email: ADMIN_EMAIL, totp_enabled: true, created_at: new Date() })
+    .onConflict('id')
+    .ignore();
   await db('marketplace_entries').insert({
     id: entryId,
     slug,
@@ -105,6 +116,7 @@ afterAll(async () => {
   await db('marketplace_releases').where({ entry_id: entryId }).del();
   await db('marketplace_entries').where({ id: entryId }).del();
   await db('audit_logs').where({ user_email: ADMIN_EMAIL }).del();
+  await db('users').where({ id: ADMIN_ID }).del();
 });
 
 describe('GET /api/v1/marketplace/:slug', () => {

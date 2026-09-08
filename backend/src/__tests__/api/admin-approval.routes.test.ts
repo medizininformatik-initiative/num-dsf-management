@@ -3,6 +3,7 @@
  * Covers:
  *   - GET  /pending          lists a PENDING approval request (with signatures)
  *   - POST /:rid/approve     second cross-site sign-off resolves it → APPROVED
+ *   - POST /:rid/approve     a cert-session admin approves with NO totpCode
  *   - POST /:rid/reject      reject with a comment resolves it → REJECTED
  *   - non-admin (whitelisted, no admin_grant) → 403 FORBIDDEN
  *   - no Authorization header → 401
@@ -11,10 +12,14 @@
  * (uuidv4 + unique emails/identifiers); supertest the imported app with
  * getTestToken for auth; own rows torn down in afterAll. Mail path
  * (approval-reminder.service) is mocked so no SMTP is attempted; TOTP is
- * mocked so any code passes the verifier.
+ * mocked so any code passes the verifier. The cert-session test instead goes
+ * through the real /auth/client-cert-login route (not getTestToken) so its
+ * access token carries a genuine amr:'cert' claim, then re-presents the same
+ * cert on the approve call for the step-up re-verification.
  *
- * Dependencies: supertest, app, db, getTestToken, signGrant,
- *               jest.mock(totp.service), jest.mock(approval-reminder.service)
+ * Dependencies: supertest, app, db, getTestToken, signGrant, node-forge,
+ *               lib/certFingerprint, jest.mock(totp.service),
+ *               jest.mock(approval-reminder.service)
  */
 
 // Accept any 6-digit TOTP code in tests.
@@ -33,11 +38,29 @@ jest.mock('../../services/approval-reminder.service', () => ({
 }));
 
 import request from 'supertest';
+import forge from 'node-forge';
 import { app } from '../../app';
 import { db } from '../../db/connection';
 import { getTestToken } from '../helpers/auth';
 import { signGrant } from '../../lib/adminGrants';
 import { v4 as uuidv4 } from 'uuid';
+import { sha512FingerprintFromPem } from '../../lib/certFingerprint';
+
+// Real (forge-generated) self-signed cert, for the cert-session step-up test —
+// mirrors the pattern in auth-client-cert.test.ts.
+function makeSelfSignedCert(cn: string): string {
+  const keys = forge.pki.rsa.generateKeyPair({ bits: 1024 });
+  const cert = forge.pki.createCertificate();
+  cert.publicKey = keys.publicKey;
+  cert.serialNumber = '01';
+  cert.validity.notBefore = new Date('2020-01-01T00:00:00Z');
+  cert.validity.notAfter = new Date('2030-01-01T00:00:00Z');
+  const attrs = [{ shortName: 'CN', value: cn }];
+  cert.setSubject(attrs);
+  cert.setIssuer(attrs);
+  cert.sign(keys.privateKey);
+  return forge.pki.certificateToPem(cert);
+}
 
 // ─── Unique identities (suffix isolates this suite's rows) ────────────────────
 
@@ -52,6 +75,12 @@ const NON_ADMIN_ID = uuidv4();
 // route's own approve crosses the 2-distinct-site threshold → APPROVED.
 const PRESIGNED_ADMIN_EMAIL = `aa-pre-${SUFFIX}@site-y-${SUFFIX}.example.de`;
 const PRESIGNED_SITE = `site-y-${SUFFIX}.example.de`;
+// A third admin who authenticates by client certificate (amr:'cert') instead
+// of OTP, to prove the step-up gate accepts a re-presented cert in place of
+// a totpCode.
+const CERT_ADMIN_EMAIL = `aa-cert-${SUFFIX}@site-z-${SUFFIX}.example.de`;
+const CERT_ADMIN_ID = uuidv4();
+const CERT_ADMIN_PEM = makeSelfSignedCert(`aa-cert-${SUFFIX}.example.de`);
 
 const INSTANCE_ID = uuidv4();
 
@@ -146,6 +175,14 @@ beforeAll(async () => {
   await seedNonAdmin();
   await seedInstance();
   await seedAdmin(ADMIN_ID, ADMIN_EMAIL);
+  await seedAdmin(CERT_ADMIN_ID, CERT_ADMIN_EMAIL);
+  await db('admin_cert_fingerprints').insert({
+    id: uuidv4(),
+    email: CERT_ADMIN_EMAIL,
+    fingerprint: sha512FingerprintFromPem(CERT_ADMIN_PEM),
+    created_at: new Date(),
+    created_by: 'test',
+  });
 });
 
 afterAll(async () => {
@@ -155,9 +192,14 @@ afterAll(async () => {
     await db('approval_requests').whereIn('id', createdRequestIds).del();
   }
   await db('instances').where({ id: INSTANCE_ID }).del();
-  await db('admin_grants').whereIn('email', [ADMIN_EMAIL, PRESIGNED_ADMIN_EMAIL]).del();
-  await db('users').whereIn('id', [ADMIN_ID, NON_ADMIN_ID]).del();
-  await db('email_whitelist').whereIn('email', [ADMIN_EMAIL, NON_ADMIN_EMAIL]).del();
+  await db('admin_cert_fingerprints').where({ email: CERT_ADMIN_EMAIL }).del();
+  await db('admin_grants')
+    .whereIn('email', [ADMIN_EMAIL, PRESIGNED_ADMIN_EMAIL, CERT_ADMIN_EMAIL])
+    .del();
+  await db('users').whereIn('id', [ADMIN_ID, NON_ADMIN_ID, CERT_ADMIN_ID]).del();
+  await db('email_whitelist')
+    .whereIn('email', [ADMIN_EMAIL, NON_ADMIN_EMAIL, CERT_ADMIN_EMAIL])
+    .del();
   await db.destroy();
 });
 
@@ -236,6 +278,36 @@ describe('POST /api/v1/admin/approval/:rid/approve', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('TOTP_REQUIRED');
+  });
+
+  it('a cert-session admin can approve with NO totpCode when the cert headers are presented', async () => {
+    const rid = await seedPendingRequest();
+
+    // Real cert-login mints amr:'cert' on the access token — this is the
+    // session a client-cert-authenticated admin actually holds, unlike
+    // getTestToken() which always mints amr:'otp'.
+    const loginRes = await request(app)
+      .post('/auth/client-cert-login')
+      .set('x-client-verify', 'SUCCESS')
+      .set('x-client-cert', encodeURIComponent(CERT_ADMIN_PEM));
+    expect(loginRes.status).toBe(200);
+    const { accessToken } = loginRes.body.data;
+
+    const res = await request(app)
+      .post(`/api/v1/admin/approval/${rid}/approve`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('x-client-verify', 'SUCCESS')
+      .set('x-client-cert', encodeURIComponent(CERT_ADMIN_PEM))
+      .send({}); // no totpCode
+
+    expect(res.status).toBe(200);
+
+    const row = await db('approval_requests').where({ id: rid }).first();
+    expect(row.status).toBe('PENDING'); // single-site sign-off, not yet 2-site APPROVED
+    const sigs = await db('approval_signatures').where({ approval_request_id: rid });
+    expect(sigs.some((s: { admin_email: string }) => s.admin_email === CERT_ADMIN_EMAIL)).toBe(
+      true,
+    );
   });
 });
 

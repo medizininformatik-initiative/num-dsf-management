@@ -14,7 +14,7 @@ import { upsertOrganizationSchema } from '../schemas/organization.schema';
 import * as svc from '../services/organization.service';
 import { asyncHandler } from '../lib/asyncHandler';
 import { db } from '../db/connection';
-import { verifyTotpCode } from '../services/totp.service';
+import { checkStepUp } from '../middleware/stepUp.middleware';
 
 export const organizationRouter = Router({ mergeParams: true });
 organizationRouter.use(requireAuth, requireInstanceOwnership);
@@ -37,24 +37,15 @@ organizationRouter.put(
     const existingThumb = existingOrgRow?.client_cert_thumbprint ?? null;
     const incomingThumb = (req.body?.clientCertThumbprint ?? null) || null;
 
-    // TOTP required when the owner is changing client_cert_thumbprint.
-    // Same-value re-saves (unchanged form submit) are allowed without TOTP.
+    // Step-up required when the owner is changing client_cert_thumbprint.
+    // Same-value re-saves (unchanged form submit) are allowed without it.
     const isCrossUser = req.instance!.user_id !== req.user!.id;
     if (!isCrossUser && existingThumb !== incomingThumb) {
-      const code = req.body?.totpCode;
-      if (!code || typeof code !== 'string' || code.length !== 6) {
-        return res.status(400).json({
-          error: {
-            code: 'TOTP_REQUIRED',
-            message: 'TOTP required to change client_cert_thumbprint',
-          },
-        });
-      }
-      const ok = await verifyTotpCode(req.user!.id, code);
-      if (!ok) {
+      const result = await checkStepUp(req);
+      if (!result.ok) {
         return res
-          .status(401)
-          .json({ error: { code: 'TOTP_INVALID', message: 'Invalid TOTP code' } });
+          .status(result.status)
+          .json({ error: { code: result.code, message: result.message } });
       }
     }
 
