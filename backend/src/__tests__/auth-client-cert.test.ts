@@ -266,7 +266,7 @@ describe('POST /auth/client-cert-login — SHA-512 fingerprint resolution', () =
 });
 
 describe('POST /auth/client-cert-login — amr claim, carried through /auth/refresh', () => {
-  const amrAdminEmail = 'cert-amr-admin@imi.uni-muenster.de';
+  const amrAdminEmail = 'cert-amr-admin@imi-test.example.de';
   const amrPem = makeSelfSignedCert('cert-amr-admin.example.de');
   const amrFingerprint = sha512FingerprintFromPem(amrPem);
 
