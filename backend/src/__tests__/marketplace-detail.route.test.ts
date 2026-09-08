@@ -6,8 +6,9 @@
  *
  * The injected req.user has no DB row of its own by default (requireAuth is
  * mocked to a passthrough), but the shared step-up guard (checkStepUp) now
- * looks up users.totp_enabled before accepting a totpCode, so this suite
- * seeds a real row for ADMIN_ID with totp_enabled:true in beforeAll.
+ * looks up users.totp_enabled and users.totp_secret before accepting a
+ * totpCode, so this suite seeds a real row for ADMIN_ID with totp_enabled:true
+ * and a totp_secret in beforeAll.
  *
  * Dependencies: app, db/connection, supertest
  */
@@ -78,10 +79,16 @@ const relOld = uuidv4();
 const relNew = uuidv4();
 
 beforeAll(async () => {
-  // checkStepUp requires a real users row with totp_enabled:true for the
-  // injected ADMIN_ID before it will accept a totpCode.
+  // checkStepUp requires a real users row with totp_enabled:true AND a
+  // totp_secret for the injected ADMIN_ID before it will accept a totpCode.
   await db('users')
-    .insert({ id: ADMIN_ID, email: ADMIN_EMAIL, totp_enabled: true, created_at: new Date() })
+    .insert({
+      id: ADMIN_ID,
+      email: ADMIN_EMAIL,
+      totp_enabled: true,
+      totp_secret: 'placeholder',
+      created_at: new Date(),
+    })
     .onConflict('id')
     .ignore();
   await db('marketplace_entries').insert({

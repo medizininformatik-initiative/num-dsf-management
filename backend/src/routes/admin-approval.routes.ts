@@ -2,17 +2,22 @@
  * admin-approval.routes.ts – Admin-only approval management endpoints
  * Mounted at /api/v1/admin/approval
  * Dependencies: approval.service, stepUp.middleware, auth.middleware, admin.middleware, rateLimit.middleware
+ *
+ * approve/reject are rate-limited per-user via stepUpTotpRateLimit, matching
+ * the other admin routers' step-up guards. The IP-keyed otpRateLimit (meant
+ * for pre-auth OTP requests) would let admins behind the same NAT/proxy
+ * throttle each other, so it is not used here.
  */
 import { Router, NextFunction } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireImiAdmin } from '../middleware/admin.middleware';
 import { requireStepUp } from '../middleware/stepUp.middleware';
 import * as svc from '../services/approval.service';
-import { otpRateLimit } from '../middleware/rateLimit.middleware';
+import { stepUpTotpRateLimit } from '../middleware/rateLimit.middleware';
 
 export const adminApprovalRouter = Router();
 
-const totpLimiter = process.env.NODE_ENV === 'test' ? [] : [otpRateLimit];
+const totpLimiter = process.env.NODE_ENV === 'test' ? [] : [stepUpTotpRateLimit];
 
 adminApprovalRouter.get(
   '/pending',

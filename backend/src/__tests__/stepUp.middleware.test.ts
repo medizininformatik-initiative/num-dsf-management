@@ -133,6 +133,28 @@ describe('checkStepUp — otp sessions', () => {
     }
   });
 
+  it('(b2) rejects with 403 TOTP_NOT_CONFIGURED when totp_enabled is true but no secret was ever saved', async () => {
+    const halfSetupUserId = uuidv4();
+    const halfSetupEmail = `stepup-halfsetup-${Date.now()}@example.de`;
+    await db('users').insert({
+      id: halfSetupUserId,
+      email: halfSetupEmail,
+      totp_enabled: true,
+      created_at: new Date(),
+    });
+    try {
+      const result = await checkStepUp(makeReq(halfSetupUserId, 'otp', { totpCode: '123456' }));
+      expect(result).toEqual({
+        ok: false,
+        status: 403,
+        code: 'TOTP_NOT_CONFIGURED',
+        message: expect.any(String),
+      });
+    } finally {
+      await db('users').where({ id: halfSetupUserId }).del();
+    }
+  });
+
   it('accepts a fresh valid TOTP code', async () => {
     const code = speakeasy.totp({ secret, encoding: 'base32' });
     const result = await checkStepUp(makeReq(userId, 'otp', { totpCode: code }));

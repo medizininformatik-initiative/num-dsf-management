@@ -63,10 +63,14 @@ export async function checkStepUp(req: Request): Promise<StepUpResult> {
     };
   }
 
-  const user = (await db('users').where({ id: req.user!.id }).select('totp_enabled').first()) as
-    | { totp_enabled: boolean | number }
-    | undefined;
-  if (!user?.totp_enabled) {
+  const user = (await db('users')
+    .where({ id: req.user!.id })
+    .select('totp_enabled', 'totp_secret')
+    .first()) as { totp_enabled: boolean | number; totp_secret: string | null } | undefined;
+  // Covers both: TOTP never enabled, and enabled but the secret was never
+  // persisted (e.g. setup started but not completed). Either way there is
+  // no secret to verify against, so this is a config problem, not a wrong code.
+  if (!user?.totp_enabled || !user?.totp_secret) {
     return {
       ok: false,
       status: 403,

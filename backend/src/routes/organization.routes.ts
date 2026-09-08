@@ -15,9 +15,13 @@ import * as svc from '../services/organization.service';
 import { asyncHandler } from '../lib/asyncHandler';
 import { db } from '../db/connection';
 import { checkStepUp } from '../middleware/stepUp.middleware';
+import { stepUpTotpRateLimit } from '../middleware/rateLimit.middleware';
 
 export const organizationRouter = Router({ mergeParams: true });
 organizationRouter.use(requireAuth, requireInstanceOwnership);
+
+// Step-up rate limiter guarding the conditional re-verification below (skipped under jest).
+const stepUpLimiter = process.env.NODE_ENV === 'test' ? [] : [stepUpTotpRateLimit];
 
 organizationRouter.get(
   '/',
@@ -29,6 +33,7 @@ organizationRouter.get(
 
 organizationRouter.put(
   '/',
+  ...stepUpLimiter,
   validate(upsertOrganizationSchema),
   asyncHandler(async (req, res) => {
     const existingOrgRow = await db('organizations')

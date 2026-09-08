@@ -64,9 +64,16 @@ describe('PUT /organization — admin cross-user thumbprint guard', () => {
     await db('admin_grants').where({ email: adminEmail }).del();
 
     await db('users').insert([
-      // totp_enabled:true — the owner's own thumbprint change goes through
-      // checkStepUp's otp branch, which now requires TOTP to be configured.
-      { id: ownerId, email: ownerEmail, totp_enabled: true, created_at: new Date() },
+      // totp_enabled:true + totp_secret set — the owner's own thumbprint change
+      // goes through checkStepUp's otp branch, which requires TOTP to be fully
+      // configured (verifyTotpCode itself is mocked above).
+      {
+        id: ownerId,
+        email: ownerEmail,
+        totp_enabled: true,
+        totp_secret: 'placeholder',
+        created_at: new Date(),
+      },
       { id: adminId, email: adminEmail, created_at: new Date() },
     ]);
     await db('instances').insert({
