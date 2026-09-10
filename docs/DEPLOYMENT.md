@@ -391,6 +391,8 @@ scripts/hackathon-prepare.sh              # 3 users, output in /opt/dsf-allowlis
 scripts/hackathon-prepare.sh 5 /opt/dsf-allowlist/hackathon-2026
 ```
 
+The stack must already be running: the seed executes inside the running backend container (`docker compose exec`, manifest on stdin), so no extra container, mount or port is involved.
+
 What it creates, per user:
 
 - `hack<i>@klinik-<i>.example.de` / `klinik-<i>.example.de`, all under the fictional `.example.de` domain and RFC 5737 test IP ranges, never real data.
@@ -403,10 +405,10 @@ The script is idempotent: re-running it regenerates every certificate and key fr
 Running the script again with a smaller N does not remove the extra users from a larger previous run; delete those manually. To remove a seeded hackathon user, delete its email everywhere it is referenced. `users` cascades to the instance, organization, contacts, endpoints, certificates, memberships, and approval request, so that single delete does most of the work; `admin_grants`, `admin_cert_fingerprints`, and `email_whitelist` are not linked by a foreign key and need their own delete:
 
 ```sql
-DELETE FROM admin_grants WHERE email = 'hack1@klinik-eins.example.de';
-DELETE FROM admin_cert_fingerprints WHERE email = 'hack1@klinik-eins.example.de';
-DELETE FROM email_whitelist WHERE email = 'hack1@klinik-eins.example.de';
-DELETE FROM users WHERE email = 'hack1@klinik-eins.example.de';
+DELETE FROM admin_grants WHERE email = 'hack1@klinik-1.example.de';
+DELETE FROM admin_cert_fingerprints WHERE email = 'hack1@klinik-1.example.de';
+DELETE FROM email_whitelist WHERE email = 'hack1@klinik-1.example.de';
+DELETE FROM users WHERE email = 'hack1@klinik-1.example.de';
 ```
 
 The audit log entries the seed writes are not removed by this (`audit_logs` is append-only, see the Admin grants section below); that is expected and matches how every other mutation in this portal is audited.
