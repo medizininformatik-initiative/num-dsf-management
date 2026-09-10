@@ -862,6 +862,8 @@ else
   info "9b-cleanup-sql" "full removal still needs: DELETE FROM users WHERE email = '${SMOKE_EMAIL}'; -- cascades to instances/organizations (audit_logs is append-only and intentionally untouched)"
 
   # Post-cleanup: the removed site's cert must no longer authenticate.
+  # This is the sixth cert login of the run; the app allows five per 15 minutes per IP.
+  reset_rate_limits
   throttle_auth_zone
   curl_json POST "$BASE_URL/auth/client-cert-login" --cert "$SMOKE_CRT" --key "$SMOKE_KEY"
   ERR_CODE="$(json_get "$RESP_FILE" error.code)"
