@@ -68,7 +68,8 @@ interface SeedSummaryRow {
 function loadManifest(manifestPath: string): HackathonManifest {
   let raw: string;
   try {
-    raw = fs.readFileSync(manifestPath, 'utf-8');
+    raw =
+      manifestPath === '-' ? fs.readFileSync(0, 'utf-8') : fs.readFileSync(manifestPath, 'utf-8');
   } catch (err) {
     console.error(`Cannot read manifest file "${manifestPath}": ${(err as Error).message}`);
     process.exit(1);
@@ -241,7 +242,9 @@ async function main(): Promise<void> {
 
   const manifestPath = process.argv[2];
   if (!manifestPath) {
-    console.error('Usage: node dist/db/seed-hackathon.js <manifest.json>');
+    console.error(
+      'Usage: node dist/db/seed-hackathon.js <manifest.json | -> (- reads the manifest from stdin)',
+    );
     process.exit(1);
   }
   const manifest = loadManifest(manifestPath);

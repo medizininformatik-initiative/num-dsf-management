@@ -56,7 +56,7 @@ Environment overrides:
                            docker compose --env-file /opt/dsf-allowlist/.env.prod \\
                              -f /opt/dsf-allowlist/docker-compose.cert-auth.yml \\
                              -f /opt/dsf-allowlist/docker-compose.apache.yml
-  SEED_CMD                 Command (without the trailing manifest.json arg)
+  SEED_CMD                 Seed command; the manifest is piped to it on stdin as "-"
                            used to run the seed inside the backend container.
                            Default: "node dist/db/seed-hackathon.js", which
                            needs a built prod/release image. Against the dev
@@ -244,10 +244,18 @@ log "Wrote ${MANIFEST_FILE} and ${ONBOARDING_CSV}"
 log "WARNING: the ${N} generated user(s) are full IMI admins, each on a different email domain."
 
 log "Seeding the database (${N} user(s))..."
+# Seed inside the RUNNING backend container (exec, manifest on stdin) instead of
+# `compose run`: a second backend container would collide with the fixed IP the
+# Apache override assigns to the service ("Address already in use"), and the
+# read-only container has no writable path to mount the manifest into anyway.
 # shellcheck disable=SC2086  # DSF_COMPOSE is a multi-word command prefix by design
-$DSF_COMPOSE run --rm -e HACKATHON_ALLOW_PRODUCTION="${HACKATHON_ALLOW_PRODUCTION:-}" \
-  -v "${OUT_DIR}:/hackathon:ro" backend \
-  sh -c "$SEED_CMD /hackathon/manifest.json"
+if ! $DSF_COMPOSE ps --status running --services 2>/dev/null | grep -qx backend; then
+  err "the backend container is not running; start the stack first (the seed runs inside it)"
+  exit 1
+fi
+# shellcheck disable=SC2086
+$DSF_COMPOSE exec -T -e HACKATHON_ALLOW_PRODUCTION="${HACKATHON_ALLOW_PRODUCTION:-}" backend \
+  sh -c "$SEED_CMD -" < "$MANIFEST_FILE"
 
 echo
 echo "=== Hackathon users ready ==="
