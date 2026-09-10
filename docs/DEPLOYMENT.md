@@ -411,6 +411,40 @@ DELETE FROM users WHERE email = 'hack1@klinik-eins.example.de';
 
 The audit log entries the seed writes are not removed by this (`audit_logs` is append-only, see the Admin grants section below); that is expected and matches how every other mutation in this portal is audited.
 
+### Hackathon rehearsal
+
+`scripts/hackathon-smoke.sh` is an end-to-end rehearsal for the setup above: run it against a deployed cert-auth stack right after `scripts/hackathon-prepare.sh` to prove cert login, the four-eyes approval workflow, bulk CSV onboarding, and the allow-list bundle all actually work together, not just individually.
+
+```bash
+scripts/hackathon-prepare.sh 3 /opt/dsf-allowlist/hackathon
+scripts/hackathon-smoke.sh https://dsf-management.example.de
+```
+
+Usage: `scripts/hackathon-smoke.sh <BASE_URL> [HACKATHON_DIR] [--keep]`. `HACKATHON_DIR` defaults to `/opt/dsf-allowlist/hackathon` and must contain `hack1.crt/.key` through `hack3.crt/.key`. `--keep` leaves the site the script onboards in step 6 in place instead of removing it at the end. `SMOKE_INSECURE=1` adds `curl --insecure`, needed for a self-signed dev TLS certificate (e.g. the plain `docker-compose.yml` stack over `https://localhost`). Requires `curl`, `openssl`, and either `python3`/`python` or `jq`.
+
+Every check prints `PASS`/`FAIL`/`INFO` with the HTTP status and a one-line reason, and the script stops at the first `FAIL` after printing a summary table. Tokens and fingerprints are never printed in full.
+
+**What each step proves, and what a FAIL there usually means:**
+
+1. **Reachability** (`GET /health/ready`). The stack is up and the backend can reach MySQL and Redis. A FAIL here is almost always infrastructure, not this feature: containers not started, `.env`/`.env.prod` missing a DB or Redis value, or (on the plain dev nginx config) `/health` not proxied to the backend.
+2. **Cert login** for hack1/hack2/hack3 (`POST /auth/client-cert-login`). Proves the reverse proxy performs the mTLS handshake and forwards `X-Client-Cert`/`X-Client-Verify`, and that the backend resolves the SHA-512 fingerprint to the right admin. A FAIL usually means the reverse proxy in front of `BASE_URL` is not reproducing `nginx/nginx.cert-auth.conf` (see "Fronting the app with your own Apache2" above), or the hackathon certs were regenerated after the DB was last seeded.
+3. **Identity and instance scoping** (`GET /auth/me`, `GET /api/v1/instances`, `GET /api/v1/instances/:id/organization`). Proves the JWT carries the right identity and admin flag, and that the seeded organization is reachable. Every hackathon user is an IMI admin, and `instances.service.ts`'s `listForUser()` gives admins cross-tenant visibility (see its own comment), so this checks the list *contains* the user's own instance, not that it is the only one; a FAIL here on a fresh stack usually means the seed did not run or ran against a different database than `BASE_URL` is pointed at.
+4. **Negative auth checks.** No certificate presented must fail login; a valid bearer token with the certificate NOT re-presented must fail a step-up-gated write with `CERT_STEP_UP_FAILED` (`backend/src/middleware/stepUp.middleware.ts`) - this is the check that proves a stolen access token cannot forge the cert step-up. `POST /auth/request-otp` returning `403` proves the OTP entry surface is closed on a cert-auth deployment; on the standard OTP/TOTP stack it is expected to stay open, so that case is only an `INFO`, never a `FAIL`.
+5. **Four-eyes approval.** This is the step most worth reading before assuming a FAIL is a real bug, because the exact sequence was derived from `backend/src/lib/approvalState.ts` and `backend/src/services/approval.service.ts`, not assumed:
+   - There is no rule against approving your own site's request. `validateApproval()` only tracks which *sites* (email domains) have signed, so hack1 can sign its own pending request; it simply counts as the first of the two signatures needed.
+   - `deriveStatus()` promotes to `APPROVED` as soon as two signatures from two *different* sites exist - two, not three. A third admin who tries afterwards gets `REQUEST_FINALIZED`, because `approveRequest()` checks the request's status before it looks at who is signing.
+   - `ALREADY_DECIDED` only happens when the same admin signs twice while the request is still `PENDING`. Once a request is finalized, any further attempt (a new admin or a repeat one) is `REQUEST_FINALIZED`, never `ALREADY_DECIDED`.
+   - A FAIL in this step almost always means the approval state machine changed; diff `approvalState.ts` against the expectations coded into `scripts/hackathon-smoke.sh`'s step 5 comments.
+6. **Bulk CSV onboarding** (`POST /api/v1/admin/onboarding/import`). Create, then re-upload the same row (must report `updated`, not a duplicate `created`), then log in with the newly onboarded cert. Also checks the two upload-level guards: a PEM anywhere in the file is rejected with `PEM_NOT_ALLOWED` before any row is parsed, and a row whose organization name starts with `=`/`+`/`-`/`@` is reported as a parse error (CSV/Excel formula-injection guard), not imported. A FAIL here usually points at `onboarding.service.ts`'s validation changing shape.
+7. **Allow-list bundle** (`GET /fhir/Bundle`, the endpoint the DSF `UpdateAllowList` process reads). Checks it is a well-formed FHIR Bundle containing all three hackathon sites plus the parent `hackathon-hub.example.de` and at least one `OrganizationAffiliation` - all only true after step 5 actually finished approving them. It also asserts the site onboarded in step 6 is **absent**: bulk onboarding never inserts an `approval_requests` row (see `onboarding.service.ts`), and `generateFullBundle()` only includes an organization whose *latest* approval request is `APPROVED` (`fhir.service.ts`, and the regression test `fhir-bundle-latest-approval.test.ts`) - so a site that was only onboarded, never approved, must never show up here. If it does, onboarding has started bypassing the approval gate, which is a real regression, not a passing coincidence. A request with no client certificate at all must be rejected.
+8. **GUI downloads** (`GET /api/v1/download/full-bundle`, `GET /api/v1/download/ip-address-list`). Confirms the authenticated-user bundle download and the admin Excel export both return a real, non-trivial body.
+9. **Cleanup.** There is no admin API endpoint that deletes an organization outright, so the script uses the closest real mechanism - `DELETE /api/v1/admin/users/:email` - to remove the onboarded site's whitelist entry and revoke its sessions immediately, then prints the exact SQL still needed to remove the residual `organizations`/`instances`/`users` rows (mirroring the teardown SQL documented above for the hackathon seed itself). It then re-checks that the removed site's certificate no longer logs in. Pass `--keep` to skip this and inspect the onboarded site by hand instead.
+
+**Known environment quirks (not bugs in the app):**
+
+- All three nginx configs (`nginx.conf`, `nginx.prod.conf`, `nginx.cert-auth.conf`) put a tight `limit_req` on the whole `/auth/` prefix (5 requests/minute, burst 3-5) as a defense-in-depth throttle independent of the backend's own Redis-backed OTP rate limit. The smoke script paces its `/auth/*` calls to stay under this; if you see stray `429`s while experimenting by hand against `/auth/me` or `/auth/client-cert-login`, wait a minute or restart the stack's Redis-backed limiter state, it is not an application error.
+- On the plain dev stack (`docker-compose.yml`), a long-running `backend` container's `ts-node-dev` process can miss file changes on a Windows Docker Desktop bind mount and keep serving stale compiled code (for example, silently omitting the JWT's `amr` claim). If step 4b fails with `TOTP_REQUIRED` instead of `CERT_STEP_UP_FAILED`, restart the backend container and re-run.
+
 ## Scheduled jobs
 
 All UTC, configured in `backend/src/services/scheduler.service.ts`:
