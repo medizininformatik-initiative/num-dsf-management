@@ -165,13 +165,16 @@ fi
 # --- Step 3: Copy ---------------------------------------------------------
 step 3 "Copy $NEW_TREE into $DSF_ROOT"
 
+# Patterns with a leading / are anchored to the tree root. Without it rsync
+# matches the name at EVERY depth: a bare "hackathon/" also dropped
+# backend/src/db/hackathon/ and broke the backend build (2026-09-10).
 RSYNC_EXCLUDES=(
-  --exclude .env.prod
-  --exclude .env
-  --exclude docker-compose.apache.yml
-  --exclude hackathon/
-  --exclude .migrations-applied
-  --exclude certs/
+  --exclude /.env.prod
+  --exclude /.env
+  --exclude /docker-compose.apache.yml
+  --exclude /hackathon/
+  --exclude /.migrations-applied
+  --exclude /certs/
   --exclude node_modules/
   --exclude .git/
 )
@@ -196,6 +199,14 @@ if [ "$DRY_RUN" = true ]; then
   fi
 else
   rsync -a "${RSYNC_EXCLUDES[@]}" "$NEW_TREE/" "$DSF_ROOT/"
+  # Guard against exclude patterns that silently match nested paths (see the
+  # note above RSYNC_EXCLUDES): every source directory must exist in the target.
+  while IFS= read -r d; do
+    if [ ! -d "$DSF_ROOT/$d" ]; then
+      echo "ERROR: copy incomplete, $DSF_ROOT/$d is missing (check RSYNC_EXCLUDES)" >&2
+      exit 1
+    fi
+  done < <(cd "$NEW_TREE" && find backend/src frontend/src db scripts -type d 2>/dev/null)
   log "Copy complete"
 fi
 
