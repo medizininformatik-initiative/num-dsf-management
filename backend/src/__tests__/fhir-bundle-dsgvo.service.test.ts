@@ -20,8 +20,27 @@
  * Dependencies: db/connection, fhir.service
  */
 import { v4 as uuidv4 } from 'uuid';
+import forge from 'node-forge';
 import { db } from '../db/connection';
 import { generateBundle, generateFullBundle } from '../services/fhir.service';
+import { sha512FingerprintFromPem } from '../lib/certFingerprint';
+
+// Real self-signed cert PEM, generated in-process like certFingerprint.test.ts,
+// so the bundle's extension-certificate-thumbprint (now SHA-512 of the DER)
+// can be computed for real instead of asserted against a hand-picked constant.
+function makeCertPem(cn: string): string {
+  const keys = forge.pki.rsa.generateKeyPair({ bits: 1024 });
+  const cert = forge.pki.createCertificate();
+  cert.publicKey = keys.publicKey;
+  cert.serialNumber = '01';
+  cert.validity.notBefore = new Date('2020-01-01T00:00:00Z');
+  cert.validity.notAfter = new Date('2030-01-01T00:00:00Z');
+  const attrs = [{ shortName: 'CN', value: cn }];
+  cert.setSubject(attrs);
+  cert.setIssuer(attrs);
+  cert.sign(keys.privateKey);
+  return forge.pki.certificateToPem(cert);
+}
 
 interface Coding {
   system: string;
@@ -56,6 +75,7 @@ describe('fhir.service – generateBundle (single instance + DSGVO)', () => {
   const parentId = `${uniq('fhir-verbund')}.example.de`;
   const endpointId = `dsf-fhir.${orgId}`;
   const thumbprint = 'b'.repeat(64);
+  const certPem = makeCertPem(orgId);
   const certId = uuidv4();
   const membershipId = uuidv4();
   const contactId = uuidv4();
@@ -110,7 +130,7 @@ describe('fhir.service – generateBundle (single instance + DSGVO)', () => {
     await db('certificates').insert({
       id: certId,
       organization_id: orgId,
-      pem: 'CERT-MARKER',
+      pem: certPem,
       subject: `CN=${orgId}`,
       thumbprint,
       valid_until: '2099-01-01',
@@ -188,7 +208,7 @@ describe('fhir.service – generateBundle (single instance + DSGVO)', () => {
     expect(epEntry!.resource.name).toBe('Primary FHIR Endpoint');
   });
 
-  it('embeds the certificate thumbprint as an Organization extension', async () => {
+  it('embeds the certificate SHA-512 DSF thumbprint as an Organization extension', async () => {
     const bundle = (await generateBundle(instanceId, endpointId)) as Bundle;
     const orgEntry = bundle.entry.find(
       (e) =>
@@ -196,13 +216,17 @@ describe('fhir.service – generateBundle (single instance + DSGVO)', () => {
         (e.resource.identifier ?? []).some((i) => i.value === orgId),
     );
     const ext = orgEntry!.resource.extension ?? [];
-    expect(
-      ext.some(
-        (x) =>
-          x.url === 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint' &&
-          x.valueString === thumbprint,
-      ),
-    ).toBe(true);
+    const expectedSha512 = sha512FingerprintFromPem(certPem);
+    const match = ext.find(
+      (x) => x.url === 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint',
+    );
+    expect(match).toBeDefined();
+    // Must be the SHA-512 of the DER (128 lower-case hex), never the SHA-256
+    // `certificates.thumbprint` column value — that would violate the DSF
+    // StructureDefinition's hex-128-length constraint.
+    expect(match!.valueString).toBe(expectedSha512);
+    expect(match!.valueString).toMatch(/^[a-f0-9]{128}$/);
+    expect(match!.valueString).not.toBe(thumbprint);
   });
 
   it('emits an OrganizationAffiliation referencing the parent verbund', async () => {
@@ -238,6 +262,8 @@ describe('fhir.service – generateFullBundle (approved-only aggregation)', () =
   const draftOrgId = `${uniq('fb-draft')}.example.de`;
   const verbundId = `${uniq('fb-verbund')}.example.de`;
   const approvedEpId = `dsf-fhir.${approvedOrgId}`;
+  const approvedCertId = uuidv4();
+  const approvedCertPem = makeCertPem(approvedOrgId);
 
   beforeAll(async () => {
     await db('users').insert({
@@ -279,9 +305,9 @@ describe('fhir.service – generateFullBundle (approved-only aggregation)', () =
       updated_at: new Date(),
     });
     await db('certificates').insert({
-      id: uuidv4(),
+      id: approvedCertId,
       organization_id: approvedOrgId,
-      pem: 'CERT-MARKER',
+      pem: approvedCertPem,
       subject: `CN=${approvedOrgId}`,
       thumbprint: 'c'.repeat(64),
       valid_until: '2099-01-01',
@@ -362,5 +388,94 @@ describe('fhir.service – generateFullBundle (approved-only aggregation)', () =
     );
     expect(epEntry).toBeDefined();
     expect(epEntry!.resource.address).toBe(`https://${approvedEpId}/fhir`);
+  });
+
+  it('every certificate-thumbprint extension in the full bundle is a 128-hex SHA-512 value', async () => {
+    const bundle = (await generateFullBundle()) as Bundle;
+    const thumbprintExtensions = bundle.entry.flatMap((e) =>
+      e.resource.resourceType === 'Organization'
+        ? (e.resource.extension ?? []).filter(
+            (x) =>
+              x.url === 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint',
+          )
+        : [],
+    );
+    expect(thumbprintExtensions.length).toBeGreaterThan(0);
+    for (const ext of thumbprintExtensions) {
+      expect(ext.valueString).toMatch(/^[a-f0-9]{128}$/);
+    }
+    // The approved org's own extension must be the real SHA-512 of its stored PEM.
+    expect(thumbprintExtensions.map((x) => x.valueString)).toContain(
+      sha512FingerprintFromPem(approvedCertPem),
+    );
+  });
+});
+
+describe('fhir.service – generateBundle (corrupted certificate PEM)', () => {
+  const userId = uuidv4();
+  const instanceId = uuidv4();
+  const orgId = `${uniq('fhir-badpem')}.example.de`;
+  const endpointId = `dsf-fhir.${orgId}`;
+  const certId = uuidv4();
+
+  beforeAll(async () => {
+    await db('users').insert({
+      id: userId,
+      email: `${userId}@example.de`,
+      totp_enabled: false,
+      created_at: new Date(),
+    });
+    await db('instances').insert({
+      id: instanceId,
+      user_id: userId,
+      label: 'fhir-badpem',
+      created_at: new Date(),
+    });
+    await db('organizations').insert({
+      identifier: orgId,
+      instance_id: instanceId,
+      name: 'FHIR Bad PEM Org',
+      active: true,
+      email: 'org@example.de',
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    await db('endpoints').insert({
+      identifier: endpointId,
+      organization_id: orgId,
+      name: 'Primary FHIR Endpoint',
+      address: `https://${endpointId}/fhir`,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    // Corrupted at-rest data: not a parseable PEM. The bundle builder must
+    // surface this loudly (naming the certificate id) instead of silently
+    // dropping the organization's certificate from the allow-list.
+    await db('certificates').insert({
+      id: certId,
+      organization_id: orgId,
+      pem: 'CERT-MARKER',
+      subject: `CN=${orgId}`,
+      thumbprint: 'd'.repeat(64),
+      valid_until: '2099-01-01',
+      created_at: new Date(),
+    });
+  });
+
+  afterAll(async () => {
+    try {
+      await db('certificates').where({ organization_id: orgId }).del();
+      await db('endpoints').where({ identifier: endpointId }).del();
+    } finally {
+      await db('organizations').where({ identifier: orgId }).del();
+      await db('instances').where({ id: instanceId }).del();
+      await db('users').where({ id: userId }).del();
+    }
+  });
+
+  it('rejects with CERTIFICATE_PEM_INVALID naming the certificate id, instead of dropping it silently', async () => {
+    await expect(generateBundle(instanceId, endpointId)).rejects.toThrow(
+      `CERTIFICATE_PEM_INVALID:${certId}`,
+    );
   });
 });

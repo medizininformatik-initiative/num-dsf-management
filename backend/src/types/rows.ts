@@ -31,7 +31,9 @@ export interface EndpointIpRow {
 }
 
 export interface CertRow {
+  id: string;
   organization_id: string;
+  pem: string;
   thumbprint: string;
   valid_until: Date | string | null;
 }

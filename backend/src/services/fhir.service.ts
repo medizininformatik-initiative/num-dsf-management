@@ -7,6 +7,7 @@ import { db } from '../db/connection';
 import { v4 as uuidv4 } from 'uuid';
 import type { EndpointRow, CertRow } from '../types/rows';
 import { parseJsonStringArray as readRoles } from '../lib/jsonColumn';
+import { sha512FingerprintFromPem } from '../lib/certFingerprint';
 
 // Canonical DSF identifier systems (the 'sid' / SystemIDentifier slot). Other
 // AllowList tools in production use these exact URLs — see the reference
@@ -40,6 +41,9 @@ const PROFILE_ORG_PARENT = 'http://dsf.dev/fhir/StructureDefinition/organization
 const PROFILE_ENDPOINT = 'http://dsf.dev/fhir/StructureDefinition/endpoint';
 const PROFILE_AFFILIATION = 'http://dsf.dev/fhir/StructureDefinition/organization-affiliation';
 
+const CERT_THUMBPRINT_EXTENSION_URL =
+  'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint';
+
 // Build the `meta` block every emitted resource needs. profile picks the
 // strict validator on the receiver side; tag advertises read-access scope.
 function resourceMeta(profile: string) {
@@ -47,6 +51,29 @@ function resourceMeta(profile: string) {
     profile: [profile],
     tag: [READ_ACCESS_TAG_ALL],
   };
+}
+
+/**
+ * Build the Organization extension DSF requires for a member's certificate.
+ * DSF's dsf-extension-certificate-thumbprint-2.0.0 StructureDefinition enforces
+ * the `hex-128-length` constraint: the value MUST be 128 lower-case hex chars,
+ * i.e. SHA-512 of the certificate's DER bytes — NOT the SHA-256 stored in
+ * `certificates.thumbprint` (that column is kept only for the FHIR mTLS
+ * lookup and the UI). Re-derive SHA-512 from the stored PEM for every bundle.
+ * A PEM that fails to parse means corrupted at-rest data; surface that loudly
+ * (naming the certificate id) instead of silently dropping the org's cert.
+ */
+function certThumbprintExtension(cert: { id: string; pem: string }): {
+  url: string;
+  valueString: string;
+} {
+  let valueString: string;
+  try {
+    valueString = sha512FingerprintFromPem(cert.pem);
+  } catch {
+    throw new Error(`CERTIFICATE_PEM_INVALID:${cert.id}`);
+  }
+  return { url: CERT_THUMBPRINT_EXTENSION_URL, valueString };
 }
 
 // Legal disclaimer attached to every emitted bundle's `meta.extension`.
@@ -102,10 +129,7 @@ export async function generateBundle(instanceId: string, endpointId: string): Pr
   // --- Organization entry ---
   // FHIR R4: extension must be absent or non-empty — never []. Omit the key
   // entirely when the org has no certificate thumbprints.
-  const orgCertExtensions = certs.map((cert: { thumbprint: string }) => ({
-    url: 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint',
-    valueString: cert.thumbprint,
-  }));
+  const orgCertExtensions = certs.map(certThumbprintExtension);
   entries.push({
     fullUrl: `urn:uuid:${orgUuid}`,
     resource: {
@@ -243,7 +267,9 @@ export async function generateBundle(instanceId: string, endpointId: string): Pr
  * Generate the network-wide DSF Allow-List bundle.
  * Mirrors upstream dsf-process-allow-list/UpdateAllowList.java:
  * - Only APPROVED + active organizations.
- * - Each Organization carries cert thumbprints as extensions.
+ * - Each Organization carries the SHA-512 DSF thumbprint of its certificate(s)
+ *   as an extension, re-derived from the stored PEM (see certThumbprintExtension).
+ *   `certificates.thumbprint` in the database stays SHA-256 and is not used here.
  * - All endpoints of each org included.
  * - All OrganizationAffiliations included.
  * - Parent verbund Organizations (MII/NUM/…) referenced by affiliations are also generated.
@@ -320,10 +346,7 @@ export async function generateFullBundle(): Promise<object> {
 
     // FHIR R4: extension must be absent or non-empty — never []. Omit the key
     // entirely when the org has no certificate thumbprints.
-    const orgCertExtensions = certs.map((c: { thumbprint: string }) => ({
-      url: 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint',
-      valueString: c.thumbprint,
-    }));
+    const orgCertExtensions = certs.map(certThumbprintExtension);
     entries.push({
       fullUrl: `urn:uuid:${orgUuid}`,
       resource: {

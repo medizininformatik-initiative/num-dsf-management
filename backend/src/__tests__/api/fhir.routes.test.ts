@@ -103,7 +103,8 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
   const ipId = uuidv4();
   const approvalId = uuidv4();
   const thumbprint = thumbprintOf(SAMPLE_PEM);
-  const certThumbprint = 'a'.repeat(64); // certificate row thumbprint (cert extension)
+  const certThumbprint = 'a'.repeat(64); // certificate row's SHA-256 column (unrelated to the bundle extension)
+  const certPem = makeSelfSignedCert(`cert-${orgId}`);
 
   // Recognizable PII that the DSGVO guarantee says must NOT reach the bundle.
   const contactEmail = `pii-leak-${sfx}@example.de`;
@@ -161,7 +162,7 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
     await db('certificates').insert({
       id: certId,
       organization_id: orgId,
-      pem: 'CERT-MARKER',
+      pem: certPem,
       subject: `CN=${orgId}`,
       thumbprint: certThumbprint,
       valid_until: '2099-01-01',
@@ -261,7 +262,7 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
       expect(epEntry!.resource!.address).toBe(`https://${endpointId}/fhir`);
     });
 
-    it('embeds the certificate thumbprint as an Organization extension', async () => {
+    it('embeds the certificate SHA-512 DSF thumbprint as an Organization extension', async () => {
       const res = await request(app)
         .get(`/fhir/Bundle/${endpointId}`)
         .set('x-client-verify', 'SUCCESS')
@@ -273,13 +274,15 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
           (e.resource.identifier ?? []).some((i) => i.value === orgId),
       );
       const ext = orgEntry!.resource!.extension ?? [];
-      expect(
-        ext.some(
-          (x) =>
-            x.url === 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint' &&
-            x.valueString === certThumbprint,
-        ),
-      ).toBe(true);
+      const match = ext.find(
+        (x) => x.url === 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint',
+      );
+      expect(match).toBeDefined();
+      // SHA-512 of the DER (128 lower-case hex) per DSF's hex-128-length
+      // constraint — not the SHA-256 `certificates.thumbprint` column value.
+      expect(match!.valueString).toBe(sha512FingerprintFromPem(certPem));
+      expect(match!.valueString).toMatch(/^[a-f0-9]{128}$/);
+      expect(match!.valueString).not.toBe(certThumbprint);
     });
 
     it('DSGVO: the serialized bundle never contains the contact PII', async () => {

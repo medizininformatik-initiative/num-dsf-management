@@ -7,9 +7,28 @@
  *
  * Dependencies: generateFullBundle (fhir.service), db/connection (Knex)
  */
+import forge from 'node-forge';
 import { generateFullBundle } from '../../services/fhir.service';
 import { db } from '../../db/connection';
+import { sha512FingerprintFromPem } from '../../lib/certFingerprint';
 import { v4 as uuidv4 } from 'uuid';
+
+// Real self-signed cert PEM (in-process, like certFingerprint.test.ts) so the
+// bundle's extension-certificate-thumbprint (SHA-512 of the DER) is a genuine
+// computed value rather than a hand-picked constant.
+function makeCertPem(cn: string): string {
+  const keys = forge.pki.rsa.generateKeyPair({ bits: 1024 });
+  const cert = forge.pki.createCertificate();
+  cert.publicKey = keys.publicKey;
+  cert.serialNumber = '01';
+  cert.validity.notBefore = new Date('2020-01-01T00:00:00Z');
+  cert.validity.notAfter = new Date('2030-01-01T00:00:00Z');
+  const attrs = [{ shortName: 'CN', value: cn }];
+  cert.setSubject(attrs);
+  cert.setIssuer(attrs);
+  cert.sign(keys.privateKey);
+  return forge.pki.certificateToPem(cert);
+}
 
 interface Resource {
   resourceType: string;
@@ -34,6 +53,7 @@ describe('generateFullBundle', () => {
   const draftOrgId = 'fb-draft.example.de';
   const verbundId = 'fb-verbund.example.de';
   const epId = `dsf-fhir.${approvedOrgId}`;
+  const certPem = makeCertPem(approvedOrgId);
 
   beforeAll(async () => {
     await db('users')
@@ -75,7 +95,7 @@ describe('generateFullBundle', () => {
     await db('certificates').insert({
       id: uuidv4(),
       organization_id: approvedOrgId,
-      pem: 'PEM',
+      pem: certPem,
       subject: 'CN=test',
       thumbprint: 'a'.repeat(64),
       valid_until: '2099-01-01',
@@ -135,7 +155,7 @@ describe('generateFullBundle', () => {
     expect(orgIds).toContain(verbundId);
   });
 
-  it('attaches cert thumbprint as an extension on the org', async () => {
+  it('attaches the SHA-512 DSF thumbprint as an extension on the org', async () => {
     const bundle = (await generateFullBundle()) as { entry: Entry[] };
     const approvedEntry = bundle.entry.find(
       (e) =>
@@ -144,13 +164,15 @@ describe('generateFullBundle', () => {
     );
     expect(approvedEntry).toBeDefined();
     const ext = approvedEntry!.resource.extension ?? [];
-    expect(
-      ext.some(
-        (x) =>
-          x.url === 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint' &&
-          x.valueString === 'a'.repeat(64),
-      ),
-    ).toBe(true);
+    const match = ext.find(
+      (x) => x.url === 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint',
+    );
+    expect(match).toBeDefined();
+    // SHA-512 of the DER (128 lower-case hex) per DSF's hex-128-length
+    // constraint — never the SHA-256 `certificates.thumbprint` column value.
+    expect(match!.valueString).toBe(sha512FingerprintFromPem(certPem));
+    expect(match!.valueString).toMatch(/^[a-f0-9]{128}$/);
+    expect(match!.valueString).not.toBe('a'.repeat(64));
   });
 
   it('every internal reference resolves to a fullUrl in the same bundle', async () => {

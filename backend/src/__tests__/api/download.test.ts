@@ -10,11 +10,29 @@
  */
 
 import request from 'supertest';
+import forge from 'node-forge';
 import { app } from '../../app';
 import { db } from '../../db/connection';
 import { getTestToken } from '../helpers/auth';
 import { signGrant } from '../../lib/adminGrants';
 import { v4 as uuidv4 } from 'uuid';
+
+// Real self-signed cert PEM (in-process, like certFingerprint.test.ts). The
+// bundle download now parses the stored PEM to derive the SHA-512 DSF
+// thumbprint, so the seeded row needs a real certificate, not a placeholder.
+function makeCertPem(cn: string): string {
+  const keys = forge.pki.rsa.generateKeyPair({ bits: 1024 });
+  const cert = forge.pki.createCertificate();
+  cert.publicKey = keys.publicKey;
+  cert.serialNumber = '01';
+  cert.validity.notBefore = new Date('2020-01-01T00:00:00Z');
+  cert.validity.notAfter = new Date('2030-01-01T00:00:00Z');
+  const attrs = [{ shortName: 'CN', value: cn }];
+  cert.setSubject(attrs);
+  cert.setIssuer(attrs);
+  cert.sign(keys.privateKey);
+  return forge.pki.certificateToPem(cert);
+}
 
 interface BundleEntry {
   fullUrl: string;
@@ -88,7 +106,7 @@ describe('Download routes', () => {
     await db('certificates').insert({
       id: uuidv4(),
       organization_id: orgId,
-      pem: 'PEM',
+      pem: makeCertPem(orgId),
       subject: 'CN=download-test',
       thumbprint: 'b'.repeat(64),
       valid_until: '2099-01-01',
