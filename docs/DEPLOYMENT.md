@@ -200,6 +200,8 @@ Two distinct certificate hashes are in play; do not confuse them:
 - **Human sign-in** matches the client cert's **SHA-512 fingerprint** against `admin_cert_fingerprints` (admins are checked first) and then `organizations.client_cert_fingerprint` (per site). This is the allow-list gate for logging in.
 - **FHIR bundle download** by a DSF process still matches the machine cert's **SHA-256 thumbprint** against `organizations.client_cert_thumbprint`. That path is unchanged and independent of sign-in.
 
+A third, separate hash lives in the allow-list bundle content itself: each Organization's `extension-certificate-thumbprint` extension carries the **SHA-512** DSF thumbprint required by DSF's `dsf-extension-certificate-thumbprint-2.0.0` StructureDefinition (the `hex-128-length` constraint: 128 lower-case hex characters), computed from the stored certificate PEM. The `certificates.thumbprint` database column stays SHA-256; it is used only for the FHIR mTLS match above, not for the bundle content.
+
 For the browser sign-in to work, nginx terminates TLS, requests the client cert, and forwards it to the backend:
 
 - Mount `/etc/nginx/certs/server.crt` and `/etc/nginx/certs/server.key` (the TLS cert/key for the HTTPS listener).
