@@ -31,7 +31,12 @@ umask 077
 # It only matters if someone dry-runs this under Git Bash on Windows first,
 # where MSYS silently rewrites "/CN=..." into a Windows path (see
 # docs/RUN-FROM-IMAGE.md's Windows notes) and breaks the -subj argument below.
-export MSYS_NO_PATHCONV=1
+# MSYS2_ARG_CONV_EXCL (not MSYS_NO_PATHCONV) so only that one "/CN=..."
+# argument is left untranslated: OUT_DIR can itself be a POSIX-style path
+# (e.g. a Windows dry run passing /tmp/scratch), and MSYS_NO_PATHCONV would
+# also stop KEY_FILE/CRT_FILE/P12_FILE below from being translated for
+# openssl.exe, which would then fail to open them for writing.
+export MSYS2_ARG_CONV_EXCL="/CN="
 
 SCRIPT_NAME="$(basename "$0")"
 
@@ -51,6 +56,13 @@ Environment overrides:
                            docker compose --env-file /opt/dsf-allowlist/.env.prod \\
                              -f /opt/dsf-allowlist/docker-compose.cert-auth.yml \\
                              -f /opt/dsf-allowlist/docker-compose.apache.yml
+  SEED_CMD                 Command (without the trailing manifest.json arg)
+                           used to run the seed inside the backend container.
+                           Default: "node dist/db/seed-hackathon.js", which
+                           needs a built prod/release image. Against the dev
+                           stack (docker-compose.yml), where the backend
+                           container has no dist/, override with:
+                           SEED_CMD='node -r ts-node/register/transpile-only src/db/seed-hackathon.ts'
 
 Examples:
   ${SCRIPT_NAME}
@@ -89,6 +101,11 @@ fi
 
 # shellcheck disable=SC2034  # DSF_COMPOSE is intentionally split on word boundaries below
 DSF_COMPOSE="${DSF_COMPOSE:-docker compose --env-file /opt/dsf-allowlist/.env.prod -f /opt/dsf-allowlist/docker-compose.cert-auth.yml -f /opt/dsf-allowlist/docker-compose.apache.yml}"
+
+# Default targets the prod/release image's compiled output. The dev stack's
+# backend container has no dist/ (ts-node-dev compiles on the fly and never
+# writes it to disk), so a dev caller overrides this - see usage() above.
+SEED_CMD="${SEED_CMD:-node dist/db/seed-hackathon.js}"
 
 PARENT_ORGANIZATION="hackathon-hub.example.de"
 
@@ -230,7 +247,7 @@ log "Seeding the database (${N} user(s))..."
 # shellcheck disable=SC2086  # DSF_COMPOSE is a multi-word command prefix by design
 $DSF_COMPOSE run --rm -e HACKATHON_ALLOW_PRODUCTION="${HACKATHON_ALLOW_PRODUCTION:-}" \
   -v "${OUT_DIR}:/hackathon:ro" backend \
-  node dist/db/seed-hackathon.js /hackathon/manifest.json
+  sh -c "$SEED_CMD /hackathon/manifest.json"
 
 echo
 echo "=== Hackathon users ready ==="
