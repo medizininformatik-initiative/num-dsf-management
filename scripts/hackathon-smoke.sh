@@ -55,6 +55,13 @@ Usage: ${SCRIPT_NAME} <BASE_URL> [HACKATHON_DIR] [--keep]
 Environment overrides:
   SMOKE_INSECURE=1   Add curl --insecure. Needed for a self-signed dev TLS
                      certificate (e.g. the local docker-compose.yml stack).
+  DSF_ROOT           Deployment directory holding .env.prod and the compose files
+                     (default /opt/dsf-allowlist). Only used to clear the app's
+                     per-IP rate-limit counters before the login steps, because
+                     every rehearsal login comes from this one host.
+  DSF_COMPOSE        Compose command prefix for that stack (default derived from
+                     DSF_ROOT, same as hackathon-prepare.sh).
+  SMOKE_KEEP_RATELIMITS=1  Leave the rate-limit counters untouched.
 
 Requires: curl, openssl, and (python3 or jq).
 
@@ -307,6 +314,9 @@ pass() { # pass NAME HTTP_STATUS REASON
 fail() { # fail NAME HTTP_STATUS REASON
   TOTAL_COUNT=$((TOTAL_COUNT + 1))
   echo "FAIL [$2] $1 -- $3"
+  if [ "$2" = "429" ]; then
+    echo "HINT: 429 is a per-IP rate limit (app or proxy). Point DSF_ROOT/DSF_COMPOSE at the stack so the script clears the app counters, or wait 15 minutes."
+  fi
   SUMMARY+=("FAIL|$2|$1|$3")
   print_summary
   echo
@@ -329,6 +339,36 @@ if [ "$HTTP_STATUS" = "200" ] && [ "$DB_OK" = "ok" ] && [ "$REDIS_OK" = "ok" ]; 
 else
   fail "1-health-ready" "$HTTP_STATUS" "expected 200 db=ok redis=ok, got db=$DB_OK redis=$REDIS_OK"
 fi
+
+# ─── Rate-limit reset ──────────────────────────────────────────────────────
+# /auth/client-cert-login allows 5 attempts per 15 minutes per IP, and every
+# rehearsal login comes from this one host, so a re-run (or an earlier aborted
+# run) trips 429. Clearing only the ratelimit:* counters is harmless: they are
+# rebuilt on the next request. Skipped when the stack is not reachable.
+DSF_ROOT="${DSF_ROOT:-/opt/dsf-allowlist}"
+DSF_COMPOSE="${DSF_COMPOSE:-docker compose --env-file ${DSF_ROOT}/.env.prod -f ${DSF_ROOT}/docker-compose.cert-auth.yml -f ${DSF_ROOT}/docker-compose.apache.yml}"
+reset_rate_limits() {
+  if [ "${SMOKE_KEEP_RATELIMITS:-0}" = "1" ]; then
+    info "0-rate-limits" "left untouched (SMOKE_KEEP_RATELIMITS=1)"; return 0
+  fi
+  if ! command -v docker >/dev/null 2>&1; then
+    info "0-rate-limits" "docker not available here, counters left untouched"; return 0
+  fi
+  # shellcheck disable=SC2086  # DSF_COMPOSE is a multi-word command prefix by design
+  if ! $DSF_COMPOSE ps --status running --services 2>/dev/null | grep -qx redis; then
+    info "0-rate-limits" "redis not reachable via DSF_COMPOSE, counters left untouched"; return 0
+  fi
+  local rpw auth=""
+  rpw="$(grep '^REDIS_PASSWORD=' "${DSF_ROOT}/.env.prod" 2>/dev/null | cut -d= -f2- || true)"
+  [ -n "$rpw" ] && auth="-a '$rpw' --no-auth-warning"
+  # shellcheck disable=SC2086
+  if $DSF_COMPOSE exec -T redis sh -c "redis-cli $auth --scan --pattern 'ratelimit:*' | xargs -r redis-cli $auth DEL" >/dev/null 2>&1; then
+    info "0-rate-limits" "cleared app rate-limit counters (all rehearsal logins come from one IP)"
+  else
+    info "0-rate-limits" "could not clear counters; a 429 below means: wait 15 min or clear ratelimit:* in redis"
+  fi
+}
+reset_rate_limits
 
 # ─── Step 2: cert login for hack1/hack2/hack3 ──────────────────────────────
 # backend/src/routes/auth.routes.ts POST /auth/client-cert-login
