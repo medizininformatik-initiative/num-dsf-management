@@ -22,6 +22,7 @@ import {
   renewCertificate,
   parseCertificate,
 } from '../services/certificate.service';
+import { sha512FingerprintFromPem } from '../lib/certFingerprint';
 
 const SUFFIX = `${Date.now()}-${uuidv4().slice(0, 8)}`;
 const userId = uuidv4();
@@ -103,6 +104,11 @@ describe('certificate.service – DB CRUD', () => {
     expect(created.organization_id).toBe(orgIdentifier);
     expect(created.subject).toBe(expected.subject);
     expect(created.thumbprint).toBe(expected.thumbprint);
+    // DSF SHA-512 thumbprint is derived from the PEM, not the SHA-256 column,
+    // and the raw PEM itself must never leave the service on this path.
+    expect(created.thumbprintSha512).toBe(sha512FingerprintFromPem(pem));
+    expect(created.thumbprintSha512).toMatch(/^[a-f0-9]{128}$/);
+    expect((created as { pem?: string }).pem).toBeUndefined();
 
     // Row is actually persisted with the same values.
     const row = await db('certificates').where({ id: created.id }).first();
@@ -154,6 +160,11 @@ describe('certificate.service – DB CRUD', () => {
     expect(
       listed.every((r: { organization_id: string }) => r.organization_id === orgIdentifier),
     ).toBe(true);
+    // Every listed row carries the DSF SHA-512 thumbprint and never the raw PEM.
+    expect(
+      listed.every((r: { thumbprintSha512: string }) => /^[a-f0-9]{128}$/.test(r.thumbprintSha512)),
+    ).toBe(true);
+    expect(listed.every((r) => !('pem' in r))).toBe(true);
     const times = listed.map((r: { created_at: string | Date }) =>
       new Date(r.created_at).getTime(),
     );
@@ -202,6 +213,9 @@ describe('certificate.service – DB CRUD', () => {
     expect(renewed.id).not.toBe(oldCert.id);
     expect(renewed.subject).toBe(expectedNew.subject);
     expect(renewed.thumbprint).toBe(expectedNew.thumbprint);
+    expect(renewed.thumbprintSha512).toBe(sha512FingerprintFromPem(newPem));
+    expect(renewed.thumbprintSha512).toMatch(/^[a-f0-9]{128}$/);
+    expect((renewed as { pem?: string }).pem).toBeUndefined();
 
     // Old gone, new present.
     expect(await db('certificates').where({ id: oldCert.id }).first()).toBeUndefined();

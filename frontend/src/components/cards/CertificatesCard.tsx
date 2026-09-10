@@ -2,6 +2,7 @@
  * CertificatesCard.tsx — entity card listing org certificates with validity bars and expiry days.
  * Supports renew/add (via useModals) and undoable, cross-user-guarded deletion.
  */
+import { toast } from 'sonner';
 import { useCertificates, useDeleteCertificate } from '../../hooks/useCertificates';
 import { useOrganization } from '../../hooks/useOrganization';
 import { EntityCard } from './EntityCard';
@@ -16,6 +17,7 @@ interface CertRow {
   id: string;
   subject: string;
   valid_until: string;
+  thumbprintSha512: string;
 }
 
 export function CertificatesCard({ instanceId }: { instanceId: string }) {
@@ -104,6 +106,41 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
                 >
                   {t('certCardStatusActive')}
                 </span>
+              </div>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}
+              >
+                <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
+                  {t('certCardDsfThumbprintLabel')}
+                </span>
+                <span
+                  className="mono-id"
+                  title={cert.thumbprintSha512}
+                  style={{ fontSize: '10px', color: 'var(--text-secondary)' }}
+                >
+                  {cert.thumbprintSha512.slice(0, 16)}…
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(cert.thumbprintSha512);
+                    toast.success(t('certCardThumbprintCopied'));
+                  }}
+                  title={t('certCardCopyThumbprint')}
+                  aria-label={t('certCardCopyThumbprint')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
+                    content_copy
+                  </span>
+                </button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div

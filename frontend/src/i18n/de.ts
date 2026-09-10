@@ -304,6 +304,9 @@ export const de: Record<TranslationKey, string> = {
   certRemoveBtn: 'Entfernen',
   certCardFkOrganization: 'Organisation',
   certCardStatusActive: 'AKTIV',
+  certCardDsfThumbprintLabel: 'DSF-Thumbprint (SHA-512)',
+  certCardCopyThumbprint: 'DSF-Thumbprint kopieren',
+  certCardThumbprintCopied: 'DSF-Thumbprint in die Zwischenablage kopiert.',
 
   // EndpointsCard
   endpointCardFkOrganization: 'Organisation',

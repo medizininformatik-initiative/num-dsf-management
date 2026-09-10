@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { app } from '../../app';
 import { db } from '../../db/connection';
 import { getTestToken } from '../helpers/auth';
+import { sha512FingerprintFromPem } from '../../lib/certFingerprint';
 
 // Concurrency-safe fixture: every value is unique to this suite so it can run
 // in parallel with other jest workers without colliding on fixed ids.
@@ -109,6 +110,10 @@ describe('Certificates API', () => {
       expect(res.body.data.organization_id).toBe(orgId);
       expect(typeof res.body.data.thumbprint).toBe('string');
       expect(res.body.data.thumbprint).toHaveLength(64);
+      // DSF SHA-512 thumbprint (128 hex, derived from the PEM) and no raw PEM echoed back.
+      expect(res.body.data.thumbprintSha512).toBe(sha512FingerprintFromPem(pem));
+      expect(res.body.data.thumbprintSha512).toMatch(/^[a-f0-9]{128}$/);
+      expect(res.body.data.pem).toBeUndefined();
 
       // Confirm it was actually persisted under this org.
       const row = await db('certificates').where({ id: res.body.data.id }).first();
@@ -158,6 +163,13 @@ describe('Certificates API', () => {
       expect(
         res.body.data.every((c: { organization_id: string }) => c.organization_id === orgId),
       ).toBe(true);
+      // Every listed certificate carries the DSF SHA-512 thumbprint and never the raw PEM.
+      expect(
+        res.body.data.every((c: { thumbprintSha512: string }) =>
+          /^[a-f0-9]{128}$/.test(c.thumbprintSha512),
+        ),
+      ).toBe(true);
+      expect(res.body.data.every((c: { pem?: string }) => c.pem === undefined)).toBe(true);
     });
   });
 

@@ -8,7 +8,22 @@ import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
 import { isCaBlacklisted } from './ca-blacklist.service';
 import { errMessage } from '../lib/errMessage';
+import { sha512FingerprintFromPem } from '../lib/certFingerprint';
 import { v4 as uuidv4 } from 'uuid';
+
+// Columns selected for the API-facing certificate row, before the
+// pem-to-thumbprintSha512 projection in withThumbprintSha512() below. A
+// concrete interface (rather than Knex's implicit `any`) keeps that
+// projection's result properly typed instead of collapsing to `any`.
+interface CertificateRow {
+  id: string;
+  organization_id: string;
+  subject: string;
+  thumbprint: string;
+  valid_until: Date | string | null;
+  created_at: Date | string;
+  pem: string;
+}
 
 // Match BEGIN/END markers for any private-key variant, case-insensitive.
 // Substring checks against literal upper-case 'PRIVATE KEY' miss PEMs that
@@ -65,13 +80,26 @@ export function parseCertificate(pem: string): {
   }
 }
 
+/**
+ * Attach the DSF SHA-512 thumbprint (128 lower-case hex, derived from the
+ * stored PEM) to a certificate row for API responses, and strip the PEM
+ * itself back out — the certificates API never returns raw PEM content.
+ */
+function withThumbprintSha512<T extends { pem: string }>(
+  row: T,
+): Omit<T, 'pem'> & { thumbprintSha512: string } {
+  const { pem, ...rest } = row;
+  return { ...rest, thumbprintSha512: sha512FingerprintFromPem(pem) };
+}
+
 export async function getCertificates(instanceId: string) {
   const org = await db('organizations').where({ instance_id: instanceId }).first();
   if (!org) return [];
-  return db('certificates')
+  const rows: CertificateRow[] = await db('certificates')
     .where({ organization_id: org.identifier })
-    .select('id', 'organization_id', 'subject', 'thumbprint', 'valid_until', 'created_at')
+    .select('id', 'organization_id', 'subject', 'thumbprint', 'valid_until', 'created_at', 'pem')
     .orderBy('created_at', 'desc');
+  return rows.map(withThumbprintSha512);
 }
 
 /**
@@ -113,10 +141,11 @@ export async function createCertificate(
     diffJson: { subject, thumbprint, validUntil },
     ipAddress,
   });
-  return db('certificates')
+  const row: CertificateRow = await db('certificates')
     .where({ id })
-    .select('id', 'organization_id', 'subject', 'thumbprint', 'valid_until', 'created_at')
+    .select('id', 'organization_id', 'subject', 'thumbprint', 'valid_until', 'created_at', 'pem')
     .first();
+  return withThumbprintSha512(row);
 }
 
 export async function deleteCertificate(
@@ -208,9 +237,10 @@ export async function renewCertificate(
       ipAddress,
     });
 
-    return trx('certificates')
+    const row: CertificateRow = await trx('certificates')
       .where({ id: newId })
-      .select('id', 'organization_id', 'subject', 'thumbprint', 'valid_until', 'created_at')
+      .select('id', 'organization_id', 'subject', 'thumbprint', 'valid_until', 'created_at', 'pem')
       .first();
+    return withThumbprintSha512(row);
   });
 }

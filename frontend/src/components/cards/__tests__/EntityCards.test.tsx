@@ -225,7 +225,16 @@ describe('EndpointsCard', () => {
 describe('CertificatesCard', () => {
   it('renders a certificate row with subject, active badge and days-left', () => {
     const farFuture = new Date(Date.now() + 200 * 86400000).toISOString().slice(0, 10);
-    mCerts.mockReturnValue(ok([{ id: 'cert1', subject: 'CN=ukm.de', valid_until: farFuture }]));
+    mCerts.mockReturnValue(
+      ok([
+        {
+          id: 'cert1',
+          subject: 'CN=ukm.de',
+          valid_until: farFuture,
+          thumbprintSha512: 'a1'.repeat(64),
+        },
+      ]),
+    );
     renderWithProviders(<CertificatesCard instanceId="i1" />);
 
     expect(screen.getByText('CN=ukm.de')).toBeInTheDocument();

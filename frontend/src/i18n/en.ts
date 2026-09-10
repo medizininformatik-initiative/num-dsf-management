@@ -299,6 +299,9 @@ export const en = {
   certRemoveBtn: 'Remove',
   certCardFkOrganization: 'Organization',
   certCardStatusActive: 'ACTIVE',
+  certCardDsfThumbprintLabel: 'DSF Thumbprint (SHA-512)',
+  certCardCopyThumbprint: 'Copy DSF thumbprint',
+  certCardThumbprintCopied: 'DSF thumbprint copied to clipboard.',
 
   // EndpointsCard
   endpointCardFkOrganization: 'Organization',
