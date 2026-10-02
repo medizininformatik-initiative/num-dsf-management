@@ -1,0 +1,883 @@
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "tag": [
+      {
+        "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+        "code": "ALL",
+        "display": "everybody"
+      }
+    ]
+  },
+  "type": "transaction",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:891e6709-cb03-4c9f-8e0e-a44f8812743e",
+      "resource": {
+        "resourceType": "Organization",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-parent"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://dsf.dev/sid/organization-identifier",
+            "value": "verbund-eye.example.de"
+          }
+        ],
+        "active": true,
+        "name": "Verbund Eye"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Organization?identifier=http://dsf.dev/sid/organization-identifier|verbund-eye.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5f2e7bce-78cf-43b8-81ed-be648a48cc58",
+      "resource": {
+        "resourceType": "Organization",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-parent"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://dsf.dev/sid/organization-identifier",
+            "value": "verbund-mii.example.de"
+          }
+        ],
+        "active": true,
+        "name": "Verbund MII"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Organization?identifier=http://dsf.dev/sid/organization-identifier|verbund-mii.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:2b78c4f6-ccfe-4989-8a2f-ac3ead350e97",
+      "resource": {
+        "resourceType": "Organization",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-parent"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://dsf.dev/sid/organization-identifier",
+            "value": "verbund-num.example.de"
+          }
+        ],
+        "active": true,
+        "name": "Verbund NUM"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Organization?identifier=http://dsf.dev/sid/organization-identifier|verbund-num.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:e65d8fba-3a3d-4d19-83cf-4759d7a3a962",
+      "resource": {
+        "resourceType": "OrganizationAffiliation",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-affiliation"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "active": true,
+        "organization": {
+          "reference": "urn:uuid:891e6709-cb03-4c9f-8e0e-a44f8812743e",
+          "type": "Organization"
+        },
+        "participatingOrganization": {
+          "reference": "Organization?identifier=http://dsf.dev/sid/organization-identifier|klinik-empfang.example.de",
+          "type": "Organization"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "DIC"
+              }
+            ]
+          }
+        ],
+        "endpoint": [
+          {
+            "reference": "Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-empfang.example.de",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-eye.example.de&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-empfang.example.de&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-empfang.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:70a3ebbf-f25f-44c0-8860-25b02e3afe4b",
+      "resource": {
+        "resourceType": "OrganizationAffiliation",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-affiliation"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "active": true,
+        "organization": {
+          "reference": "urn:uuid:5f2e7bce-78cf-43b8-81ed-be648a48cc58",
+          "type": "Organization"
+        },
+        "participatingOrganization": {
+          "reference": "Organization?identifier=http://dsf.dev/sid/organization-identifier|klinik-empfang.example.de",
+          "type": "Organization"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "DIC"
+              }
+            ]
+          }
+        ],
+        "endpoint": [
+          {
+            "reference": "Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-empfang.example.de",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-mii.example.de&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-empfang.example.de&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-empfang.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:f5c19e38-1f87-47f0-83ef-a88e1e675c75",
+      "resource": {
+        "resourceType": "OrganizationAffiliation",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-affiliation"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "active": true,
+        "organization": {
+          "reference": "urn:uuid:2b78c4f6-ccfe-4989-8a2f-ac3ead350e97",
+          "type": "Organization"
+        },
+        "participatingOrganization": {
+          "reference": "Organization?identifier=http://dsf.dev/sid/organization-identifier|klinik-empfang.example.de",
+          "type": "Organization"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "DIC"
+              }
+            ]
+          }
+        ],
+        "endpoint": [
+          {
+            "reference": "Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-empfang.example.de",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-num.example.de&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-empfang.example.de&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-empfang.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:f9614ffb-a167-49de-8691-d4314d129aa4",
+      "resource": {
+        "resourceType": "Organization",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "extension": [
+          {
+            "url": "http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint",
+            "valueString": "5cd375c407a79991f240a9299b246614ba24bd9bedb5db1dbb6e9e466ce115bb48ebf1a1c1db94bd01b6964f22379204600baa06a16a7e7775e255d352c39e1b"
+          }
+        ],
+        "identifier": [
+          {
+            "system": "http://dsf.dev/sid/organization-identifier",
+            "value": "klinik-a.example.de"
+          }
+        ],
+        "active": true,
+        "name": "Klinik A",
+        "endpoint": [
+          {
+            "reference": "urn:uuid:9c44aeaf-f7ce-4dba-8875-c7602e749b3d",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Organization?identifier=http://dsf.dev/sid/organization-identifier|klinik-a.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:9c44aeaf-f7ce-4dba-8875-c7602e749b3d",
+      "resource": {
+        "resourceType": "Endpoint",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/endpoint"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://dsf.dev/sid/endpoint-identifier",
+            "value": "dsf.klinik-a.example.de"
+          }
+        ],
+        "status": "active",
+        "connectionType": {
+          "system": "http://terminology.hl7.org/CodeSystem/endpoint-connection-type",
+          "code": "hl7-fhir-rest"
+        },
+        "name": "DSF Endpoint for dsf.klinik-a.example.de",
+        "managingOrganization": {
+          "reference": "urn:uuid:f9614ffb-a167-49de-8691-d4314d129aa4",
+          "type": "Organization"
+        },
+        "payloadType": [
+          {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/resource-types",
+                "code": "Task"
+              }
+            ]
+          }
+        ],
+        "payloadMimeType": ["application/fhir+json", "application/fhir+xml"],
+        "address": "https://dsf.klinik-a.example.de/fhir"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-a.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7a01baec-9f7e-42f7-8b49-fc67bc332acf",
+      "resource": {
+        "resourceType": "OrganizationAffiliation",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-affiliation"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "active": true,
+        "organization": {
+          "reference": "urn:uuid:5f2e7bce-78cf-43b8-81ed-be648a48cc58",
+          "type": "Organization"
+        },
+        "participatingOrganization": {
+          "reference": "urn:uuid:f9614ffb-a167-49de-8691-d4314d129aa4",
+          "type": "Organization"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "DIC"
+              }
+            ]
+          },
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "DMS"
+              }
+            ]
+          }
+        ],
+        "endpoint": [
+          {
+            "reference": "urn:uuid:9c44aeaf-f7ce-4dba-8875-c7602e749b3d",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-mii.example.de&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-a.example.de&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-a.example.de"
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "url": "OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-num.example.de&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-a.example.de&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-a.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:a69871d4-ae9d-439c-8794-6b4ac4ac403e",
+      "resource": {
+        "resourceType": "Organization",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "extension": [
+          {
+            "url": "http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint",
+            "valueString": "bb6df5ec003e1b5daeb392edd6bc1bb1a6029a4f453f0abc9b7a3fe32c22cc3aae4d1cbd485b6ccb0ee9734a487be9190cfab32c36178408fd4e269e3dbc7b12"
+          },
+          {
+            "url": "http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint",
+            "valueString": "322c56f89794b4d7422fcd4280794e0674d864ed6f06f134e9941de22b0b23f77f2a3599815dc6b76e7a0d3a4947fd5df242bc28b984414eabe7758f7cced131"
+          },
+          {
+            "url": "http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint",
+            "valueString": "ceb93dff468f95571f2db0af46d50e0065c258b1a5a762f45d9b492246e062960a921820c692959447428989b3672a5dfd4e77c6b85597ff5a969d386af6c40c"
+          }
+        ],
+        "identifier": [
+          {
+            "system": "http://dsf.dev/sid/organization-identifier",
+            "value": "klinik-b.example.de"
+          }
+        ],
+        "active": true,
+        "name": "Klinik B",
+        "endpoint": [
+          {
+            "reference": "urn:uuid:dae0eaf7-2260-44b0-8253-4d4e03bddd51",
+            "type": "Endpoint"
+          },
+          {
+            "reference": "urn:uuid:036b233d-9c0c-4401-8370-a86f16575c21",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Organization?identifier=http://dsf.dev/sid/organization-identifier|klinik-b.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:dae0eaf7-2260-44b0-8253-4d4e03bddd51",
+      "resource": {
+        "resourceType": "Endpoint",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/endpoint"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://dsf.dev/sid/endpoint-identifier",
+            "value": "nth.klinik-b.example.de"
+          }
+        ],
+        "status": "active",
+        "connectionType": {
+          "system": "http://terminology.hl7.org/CodeSystem/endpoint-connection-type",
+          "code": "hl7-fhir-rest"
+        },
+        "name": "DSF Endpoint for nth.klinik-b.example.de",
+        "managingOrganization": {
+          "reference": "urn:uuid:a69871d4-ae9d-439c-8794-6b4ac4ac403e",
+          "type": "Organization"
+        },
+        "payloadType": [
+          {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/resource-types",
+                "code": "Task"
+              }
+            ]
+          }
+        ],
+        "payloadMimeType": ["application/fhir+json", "application/fhir+xml"],
+        "address": "https://nth.klinik-b.example.de/fhir"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|nth.klinik-b.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:036b233d-9c0c-4401-8370-a86f16575c21",
+      "resource": {
+        "resourceType": "Endpoint",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/endpoint"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://dsf.dev/sid/endpoint-identifier",
+            "value": "mii.klinik-b.example.de"
+          }
+        ],
+        "status": "active",
+        "connectionType": {
+          "system": "http://terminology.hl7.org/CodeSystem/endpoint-connection-type",
+          "code": "hl7-fhir-rest"
+        },
+        "name": "DSF Endpoint for mii.klinik-b.example.de",
+        "managingOrganization": {
+          "reference": "urn:uuid:a69871d4-ae9d-439c-8794-6b4ac4ac403e",
+          "type": "Organization"
+        },
+        "payloadType": [
+          {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/resource-types",
+                "code": "Task"
+              }
+            ]
+          }
+        ],
+        "payloadMimeType": ["application/fhir+json", "application/fhir+xml"],
+        "address": "https://mii.klinik-b.example.de/fhir"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|mii.klinik-b.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:01ff4832-dd24-4ddb-82b0-ea934e62d607",
+      "resource": {
+        "resourceType": "OrganizationAffiliation",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-affiliation"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "active": true,
+        "organization": {
+          "reference": "urn:uuid:2b78c4f6-ccfe-4989-8a2f-ac3ead350e97",
+          "type": "Organization"
+        },
+        "participatingOrganization": {
+          "reference": "urn:uuid:a69871d4-ae9d-439c-8794-6b4ac4ac403e",
+          "type": "Organization"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "AMS"
+              }
+            ]
+          }
+        ],
+        "endpoint": [
+          {
+            "reference": "urn:uuid:036b233d-9c0c-4401-8370-a86f16575c21",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-num.example.de&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-b.example.de&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|mii.klinik-b.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:34f6bfe0-936b-4a9c-8b76-d6220a3bb822",
+      "resource": {
+        "resourceType": "OrganizationAffiliation",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-affiliation"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "active": true,
+        "organization": {
+          "reference": "urn:uuid:2b78c4f6-ccfe-4989-8a2f-ac3ead350e97",
+          "type": "Organization"
+        },
+        "participatingOrganization": {
+          "reference": "urn:uuid:a69871d4-ae9d-439c-8794-6b4ac4ac403e",
+          "type": "Organization"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "DTS"
+              }
+            ]
+          }
+        ],
+        "endpoint": [
+          {
+            "reference": "urn:uuid:dae0eaf7-2260-44b0-8253-4d4e03bddd51",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-num.example.de&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-b.example.de&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|nth.klinik-b.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:32de1e63-d039-4fe1-8131-e6609a081665",
+      "resource": {
+        "resourceType": "OrganizationAffiliation",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-affiliation"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "active": true,
+        "organization": {
+          "reference": "urn:uuid:891e6709-cb03-4c9f-8e0e-a44f8812743e",
+          "type": "Organization"
+        },
+        "participatingOrganization": {
+          "reference": "urn:uuid:a69871d4-ae9d-439c-8794-6b4ac4ac403e",
+          "type": "Organization"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "AMS"
+              }
+            ]
+          }
+        ],
+        "endpoint": [
+          {
+            "reference": "urn:uuid:036b233d-9c0c-4401-8370-a86f16575c21",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-eye.example.de&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-b.example.de&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|mii.klinik-b.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:ed2f5282-e79a-4e54-814a-48d21426de0b",
+      "resource": {
+        "resourceType": "OrganizationAffiliation",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-affiliation"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "active": true,
+        "organization": {
+          "reference": "urn:uuid:5f2e7bce-78cf-43b8-81ed-be648a48cc58",
+          "type": "Organization"
+        },
+        "participatingOrganization": {
+          "reference": "urn:uuid:a69871d4-ae9d-439c-8794-6b4ac4ac403e",
+          "type": "Organization"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "AMS"
+              }
+            ]
+          },
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "DMS"
+              }
+            ]
+          }
+        ],
+        "endpoint": [
+          {
+            "reference": "urn:uuid:036b233d-9c0c-4401-8370-a86f16575c21",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-mii.example.de&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-b.example.de&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|mii.klinik-b.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:b9914396-1541-459e-8c84-de324ce0c11b",
+      "resource": {
+        "resourceType": "Organization",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "extension": [
+          {
+            "url": "http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint",
+            "valueString": "356018d5c7030cc9d40d7f64b461dc887f94708aa88b90340e3eea59b5b5fbb49ae180d84a9bd4e9f9ff8f5ed9122dc78480a54c7aed7f942fbd9728a4d79470"
+          }
+        ],
+        "identifier": [
+          {
+            "system": "http://dsf.dev/sid/organization-identifier",
+            "value": "klinik-c.example.de"
+          }
+        ],
+        "active": true,
+        "name": "Klinik C",
+        "endpoint": [
+          {
+            "reference": "urn:uuid:ab3a0b2d-3818-4db1-83e6-97b6d7ae8d63",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Organization?identifier=http://dsf.dev/sid/organization-identifier|klinik-c.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:ab3a0b2d-3818-4db1-83e6-97b6d7ae8d63",
+      "resource": {
+        "resourceType": "Endpoint",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/endpoint"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://dsf.dev/sid/endpoint-identifier",
+            "value": "dsf.klinik-c.example.de"
+          }
+        ],
+        "status": "active",
+        "connectionType": {
+          "system": "http://terminology.hl7.org/CodeSystem/endpoint-connection-type",
+          "code": "hl7-fhir-rest"
+        },
+        "name": "DSF Endpoint for dsf.klinik-c.example.de",
+        "managingOrganization": {
+          "reference": "urn:uuid:b9914396-1541-459e-8c84-de324ce0c11b",
+          "type": "Organization"
+        },
+        "payloadType": [
+          {
+            "coding": [
+              {
+                "system": "http://hl7.org/fhir/resource-types",
+                "code": "Task"
+              }
+            ]
+          }
+        ],
+        "payloadMimeType": ["application/fhir+json", "application/fhir+xml"],
+        "address": "https://dsf.klinik-c.example.de/fhir"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-c.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:b3947214-c10e-4d70-86cf-2ef2c63347a7",
+      "resource": {
+        "resourceType": "OrganizationAffiliation",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-affiliation"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "active": true,
+        "organization": {
+          "reference": "urn:uuid:5f2e7bce-78cf-43b8-81ed-be648a48cc58",
+          "type": "Organization"
+        },
+        "participatingOrganization": {
+          "reference": "urn:uuid:b9914396-1541-459e-8c84-de324ce0c11b",
+          "type": "Organization"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "DIC"
+              }
+            ]
+          },
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "DMS"
+              }
+            ]
+          }
+        ],
+        "endpoint": [
+          {
+            "reference": "urn:uuid:ab3a0b2d-3818-4db1-83e6-97b6d7ae8d63",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-mii.example.de&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-c.example.de&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-c.example.de"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:8e775e3f-c247-4c4c-8816-70540d9a51d5",
+      "resource": {
+        "resourceType": "OrganizationAffiliation",
+        "meta": {
+          "profile": ["http://dsf.dev/fhir/StructureDefinition/organization-affiliation"],
+          "tag": [
+            {
+              "system": "http://dsf.dev/fhir/CodeSystem/read-access-tag",
+              "code": "ALL"
+            }
+          ]
+        },
+        "active": true,
+        "organization": {
+          "reference": "urn:uuid:891e6709-cb03-4c9f-8e0e-a44f8812743e",
+          "type": "Organization"
+        },
+        "participatingOrganization": {
+          "reference": "urn:uuid:b9914396-1541-459e-8c84-de324ce0c11b",
+          "type": "Organization"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "http://dsf.dev/fhir/CodeSystem/organization-role",
+                "code": "DIC"
+              }
+            ]
+          }
+        ],
+        "endpoint": [
+          {
+            "reference": "urn:uuid:ab3a0b2d-3818-4db1-83e6-97b6d7ae8d63",
+            "type": "Endpoint"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-eye.example.de&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-c.example.de&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-c.example.de"
+      }
+    }
+  ]
+}
