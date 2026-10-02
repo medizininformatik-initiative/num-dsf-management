@@ -324,10 +324,7 @@ export const de: Record<TranslationKey, string> = {
   membershipCardDeleteAria: 'Mitgliedschaft löschen',
 
   // ApprovalCard
-  approvalCardSubmit: 'Einreichen',
-  approvalCardInstanceFallback: 'Instanz',
   approvalCardRequestNum: 'Anfrage #{n}',
-  approvalCardDaysAgo: 'vor {n}T',
 
   // OrganizationModal
   orgModalTitle: 'Organisation bearbeiten',

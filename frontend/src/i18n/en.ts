@@ -319,10 +319,7 @@ export const en = {
   membershipCardDeleteAria: 'Delete membership',
 
   // ApprovalCard
-  approvalCardSubmit: 'Submit',
-  approvalCardInstanceFallback: 'Instance',
   approvalCardRequestNum: 'Request #{n}',
-  approvalCardDaysAgo: '{n}d ago',
 
   // OrganizationModal
   orgModalTitle: 'Edit Organization',
