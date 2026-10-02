@@ -196,9 +196,13 @@ start_dsf() {
   [ "$(sha256sum "$WORK/process/$PLUGIN" | awk '{print $1}')" = "$PLUGIN_SHA256" ] \
     || { echo "plugin checksum mismatch" >&2; exit 1; }
   "${COMPOSE[@]}" up -d --quiet-pull
-  printf '   waiting for the BPE to deploy downloadAllowList '
+  # Ready means: the plugin's ActivityDefinition is active AND the BPE opened
+  # its Task and QuestionnaireResponse websockets. A Task posted before the
+  # Task websocket is open can stay "requested" for minutes.
+  printf '   waiting for the BPE to deploy downloadAllowList and subscribe '
   for _ in $(seq 1 90); do
-    if [ "$(total 'ActivityDefinition?url=http://dsf.dev/bpe/Process/downloadAllowList&status=active' 2>/dev/null)" = "1" ]; then
+    if [ "$(total 'ActivityDefinition?url=http://dsf.dev/bpe/Process/downloadAllowList&status=active' 2>/dev/null)" = "1" ] \
+      && [ "$("${COMPOSE[@]}" logs bpe-app 2>/dev/null | grep -c 'Websocket open')" -ge 2 ]; then
       echo " ready"
       return 0
     fi
