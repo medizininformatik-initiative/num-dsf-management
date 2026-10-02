@@ -391,9 +391,9 @@ export const de: Record<TranslationKey, string> = {
 
   // OrganizationModal
   orgModalTitle: 'Organisation bearbeiten',
-  orgModalSubtitle: 'Aktualisiere die Details deiner Organisation.',
+  orgModalSubtitle: 'Aktualisieren Sie die Angaben Ihrer Organisation.',
   orgModalFieldIdentifier: 'Kennung (FQDN)',
-  orgModalFieldIdentifierHint: 'Kürzester FQDN der Website deiner Organisation, z.B. ukm.de',
+  orgModalFieldIdentifierHint: 'Kürzester FQDN der Website Ihrer Organisation, z. B. ukm.de',
   orgModalFieldIdentifierPlaceholder: 'z.B. ukm.de',
   orgModalFieldName: 'Name',
   orgModalFieldNamePlaceholder: 'z.B. Universitätsklinikum Münster',
@@ -456,12 +456,12 @@ export const de: Record<TranslationKey, string> = {
   endpointModalFieldIdentifier: 'Kennung (FQDN)',
   endpointModalFieldIdentifierPlaceholder: 'z.B. dsf-fhir.krankenhaus.de',
   endpointModalFieldAddress: 'Adresse (FHIR-URL)',
-  endpointModalFieldAddressHint: 'Die FHIR-Endpunkt-URL deiner DSF-Instanz',
+  endpointModalFieldAddressHint: 'Die FHIR-Endpunkt-URL Ihrer DSF-Instanz',
   endpointModalFieldAddressPlaceholder: 'z.B. https://dsf-fhir.krankenhaus.de/fhir',
   endpointModalIpLabel: 'Zugehörige IP-Adressen',
   endpointModalIpHint:
-    'Gib ausgehende IP-Adressen an, damit andere Organisationen ihre Firewalls konfigurieren können.',
-  endpointModalAddIp: '+ IP hinzufügen',
+    'Geben Sie ausgehende IP-Adressen an, damit andere Organisationen ihre Firewalls konfigurieren können.',
+  endpointModalAddIp: 'IP-Adresse hinzufügen',
   endpointModalIpPlaceholder: 'z.B. 128.176.232.132',
   endpointModalFhirLabel: 'FHIR',
   endpointModalFhirDesc: 'ausgehende IP des FHIR-Servers',
@@ -477,14 +477,14 @@ export const de: Record<TranslationKey, string> = {
   certModalTitle: 'Neues Zertifikat hinzufügen',
   certModalPrivateKeyWarningTitle: 'Keinen privaten Schlüssel einfügen',
   certModalPrivateKeyWarningBody:
-    'Füge nur den öffentlichen Zertifikat-PEM-Block ein. Niemals den privaten Schlüssel einschließen.',
+    'Fügen Sie nur den öffentlichen Zertifikat-PEM-Block ein, niemals den privaten Schlüssel.',
   certModalFieldPem: 'Zertifikat PEM',
-  certModalDropHint: '.pem-Datei hier ablegen oder unten einfügen',
+  certModalDropHint: '.pem-, .crt- oder .cer-Datei hier ablegen oder das PEM unten einfügen',
   certModalSaveBtn: 'Speichern & Analysieren',
   certModalSaveSuccess: 'Zertifikat erfolgreich hinzugefügt und analysiert.',
   certModalSaveFailed: 'Zertifikat konnte nicht hinzugefügt werden.',
   certModalPrivateKeyDetected:
-    'Privater Schlüssel erkannt. Entferne den privaten Schlüssel und füge nur das Zertifikat ein.',
+    'Privater Schlüssel erkannt. Entfernen Sie den privaten Schlüssel und fügen Sie nur das Zertifikat ein.',
 
   // MembershipModal
   membershipModalTitleAdd: 'Neue Mitgliedschaft hinzufügen',
@@ -523,14 +523,14 @@ export const de: Record<TranslationKey, string> = {
 
   // CertRenewalModal
   certRenewalTitle: 'Zertifikat erneuern',
-  certRenewalSelectHint: 'Wähle das Zertifikat aus, das ersetzt werden soll:',
+  certRenewalSelectHint: 'Wählen Sie das Zertifikat aus, das ersetzt werden soll:',
   certRenewalValidUntil: 'Gültig bis: {date}',
   certRenewalNoCerts: 'Keine Zertifikate zum Erneuern vorhanden.',
-  certRenewalReplacingLabel: 'Ersetze:',
-  certRenewalDropHint: 'Neue .pem-Datei hier ablegen',
+  certRenewalReplacingLabel: 'Ersetzt wird:',
+  certRenewalDropHint: 'Neue .pem-, .crt- oder .cer-Datei hier ablegen oder das PEM unten einfügen',
   certRenewalPastePlaceholder: 'Oder PEM-Inhalt hier einfügen...',
   certRenewalPrivateKeyError:
-    'Enthält einen PRIVATEN SCHLÜSSEL. Lade nur das öffentliche Zertifikat hoch.',
+    'Enthält einen PRIVATEN SCHLÜSSEL. Laden Sie nur das öffentliche Zertifikat hoch.',
   certRenewalBackBtn: 'Zurück',
   certRenewalReviewBtn: 'Prüfen',
   certRenewalConfirmHint: 'Das neue Zertifikat wird hochgeladen und das alte gelöscht:',
@@ -589,6 +589,75 @@ export const de: Record<TranslationKey, string> = {
   bundlePreviewShow: 'Vorschau',
   bundlePreviewSuffix: 'Bundle ({n} Ressourcen)',
   bundlePreviewValidUntil: 'Gültig bis: {date}',
+
+  // Forms — accessible fields, certificate upload preview, endpoint IPs, renewal steps
+  formRequiredSr: '(Pflichtfeld)',
+  formBackBtn: 'Zurück',
+  formStepOf: 'Schritt {n} von {total}',
+  formPemDropRelease: 'Loslassen, um die Zertifikatsdatei zu laden',
+  formPemChooseFile: 'Datei auswählen…',
+  formPemFileLoaded: '{name} geladen',
+  formPemFileTooLarge:
+    'Diese Datei ist zu groß für ein Zertifikat. Wählen Sie die .pem-, .crt- oder .cer-Datei des Zertifikats.',
+  formPemFileUnreadable:
+    'Die Datei konnte nicht gelesen werden. Versuchen Sie es erneut oder fügen Sie den PEM-Text ein.',
+  formPemFilePrivateKey:
+    'Diese Datei enthält einen privaten Schlüssel und wurde nicht geladen. Laden Sie niemals private Schlüssel hoch — wählen Sie stattdessen die Datei des öffentlichen Zertifikats.',
+  formPemFileNotPem:
+    'Diese Datei enthält kein PEM-Zertifikat. Binäre (DER-)Dateien mit .cer oder .crt müssen zuerst nach PEM umgewandelt werden, z. B. mit „openssl x509 -inform der -in cert.cer -out cert.pem“.',
+  formCertErrorInvalidPem:
+    'Das Zertifikat konnte nicht gelesen werden. Prüfen Sie, ob der PEM-Block vollständig und unverändert ist.',
+  formCertErrorBlacklisted:
+    'Hochladen abgelehnt: Die ausstellende Zertifizierungsstelle steht auf der Blacklist (CA_BLACKLISTED).',
+  formCertErrorNotWhitelisted:
+    'Hochladen abgelehnt: Die ausstellende Zertifizierungsstelle steht nicht auf der CA-Whitelist (CA_NOT_WHITELISTED).',
+  formCertExpired: 'Abgelaufen',
+  formCertExpiresToday: 'Läuft heute ab',
+  formCertDayLeft: 'Noch 1 Tag',
+  formCertDaysLeft: 'Noch {n} Tage',
+  formCertPreviewTitle: 'Zu registrierendes Zertifikat',
+  formCertPreviewChecking: 'Zertifikat wird geprüft…',
+  formCertPreviewSubject: 'Inhaber (Subject)',
+  formCertPreviewValidUntil: 'Gültig bis',
+  formCertPreviewFingerprint: 'DSF-Fingerabdruck (SHA-512)',
+  formCertPreviewIssuer: 'Aussteller',
+  formCertPreviewDsfCa: 'DSF-CA',
+  formCertCopyFingerprint: 'Fingerabdruck kopieren',
+  formCertFingerprintCopied: 'Fingerabdruck kopiert.',
+  formCertCopyFailed: 'Kopieren in die Zwischenablage fehlgeschlagen.',
+  formCertUntrustedTitle: 'Nicht von einer CA ausgestellt, die das DSF akzeptiert',
+  formCertUntrustedBody:
+    'Das Portal kann dieses Zertifikat für Testumgebungen speichern, produktive DSF-Instanzen akzeptieren es jedoch nicht.',
+  formCertBlacklistedTitle: 'Die ausstellende CA steht auf der Blacklist',
+  formCertBlacklistedBody:
+    'Das Hochladen würde abgelehnt (CA_BLACKLISTED). Verwenden Sie ein Zertifikat einer anderen Zertifizierungsstelle.',
+  formCertNotWhitelistedTitle: 'Die ausstellende CA steht nicht auf der Whitelist',
+  formCertNotWhitelistedBody:
+    'Dieses Portal akzeptiert nur Zertifikate von CAs, die das DSF akzeptiert; das Hochladen würde daher abgelehnt (CA_NOT_WHITELISTED).',
+  formCertPrivateKeyTitle: 'Privater Schlüssel erkannt',
+  formCertPrivateKeyBody:
+    'Laden Sie niemals einen privaten Schlüssel hoch: Er muss auf Ihrem Server bleiben. Entfernen Sie den PRIVATE-KEY-Block und behalten Sie nur das Zertifikat.',
+  formCertInvalidTitle: 'Zertifikat nicht lesbar',
+  formCertInvalidBody:
+    'Prüfen Sie, ob der PEM-Block vollständig und unverändert ist, von -----BEGIN CERTIFICATE----- bis -----END CERTIFICATE-----.',
+  formCertUnavailableTitle: 'Vorschau nicht verfügbar',
+  formCertUnavailableBody: 'Das Zertifikat wird beim Speichern geprüft.',
+  formRenewalStepSelect: 'Zu ersetzendes Zertifikat wählen',
+  formRenewalStepUpload: 'Neues Zertifikat hinzufügen',
+  formRenewalStepConfirm: 'Prüfen und bestätigen',
+  formRenewalNewPemLabel: 'Neues Zertifikat (PEM)',
+  formIpRowLabel: 'IP-Adresse {n}',
+  formIpRemove: 'IP-Adresse {n} entfernen',
+  formIpEmpty: 'Noch keine IP-Adressen.',
+  formContactTypeMedicDesc: 'Verantwortliche Person der Organisation',
+  formContactTypeDsfAdminDesc: 'Technische Administration des DSF',
+  formContactTypeSecurityDesc: 'Ansprechpartner für Sicherheitsfragen',
+  formRoleDicDesc: 'Datenintegrationszentrum (Data Integration Center)',
+  formRoleHrpDesc: 'Forschungsplattform (Health Research Platform)',
+  formRoleDmsDesc: 'Datenmanagementstelle (Data Management Site)',
+  formRoleAmsDesc: 'Allow-List-Verwaltungsstelle (Allow-List Management Site)',
+  formMarketplaceAddSuccess: 'Prozess hinzugefügt.',
+  formMarketplaceEditSuccess: 'Metadaten gespeichert.',
 
   // FormField / ModalFooter
   modalCancelBtn: 'Abbrechen',
@@ -1129,10 +1198,10 @@ export const de: Record<TranslationKey, string> = {
 
   // Guided canvas — form hints
   hintCertificatePem:
-    'Füge das ÖFFENTLICHE Zertifikat im PEM-Format ein. Niemals einen privaten Schlüssel — er wird abgelehnt.',
+    'Fügen Sie das ÖFFENTLICHE Zertifikat im PEM-Format ein, niemals einen privaten Schlüssel — er wird abgelehnt.',
   hintEndpointIdentifier: 'FQDN-artige ID, z. B. fhir.ukm.de.',
   hintEndpointIp:
-    'Markiere jede IP als FHIR und/oder BPE, damit das Netzwerk sie korrekt freischaltet.',
+    'Markieren Sie jede IP als FHIR und/oder BPE, damit das Netzwerk sie korrekt freischaltet.',
 
   // Schema validation — organization
   identifierTooShort: 'Bezeichner muss mindestens 3 Zeichen lang sein',
@@ -1159,7 +1228,7 @@ export const de: Record<TranslationKey, string> = {
   certPemBegin: 'PEM muss mit -----BEGIN CERTIFICATE----- beginnen',
   certPemEnd: 'PEM muss mit -----END CERTIFICATE----- enden',
   certPrivateKeyDetected:
-    '⚠ Privater Schlüssel erkannt. Entferne den privaten Schlüssel und füge nur das Zertifikat ein.',
+    'Privater Schlüssel erkannt. Entfernen Sie den privaten Schlüssel und fügen Sie nur das Zertifikat ein.',
 
   // Schema validation — membership
   membershipParentRequired: 'Übergeordnete Organisation ist erforderlich',

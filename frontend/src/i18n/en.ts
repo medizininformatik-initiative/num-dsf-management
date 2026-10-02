@@ -456,7 +456,7 @@ export const en = {
   endpointModalIpLabel: 'Associated IP Addresses',
   endpointModalIpHint:
     'Specify outgoing IP addresses so other organizations can configure their firewalls.',
-  endpointModalAddIp: '+ Add IP',
+  endpointModalAddIp: 'Add IP address',
   endpointModalIpPlaceholder: 'e.g. 128.176.232.132',
   endpointModalFhirLabel: 'FHIR',
   endpointModalFhirDesc: 'outgoing IP of FHIR server',
@@ -474,7 +474,7 @@ export const en = {
   certModalPrivateKeyWarningBody:
     'Paste only the public certificate PEM block. Never include your private key.',
   certModalFieldPem: 'Certificate PEM',
-  certModalDropHint: 'Drop a .pem file here, or paste below',
+  certModalDropHint: 'Drop a .pem, .crt or .cer file here, or paste the PEM below',
   certModalSaveBtn: 'Save & Parse',
   certModalSaveSuccess: 'Certificate added and parsed successfully.',
   certModalSaveFailed: 'Failed to add certificate.',
@@ -521,7 +521,7 @@ export const en = {
   certRenewalValidUntil: 'Valid until: {date}',
   certRenewalNoCerts: 'No certificates to renew.',
   certRenewalReplacingLabel: 'Replacing:',
-  certRenewalDropHint: 'Drop new .pem file here',
+  certRenewalDropHint: 'Drop the new .pem, .crt or .cer file here, or paste the PEM below',
   certRenewalPastePlaceholder: 'Or paste PEM content here...',
   certRenewalPrivateKeyError: 'This contains a PRIVATE KEY. Only upload the public certificate.',
   certRenewalBackBtn: 'Back',
@@ -580,6 +580,74 @@ export const en = {
   bundlePreviewShow: 'Preview',
   bundlePreviewSuffix: 'Bundle ({n} resources)',
   bundlePreviewValidUntil: 'Valid until: {date}',
+
+  // Forms — accessible fields, certificate upload preview, endpoint IPs, renewal steps
+  formRequiredSr: '(required)',
+  formBackBtn: 'Back',
+  formStepOf: 'Step {n} of {total}',
+  formPemDropRelease: 'Release to load the certificate file',
+  formPemChooseFile: 'Choose file…',
+  formPemFileLoaded: 'Loaded {name}',
+  formPemFileTooLarge:
+    'This file is too large to be a certificate. Choose the .pem, .crt or .cer file of the certificate.',
+  formPemFileUnreadable: 'The file could not be read. Try again or paste the PEM text.',
+  formPemFilePrivateKey:
+    'This file contains a private key and was not loaded. Never upload private keys — choose the public certificate file instead.',
+  formPemFileNotPem:
+    'This file does not contain a PEM certificate. Binary (DER) .cer or .crt files must be converted to PEM first, e.g. with "openssl x509 -inform der -in cert.cer -out cert.pem".',
+  formCertErrorInvalidPem:
+    'The certificate could not be read. Check that the PEM block is complete and unchanged.',
+  formCertErrorBlacklisted:
+    'Upload refused: the issuing certificate authority is blacklisted (CA_BLACKLISTED).',
+  formCertErrorNotWhitelisted:
+    'Upload refused: the issuing certificate authority is not on the CA whitelist (CA_NOT_WHITELISTED).',
+  formCertExpired: 'Expired',
+  formCertExpiresToday: 'Expires today',
+  formCertDayLeft: '1 day left',
+  formCertDaysLeft: '{n} days left',
+  formCertPreviewTitle: 'Certificate to be registered',
+  formCertPreviewChecking: 'Checking certificate…',
+  formCertPreviewSubject: 'Subject',
+  formCertPreviewValidUntil: 'Valid until',
+  formCertPreviewFingerprint: 'DSF fingerprint (SHA-512)',
+  formCertPreviewIssuer: 'Issuer',
+  formCertPreviewDsfCa: 'DSF-CA',
+  formCertCopyFingerprint: 'Copy fingerprint',
+  formCertFingerprintCopied: 'Fingerprint copied.',
+  formCertCopyFailed: 'Could not copy to the clipboard.',
+  formCertUntrustedTitle: 'Not issued by a CA the DSF accepts',
+  formCertUntrustedBody:
+    'The portal can store this certificate for test setups, but production DSF instances will not accept it.',
+  formCertBlacklistedTitle: 'The issuing CA is blacklisted',
+  formCertBlacklistedBody:
+    'The upload would be refused (CA_BLACKLISTED). Use a certificate from another certificate authority.',
+  formCertNotWhitelistedTitle: 'The issuing CA is not whitelisted',
+  formCertNotWhitelistedBody:
+    'This portal only accepts certificates from CAs the DSF accepts, so the upload would be refused (CA_NOT_WHITELISTED).',
+  formCertPrivateKeyTitle: 'Private key detected',
+  formCertPrivateKeyBody:
+    'Never upload a private key: it must stay on your server. Remove the PRIVATE KEY block and keep only the certificate.',
+  formCertInvalidTitle: 'Certificate cannot be read',
+  formCertInvalidBody:
+    'Check that the PEM block is complete and unchanged, from -----BEGIN CERTIFICATE----- to -----END CERTIFICATE-----.',
+  formCertUnavailableTitle: 'Preview unavailable',
+  formCertUnavailableBody: 'The certificate will be checked when you save.',
+  formRenewalStepSelect: 'Choose the certificate to replace',
+  formRenewalStepUpload: 'Add the new certificate',
+  formRenewalStepConfirm: 'Review and confirm',
+  formRenewalNewPemLabel: 'New certificate (PEM)',
+  formIpRowLabel: 'IP address {n}',
+  formIpRemove: 'Remove IP address {n}',
+  formIpEmpty: 'No IP addresses yet.',
+  formContactTypeMedicDesc: 'Person responsible for the organization',
+  formContactTypeDsfAdminDesc: 'Technical administration of the DSF',
+  formContactTypeSecurityDesc: 'Contact for security issues',
+  formRoleDicDesc: 'Data Integration Center',
+  formRoleHrpDesc: 'Health Research Platform',
+  formRoleDmsDesc: 'Data Management Site',
+  formRoleAmsDesc: 'Allow-List Management Site',
+  formMarketplaceAddSuccess: 'Process added.',
+  formMarketplaceEditSuccess: 'Metadata saved.',
 
   // FormField / ModalFooter
   modalCancelBtn: 'Cancel',
@@ -1136,7 +1204,7 @@ export const en = {
   certPemBegin: 'PEM must begin with -----BEGIN CERTIFICATE-----',
   certPemEnd: 'PEM must end with -----END CERTIFICATE-----',
   certPrivateKeyDetected:
-    '⚠ Private key material detected. Remove the private key and paste only the certificate.',
+    'Private key material detected. Remove the private key and paste only the certificate.',
 
   // Schema validation — membership
   membershipParentRequired: 'Parent organization is required',
