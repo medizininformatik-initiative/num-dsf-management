@@ -1,9 +1,12 @@
 /**
  * CrossUserConfirmDialog.tsx – Confirmation modal shown when an admin attempts
- * to mutate data on an instance they don't own. Pure presentational.
+ * to mutate data on an instance they don't own. Pure presentational; it joins
+ * the dialog stack (useDialogLayer), so Escape or a backdrop click here never
+ * also closes the form modal underneath.
  */
-import { useEffect, useId, useRef } from 'react';
+import { useId, useRef } from 'react';
 import { useI18n } from '../../stores/i18n.store';
+import { useDialogLayer } from '../../hooks/useDialogLayer';
 
 interface Props {
   open: boolean;
@@ -15,21 +18,19 @@ interface Props {
 export function CrossUserConfirmDialog({ open, ownerEmail, onConfirm, onCancel }: Props) {
   const { t } = useI18n();
   const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    cancelRef.current?.focus();
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onCancel();
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, onCancel]);
+  const { isTop } = useDialogLayer({
+    open,
+    onEscape: onCancel,
+    containerRef: dialogRef,
+    initialFocusRef: cancelRef,
+  });
 
   if (!open) return null;
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -43,7 +44,9 @@ export function CrossUserConfirmDialog({ open, ownerEmail, onConfirm, onCancel }
         justifyContent: 'center',
         fontFamily: 'Inter, system-ui, sans-serif',
       }}
-      onClick={onCancel}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && isTop()) onCancel();
+      }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
