@@ -1,18 +1,29 @@
 /**
- * CertificateModal.tsx — modal to add a certificate by pasting or drag-dropping a PEM file.
- * Validates via certificateSchema (rejects private keys) and submits through the cross-user guard.
+ * CertificateModal.tsx — modal to add a certificate: paste the PEM, drop a
+ * file on the drop zone or pick one (.pem, .crt, .cer). A debounced server
+ * preview shows what would be registered (subject, expiry, DSF fingerprint,
+ * issuer checks); Save is disabled while the preview reports a state the
+ * upload would refuse. Validates via certificateSchema (rejects private keys),
+ * submits through the cross-user guard and maps upload error codes to
+ * translated messages. Unsaved input asks before the dialog is dismissed.
+ * Dependencies: Modal, FormField, PemInput, CertificatePreviewPanel,
+ *               useCertificatePreview, useCertificates, useCrossUserGuard.
  */
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
 import { FormField, ModalFooter } from './FormField';
+import { Callout } from './Callout';
+import { PemInput } from './PemInput';
+import { CertificatePreviewPanel } from './CertificatePreviewPanel';
+import { useCertificatePreview } from './useCertificatePreview';
+import { certificateUploadError } from './certificateUpload';
 import { certificateSchema, CertificateFormData } from '../../schemas/certificate.schema';
 import { useCreateCertificate } from '../../hooks/useCertificates';
 import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
 import { useI18n } from '../../stores/i18n.store';
-import { getErrorMessage } from '../../lib/getErrorMessage';
 
 interface Props {
   open: boolean;
@@ -29,22 +40,13 @@ export function CertificateModal({ open, onClose, instanceId }: Props) {
     handleSubmit,
     reset,
     setValue,
-    formState: { errors },
-  } = useForm<CertificateFormData>({ resolver: zodResolver(certificateSchema) });
-  const [dragOver, setDragOver] = useState(false);
-
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = reader.result as string;
-      setValue('pem', text);
-    };
-    reader.readAsText(file);
-  }
+    watch,
+    formState: { errors, isDirty },
+  } = useForm<CertificateFormData>({
+    resolver: zodResolver(certificateSchema),
+    defaultValues: { pem: '' },
+  });
+  const preview = useCertificatePreview(instanceId, watch('pem') ?? '');
 
   useEffect(() => {
     if (open) reset({ pem: '' });
@@ -63,78 +65,43 @@ export function CertificateModal({ open, onClose, instanceId }: Props) {
         });
       });
       toast.success(t('certModalSaveSuccess'));
+      // No reset here: the content would change while the dialog animates
+      // out; the next opening resets the form.
       onClose();
-      reset();
     } catch (err: unknown) {
-      const msg = getErrorMessage(err, t('certModalSaveFailed'));
-      if (msg.includes('PRIVATE_KEY')) {
-        toast.error(t('certModalPrivateKeyDetected'));
-      } else {
-        toast.error(msg);
-      }
+      toast.error(certificateUploadError(err, t, t('certModalSaveFailed')));
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={t('certModalTitle')}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="p-4 bg-red-50 rounded-xl border border-red-100">
-          <div className="flex items-start gap-3">
-            <span className="material-symbols-outlined text-red-500 text-[20px] flex-shrink-0 mt-0.5">
-              warning
-            </span>
-            <div>
-              <p className="text-xs font-bold text-red-700 mb-1">
-                {t('certModalPrivateKeyWarningTitle')}
-              </p>
-              <p className="text-[10px] text-red-600">{t('certModalPrivateKeyWarningBody')}</p>
-            </div>
-          </div>
-        </div>
+    <Modal open={open} onClose={onClose} title={t('certModalTitle')} isDirty={isDirty}>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <Callout tone="warning" icon="key_off" title={t('certModalPrivateKeyWarningTitle')}>
+          {t('certModalPrivateKeyWarningBody')}
+        </Callout>
         <FormField
           label={t('certModalFieldPem')}
           required
           error={errors.pem?.message}
           hint={t('hintCertificatePem')}
         >
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            style={{
-              border: `2px dashed ${dragOver ? 'var(--accent)' : '#e8eaf0'}`,
-              borderRadius: '10px',
-              padding: '16px',
-              textAlign: 'center',
-              transition: 'border-color 0.2s',
-              background: dragOver ? '#ede9ff' : 'transparent',
-              marginBottom: '8px',
-            }}
-          >
-            <span
-              className="material-symbols-outlined"
-              style={{
-                fontSize: '32px',
-                color: dragOver ? 'var(--accent)' : '#d4d8e8',
-                display: 'block',
-                marginBottom: '4px',
-              }}
-            >
-              upload_file
-            </span>
-            <p style={{ fontSize: '11px', color: '#9b9fad' }}>{t('certModalDropHint')}</p>
-          </div>
-          <textarea
-            {...register('pem')}
-            rows={10}
-            className="w-full px-3 py-2 text-[11px] font-mono bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-300 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all resize-none"
-            placeholder={`-----BEGIN CERTIFICATE-----\nMIIHEzCC8PugAwIBAqIRALuIH+...\n...\n-----END CERTIFICATE-----`}
-          />
+          {(control) => (
+            <PemInput
+              textareaProps={{ ...register('pem'), ...control }}
+              onFileText={(text) =>
+                setValue('pem', text, { shouldValidate: true, shouldDirty: true })
+              }
+              dropHint={t('certModalDropHint')}
+            />
+          )}
         </FormField>
-        <ModalFooter onCancel={onClose} loading={isPending} submitLabel={t('certModalSaveBtn')} />
+        <CertificatePreviewPanel result={preview} />
+        <ModalFooter
+          onCancel={onClose}
+          loading={isPending}
+          disabled={preview.blocking}
+          submitLabel={t('certModalSaveBtn')}
+        />
       </form>
     </Modal>
   );
