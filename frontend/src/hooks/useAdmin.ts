@@ -1,9 +1,32 @@
 /**
- * useAdmin.ts – React Query hooks for admin approval management
- * Dependencies: admin.api, tanstack/react-query
+ * useAdmin.ts – React Query hooks for admin approval management and the
+ * CA whitelist / blacklist lists of the admin CA page.
+ * Dependencies: admin.api, caWhitelist.api, caBlacklist.api, tanstack/react-query
  */
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { adminApi, type PendingRequest } from '../api/admin.api';
+import { caWhitelistApi } from '../api/caWhitelist.api';
+import { caBlacklistApi } from '../api/caBlacklist.api';
+
+/** Query keys of the CA lists; mutations invalidate them after a write. */
+export const CA_WHITELIST_KEY = ['ca-whitelist'] as const;
+export const CA_BLACKLIST_KEY = ['ca-blacklist'] as const;
+
+/** The CA whitelist and whether it is enforced on certificate upload. */
+export function useCaWhitelist() {
+  return useQuery({
+    queryKey: CA_WHITELIST_KEY,
+    queryFn: () => caWhitelistApi.list().then((r) => r.data.data),
+  });
+}
+
+/** The CA blacklist plus the known (Mozilla) CAs offered as DN suggestions. */
+export function useCaBlacklist() {
+  return useQuery({
+    queryKey: CA_BLACKLIST_KEY,
+    queryFn: () => caBlacklistApi.list().then((r) => r.data.data),
+  });
+}
 
 // A decision regenerates the published bundle and flips one instance's approval
 // state, but the hook has no instanceId; invalidate approval keys by prefix so
