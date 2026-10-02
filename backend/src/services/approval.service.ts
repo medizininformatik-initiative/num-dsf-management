@@ -108,13 +108,34 @@ export async function submitApproval(instanceId: string, userEmail: string, ipAd
   });
 }
 
+/**
+ * Latest request of an instance plus its four-eyes progress, so the site sees
+ * how many of the two approvals it has and when silent consent would approve
+ * it. Signer identities stay hidden; only counts and dates are exposed.
+ */
 export async function getApprovalStatus(instanceId: string) {
-  return (
-    (await db('approval_requests')
-      .where({ instance_id: instanceId })
-      .orderBy('created_at', 'desc')
-      .first()) ?? null
-  );
+  const request = await db('approval_requests')
+    .where({ instance_id: instanceId })
+    .orderBy('created_at', 'desc')
+    .first();
+  if (!request) return null;
+  const sigs: Array<{ decision: 'APPROVE' | 'REJECT'; signed_at: Date | string }> = await db(
+    'approval_signatures',
+  )
+    .where({ approval_request_id: request.id })
+    .select('decision', 'signed_at');
+  const approvals = sigs.filter((s) => s.decision === 'APPROVE');
+  const firstApproval = approvals
+    .map((s) => new Date(s.signed_at).getTime())
+    .sort((a, b) => a - b)[0];
+  const silentConsentAt =
+    request.status === 'PENDING' && firstApproval !== undefined
+      ? new Date(firstApproval + SILENT_CONSENT_DAYS * 86400_000).toISOString()
+      : null;
+  return {
+    ...request,
+    fourEyes: { approvals: approvals.length, required: 2, silentConsentAt },
+  };
 }
 
 export async function getApprovalHistory(instanceId: string) {
