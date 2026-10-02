@@ -308,8 +308,8 @@ export const en = {
 
   // EndpointsCard
   endpointCardFkOrganization: 'Organization',
-  endpointCardEditAria: 'Edit endpoint',
-  endpointCardDeleteAria: 'Delete endpoint',
+  endpointCardEditAria: 'Edit endpoint {name}',
+  endpointCardDeleteAria: 'Delete endpoint {name}',
 
   // MembershipsCard
   membershipCardFkOrganization: 'Organization',
@@ -323,6 +323,9 @@ export const en = {
   contactCardDeleteLastContact:
     'This is the last contact of your organization; an approval request needs at least one.',
   contactCardDeleteReminders: 'This person no longer receives certificate expiry reminders.',
+  endpointCardIpsLabel: 'IP addresses',
+  endpointCardFlagFhir: 'FHIR server',
+  endpointCardFlagBpe: 'BPE (process engine)',
   endpointCardDeleteTitle: 'Delete endpoint?',
   endpointCardDeleteMessage: '{name} will be removed from the allow list.',
   endpointCardDeleteConsequence:

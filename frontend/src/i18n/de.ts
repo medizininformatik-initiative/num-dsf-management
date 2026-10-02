@@ -313,8 +313,8 @@ export const de: Record<TranslationKey, string> = {
 
   // EndpointsCard
   endpointCardFkOrganization: 'Organisation',
-  endpointCardEditAria: 'Endpunkt bearbeiten',
-  endpointCardDeleteAria: 'Endpunkt löschen',
+  endpointCardEditAria: 'Endpunkt {name} bearbeiten',
+  endpointCardDeleteAria: 'Endpunkt {name} löschen',
 
   // MembershipsCard
   membershipCardFkOrganization: 'Organisation',
@@ -329,6 +329,9 @@ export const de: Record<TranslationKey, string> = {
     'Dies ist der letzte Kontakt Ihrer Organisation; ein Freigabeantrag braucht mindestens einen.',
   contactCardDeleteReminders:
     'Diese Person erhält keine Erinnerungen an ablaufende Zertifikate mehr.',
+  endpointCardIpsLabel: 'IP-Adressen',
+  endpointCardFlagFhir: 'FHIR-Server',
+  endpointCardFlagBpe: 'BPE (Prozess-Engine)',
   endpointCardDeleteTitle: 'Endpunkt löschen?',
   endpointCardDeleteMessage: '{name} wird aus der Allow-Liste entfernt.',
   endpointCardDeleteConsequence:

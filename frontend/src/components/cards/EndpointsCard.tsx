@@ -1,8 +1,14 @@
 /**
- * EndpointsCard.tsx — entity card listing FHIR endpoints with their IP addresses (FHIR/BPE flags).
- * Supports add/edit (useModals), confirmed cross-user-guarded deletion (naming the memberships
- * deleted with the endpoint), and an IP-diff badge.
+ * EndpointsCard.tsx — entity card listing FHIR endpoints with their IP addresses. The FHIR/BPE
+ * flags ("F"/"B") carry screen-reader text and a visible legend. Rows stagger in and carry
+ * data-entity-row="endpoints:<identifier>" so membership foreign keys can target them; the body
+ * shows a skeleton or an error with retry while the query loads or fails. Supports add/edit
+ * (useModals), confirmed cross-user-guarded deletion (naming the memberships deleted with the
+ * endpoint), and an IP-diff badge.
+ * Dependencies: useEndpoints, useMemberships, useOrganization, confirmDelete, EntityCard,
+ * FkLink, IpDiffBadge, Button, Icon.
  */
+import type { CSSProperties } from 'react';
 import { useEndpoints, useDeleteEndpoint } from '../../hooks/useEndpoints';
 import { useMemberships } from '../../hooks/useMemberships';
 import { useOrganization } from '../../hooks/useOrganization';
@@ -11,7 +17,10 @@ import { FkLink } from './FkLink';
 import { useModals } from '../../hooks/useModals';
 import { IpDiffBadge } from './IpDiffBadge';
 import { useI18n } from '../../stores/i18n.store';
+import type { TranslationKey } from '../../i18n/en';
 import { useConfirmDelete } from '../../lib/confirmDelete';
+import { Button } from '../ui/Button';
+import { Icon } from '../ui/Icon';
 
 interface EndpointIpRow {
   id: string;
@@ -27,13 +36,48 @@ interface EndpointRow {
   ipAddresses?: EndpointIpRow[];
 }
 
+type IpFlagKind = 'fhir' | 'bpe';
+
+const IP_FLAG: Record<IpFlagKind, { letter: string; label: TranslationKey; className: string }> = {
+  fhir: {
+    letter: 'F',
+    label: 'endpointCardFlagFhir',
+    className: 'border-info-border bg-info-surface text-info-fg',
+  },
+  bpe: {
+    letter: 'B',
+    label: 'endpointCardFlagBpe',
+    className: 'border-neutral-border bg-neutral-surface text-neutral-fg',
+  },
+};
+
+/** The visible flag letter; `labelled` adds the spelled-out meaning for screen readers. */
+function IpFlag({ kind, labelled = true }: { kind: IpFlagKind; labelled?: boolean }) {
+  const { t } = useI18n();
+  const flag = IP_FLAG[kind];
+  return (
+    <span
+      title={t(flag.label)}
+      className={`inline-flex h-4 min-w-[1rem] items-center justify-center rounded border px-0.5 text-[11px] font-bold leading-none ${flag.className}`}
+    >
+      <span aria-hidden="true">{flag.letter}</span>
+      {labelled && <span className="sr-only">{t(flag.label)}</span>}
+    </span>
+  );
+}
+
 export function EndpointsCard({ instanceId }: { instanceId: string }) {
   const { t } = useI18n();
-  const { data: endpoints = [], isLoading } = useEndpoints(instanceId);
+  const { data, isLoading, isError, refetch } = useEndpoints(instanceId);
+  const endpoints: EndpointRow[] = data ?? [];
   const { data: org } = useOrganization(instanceId);
   const { data: memberships = [] } = useMemberships(instanceId);
   const deleteMut = useDeleteEndpoint(instanceId);
   const confirmDelete = useConfirmDelete();
+
+  const hasFlags = endpoints.some((ep) =>
+    (ep.ipAddresses ?? []).some((ip) => ip.isFhir || ip.isBpe),
+  );
 
   function requestDelete(ep: EndpointRow) {
     // Memberships reference the endpoint with ON DELETE CASCADE.
@@ -63,6 +107,8 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
       title={t('endpoints')}
       borderColor="#3ecfb2"
       icon="hub"
+      status={isLoading ? 'loading' : isError && !data ? 'error' : 'ready'}
+      onRetry={() => void refetch()}
       onAdd={() => useModals.getState().openModal('endpoint-add')}
     >
       {org && (
@@ -73,149 +119,97 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
         />
       )}
 
-      <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        {isLoading && (
-          <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{t('loading')}</div>
-        )}
-        {endpoints.map((ep: EndpointRow) => (
-          <div
-            key={ep.identifier}
-            style={{
-              background: 'var(--bg-hover)',
-              border: '1px solid var(--border)',
-              borderRadius: '10px',
-              padding: '10px 12px',
-              transition: 'border-color 0.15s',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '10px',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#b01e6644')}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}
+      {endpoints.length > 0 ? (
+        <ul className="mt-3 flex flex-col gap-2">
+          {endpoints.map((ep, index) => {
+            const name = ep.name || ep.identifier;
+            const ips = ep.ipAddresses ?? [];
+            return (
+              <li
+                key={ep.identifier}
+                data-entity-row={`endpoints:${ep.identifier}`}
+                className="hover-lift animate-list-item-in flex items-start gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-3"
+                style={{ '--stagger-index': index } as CSSProperties}
               >
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {ep.name || ep.identifier}
-                </span>
-              </div>
-              <div
-                className="mono-id"
-                style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}
-              >
-                {ep.identifier}
-              </div>
-              <div
-                style={{
-                  fontSize: '11px',
-                  color: 'var(--text-muted)',
-                  marginBottom: '6px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {ep.address}
-              </div>
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                {(ep.ipAddresses || []).map((ip: EndpointIpRow) => (
-                  <span
-                    key={ip.id}
-                    style={{
-                      fontSize: '10px',
-                      padding: '1px 6px',
-                      borderRadius: '99px',
-                      background: 'var(--bg-page)',
-                      color: 'var(--text-muted)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '3px',
-                    }}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-semibold text-[color:var(--text-primary)]">
+                    {name}
+                  </p>
+                  {ep.name && (
+                    <p className="mono-id truncate text-[11px] text-[color:var(--text-muted)]">
+                      {ep.identifier}
+                    </p>
+                  )}
+                  <p
+                    title={ep.address}
+                    className="mt-0.5 truncate text-xs text-[color:var(--text-muted)]"
                   >
-                    {ip.ip}
-                    {ip.isFhir && <span style={{ color: '#3ecfb2', fontWeight: 600 }}>F</span>}
-                    {ip.isBpe && <span style={{ color: '#4a90d9', fontWeight: 600 }}>B</span>}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  useModals.getState().openModal('endpoint-edit', ep.identifier);
-                }}
-                title={t('endpointCardEditAria')}
-                aria-label={t('endpointCardEditAria')}
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#fde3ef')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: '16px', color: 'var(--primary)' }}
-                >
-                  edit
-                </span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  requestDelete(ep);
-                }}
-                title={t('endpointCardDeleteAria')}
-                aria-label={t('endpointCardDeleteAria')}
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#fee2e2')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: '16px', color: '#ef4444' }}
-                >
-                  delete
-                </span>
-              </button>
-            </div>
-          </div>
-        ))}
-        {!isLoading && endpoints.length === 0 && (
-          <div
-            style={{
-              color: 'var(--text-muted)',
-              fontSize: '12px',
-              textAlign: 'center',
-              padding: '12px 0',
-            }}
-          >
-            {t('emptyEndpointsHint')}
-          </div>
-        )}
-      </div>
+                    {ep.address}
+                  </p>
+                  {ips.length > 0 && (
+                    <ul
+                      aria-label={t('endpointCardIpsLabel')}
+                      className="mt-2 flex flex-wrap gap-1"
+                    >
+                      {ips.map((ip) => (
+                        <li
+                          key={ip.id}
+                          className="inline-flex items-center gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--bg-card)] py-0.5 pl-2 pr-1 text-[11px] text-[color:var(--text-secondary)]"
+                        >
+                          <span className="mono-id">{ip.ip}</span>
+                          {ip.isFhir && <IpFlag kind="fhir" />}
+                          {ip.isBpe && <IpFlag kind="bpe" />}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t('endpointCardEditAria', { name })}
+                    onClick={() => useModals.getState().openModal('endpoint-edit', ep.identifier)}
+                    className="h-8 w-8 !px-0"
+                  >
+                    <Icon name="edit" size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t('endpointCardDeleteAria', { name })}
+                    onClick={() => requestDelete(ep)}
+                    className="h-8 w-8 !px-0 text-danger-fg hover:!bg-danger-surface hover:!text-danger-fg"
+                  >
+                    <Icon name="delete" size={16} />
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="py-4 text-center text-xs text-[color:var(--text-muted)]">
+          {t('emptyEndpointsHint')}
+        </p>
+      )}
+
+      {hasFlags && (
+        // Visual key only: every flag already carries its meaning for screen readers.
+        <p
+          aria-hidden="true"
+          className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[color:var(--text-muted)]"
+        >
+          <span className="inline-flex items-center gap-1">
+            <IpFlag kind="fhir" labelled={false} />
+            {t('endpointCardFlagFhir')}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <IpFlag kind="bpe" labelled={false} />
+            {t('endpointCardFlagBpe')}
+          </span>
+        </p>
+      )}
       <IpDiffBadge instanceId={instanceId} />
     </EntityCard>
   );

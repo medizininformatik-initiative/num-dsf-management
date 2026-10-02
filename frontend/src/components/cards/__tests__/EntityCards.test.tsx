@@ -200,9 +200,9 @@ describe('EndpointsCard', () => {
     expect(screen.getByText('UKM FHIR')).toBeInTheDocument();
     expect(screen.getByText('fhir.ukm.de')).toBeInTheDocument();
     expect(screen.getByText('https://fhir.ukm.de/fhir')).toBeInTheDocument();
-    expect(screen.getByText('10.0.0.1')).toBeInTheDocument();
-    expect(screen.getByText('F')).toBeInTheDocument();
-    expect(screen.getByText('B')).toBeInTheDocument();
+    const ip = screen.getByText('10.0.0.1').closest('li') as HTMLElement;
+    expect(ip).toHaveTextContent('FFHIR server');
+    expect(ip).toHaveTextContent('BBPE (process engine)');
   });
 
   it('renders the empty state', () => {
