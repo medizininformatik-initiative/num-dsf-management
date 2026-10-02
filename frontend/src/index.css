@@ -19,6 +19,19 @@
   /* Interaction feedback (.hover-lift) */
   --shadow-lift: 0 8px 24px -6px rgba(138, 23, 80, 0.16), 0 2px 6px -2px rgba(24, 28, 32, 0.08);
   --border-strong: #d5d8e3;
+  /* Materials (.glass-*, .scrim) */
+  --glass-tint: 255 255 255;
+  --glass-opacity-thin: 0.6;
+  --glass-opacity-regular: 0.72;
+  --glass-opacity-thick: 0.86;
+  --glass-opacity-chrome: 0.8;
+  --glass-saturate: 180%;
+  --glass-border: rgba(255, 255, 255, 0.65);
+  --glass-shadow:
+    0 0 0 0.5px rgba(24, 28, 32, 0.08), 0 12px 32px -12px rgba(24, 28, 32, 0.22),
+    0 2px 8px -2px rgba(24, 28, 32, 0.06);
+  --scrim: rgba(24, 28, 32, 0.28);
+  --scrim-opaque: rgba(24, 28, 32, 0.5);
 }
 
 :root.dark {
@@ -35,6 +48,16 @@
   --accent: #6c63ff;
   --shadow-lift: 0 10px 28px -8px rgba(0, 0, 0, 0.65), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
   --border-strong: #3a3d57;
+  --glass-tint: 27 28 40;
+  --glass-opacity-thin: 0.66;
+  --glass-opacity-regular: 0.76;
+  --glass-opacity-thick: 0.88;
+  --glass-opacity-chrome: 0.84;
+  --glass-saturate: 150%;
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.6), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+  --scrim: rgba(5, 6, 10, 0.5);
+  --scrim-opaque: rgba(5, 6, 10, 0.72);
 }
 
 /* ─── Motion tokens ───────────────────────────────────────────────────────
@@ -365,6 +388,86 @@ body {
   transform: scale(0.97);
   transition-duration: var(--duration-micro);
   transition-timing-function: var(--ease-standard);
+}
+
+/* ─── Materials (glassmorphism) ───────────────────────────────────────────
+   Translucent, blurred and saturated surfaces with a hairline edge and a soft
+   shadow, after Apple's materials. Thicker means more opaque:
+     .glass-thin    popovers and hover cards
+     .glass         floating panels
+     .glass-thick   dialogs and sheets
+     .glass-chrome  bars: bottom hairline only, no drop shadow (move the
+                    hairline with border utilities, e.g. border-b-0 border-r)
+     .scrim         the dimmed, lightly blurred layer behind a dialog
+   Contrast: .glass-thick and .glass-chrome keep --text-primary and
+   --text-secondary at >= 4.5:1 over any backdrop; .glass and .glass-thin rely
+   on the app canvas behind them, where every text token stays >= 4.5:1.
+   Without backdrop-filter support, or under prefers-reduced-transparency,
+   each material falls back to the opaque card surface.
+   These are Tailwind components: use the literal class names so they are
+   not purged, and override them with utilities when needed. */
+@layer components {
+  .glass-thin,
+  .glass,
+  .glass-thick,
+  .glass-chrome {
+    background-color: rgb(var(--glass-tint) / var(--_glass-opacity));
+    -webkit-backdrop-filter: blur(var(--_glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--_glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+  .glass-thin {
+    --_glass-opacity: var(--glass-opacity-thin);
+    --_glass-blur: 12px;
+  }
+  .glass {
+    --_glass-opacity: var(--glass-opacity-regular);
+    --_glass-blur: 20px;
+  }
+  .glass-thick {
+    --_glass-opacity: var(--glass-opacity-thick);
+    --_glass-blur: 28px;
+  }
+  .glass-chrome {
+    --_glass-opacity: var(--glass-opacity-chrome);
+    --_glass-blur: 24px;
+    border-width: 0 0 1px;
+    box-shadow: none;
+  }
+  .scrim {
+    background-color: var(--scrim);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+
+  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    .glass-thin,
+    .glass,
+    .glass-thick,
+    .glass-chrome {
+      background-color: var(--bg-card);
+    }
+    .scrim {
+      background-color: var(--scrim-opaque);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-thin,
+    .glass,
+    .glass-thick,
+    .glass-chrome {
+      background-color: var(--bg-card);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    .scrim {
+      background-color: var(--scrim-opaque);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
