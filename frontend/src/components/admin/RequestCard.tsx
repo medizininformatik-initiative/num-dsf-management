@@ -1,20 +1,27 @@
 /**
  * RequestCard.tsx — Admin approval request card with TOTP-gated approve/reject
  * controls + expandable snapshot viewer. Extracted from pages/AdminPage.tsx
- * (project 500-line file limit).
+ * (project 500-line file limit). An approval is final; in certificate
+ * sessions, where no TOTP step-up stands between the click and the decision,
+ * Approve first asks for confirmation with a summary of what is approved.
+ * Why Approve is unavailable is shown as text next to the buttons.
  *
- * Dependencies: useAdmin (approve/reject mutations), useI18n, sonner toast.
+ * Dependencies: useAdmin (approve/reject mutations), useConfirm, useI18n,
+ * sonner toast.
  */
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import { useApproveRequest, useRejectRequest } from '../../hooks/useAdmin';
+import { useConfirm } from '../../hooks/useConfirm';
 import type { ApprovalSignature } from '../../api/admin.api';
 import { useI18n } from '../../stores/i18n.store';
 import { getErrorMessageForStepUp } from '../../lib/getErrorMessage';
 import { needsTotpStepUp } from '../../lib/authMode';
-import { relTime } from '../../lib/dateUtils';
-import { parseSnapshot } from './parseSnapshot';
+import { formatDate, relTime } from '../../lib/dateUtils';
+import { parseSnapshot, type SnapshotData } from './parseSnapshot';
 import { SnapshotView } from './SnapshotView';
+
+const SILENT_CONSENT_MS = 7 * 86400_000;
 
 interface RequestCardProps {
   request: {
@@ -32,6 +39,8 @@ export type { RequestCardProps };
 
 export function RequestCard({ request, meEmail }: RequestCardProps) {
   const { t } = useI18n();
+  const confirm = useConfirm();
+  const disabledReasonId = useId();
 
   const [expanded, setExpanded] = useState(false);
   const [rejecting, setRejecting] = useState(false);
@@ -59,14 +68,35 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
     approveMut.isPending ||
     rejectMut.isPending;
   const silentConsentDate = approvals[0]
-    ? new Date(new Date(approvals[0].signed_at).getTime() + 7 * 86400_000)
+    ? new Date(new Date(approvals[0].signed_at).getTime() + SILENT_CONSENT_MS)
     : null;
+  // Why Approve is unavailable, shown as text (a title tooltip alone is not
+  // reachable by keyboard or touch).
+  const approveBlockedReason =
+    approvals.length >= 2
+      ? t('adminAlreadyApproved2')
+      : alreadyDecidedByMe
+        ? t('adminAlreadyDecided')
+        : sameSiteApprovalExists
+          ? t('adminSameSiteApproval')
+          : null;
 
   async function handleApprove() {
     if (approveMut.isPending || rejectMut.isPending) return;
     if (needsTotpStepUp() && (!totpCode || totpCode.length !== 6)) {
       toast.error(t('adminToastTotpRequired'));
       return;
+    }
+    // Certificate sessions skip the TOTP step-up, which otherwise doubles as the
+    // deliberate second step; ask before the final decision instead.
+    if (!needsTotpStepUp()) {
+      const ok = await confirm({
+        title: t('adminApproveConfirmTitle'),
+        message: <ApproveSummary snapshot={snapshot} firstApproval={approvals.length === 0} />,
+        consequence: t('adminApproveConfirmFinal'),
+        confirmLabel: t('adminApproveBtn'),
+      });
+      if (!ok) return;
     }
     try {
       await approveMut.mutateAsync({
@@ -222,15 +252,7 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
           <button
             onClick={handleApprove}
             disabled={approveDisabled}
-            title={
-              approvals.length >= 2
-                ? t('adminAlreadyApproved2')
-                : alreadyDecidedByMe
-                  ? t('adminAlreadyDecided')
-                  : sameSiteApprovalExists
-                    ? t('adminSameSiteApproval')
-                    : undefined
-            }
+            aria-describedby={approveBlockedReason ? disabledReasonId : undefined}
             style={{
               padding: '8px 16px',
               borderRadius: '10px',
@@ -268,6 +290,29 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
           ) : null}
         </div>
       </div>
+
+      {approveBlockedReason && (
+        <p
+          id={disabledReasonId}
+          style={{
+            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '12px',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          <span
+            className="material-symbols-outlined"
+            aria-hidden="true"
+            style={{ fontSize: '16px' }}
+          >
+            info
+          </span>
+          {approveBlockedReason}
+        </p>
+      )}
 
       {/* Reject comment panel */}
       {rejecting && (
@@ -413,6 +458,40 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
 
       {/* Snapshot viewer */}
       {expanded && <SnapshotView snapshot={snapshot} t={t} />}
+    </div>
+  );
+}
+
+/** What an approval decides: the organization, its submitted data and the 4-eyes step. */
+function ApproveSummary({
+  snapshot,
+  firstApproval,
+}: {
+  snapshot: SnapshotData;
+  firstApproval: boolean;
+}) {
+  const { t, lang } = useI18n();
+  const counts = [
+    t('requestCardCountEndpoints', { n: snapshot.endpoints?.length ?? 0 }),
+    t('requestCardCountCertificates', { n: snapshot.certificates?.length ?? 0 }),
+    t('requestCardCountMemberships', { n: snapshot.memberships?.length ?? 0 }),
+    t('requestCardCountContacts', { n: snapshot.contacts?.length ?? 0 }),
+  ].join(' · ');
+  const autoApproveDate = formatDate(new Date(Date.now() + SILENT_CONSENT_MS).toISOString(), lang);
+  return (
+    <div className="space-y-2">
+      <p>
+        <strong className="font-semibold text-[color:var(--text-primary)]">
+          {snapshot.organization?.name ?? '—'}
+        </strong>{' '}
+        <span className="font-mono text-xs">{snapshot.organization?.identifier ?? '—'}</span>
+      </p>
+      <p>{counts}</p>
+      <p>
+        {firstApproval
+          ? t('adminApproveConfirmFirst', { date: autoApproveDate })
+          : t('adminApproveConfirmSecond')}
+      </p>
     </div>
   );
 }

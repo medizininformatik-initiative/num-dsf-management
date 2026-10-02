@@ -8,11 +8,13 @@
  * tweaking the signatures prop and the hoisted mutation state. useAdmin and
  * sonner are mocked so no network/toast side effects occur; the real i18n
  * translator and relTime run so asserted text is the actual rendered output.
+ * Why Approve is disabled is asserted as visible text linked to the button.
  * A separate describe block mocks lib/authMode to exercise cert mode, where
- * the TOTP input is not rendered and approve/reject omit totpCode entirely.
+ * the TOTP input is not rendered, approve/reject omit totpCode entirely and
+ * Approve first asks for confirmation (useConfirm) with a summary.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 import type { ApprovalSignature } from '../../../api/admin.api';
@@ -220,6 +222,42 @@ describe('RequestCard', () => {
     expect(toastError).toHaveBeenCalledWith(t('adminToastReasonRequired'));
   });
 
+  it.each([
+    [
+      'the viewer already decided',
+      [{ admin_email: 'op@imi.de', admin_site: 'imi.de', decision: 'REJECT' as const }],
+      'You already decided this request',
+    ],
+    [
+      'an admin from the same site approved',
+      [{ admin_email: 'colleague@imi.de', admin_site: 'imi.de', decision: 'APPROVE' as const }],
+      'Another admin from your site has already approved',
+    ],
+    [
+      'two admins approved',
+      [
+        { admin_email: 'a@one.de', admin_site: 'one.de', decision: 'APPROVE' as const },
+        { admin_email: 'b@two.de', admin_site: 'two.de', decision: 'APPROVE' as const },
+      ],
+      'Already approved by 2 admins',
+    ],
+  ])('says why Approve is disabled when %s', (_case, partial, reason) => {
+    const signatures: ApprovalSignature[] = partial.map((s, i) => ({
+      id: `sig-${i}`,
+      signed_at: THREE_DAYS_AGO,
+      ...s,
+    }));
+    renderWithProviders(<RequestCard request={makeRequest({ signatures })} meEmail="op@imi.de" />);
+
+    const approveBtn = screen.getByRole('button', { name: t('adminApproveBtn') });
+    expect(approveBtn).toBeDisabled();
+    // Visible text, not only a tooltip, and linked to the button.
+    const note = screen.getByText(reason);
+    expect(note).toBeVisible();
+    expect(approveBtn).toHaveAttribute('aria-describedby', note.id);
+    expect(approveBtn).not.toHaveAttribute('title');
+  });
+
   it('disables approve while an approve mutation is pending and shows the spinner label', () => {
     state.approvePending = true;
     renderWithProviders(<RequestCard request={makeRequest()} meEmail="op@imi.de" />);
@@ -241,18 +279,64 @@ describe('RequestCard (cert mode)', () => {
     authMode.cert = true;
   });
 
-  it('renders no TOTP input and approves with only { requestId } (no totpCode key)', async () => {
+  it('renders no TOTP input, confirms the final decision, then approves with only { requestId }', async () => {
     renderWithProviders(<RequestCard request={makeRequest()} meEmail="op@imi.de" />);
 
     expect(screen.queryByPlaceholderText(t('adminTotpPlaceholder'))).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: t('adminApproveBtn') }));
 
+    // Without the TOTP step-up the click alone must not decide: a summary comes first.
+    const dialog = await screen.findByRole('alertdialog', { name: 'Approve this request?' });
+    expect(within(dialog).getByText('Uniklinik Münster')).toBeInTheDocument();
+    expect(within(dialog).getByText('ukm.de')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('1 Endpoint(s) · 0 Certificate(s) · 0 Membership(s) · 1 Contact(s)'),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/This is the first of two approvals/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        'Your decision is final: you cannot change or withdraw it afterwards.',
+      ),
+    ).toBeInTheDocument();
+    expect(approveMutateAsync).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: t('adminApproveBtn') }));
+
     await waitFor(() => expect(approveMutateAsync).toHaveBeenCalledTimes(1), { timeout: 4000 });
     const arg = approveMutateAsync.mock.calls[0][0];
     expect(arg).toEqual({ requestId: 'req-1' });
     expect(Object.prototype.hasOwnProperty.call(arg, 'totpCode')).toBe(false);
     expect(toastSuccess).toHaveBeenCalledWith(t('adminToastApproveSuccess'));
+  });
+
+  it('does not approve when the confirmation is cancelled', async () => {
+    renderWithProviders(<RequestCard request={makeRequest()} meEmail="op@imi.de" />);
+    fireEvent.click(screen.getByRole('button', { name: t('adminApproveBtn') }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: t('cancel') }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(approveMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('tells the second approver that the request is approved at once', async () => {
+    const sig: ApprovalSignature = {
+      id: 'sig-1',
+      admin_email: 'peer@other.de',
+      admin_site: 'other.de',
+      decision: 'APPROVE',
+      signed_at: THREE_DAYS_AGO,
+    };
+    renderWithProviders(
+      <RequestCard request={makeRequest({ signatures: [sig] })} meEmail="op@imi.de" />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: t('adminApproveBtn') }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(
+      within(dialog).getByText(
+        'This is the second approval: the request is approved at once and enters the allow-list bundle.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('rejects with only { requestId, comment } (no totpCode key)', async () => {

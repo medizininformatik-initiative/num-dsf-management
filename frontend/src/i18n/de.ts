@@ -1035,6 +1035,13 @@ export const de: Record<TranslationKey, string> = {
   caRemoveFromBlacklistAria: '{name} von der Blacklist entfernen',
   caBlacklistRemoveTitle: 'CA von der Blacklist entfernen?',
   caBlacklistRemoveConsequence: 'Zertifikate dieser CA können wieder hochgeladen werden.',
+  adminApproveConfirmTitle: 'Diesen Antrag genehmigen?',
+  adminApproveConfirmFirst:
+    'Dies ist die erste von zwei Genehmigungen. Lehnt kein Admin eines anderen Standorts ab, wird der Antrag am {date} automatisch genehmigt.',
+  adminApproveConfirmSecond:
+    'Dies ist die zweite Genehmigung: Der Antrag wird sofort genehmigt und in das Allow-List-Bundle übernommen.',
+  adminApproveConfirmFinal:
+    'Ihre Entscheidung ist endgültig: Sie können sie danach weder ändern noch zurückziehen.',
   // ─── Bundle-Versionen (Föderationshärtung 2026-05-18) ────────────────────
   download: 'Herunterladen',
   bundleVersionsTitle: 'Bundle-Versionen',

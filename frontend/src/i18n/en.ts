@@ -1018,6 +1018,12 @@ export const en = {
   caRemoveFromBlacklistAria: 'Remove {name} from the blacklist',
   caBlacklistRemoveTitle: 'Remove CA from the blacklist?',
   caBlacklistRemoveConsequence: 'Certificates issued by this CA can be uploaded again.',
+  adminApproveConfirmTitle: 'Approve this request?',
+  adminApproveConfirmFirst:
+    'This is the first of two approvals. Unless an admin from another site rejects it, the request is approved automatically on {date}.',
+  adminApproveConfirmSecond:
+    'This is the second approval: the request is approved at once and enters the allow-list bundle.',
+  adminApproveConfirmFinal: 'Your decision is final: you cannot change or withdraw it afterwards.',
   // ─── Bundle Versions (federation hardening 2026-05-18) ────────────────────
   download: 'Download',
   bundleVersionsTitle: 'Bundle versions',
