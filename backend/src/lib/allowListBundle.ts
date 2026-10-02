@@ -131,10 +131,18 @@ function unique(values: string[]): string[] {
   return Array.from(new Set(values));
 }
 
-/** Merge rows sharing the same key into one entry with the union of their roles. */
+/**
+ * Merge rows sharing the same key into one entry with the union of their
+ * roles. A single row keeps its stored role order; rows of the same key are
+ * visited in role order, so the merged order does not depend on the
+ * database returning them in insertion order.
+ */
 function mergeRoles<T extends { roles: string[] }>(rows: T[], keyOf: (row: T) => string): T[] {
+  const ordered = [...rows].sort(
+    (a, b) => byText(keyOf(a), keyOf(b)) || byText(a.roles.join(','), b.roles.join(',')),
+  );
   const merged = new Map<string, T>();
-  for (const row of rows) {
+  for (const row of ordered) {
     const key = keyOf(row);
     const existing = merged.get(key);
     if (existing) existing.roles = unique([...existing.roles, ...row.roles]);
