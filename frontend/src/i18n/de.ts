@@ -951,6 +951,9 @@ export const de: Record<TranslationKey, string> = {
   adminOnboardingErrorEmptyBody: 'Die Datei ist leer.',
   adminOnboardingImportFailed: 'Import fehlgeschlagen.',
 
+  // App shell — layout, navigation, drawers and popovers
+  shellNotificationsUnread: 'Benachrichtigungen, {n} ungelesen',
+
   // CommandPalette
   cmdPlaceholder: 'Befehl eingeben…',
   cmdNoResults: 'Keine Befehle gefunden.',

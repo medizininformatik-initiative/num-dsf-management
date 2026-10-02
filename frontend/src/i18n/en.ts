@@ -935,6 +935,9 @@ export const en = {
   adminOnboardingErrorEmptyBody: 'The file is empty.',
   adminOnboardingImportFailed: 'Import failed.',
 
+  // App shell — layout, navigation, drawers and popovers
+  shellNotificationsUnread: 'Notifications, {n} unread',
+
   // CommandPalette
   cmdPlaceholder: 'Type a command…',
   cmdNoResults: 'No commands found.',

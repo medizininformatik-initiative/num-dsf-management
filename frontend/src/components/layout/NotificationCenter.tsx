@@ -1,173 +1,118 @@
 /**
- * NotificationCenter.tsx – Bell icon with dropdown notification history
- * Dependencies: notification.store
+ * NotificationCenter.tsx – Bell button with the unread count and a popover
+ * listing the notification history (newest first). The popover grows from the
+ * bell on thin glass and leaves faster; focus moves into it on open, Escape
+ * returns to the bell, an outside click or focus leaving closes it.
+ * Dependencies: notification.store, i18n.store, lib/dateUtils, usePopover,
+ * PopoverPanel, ui/Icon, ui/Button.
  */
-import { useState, useRef, useEffect } from 'react';
+import { useId, type CSSProperties } from 'react';
 import { useNotificationStore } from '../../stores/notification.store';
 import { useI18n } from '../../stores/i18n.store';
 import { relTime } from '../../lib/dateUtils';
+import { usePopover } from './usePopover';
+import { PopoverPanel } from './Popover';
+import { Icon } from '../ui/Icon';
+import { Button } from '../ui/Button';
 
-const TYPE_ICON: Record<string, { icon: string; color: string }> = {
-  success: { icon: 'check_circle', color: '#22c55e' },
-  error: { icon: 'error', color: '#ef4444' },
-  info: { icon: 'info', color: 'var(--primary)' },
+const TYPE_ICON: Record<string, { icon: string; className: string }> = {
+  success: { icon: 'check_circle', className: 'text-success-fg' },
+  error: { icon: 'error', className: 'text-danger-fg' },
+  info: { icon: 'info', className: 'text-info-fg' },
 };
 
 export function NotificationCenter() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
   const { notifications, unread, markAllRead, clear } = useNotificationStore();
   const { t } = useI18n();
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+  const popover = usePopover();
+  const panelId = useId();
+  const titleId = useId();
 
   function handleToggle() {
-    setOpen(!open);
-    if (!open) markAllRead();
+    if (!popover.open) markAllRead();
+    popover.toggle();
   }
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div {...popover.rootProps} className="relative">
       <button
+        ref={popover.triggerRef}
+        type="button"
         onClick={handleToggle}
-        aria-label={t('ariaNotifications')}
-        style={{
-          position: 'relative',
-          border: 'none',
-          background: 'transparent',
-          cursor: 'pointer',
-          padding: '6px',
-          borderRadius: '8px',
-        }}
+        aria-label={
+          unread > 0 ? t('shellNotificationsUnread', { n: unread }) : t('ariaNotifications')
+        }
+        aria-expanded={popover.open}
+        aria-controls={panelId}
+        className="press-effect relative rounded-lg p-1.5 text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: '20px', color: 'var(--text-secondary)' }}
-        >
-          notifications
-        </span>
+        <Icon name="notifications" size={20} className="block" />
         {unread > 0 && (
           <span
-            style={{
-              position: 'absolute',
-              top: '2px',
-              right: '2px',
-              width: '16px',
-              height: '16px',
-              borderRadius: '50%',
-              background: '#ef4444',
-              color: '#fff',
-              fontSize: '9px',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            aria-hidden="true"
+            className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-700 px-1 text-[11px] font-bold leading-none text-white"
           >
             {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
 
-      {open && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '100%',
-            right: 0,
-            marginTop: '8px',
-            width: '320px',
-            background: 'var(--bg-card)',
-            borderRadius: '12px',
-            border: '1px solid var(--border)',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-            zIndex: 100,
-            maxHeight: '400px',
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              {t('notifications')}
-            </span>
-            {notifications.length > 0 && (
-              <button
-                onClick={clear}
-                aria-label={t('ariaClearNotifications')}
-                style={{
-                  fontSize: '10px',
-                  color: 'var(--text-muted)',
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                }}
-              >
-                {t('clearAll')}
-              </button>
-            )}
-          </div>
-          <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
-            {notifications.length === 0 ? (
-              <p
-                style={{
-                  padding: '24px',
-                  textAlign: 'center',
-                  fontSize: '12px',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                {t('noNotificationsYet')}
-              </p>
-            ) : (
-              notifications.map((n) => {
-                const { icon, color } = TYPE_ICON[n.type] ?? TYPE_ICON.info;
+      <PopoverPanel
+        ref={popover.panelRef}
+        id={panelId}
+        open={popover.open}
+        origin="top-right"
+        role="region"
+        aria-labelledby={titleId}
+        className="right-0 top-full mt-2 w-80 overflow-hidden"
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-[color:var(--border)] py-2 pl-4 pr-2">
+          <h2 id={titleId} className="text-[13px] font-bold text-[color:var(--text-primary)]">
+            {t('notifications')}
+          </h2>
+          {notifications.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clear}
+              aria-label={t('ariaClearNotifications')}
+              className="min-h-0 px-2 py-1 text-[11px]"
+            >
+              {t('clearAll')}
+            </Button>
+          )}
+        </div>
+        <div className="max-h-[340px] overflow-y-auto">
+          {notifications.length === 0 ? (
+            <p className="px-6 py-6 text-center text-xs text-[color:var(--text-muted)]">
+              {t('noNotificationsYet')}
+            </p>
+          ) : (
+            <ul>
+              {notifications.map((n, i) => {
+                const { icon, className } = TYPE_ICON[n.type] ?? TYPE_ICON.info;
                 return (
-                  <div
+                  <li
                     key={n.id}
-                    style={{
-                      display: 'flex',
-                      gap: '10px',
-                      padding: '10px 16px',
-                      borderBottom: '1px solid var(--bg-page)',
-                    }}
+                    className="flex animate-list-item-in gap-2.5 border-b border-[color:var(--border)] px-4 py-2.5 last:border-b-0"
+                    style={{ '--stagger-index': i } as CSSProperties}
                   >
-                    <span
-                      className="material-symbols-outlined"
-                      style={{ fontSize: '18px', color, flexShrink: 0, marginTop: '1px' }}
-                    >
-                      {icon}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p
-                        style={{ fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.4 }}
-                      >
+                    <Icon name={icon} size={18} className={`mt-px shrink-0 ${className}`} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs leading-snug text-[color:var(--text-primary)]">
                         {n.message}
                       </p>
-                      <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      <p className="mt-0.5 text-[11px] text-[color:var(--text-muted)]">
                         {relTime(new Date(n.timestamp).toISOString(), t)}
                       </p>
                     </div>
-                  </div>
+                  </li>
                 );
-              })
-            )}
-          </div>
+              })}
+            </ul>
+          )}
         </div>
-      )}
+      </PopoverPanel>
     </div>
   );
 }
