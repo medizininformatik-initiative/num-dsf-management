@@ -10,9 +10,11 @@
   --bg-input: #ffffff;
   --bg-hover: #f8f9fc;
   --border: #e8eaf0;
+  /* Text hierarchy: primary > secondary > muted, each >= 4.5:1 on card, page
+     and hover surfaces (muted: 5.9 card, 5.3 page). */
   --text-primary: #1a1a2e;
-  --text-secondary: #64748b;
-  --text-muted: #475569;
+  --text-secondary: #475569;
+  --text-muted: #5b6576;
   --shadow: rgba(176, 30, 102, 0.07);
   --primary: #b01e66;
   --accent: #6c63ff;
@@ -61,9 +63,10 @@
   --bg-input: #21222f;
   --bg-hover: #272838;
   --border: #2a2d42;
+  /* muted: 5.6 on card, 4.8 on hover; secondary: 7.1 on card */
   --text-primary: #e8e9f0;
-  --text-secondary: #8b8fa8;
-  --text-muted: #5c6080;
+  --text-secondary: #a3a7bf;
+  --text-muted: #8f93ab;
   --shadow: rgba(0, 0, 0, 0.4);
   --primary: #b01e66;
   --accent: #6c63ff;
@@ -739,22 +742,74 @@ body {
   }
 }
 
-/* Dark mode: inline pastel backgrounds used in components */
-:root.dark [style*='background: #fde3ef'],
+/* Dark mode: inline pastel backgrounds used in components. Browsers serialize
+   inline colours as rgb(), so match that form: #fde3ef, #ede9ff, #fef3c7,
+   #dcfce7, #fef2f2 and #f0fdf4 respectively. */
+:root.dark [style*='background: rgb(253, 227, 239)'],
 :root.dark [style*='background: rgb(237, 233, 255)'] {
   background: rgba(176, 30, 102, 0.12) !important;
 }
-:root.dark [style*='background: #fef3c7'] {
+:root.dark [style*='background: rgb(254, 243, 199)'] {
   background: rgba(245, 166, 35, 0.12) !important;
 }
-:root.dark [style*='background: #dcfce7'] {
+:root.dark [style*='background: rgb(220, 252, 231)'] {
   background: rgba(34, 197, 94, 0.12) !important;
 }
-:root.dark [style*='background: #fef2f2'] {
+:root.dark [style*='background: rgb(254, 242, 242)'] {
   background: rgba(239, 68, 68, 0.1) !important;
 }
-:root.dark [style*='background: #f0fdf4'] {
+:root.dark [style*='background: rgb(240, 253, 244)'] {
   background: rgba(34, 197, 94, 0.08) !important;
+}
+
+/* On and inside those tinted surfaces, lift the dark text tones they pair with
+   (brand, accent and 700/800 status inline colours) to light tones with
+   >= 4.5:1. The '; color' / '^color' forms skip border-color and friends. */
+:root.dark
+  :is([style*='background: rgb(253, 227, 239)'], [style*='background: rgb(253, 227, 239)'] *):is(
+    [style*='; color: var(--primary)'],
+    [style^='color: var(--primary)']
+  ) {
+  color: #e06399 !important;
+}
+:root.dark
+  :is([style*='background: rgb(237, 233, 255)'], [style*='background: rgb(237, 233, 255)'] *):is(
+    [style*='; color: var(--accent)'],
+    [style^='color: var(--accent)']
+  ) {
+  color: #a5a0ff !important;
+}
+:root.dark
+  :is([style*='background: rgb(254, 243, 199)'], [style*='background: rgb(254, 243, 199)'] *):is(
+    [style*='; color: rgb(180, 83, 9)'],
+    [style^='color: rgb(180, 83, 9)'],
+    [style*='; color: rgb(146, 64, 14)'],
+    [style^='color: rgb(146, 64, 14)']
+  ) {
+  color: #fcd34d !important;
+}
+:root.dark
+  :is(
+    [style*='background: rgb(220, 252, 231)'],
+    [style*='background: rgb(220, 252, 231)'] *,
+    [style*='background: rgb(240, 253, 244)'],
+    [style*='background: rgb(240, 253, 244)'] *
+  ):is(
+    [style*='; color: rgb(21, 128, 61)'],
+    [style^='color: rgb(21, 128, 61)'],
+    [style*='; color: rgb(22, 101, 52)'],
+    [style^='color: rgb(22, 101, 52)']
+  ) {
+  color: #86efac !important;
+}
+:root.dark
+  :is([style*='background: rgb(254, 242, 242)'], [style*='background: rgb(254, 242, 242)'] *):is(
+    [style*='; color: rgb(153, 27, 27)'],
+    [style^='color: rgb(153, 27, 27)'],
+    [style*='; color: rgb(185, 28, 28)'],
+    [style^='color: rgb(185, 28, 28)']
+  ) {
+  color: #fca5a5 !important;
 }
 
 /* IMI-logo gradient frame for the GeoMap container on /app/map.
