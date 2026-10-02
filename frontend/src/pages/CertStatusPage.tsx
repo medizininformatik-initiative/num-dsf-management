@@ -1,12 +1,17 @@
 /**
  * CertStatusPage.tsx — shown by AuthBootstrap in the cert deployment variant
  * when client-certificate sign-in cannot complete. There is no OTP fallback in
- * this variant, so this screen explains the state and offers a reload.
- * Dependencies: ../stores/i18n.store, ../lib/authMode
+ * this variant, so this screen explains the state and offers a reload. It uses
+ * the sign-in layout (glass card, environment badge); the checking state is a
+ * polite status with a spinner, a failure is announced as an alert.
+ * Dependencies: AuthLayout, Button, Icon, ../stores/i18n.store, ../lib/authMode
  */
 import { useI18n } from '../stores/i18n.store';
 import type { TranslationKey } from '../i18n/en';
 import { reauthRedirect } from '../lib/authMode';
+import { AuthLayout } from '../components/AuthLayout';
+import { Button } from '../components/ui/Button';
+import { Icon } from '../components/ui/Icon';
 
 const CODE_KEY: Record<string, TranslationKey> = {
   NO_CLIENT_CERT: 'certStatusNoCert',
@@ -18,55 +23,32 @@ const CODE_KEY: Record<string, TranslationKey> = {
 
 export function CertStatusPage({ code }: { code: string | null }) {
   const { t } = useI18n();
-  const messageKey: TranslationKey =
-    code === null ? 'certStatusChecking' : (CODE_KEY[code] ?? 'certStatusGeneric');
+  const checking = code === null;
+  const messageKey: TranslationKey = checking
+    ? 'certStatusChecking'
+    : (CODE_KEY[code] ?? 'certStatusGeneric');
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--bg-page)',
-        fontFamily: 'Inter, system-ui, sans-serif',
-        padding: '24px',
-      }}
-    >
-      <div style={{ maxWidth: '420px', textAlign: 'center' }}>
-        <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--primary)' }}>dsf.</span>
-        <h1
-          style={{
-            fontSize: '18px',
-            fontWeight: 700,
-            color: 'var(--text-primary)',
-            margin: '16px 0 8px',
-          }}
+    <AuthLayout title={t('certStatusTitle')}>
+      <div className="space-y-5">
+        <p
+          role={checking ? 'status' : 'alert'}
+          className="flex items-start gap-2 text-sm leading-6 text-[color:var(--text-secondary)]"
         >
-          {t('certStatusTitle')}
-        </h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+          <Icon
+            name={checking ? 'progress_activity' : 'gpp_bad'}
+            size={20}
+            className={`mt-0.5 shrink-0 ${checking ? 'animate-spin text-[color:var(--text-muted)]' : 'text-danger-fg'}`}
+          />
           {t(messageKey)}
         </p>
-        {code !== null && (
-          <button
-            onClick={() => reauthRedirect()}
-            style={{
-              marginTop: '20px',
-              background: 'var(--primary)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '10px 18px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
+        {!checking && (
+          <Button className="w-full" onClick={() => reauthRedirect()}>
+            <Icon name="refresh" size={18} />
             {t('certStatusRetry')}
-          </button>
+          </Button>
         )}
       </div>
-    </div>
+    </AuthLayout>
   );
 }
