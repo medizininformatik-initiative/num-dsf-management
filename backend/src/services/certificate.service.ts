@@ -6,12 +6,17 @@ import crypto from 'crypto';
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
 import { isCaBlacklisted } from './ca-blacklist.service';
+import {
+  isIssuerWhitelisted,
+  isWhitelistEnforced,
+  whitelistedIssuers,
+} from './ca-whitelist.service';
 import { errMessage } from '../lib/errMessage';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
 import { v4 as uuidv4 } from 'uuid';
 
 // Columns selected for the API-facing certificate row, before the
-// pem-to-thumbprintSha512 projection in withThumbprintSha512() below. A
+// pem-to-thumbprintSha512 projection in toApiCertificates() below. A
 // concrete interface (rather than Knex's implicit `any`) keeps that
 // projection's result properly typed instead of collapsing to `any`.
 interface CertificateRow {
@@ -74,16 +79,44 @@ export function parseCertificate(pem: string): {
   }
 }
 
+/** Issuer DN of a stored PEM; empty for corrupted at-rest data. */
+function issuerOf(pem: string): string {
+  try {
+    return parseCertificate(pem).issuerDn;
+  } catch {
+    return '';
+  }
+}
+
 /**
- * Attach the DSF SHA-512 thumbprint (128 lower-case hex, derived from the
- * stored PEM) to a certificate row for API responses, and strip the PEM
- * itself back out — the certificates API never returns raw PEM content.
+ * API shape of certificate rows: the DSF SHA-512 thumbprint (128 lower-case
+ * hex) and the issuer DN, with whether that issuer is a CA DSF accepts in
+ * production (CA whitelist), are derived from the stored PEM; the PEM itself
+ * is stripped, the certificates API never returns raw PEM content.
  */
-function withThumbprintSha512<T extends { pem: string }>(
-  row: T,
-): Omit<T, 'pem'> & { thumbprintSha512: string } {
-  const { pem, ...rest } = row;
-  return { ...rest, thumbprintSha512: sha512FingerprintFromPem(pem) };
+async function toApiCertificates<T extends { pem: string }>(
+  rows: T[],
+): Promise<
+  Array<Omit<T, 'pem'> & { thumbprintSha512: string; issuerDn: string; issuerTrusted: boolean }>
+> {
+  const issuers = rows.map((r) => issuerOf(r.pem));
+  const trusted = await whitelistedIssuers(issuers.filter(Boolean));
+  return rows.map(({ pem, ...rest }, i) => ({
+    ...rest,
+    thumbprintSha512: sha512FingerprintFromPem(pem),
+    issuerDn: issuers[i],
+    issuerTrusted: trusted.has(issuers[i]),
+  }));
+}
+
+/**
+ * Refuse issuers outside the CA whitelist when CA_WHITELIST_ENFORCE=true.
+ * @throws CA_NOT_WHITELISTED
+ */
+async function assertIssuerAllowed(issuerDn: string): Promise<void> {
+  if (isWhitelistEnforced() && !(await isIssuerWhitelisted(issuerDn))) {
+    throw new Error('CA_NOT_WHITELISTED');
+  }
 }
 
 export async function getCertificates(instanceId: string) {
@@ -93,7 +126,7 @@ export async function getCertificates(instanceId: string) {
     .where({ organization_id: org.identifier })
     .select('id', 'organization_id', 'subject', 'thumbprint', 'valid_until', 'created_at', 'pem')
     .orderBy('created_at', 'desc');
-  return rows.map(withThumbprintSha512);
+  return toApiCertificates(rows);
 }
 
 /**
@@ -102,6 +135,7 @@ export async function getCertificates(instanceId: string) {
  * @throws PRIVATE_KEY_REJECTED / INVALID_PEM on a bad PEM.
  * @throws ORGANIZATION_NOT_FOUND if the instance has no organization.
  * @throws CA_BLACKLISTED if the issuing CA is blacklisted.
+ * @throws CA_NOT_WHITELISTED if the whitelist is enforced and the issuer is not on it.
  */
 export async function createCertificate(
   instanceId: string,
@@ -116,6 +150,7 @@ export async function createCertificate(
   if (await isCaBlacklisted({ subjectDn: issuerDn })) {
     throw new Error('CA_BLACKLISTED');
   }
+  await assertIssuerAllowed(issuerDn);
   const id = uuidv4();
   await db('certificates').insert({
     id,
@@ -139,7 +174,7 @@ export async function createCertificate(
     .where({ id })
     .select('id', 'organization_id', 'subject', 'thumbprint', 'valid_until', 'created_at', 'pem')
     .first();
-  return withThumbprintSha512(row);
+  return (await toApiCertificates([row]))[0];
 }
 
 export async function deleteCertificate(
@@ -171,6 +206,7 @@ export async function deleteCertificate(
  * @throws PRIVATE_KEY_REJECTED / INVALID_PEM on a bad PEM.
  * @throws ORGANIZATION_NOT_FOUND / CERTIFICATE_NOT_FOUND if the org or old cert is missing.
  * @throws CA_BLACKLISTED if the issuing CA is blacklisted.
+ * @throws CA_NOT_WHITELISTED if the whitelist is enforced and the issuer is not on it.
  */
 export async function renewCertificate(
   instanceId: string,
@@ -184,8 +220,9 @@ export async function renewCertificate(
   if (await isCaBlacklisted({ subjectDn: issuerDn })) {
     throw new Error('CA_BLACKLISTED');
   }
+  await assertIssuerAllowed(issuerDn);
 
-  return db.transaction(async (trx) => {
+  const renewed = await db.transaction(async (trx) => {
     // Lock old cert row and verify it belongs to this instance's org
     const org = await trx('organizations').where({ instance_id: instanceId }).first();
     if (!org) throw new Error('ORGANIZATION_NOT_FOUND');
@@ -235,6 +272,7 @@ export async function renewCertificate(
       .where({ id: newId })
       .select('id', 'organization_id', 'subject', 'thumbprint', 'valid_until', 'created_at', 'pem')
       .first();
-    return withThumbprintSha512(row);
+    return row;
   });
+  return (await toApiCertificates([renewed]))[0];
 }
