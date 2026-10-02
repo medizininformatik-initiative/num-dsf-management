@@ -70,6 +70,18 @@ describe('CrossUserInstanceBanner (shared harness)', () => {
     expect(screen.getByText(/someone-else@example\.de/)).toBeInTheDocument();
   });
 
+  it('uses the warning tone tokens and addresses German users formally', () => {
+    me = { email: 'admin@imi-test.example.de', isAdmin: true };
+    instance = { id: 'i1', label: 'Foreign', owner_email: 'someone-else@example.de' };
+    renderWithProviders(<CrossUserInstanceBanner instanceId="i1" />, { lang: 'de' });
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveClass('bg-warning-surface', 'border-warning-border', 'text-warning-fg');
+    expect(alert).not.toHaveAttribute('style');
+    expect(
+      screen.getByText('Sie betrachten die Instanz eines anderen Benutzers'),
+    ).toBeInTheDocument();
+  });
+
   it('renders nothing when no instanceId is supplied', () => {
     me = { email: 'admin@imi-test.example.de', isAdmin: true };
     instance = { id: 'i1', label: 'Foreign', owner_email: 'someone-else@example.de' };

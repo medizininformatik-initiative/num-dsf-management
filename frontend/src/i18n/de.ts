@@ -604,7 +604,7 @@ export const de: Record<TranslationKey, string> = {
   crossUserContinueBtn: 'Fortfahren',
 
   // CrossUserInstanceBanner
-  crossUserBannerTitle: 'Du betrachtest die Instanz eines anderen Benutzers',
+  crossUserBannerTitle: 'Sie betrachten die Instanz eines anderen Benutzers',
   crossUserBannerBody:
     'Diese Instanz gehört {owner}. Alle gespeicherten Änderungen werden auf deren Daten angewendet.',
 
