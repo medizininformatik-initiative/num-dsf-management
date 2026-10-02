@@ -20,6 +20,7 @@ const certCreate = vi.hoisted(() => vi.fn());
 const endpointCreate = vi.hoisted(() => vi.fn());
 const endpointUpdate = vi.hoisted(() => vi.fn());
 const downloadBundle = vi.hoisted(() => vi.fn());
+const downloadEndpointBundle = vi.hoisted(() => vi.fn());
 const downloadIp = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../hooks/useCertificates', () => ({
@@ -43,7 +44,7 @@ vi.mock('../../../hooks/useEndpoints', () => ({
 // BundlePreview pulls in unrelated API state for these tests.
 vi.mock('../BundlePreview', () => ({ BundlePreview: () => null }));
 vi.mock('../../../api/entities.api', () => ({
-  api: () => ({ downloadIpList: downloadIp }),
+  api: () => ({ downloadIpList: downloadIp, downloadBundle: downloadEndpointBundle }),
   downloadFullAllowListBundle: downloadBundle,
 }));
 
@@ -64,6 +65,7 @@ beforeEach(() => {
   endpointCreate.mockReset().mockResolvedValue(undefined);
   endpointUpdate.mockReset().mockResolvedValue(undefined);
   downloadBundle.mockReset().mockResolvedValue({ data: '{}' });
+  downloadEndpointBundle.mockReset().mockResolvedValue({ data: '{}' });
   downloadIp.mockReset().mockResolvedValue({ data: new Uint8Array([1, 2, 3]) });
 });
 
@@ -167,7 +169,7 @@ describe('DownloadModal', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('keeps downloads gated until the disclaimer is acknowledged, then triggers the bundle download', async () => {
+  it('keeps downloads gated until the disclaimer is acknowledged, then downloads the endpoint bundle', async () => {
     const user = userEvent.setup();
     renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
 
@@ -180,6 +182,8 @@ describe('DownloadModal', () => {
     expect(bundleBtn).toBeEnabled();
 
     await user.click(bundleBtn);
-    await waitFor(() => expect(downloadBundle).toHaveBeenCalledTimes(1));
+    // The only endpoint is preselected; the network-wide bundle is a separate button.
+    await waitFor(() => expect(downloadEndpointBundle).toHaveBeenCalledWith('ep1'));
+    expect(downloadBundle).not.toHaveBeenCalled();
   });
 });
