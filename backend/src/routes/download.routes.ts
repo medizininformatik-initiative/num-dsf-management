@@ -22,9 +22,13 @@ export const downloadRouter = Router({ mergeParams: true });
 downloadRouter.get('/full-bundle', requireAuth, async (req, res) => {
   try {
     const bundle = await generateFullBundle();
-    const json = JSON.stringify(bundle);
+    // Signed like the endpoint bundle, so the download dialog can show the
+    // hash and signature a site needs to verify what it imports.
+    const { json, signature, contentHash } = signBundle(bundle);
     res.setHeader('Content-Type', 'application/fhir+json');
     res.setHeader('Content-Disposition', 'attachment; filename="dsf-allow-list-bundle.json"');
+    res.setHeader('X-Bundle-Signature', signature);
+    res.setHeader('X-Content-Hash', contentHash);
 
     // Log every full-bundle download. The endpoint exposes the entire
     // federation map (every approved org's identifier, endpoints, IPs,
@@ -35,7 +39,7 @@ downloadRouter.get('/full-bundle', requireAuth, async (req, res) => {
       userEmail: req.user!.email,
       resourceType: 'AUTH',
       operation: 'CREATE',
-      diffJson: { action: 'full_bundle_download', byteSize: json.length },
+      diffJson: { action: 'full_bundle_download', byteSize: json.length, contentHash },
       ipAddress: req.ip || 'unknown',
     }).catch(() => {});
 
