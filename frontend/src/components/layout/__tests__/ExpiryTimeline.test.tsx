@@ -1,13 +1,16 @@
 /**
  * ExpiryTimeline.test.tsx — segment-state coverage for the certificate expiry
  * timeline. The component reads useCertificates(instanceId), which calls
- * api(instanceId).getCertificates(); we mock entities.api so daysUntil() runs
- * against real "now" with dates built relative to it. Wide day margins keep the
- * green/amber/red band selection deterministic (boundaries are 30 and 90 days).
+ * api(instanceId).getCertificates(); we mock entities.api so certValidity()
+ * runs against real "now" with dates built relative to it. Wide day margins
+ * keep the state deterministic (thresholds 30 and 90 days, see certStatus).
+ * Each entry exposes its state as data-cert-state and a translated pill; the
+ * date follows the language toggle (formatDate).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import { renderWithProviders } from '../../../test/renderWithProviders';
+import { formatDate } from '../../../lib/dateUtils';
 import { ExpiryTimeline } from '../ExpiryTimeline';
 
 interface CertFixture {
@@ -24,40 +27,16 @@ vi.mock('../../../api/entities.api', () => ({
   }),
 }));
 
-// ISO date (YYYY-MM-DD) N days from now. Wide margins avoid the 30/90-day
-// band boundaries so the chosen colour never flips with time-of-day rounding.
+// ISO date (YYYY-MM-DD) N days from now.
 const isoDaysFromNow = (n: number) =>
   new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
 
-/**
- * Normalise a CSS colour through jsdom's CSSOM so a hex literal compares equal
- * regardless of whether jsdom stores it as hex or rgb(). Returns the canonical
- * string the DOM serialises the input to.
- */
-const canonicalColor = (value: string): string => {
-  const probe = document.createElement('span');
-  probe.style.color = value;
-  return probe.style.color;
+/** The timeline entry (li) of a certificate, found from its subject. */
+const entryFor = (subject: HTMLElement): HTMLElement => {
+  const entry = subject.closest('li');
+  if (!entry) throw new Error('timeline entry not found for subject');
+  return entry;
 };
-
-// The timeline row is the nearest ancestor with position:relative; the dot and
-// the day/EXPIRED badge both live inside it. Finding the row from the subject
-// text scopes the colour assertions to that one certificate.
-const rowFor = (subject: HTMLElement): HTMLElement => {
-  const row = subject.closest('div[style*="position: relative"]');
-  if (!row) throw new Error('timeline row not found for subject');
-  return row as HTMLElement;
-};
-
-const dotOf = (row: HTMLElement): HTMLElement => {
-  const dot = row.querySelector('div[style*="border-radius: 50%"]');
-  if (!dot) throw new Error('timeline dot not found in row');
-  return dot as HTMLElement;
-};
-
-const GREEN = '#22c55e';
-const AMBER = '#f5a623';
-const RED = '#ef4444';
 
 describe('ExpiryTimeline', () => {
   beforeEach(() => {
@@ -76,53 +55,65 @@ describe('ExpiryTimeline', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('marks a far-future certificate as valid (green dot, day-count badge)', async () => {
+  it('marks a far-future certificate as valid with its days left', async () => {
     certs = [{ id: 'c1', subject: 'CN=valid.ukm.de', valid_until: isoDaysFromNow(200) }];
     renderWithProviders(<ExpiryTimeline instanceId="i1" />);
 
-    const row = rowFor(await screen.findByText('CN=valid.ukm.de', undefined, { timeout: 4000 }));
+    const entry = entryFor(
+      await screen.findByText('CN=valid.ukm.de', undefined, { timeout: 4000 }),
+    );
 
-    // Day-count badge, not EXPIRED, for a still-valid certificate.
-    const badge = within(row).getByText(/^\d+d$/);
-    expect(badge.style.color).toBe(canonicalColor(GREEN));
-    expect(dotOf(row).style.background).toBe(canonicalColor(GREEN));
+    expect(entry).toHaveAttribute('data-cert-state', 'valid');
+    expect(within(entry).getByText(/^\d+ days left$/)).toHaveClass('text-success-fg');
   });
 
-  it('marks a certificate inside the 90-day window as expiring soon (amber)', async () => {
+  it('marks a certificate inside the 90-day window as expiring soon (warning)', async () => {
     certs = [{ id: 'c2', subject: 'CN=soon.ukm.de', valid_until: isoDaysFromNow(60) }];
     renderWithProviders(<ExpiryTimeline instanceId="i1" />);
 
-    const row = rowFor(await screen.findByText('CN=soon.ukm.de', undefined, { timeout: 4000 }));
+    const entry = entryFor(await screen.findByText('CN=soon.ukm.de', undefined, { timeout: 4000 }));
 
-    const badge = within(row).getByText(/^\d+d$/);
-    expect(badge.style.color).toBe(canonicalColor(AMBER));
-    expect(dotOf(row).style.background).toBe(canonicalColor(AMBER));
+    expect(entry).toHaveAttribute('data-cert-state', 'warning');
+    expect(within(entry).getByText(/^\d+ days left$/)).toHaveClass('text-warning-fg');
   });
 
-  it('marks an already-past certificate as expired (red dot, EXPIRED badge)', async () => {
+  it('marks a certificate inside the 30-day window as critical (danger)', async () => {
+    certs = [{ id: 'c4', subject: 'CN=urgent.ukm.de', valid_until: isoDaysFromNow(10) }];
+    renderWithProviders(<ExpiryTimeline instanceId="i1" />);
+
+    const entry = entryFor(
+      await screen.findByText('CN=urgent.ukm.de', undefined, { timeout: 4000 }),
+    );
+
+    expect(entry).toHaveAttribute('data-cert-state', 'critical');
+    expect(within(entry).getByText(/^\d+ days left$/)).toHaveClass('text-danger-fg');
+  });
+
+  it('marks an already-past certificate as expired', async () => {
     certs = [{ id: 'c3', subject: 'CN=old.ukm.de', valid_until: isoDaysFromNow(-10) }];
     renderWithProviders(<ExpiryTimeline instanceId="i1" />);
 
-    const row = rowFor(await screen.findByText('CN=old.ukm.de', undefined, { timeout: 4000 }));
+    const entry = entryFor(await screen.findByText('CN=old.ukm.de', undefined, { timeout: 4000 }));
 
-    const badge = within(row).getByText('EXPIRED');
-    expect(badge.style.color).toBe(canonicalColor(RED));
-    expect(dotOf(row).style.background).toBe(canonicalColor(RED));
+    expect(entry).toHaveAttribute('data-cert-state', 'expired');
+    expect(within(entry).getByText('Expired')).toHaveClass('text-danger-fg');
   });
 
-  it('renders the section header and sorts certificates by ascending expiry', async () => {
+  it('renders the translated header, sorts by ascending expiry and formats dates', async () => {
+    const far = isoDaysFromNow(200);
     certs = [
-      { id: 'far', subject: 'CN=far.ukm.de', valid_until: isoDaysFromNow(200) },
+      { id: 'far', subject: 'CN=far.ukm.de', valid_until: far },
       { id: 'near', subject: 'CN=near.ukm.de', valid_until: isoDaysFromNow(5) },
     ];
-    renderWithProviders(<ExpiryTimeline instanceId="i1" />);
+    renderWithProviders(<ExpiryTimeline instanceId="i1" />, { lang: 'de' });
 
     expect(
-      await screen.findByText('Certificate Timeline', undefined, { timeout: 4000 }),
+      await screen.findByRole('heading', { name: 'Zertifikats-Zeitleiste' }, { timeout: 4000 }),
     ).toBeInTheDocument();
 
     const subjects = screen.getAllByText(/^CN=(near|far)\.ukm\.de$/).map((el) => el.textContent);
     // Earliest expiry first: the +5-day cert precedes the +200-day cert.
     expect(subjects).toEqual(['CN=near.ukm.de', 'CN=far.ukm.de']);
+    expect(screen.getByText(formatDate(far, 'de'))).toBeInTheDocument();
   });
 });

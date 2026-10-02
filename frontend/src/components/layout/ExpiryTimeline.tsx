@@ -1,133 +1,96 @@
 /**
- * ExpiryTimeline.tsx – Visual timeline of certificate expiry dates
- * Depends on: useCertificates hook, dateUtils
+ * ExpiryTimeline.tsx – Vertical timeline of the instance's certificate expiry
+ * dates, soonest first. Each entry's dot and pill follow the shared
+ * classification (certValidity: expired, critical < 30 days, warning < 90
+ * days, valid) and its date the app language (formatDate).
+ * Depends on: useCertificates, lib/certStatus, lib/dateUtils, StatusPill, Icon, i18n store
  */
+import type { CSSProperties } from 'react';
 import { useCertificates } from '../../hooks/useCertificates';
-import { daysUntil } from '../../lib/dateUtils';
+import type { ApiCertificate } from '../../api/entities.api';
+import { certValidity, CERT_STATE_TONE, type CertValidity } from '../../lib/certStatus';
+import { formatDate } from '../../lib/dateUtils';
+import { useI18n } from '../../stores/i18n.store';
+import { StatusPill } from '../ui/StatusPill';
+import { Icon } from '../ui/Icon';
 
 interface Props {
   instanceId: string | null;
 }
 
+/** Timeline dot colour per tone (the pill carries the text). */
+const DOT_CLASS: Record<'danger' | 'warning' | 'success', string> = {
+  danger: 'bg-danger-fg',
+  warning: 'bg-warning-fg',
+  success: 'bg-success-fg',
+};
+
 export function ExpiryTimeline({ instanceId }: Props) {
-  const { data: certs = [] } = useCertificates(instanceId);
+  const { t, lang } = useI18n();
+  const { data } = useCertificates(instanceId);
+  const certs: ApiCertificate[] = Array.isArray(data) ? data : [];
 
   if (certs.length === 0) return null;
 
   const sorted = [...certs].sort(
-    (a: any, b: any) => new Date(a.valid_until).getTime() - new Date(b.valid_until).getTime(),
+    (a, b) => new Date(a.valid_until).getTime() - new Date(b.valid_until).getTime(),
   );
 
+  function remaining({ state, days }: CertValidity): string {
+    if (state === 'expired') return t('expiryTimelineExpired');
+    if (days === 0) return t('expiryTimelineToday');
+    if (days === 1) return t('expiryTimelineDayLeft');
+    return t('expiryTimelineDaysLeft', { n: days });
+  }
+
   return (
-    <div style={{ marginTop: '16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#f5a623' }}>
-          event
-        </span>
+    <div>
+      <h3 className="mb-2.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[color:var(--text-muted)]">
+        <Icon name="event" size={16} />
+        {t('expiryTimelineTitle')}
+      </h3>
+      <div className="relative pl-3">
+        {/* Rail */}
         <span
-          style={{
-            fontSize: '10px',
-            fontWeight: 700,
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          }}
-        >
-          Certificate Timeline
-        </span>
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0',
-          position: 'relative',
-          paddingLeft: '12px',
-        }}
-      >
-        {/* Vertical line */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '5px',
-            top: '4px',
-            bottom: '4px',
-            width: '2px',
-            background: 'var(--border)',
-            borderRadius: '1px',
-          }}
+          aria-hidden="true"
+          className="absolute bottom-1 left-[5px] top-1 w-0.5 rounded-full bg-[color:var(--border)]"
         />
-
-        {sorted.map((cert: any) => {
-          const days = daysUntil(cert.valid_until);
-          const color = days < 30 ? '#ef4444' : days < 90 ? '#f5a623' : '#22c55e';
-          const dateStr = new Date(cert.valid_until).toLocaleDateString('de-DE', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-          });
-
-          return (
-            <div
-              key={cert.id}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px',
-                padding: '6px 0',
-                position: 'relative',
-              }}
-            >
-              {/* Dot on the timeline */}
-              <div
-                style={{
-                  width: '10px',
-                  height: '10px',
-                  borderRadius: '50%',
-                  flexShrink: 0,
-                  background: color,
-                  border: '2px solid var(--bg-card)',
-                  marginTop: '2px',
-                  marginLeft: '-6px',
-                  position: 'relative',
-                  zIndex: 1,
-                }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    color: 'var(--text-primary)',
-                    margin: 0,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {cert.subject}
-                </p>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}
-                >
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{dateStr}</span>
-                  <span
-                    style={{
-                      fontSize: '9px',
-                      fontWeight: 700,
-                      padding: '1px 6px',
-                      borderRadius: '4px',
-                      background: `${color}18`,
-                      color,
-                    }}
+        <ol>
+          {sorted.map((cert, i) => {
+            const validity = certValidity(cert.valid_until);
+            const tone = CERT_STATE_TONE[validity.state];
+            return (
+              <li
+                key={cert.id}
+                data-cert-state={validity.state}
+                className="relative flex animate-list-item-in items-start gap-2.5 py-1.5"
+                style={{ '--stagger-index': i } as CSSProperties}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`relative z-[1] -ml-1.5 mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full ring-2 ring-[color:var(--bg-card)] ${DOT_CLASS[tone]}`}
+                />
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="truncate text-xs font-semibold text-[color:var(--text-primary)]"
+                    title={cert.subject}
                   >
-                    {days < 0 ? 'EXPIRED' : `${days}d`}
-                  </span>
+                    {cert.subject}
+                  </p>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                    <time
+                      dateTime={cert.valid_until}
+                      className="text-[11px] text-[color:var(--text-muted)]"
+                    >
+                      {formatDate(cert.valid_until, lang)}
+                    </time>
+                    <StatusPill tone={tone}>{remaining(validity)}</StatusPill>
+                  </div>
                 </div>
-              </div>
-            </div>
-          );
-        })}
+              </li>
+            );
+          })}
+        </ol>
       </div>
     </div>
   );
