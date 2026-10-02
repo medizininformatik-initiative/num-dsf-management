@@ -2,6 +2,7 @@
  * MarketplaceEditStatusModal.tsx – Admin modal to edit a marketplace entry's
  * status plus its DSF metadata and trust signals. Array fields are entered as
  * comma-separated text and split on submit. TOTP-gated via the meta endpoint.
+ * Unsaved input asks before the dialog is dismissed.
  * Dependencies: Modal, FormField, useUpdateMarketplaceMeta, marketplace.schema,
  *               i18n.store, sonner
  */
@@ -10,7 +11,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
-import { FormField, selectClass, inputClass, ModalFooter } from './FormField';
+import { FormField, selectClass, inputClass, checkboxClass, ModalFooter } from './FormField';
 import { marketplaceEditFormSchema, MarketplaceEditForm } from '../../schemas/marketplace.schema';
 import { useUpdateMarketplaceMeta } from '../../hooks/useMarketplace';
 import { useI18n } from '../../stores/i18n.store';
@@ -67,7 +68,7 @@ export function MarketplaceEditStatusModal({
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<MarketplaceEditForm>({
     resolver: zodResolver(marketplaceEditFormSchema),
     defaultValues: defaults(),
@@ -94,7 +95,7 @@ export function MarketplaceEditStatusModal({
     };
     try {
       await updateMut.mutateAsync({ id: entryId, slug, body });
-      toast.success(t('marketplaceEditMeta'));
+      toast.success(t('formMarketplaceEditSuccess'));
       onClose();
     } catch (err: unknown) {
       const msg = getErrorMessageForStepUp(
@@ -107,8 +108,8 @@ export function MarketplaceEditStatusModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={t('marketplaceEditMeta')}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <Modal open={open} onClose={onClose} title={t('marketplaceEditMeta')} isDirty={isDirty}>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <FormField label={t('marketplaceFieldStatus')} required error={errors.status?.message}>
           <select {...register('status')} className={selectClass}>
             <option value="APPROVED">{t('marketplaceStatusApproved')}</option>
@@ -117,8 +118,8 @@ export function MarketplaceEditStatusModal({
           </select>
         </FormField>
 
-        <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-          <input type="checkbox" {...register('verified')} />
+        <label className="flex w-fit cursor-pointer items-center gap-2 text-xs font-semibold text-[color:var(--text-secondary)]">
+          <input type="checkbox" {...register('verified')} className={checkboxClass} />
           {t('marketplaceVerified')}
         </label>
 
@@ -132,7 +133,7 @@ export function MarketplaceEditStatusModal({
         </FormField>
 
         <FormField label={t('marketplaceAdvisory')}>
-          <textarea {...register('advisoryText')} className={inputClass} rows={2} />
+          <textarea {...register('advisoryText')} className={`${inputClass} resize-y`} rows={2} />
         </FormField>
 
         <FormField label={t('marketplaceSupersededBy')}>
@@ -163,11 +164,11 @@ export function MarketplaceEditStatusModal({
           <FormField label={t('totpCodeLabel')} required error={errors.totpCode?.message}>
             <input
               {...register('totpCode')}
-              className={inputClass}
+              className={`${inputClass} text-center font-mono tracking-[0.3em]`}
               maxLength={6}
               inputMode="numeric"
+              autoComplete="one-time-code"
               placeholder="000000"
-              style={{ fontFamily: 'monospace', letterSpacing: '4px', textAlign: 'center' }}
             />
           </FormField>
         )}

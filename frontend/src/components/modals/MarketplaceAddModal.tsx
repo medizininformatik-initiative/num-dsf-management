@@ -1,5 +1,6 @@
 /**
- * MarketplaceAddModal.tsx – Modal for adding a new marketplace process entry
+ * MarketplaceAddModal.tsx – Modal for adding a new marketplace process entry.
+ * Unsaved input asks before the dialog is dismissed.
  * Dependencies: Modal, FormField, useAddMarketplace, marketplace.schema, i18n.store, sonner
  */
 import { useEffect } from 'react';
@@ -27,7 +28,7 @@ export function MarketplaceAddModal({ open, onClose }: Props) {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<MarketplaceAddForm>({
     resolver: zodResolver(marketplaceAddFormSchema),
     defaultValues: { gitUrl: '', status: 'APPROVED', totpCode: '' },
@@ -41,7 +42,7 @@ export function MarketplaceAddModal({ open, onClose }: Props) {
     try {
       const body = needsTotpStepUp() ? data : { gitUrl: data.gitUrl, status: data.status };
       await addMut.mutateAsync(body);
-      toast.success(t('marketplaceAdd'));
+      toast.success(t('formMarketplaceAddSuccess'));
       onClose();
     } catch (err: unknown) {
       const msg = getErrorMessageForStepUp(
@@ -54,11 +55,13 @@ export function MarketplaceAddModal({ open, onClose }: Props) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={t('marketplaceAdd')}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <Modal open={open} onClose={onClose} title={t('marketplaceAdd')} isDirty={isDirty}>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <FormField label={t('marketplaceFieldGitUrl')} required error={errors.gitUrl?.message}>
           <input
             {...register('gitUrl')}
+            type="url"
+            spellCheck={false}
             className={inputClass}
             placeholder="https://github.com/owner/repo"
           />
@@ -76,11 +79,11 @@ export function MarketplaceAddModal({ open, onClose }: Props) {
           <FormField label={t('totpCodeLabel')} required error={errors.totpCode?.message}>
             <input
               {...register('totpCode')}
-              className={inputClass}
+              className={`${inputClass} text-center font-mono tracking-[0.3em]`}
               maxLength={6}
               inputMode="numeric"
+              autoComplete="one-time-code"
               placeholder="000000"
-              style={{ fontFamily: 'monospace', letterSpacing: '4px', textAlign: 'center' }}
             />
           </FormField>
         )}
