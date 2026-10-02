@@ -5,9 +5,8 @@
  *  1. FK-highlight emphasis — when the canvas store's `highlightedEntity` matches
  *     a card's id, that card renders the emphasis `outline` while sibling cards
  *     stay un-emphasised; clearing the highlight removes the outline again.
- *  2. Resize redraw — changing `window.innerWidth` and dispatching a `resize`
- *     event re-evaluates the column layout, switching the grid template from
- *     three columns to a single stacked column (and back).
+ *  2. Card ids — every card id exists exactly once at any window width (the
+ *     column layout itself is covered by EntityCanvas.layout.test.tsx).
  *
  * The five entity data hooks (also read by the OnboardingWizard the canvas
  * mounts) are mocked so the real card DOM renders deterministically. A
@@ -171,31 +170,12 @@ describe('EntityCanvas FK-highlight emphasis', () => {
   });
 });
 
-describe('EntityCanvas resize redraw', () => {
-  it('switches from a three-column grid to a single stacked column on narrow resize', () => {
-    setViewport(1600); // effective width 1100 → 3 cols
+describe('EntityCanvas card ids', () => {
+  it('renders each card id exactly once, whatever the window width', () => {
+    setViewport(900);
     const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
-
-    const grid = () => container.querySelector<HTMLElement>('div[style*="grid-template-columns"]');
-    expect(grid()?.style.gridTemplateColumns).toBe('1fr 1fr 1fr');
-
-    // Shrink below the single-column breakpoint (innerWidth-500 < 500).
-    setViewport(900); // effective width 400 → 1 col, stacked flex, no grid
-    expect(grid()).toBeNull();
-    // The organization card is still rendered in the single-column layout —
-    // exactly once: EntityCanvas no longer wraps it in a duplicate id="card-*".
-    expect(container.querySelectorAll('#card-organization')).toHaveLength(1);
-
-    // Widen again → the three-column grid comes back.
-    setViewport(1600);
-    expect(grid()?.style.gridTemplateColumns).toBe('1fr 1fr 1fr');
-  });
-
-  it('uses the two-column grid at an intermediate width', () => {
-    setViewport(1100); // effective width 600 → 2 cols
-    const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
-
-    const grid = container.querySelector<HTMLElement>('div[style*="grid-template-columns"]');
-    expect(grid?.style.gridTemplateColumns).toBe('1fr 1fr');
+    for (const id of ['organization', 'contacts', 'endpoints', 'memberships', 'certificates']) {
+      expect(container.querySelectorAll(`#card-${id}`)).toHaveLength(1);
+    }
   });
 });

@@ -1,14 +1,14 @@
 /**
- * EntityCanvas.lines.test.tsx — the TARGET described "SVG relation lines / bezier
- * <path> per FK relation", but the actual EntityCanvas renders no SVG at all: it is
- * a responsive grid that renders the five entity cards directly (plus the
- * OnboardingWizard) and switches between 1/2/3 columns based on
- * window.innerWidth. These tests assert that real rendered structure and the
- * column-breakpoint behavior. Each child card and the wizard are stubbed so the
- * assertions stay deterministic and isolated to EntityCanvas's own layout logic.
+ * EntityCanvas.layout.test.tsx — the canvas lays its cards out in one CSS grid
+ * whose columns come from the canvas width (entity-canvas.css), not from
+ * window.innerWidth: every card renders once, in reading order, after the
+ * onboarding wizard; a window resize neither re-parents nor remounts a card;
+ * each cell carries its stagger index and Organization spans two rows. Each
+ * child card and the wizard are stubbed so the assertions stay on the
+ * canvas's own structure.
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 
 // Stub every child so the test exercises only EntityCanvas's layout, not the
@@ -56,11 +56,7 @@ const CARD_TESTIDS = [
 ] as const;
 
 function setInnerWidth(width: number) {
-  Object.defineProperty(window, 'innerWidth', {
-    configurable: true,
-    writable: true,
-    value: width,
-  });
+  Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: width });
 }
 
 const originalInnerWidth = window.innerWidth;
@@ -70,26 +66,22 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('EntityCanvas layout (no SVG relation lines exist)', () => {
-  it('renders no SVG / bezier <path> relation lines — the canvas is a plain grid', () => {
-    setInnerWidth(1600);
+describe('EntityCanvas layout', () => {
+  it('renders the wizard first, then all five cards once, in reading order, in one grid', () => {
     const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
-    expect(container.querySelectorAll('svg')).toHaveLength(0);
-    expect(container.querySelectorAll('path')).toHaveLength(0);
-  });
-
-  it('renders all five entity cards plus the onboarding wizard (3-col layout)', () => {
-    setInnerWidth(1600); // 1600 - 500 = 1100 effective → 3 columns
-    renderWithProviders(<EntityCanvas instanceId="i1" />);
-
-    for (const testId of CARD_TESTIDS) {
-      expect(screen.getByTestId(testId)).toBeInTheDocument();
-    }
-    expect(screen.getByTestId('onboarding-wizard')).toBeInTheDocument();
+    const grid = container.querySelector('.entity-canvas-grid');
+    expect(grid).not.toBeNull();
+    const order = Array.from(grid!.querySelectorAll('[data-testid]')).map((el) =>
+      el.getAttribute('data-testid'),
+    );
+    expect(order).toEqual([...CARD_TESTIDS]);
+    // The wizard stays on top, outside the card grid.
+    const wizard = screen.getByTestId('onboarding-wizard');
+    expect(grid!.contains(wizard)).toBe(false);
+    expect(wizard.compareDocumentPosition(grid!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('threads instanceId down to the wizard and every card', () => {
-    setInnerWidth(1600);
     renderWithProviders(<EntityCanvas instanceId="abc-123" />);
     expect(screen.getByTestId('onboarding-wizard')).toHaveTextContent('wizard:abc-123');
     expect(screen.getByTestId('organization-card')).toHaveTextContent('org:abc-123');
@@ -99,30 +91,36 @@ describe('EntityCanvas layout (no SVG relation lines exist)', () => {
     expect(screen.getByTestId('memberships-card')).toHaveTextContent('memberships:abc-123');
   });
 
-  it('uses a 3-column grid when effective width is wide (>= 800)', () => {
-    setInnerWidth(1600); // 1100 effective → 3 cols
+  it('does not derive its columns from the window: a resize keeps every card mounted in place', () => {
+    setInnerWidth(1600);
     const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
-    const grid = container.querySelector<HTMLElement>('div[style*="grid-template-columns"]');
-    expect(grid).not.toBeNull();
-    expect(grid?.style.gridTemplateColumns).toBe('1fr 1fr 1fr');
+    const before = CARD_TESTIDS.map((id) => screen.getByTestId(id));
+    const grid = container.querySelector('.entity-canvas-grid');
+
+    setInnerWidth(700);
+    act(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    // Same nodes in the same grid: nothing was re-parented or remounted, so
+    // card state (e.g. an inline edit) survives panels opening and closing.
+    CARD_TESTIDS.forEach((id, i) => expect(screen.getByTestId(id)).toBe(before[i]));
+    expect(container.querySelector('.entity-canvas-grid')).toBe(grid);
+    expect(container.querySelector('[style*="grid-template-columns"]')).toBeNull();
   });
 
-  it('uses a 2-column grid at the mid breakpoint (500 <= effective < 800)', () => {
-    setInnerWidth(1100); // 1100 - 500 = 600 effective → 2 cols
+  it('staggers the entrance by card index and lets Organization span two rows', () => {
     const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
-    const grid = container.querySelector<HTMLElement>('div[style*="grid-template-columns"]');
-    expect(grid).not.toBeNull();
-    expect(grid?.style.gridTemplateColumns).toBe('1fr 1fr');
-  });
-
-  it('uses a single stacked column at the narrow breakpoint (effective < 500)', () => {
-    setInnerWidth(900); // 900 - 500 = 400 effective → 1 col
-    const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
-    // No grid container in the 1-column branch — cards stack in a flex column.
-    expect(container.querySelector('div[style*="grid-template-columns"]')).toBeNull();
-    // All five cards are still present in the single-column layout.
-    for (const testId of CARD_TESTIDS) {
-      expect(screen.getByTestId(testId)).toBeInTheDocument();
-    }
+    const cells = Array.from(container.querySelectorAll<HTMLElement>('.entity-canvas-cell'));
+    expect(cells).toHaveLength(5);
+    cells.forEach((cell, i) => {
+      expect(cell).toHaveClass('animate-list-item-in');
+      expect(cell.style.getPropertyValue('--stagger-index')).toBe(String(i));
+    });
+    expect(cells[0]).toHaveAttribute('data-canvas-cell', 'organization');
+    expect(cells[0]).toHaveClass('entity-canvas-cell--lead');
+    expect(cells.slice(1).some((c) => c.classList.contains('entity-canvas-cell--lead'))).toBe(
+      false,
+    );
   });
 });

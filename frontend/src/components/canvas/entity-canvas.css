@@ -1,0 +1,39 @@
+/* entity-canvas.css – EntityCanvas grid. Columns come from the canvas's own
+   width (not the window's), so the layout follows the side panels whether
+   they are open, closed or drawers: as many columns of at least 340px as fit,
+   never wider than the canvas, at most three. The lead cell (Organization)
+   spans two rows, so 1 + 2×2 cards fill three columns and 1 + 1×2 + 2 fill
+   two without holes. */
+.entity-canvas-grid {
+  --canvas-gap: 1rem;
+  display: grid;
+  gap: var(--canvas-gap);
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(max(min(340px, 100%), calc((100% - 2 * var(--canvas-gap)) / 3)), 1fr)
+  );
+}
+
+.entity-canvas-cell {
+  position: relative;
+  min-width: 0;
+}
+
+/* Lift the cell under the pointer or focus above its neighbours, so a
+   popover inside a card is never covered by the next card. */
+.entity-canvas-cell:hover,
+.entity-canvas-cell:focus-within {
+  z-index: 1;
+}
+
+.entity-canvas-cell--lead {
+  grid-row: span 2;
+}
+
+/* The staggered entrance is static under Reduce Motion. The extra class
+   outweighs the animate-list-item-in utility, which loads after this file. */
+@media (prefers-reduced-motion: reduce) {
+  .entity-canvas-grid > .entity-canvas-cell {
+    animation: none;
+  }
+}

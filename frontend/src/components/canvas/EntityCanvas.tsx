@@ -1,94 +1,48 @@
 /**
- * EntityCanvas.tsx – 3-column entity layout with responsive breakpoints
- * Columns: [Organization] | [Contacts, Endpoints] | [Memberships, Certificates]
- * Breakpoints: >1200px → 3 cols, 800-1200px → 2 cols, <800px → 1 col
+ * EntityCanvas.tsx – the entity graph page: the onboarding wizard on top,
+ * then the five entity cards in one CSS grid whose columns follow the
+ * canvas's own width (see entity-canvas.css), so cards never remount when
+ * the layout changes. Cards enter with a short stagger (--stagger-index;
+ * static under Reduce Motion). The canvas is the scroll container.
+ * Dependencies: OnboardingWizard, the entity cards, entity-canvas.css.
  */
-import { useState, useEffect } from 'react';
+import type { ComponentType, CSSProperties } from 'react';
 import { OnboardingWizard } from './OnboardingWizard';
 import { OrganizationCard } from '../cards/OrganizationCard';
 import { ContactsCard } from '../cards/ContactsCard';
 import { EndpointsCard } from '../cards/EndpointsCard';
 import { CertificatesCard } from '../cards/CertificatesCard';
 import { MembershipsCard } from '../cards/MembershipsCard';
+import './entity-canvas.css';
 
 interface EntityCanvasProps {
   instanceId: string;
 }
 
+/** Reading and tab order; Organization leads and spans two rows. */
+const CARDS: ReadonlyArray<{ id: string; Card: ComponentType<{ instanceId: string }> }> = [
+  { id: 'organization', Card: OrganizationCard },
+  { id: 'contacts', Card: ContactsCard },
+  { id: 'endpoints', Card: EndpointsCard },
+  { id: 'memberships', Card: MembershipsCard },
+  { id: 'certificates', Card: CertificatesCard },
+];
+
 export function EntityCanvas({ instanceId }: EntityCanvasProps) {
-  const [cols, setCols] = useState(3);
-
-  useEffect(() => {
-    function updateCols() {
-      const w = window.innerWidth - 500; // subtract sidebar (220) + right panel (280)
-      if (w < 500) setCols(1);
-      else if (w < 800) setCols(2);
-      else setCols(3);
-    }
-    updateCols();
-    window.addEventListener('resize', updateCols);
-    return () => window.removeEventListener('resize', updateCols);
-  }, []);
-
-  const gap = '16px';
-
-  if (cols === 1) {
-    return (
-      <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
-        <OnboardingWizard instanceId={instanceId} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap }}>
-          <OrganizationCard instanceId={instanceId} />
-          <ContactsCard instanceId={instanceId} />
-          <EndpointsCard instanceId={instanceId} />
-          <MembershipsCard instanceId={instanceId} />
-          <CertificatesCard instanceId={instanceId} />
-        </div>
-      </div>
-    );
-  }
-
-  if (cols === 2) {
-    return (
-      <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
-        <OnboardingWizard instanceId={instanceId} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap, alignItems: 'start' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap }}>
-            <OrganizationCard instanceId={instanceId} />
-            <ContactsCard instanceId={instanceId} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap }}>
-            <EndpointsCard instanceId={instanceId} />
-            <MembershipsCard instanceId={instanceId} />
-            <CertificatesCard instanceId={instanceId} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 3 columns (default, >1200px effective width)
   return (
-    <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
+    <div className="entity-canvas min-h-0 flex-1 overflow-y-auto p-4">
       <OnboardingWizard instanceId={instanceId} />
-      <div
-        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap, alignItems: 'start' }}
-      >
-        {/* Column 1: Organization */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap }}>
-          <OrganizationCard instanceId={instanceId} />
-        </div>
-
-        {/* Column 2: Contacts + Endpoints */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap }}>
-          <ContactsCard instanceId={instanceId} />
-          <EndpointsCard instanceId={instanceId} />
-        </div>
-
-        {/* Column 3: Memberships + Certificates */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap }}>
-          <MembershipsCard instanceId={instanceId} />
-          <CertificatesCard instanceId={instanceId} />
-        </div>
+      <div className="entity-canvas-grid">
+        {CARDS.map(({ id, Card }, index) => (
+          <div
+            key={id}
+            data-canvas-cell={id}
+            className={`entity-canvas-cell animate-list-item-in${index === 0 ? ' entity-canvas-cell--lead' : ''}`}
+            style={{ '--stagger-index': index } as CSSProperties}
+          >
+            <Card instanceId={instanceId} />
+          </div>
+        ))}
       </div>
     </div>
   );
