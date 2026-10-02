@@ -2,37 +2,57 @@
  * OtpPage.tsx – Step 2: Enter 6-digit OTP code
  * Email from router state. Auto-submit when 6 digits entered.
  * requiresTotpSetup=true → /totp-setup, else → /totp
+ * Resending is possible after a countdown (a code was just sent); failures are
+ * reported as they are, a rate limit (429) with its retry time, which then
+ * drives the countdown. Errors are announced (role="alert").
+ * Dependencies: AuthLayout, authApi (+ error helpers), i18n store, Button, Icon.
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthLayout } from '../components/AuthLayout';
-import { authApi } from '../api/auth.api';
+import {
+  authApi,
+  formatWait,
+  isRateLimited,
+  isTransportError,
+  retryAfterSeconds,
+} from '../api/auth.api';
 import { useI18n } from '../stores/i18n.store';
+import { Button } from '../components/ui/Button';
+import { Icon } from '../components/ui/Icon';
+
+/** Seconds before another code may be requested. */
+export const RESEND_COOLDOWN_S = 30;
+
+function formatCountdown(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
 
 export function OtpPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
-  const email = (location.state as any)?.email || '';
+  const email = (location.state as { email?: string } | null)?.email || '';
 
   const [digits, setDigits] = useState<string[]>(Array(6).fill(''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [resent, setResent] = useState(false);
+  // The login page has just sent a code, so the first resend waits too.
+  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_S);
+  const [resending, setResending] = useState(false);
+  const [notice, setNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const resendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!email) navigate('/login', { replace: true });
     inputRefs.current[0]?.focus();
   }, [email, navigate]);
 
-  useEffect(
-    () => () => {
-      if (resendTimerRef.current) clearTimeout(resendTimerRef.current);
-    },
-    [],
-  );
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   function handleDigit(index: number, value: string) {
     const digit = value.replace(/\D/g, '').slice(-1);
@@ -49,13 +69,13 @@ export function OtpPage() {
     }
   }
 
-  function handleKeyDown(index: number, e: React.KeyboardEvent) {
+  function handleKeyDown(index: number, e: KeyboardEvent) {
     if (e.key === 'Backspace' && !digits[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   }
 
-  function handlePaste(e: React.ClipboardEvent) {
+  function handlePaste(e: ClipboardEvent) {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
     if (pasted.length === 6) {
@@ -75,8 +95,17 @@ export function OtpPage() {
       } else {
         navigate('/totp', { state: { tempToken, email } });
       }
-    } catch {
-      setError(t('otpInvalidCode'));
+    } catch (err: unknown) {
+      const wait = retryAfterSeconds(err);
+      setError(
+        isRateLimited(err)
+          ? wait != null
+            ? t('authTooManyAttempts', { time: formatWait(wait) })
+            : t('authTooManyAttemptsNoTime')
+          : isTransportError(err)
+            ? t('loginOtpRequestFailed')
+            : t('otpInvalidCode'),
+      );
       setDigits(Array(6).fill(''));
       inputRefs.current[0]?.focus();
     } finally {
@@ -85,13 +114,32 @@ export function OtpPage() {
   }
 
   async function handleResend() {
-    setResent(false);
-    await authApi.requestOtp(email).catch(() => {});
-    setResent(true);
-    setDigits(Array(6).fill(''));
-    inputRefs.current[0]?.focus();
-    if (resendTimerRef.current) clearTimeout(resendTimerRef.current);
-    resendTimerRef.current = setTimeout(() => setResent(false), 4000);
+    if (cooldown > 0 || resending) return;
+    setResending(true);
+    setNotice(null);
+    try {
+      await authApi.requestOtp(email);
+      setNotice({ tone: 'success', text: t('otpResent') });
+      setCooldown(RESEND_COOLDOWN_S);
+      setDigits(Array(6).fill(''));
+      inputRefs.current[0]?.focus();
+    } catch (err: unknown) {
+      if (isRateLimited(err)) {
+        const wait = retryAfterSeconds(err);
+        setNotice({
+          tone: 'error',
+          text:
+            wait != null
+              ? t('otpResendRateLimited', { time: formatWait(wait) })
+              : t('otpResendRateLimitedNoTime'),
+        });
+        setCooldown(wait ?? RESEND_COOLDOWN_S);
+      } else {
+        setNotice({ tone: 'error', text: t('otpResendFailed') });
+      }
+    } finally {
+      setResending(false);
+    }
   }
 
   return (
@@ -99,7 +147,7 @@ export function OtpPage() {
       <div className="space-y-5">
         {/* 6 Digit-Inputs */}
         <div
-          className="flex gap-2 justify-between"
+          className="flex justify-between gap-2"
           role="group"
           aria-label={t('otpCodeAria')}
           onPaste={handlePaste}
@@ -112,65 +160,68 @@ export function OtpPage() {
               }}
               type="text"
               inputMode="numeric"
+              autoComplete={i === 0 ? 'one-time-code' : 'off'}
               maxLength={1}
               aria-label={t('otpDigitAria', { n: i + 1 })}
               value={d}
               onChange={(e) => handleDigit(i, e.target.value)}
               onKeyDown={(e) => handleKeyDown(i, e)}
               disabled={loading}
-              className="text-center text-xl font-semibold outline-none transition-all"
-              style={{
-                width: '48px',
-                height: '56px',
-                border: `1.5px solid ${d ? 'var(--accent)' : '#e8eaf0'}`,
-                borderRadius: '10px',
-                color: '#1a1a2e',
-                background: d ? '#ede9ff' : '#fff',
-              }}
-              onFocus={(e) => (e.target.style.borderColor = 'var(--accent)')}
-              onBlur={(e) => (e.target.style.borderColor = digits[i] ? 'var(--accent)' : '#e8eaf0')}
+              className={`h-14 w-12 rounded-input border-[1.5px] text-center text-xl font-semibold text-[color:var(--text-primary)] transition-colors duration-short ease-standard focus:border-[color:var(--accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50 ${
+                d
+                  ? 'border-[color:var(--accent)] bg-[#6c63ff]/10'
+                  : 'border-[color:var(--border)] bg-[color:var(--bg-input)]'
+              }`}
             />
           ))}
         </div>
 
         {error && (
-          <p className="text-xs text-center" style={{ color: '#e05c5c' }}>
+          <p
+            role="alert"
+            className="flex items-start justify-center gap-1.5 text-xs text-danger-fg"
+          >
+            <Icon name="error" size={16} className="shrink-0" />
             {error}
           </p>
         )}
 
         {loading && (
-          <p className="text-xs text-center" style={{ color: '#9b9fad' }}>
+          <p role="status" className="text-center text-xs text-[color:var(--text-muted)]">
             {t('otpVerifying')}
           </p>
         )}
 
         {/* Resend */}
-        <div className="text-center">
-          {resent ? (
-            <span className="text-xs" style={{ color: '#4caf8a' }}>
-              {t('otpResent')}
-            </span>
-          ) : (
-            <button
-              onClick={handleResend}
-              className="text-xs underline"
-              style={{ color: '#9b9fad', background: 'none', border: 'none', cursor: 'pointer' }}
+        <div className="flex flex-col items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleResend}
+            disabled={cooldown > 0 || resending}
+            className="tabular-nums"
+          >
+            {resending
+              ? t('otpResending')
+              : cooldown > 0
+                ? t('otpResendIn', { time: formatCountdown(cooldown) })
+                : t('otpResend')}
+          </Button>
+          {notice && (
+            <p
+              role={notice.tone === 'error' ? 'alert' : 'status'}
+              className={`text-center text-xs ${notice.tone === 'error' ? 'text-danger-fg' : 'text-success-fg'}`}
             >
-              {t('otpResend')}
-            </button>
+              {notice.text}
+            </p>
           )}
         </div>
 
         {/* Back */}
         <div className="text-center">
-          <button
-            onClick={() => navigate('/login')}
-            className="text-xs"
-            style={{ color: '#9b9fad', background: 'none', border: 'none', cursor: 'pointer' }}
-          >
+          <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
             {t('otpDifferentEmail')}
-          </button>
+          </Button>
         </div>
       </div>
     </AuthLayout>

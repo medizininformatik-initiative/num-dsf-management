@@ -1040,6 +1040,14 @@ export const en = {
   adminPromotionsWithdrawBtn: 'Withdraw request',
   adminPromotionsRejectReasonLabel: 'Reason (required)',
   authPartnersLabel: 'In cooperation with',
+  authTooManyAttempts: 'Too many attempts. Please try again in {time}.',
+  authTooManyAttemptsNoTime: 'Too many attempts. Please wait a few minutes and try again.',
+  otpResendIn: 'Resend code in {time}',
+  otpResending: 'Sending…',
+  otpResendFailed: 'The code could not be sent. Please try again.',
+  otpResendRateLimited: 'Too many requests. You can request a new code in {time}.',
+  otpResendRateLimitedNoTime:
+    'Too many requests. Please wait a few minutes before requesting a new code.',
   // ─── Bundle Versions (federation hardening 2026-05-18) ────────────────────
   download: 'Download',
   bundleVersionsTitle: 'Bundle versions',

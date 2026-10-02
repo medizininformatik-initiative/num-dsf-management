@@ -1060,6 +1060,15 @@ export const de: Record<TranslationKey, string> = {
   adminPromotionsWithdrawBtn: 'Antrag zurückziehen',
   adminPromotionsRejectReasonLabel: 'Grund (erforderlich)',
   authPartnersLabel: 'In Kooperation mit',
+  authTooManyAttempts: 'Zu viele Versuche. Bitte versuchen Sie es in {time} erneut.',
+  authTooManyAttemptsNoTime:
+    'Zu viele Versuche. Bitte warten Sie einige Minuten und versuchen Sie es dann erneut.',
+  otpResendIn: 'Code erneut senden in {time}',
+  otpResending: 'Wird gesendet…',
+  otpResendFailed: 'Der Code konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
+  otpResendRateLimited: 'Zu viele Anfragen. Sie können in {time} einen neuen Code anfordern.',
+  otpResendRateLimitedNoTime:
+    'Zu viele Anfragen. Bitte warten Sie einige Minuten, bevor Sie einen neuen Code anfordern.',
   // ─── Bundle-Versionen (Föderationshärtung 2026-05-18) ────────────────────
   download: 'Herunterladen',
   bundleVersionsTitle: 'Bundle-Versionen',
