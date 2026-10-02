@@ -937,6 +937,26 @@ export const en = {
 
   // App shell — layout, navigation, drawers and popovers
   shellNotificationsUnread: 'Notifications, {n} unread',
+  shellEntityOrganization: 'Organization',
+  shellEntityContact: 'Contact',
+  shellEntityEndpoint: 'Endpoint',
+  shellEntityCertificate: 'Certificate',
+  shellEntityMembership: 'Membership',
+  shellEntityAuth: 'Account',
+  shellEntityApproval: 'Approval request',
+  shellEntityMarketplace: 'Marketplace',
+  shellOpCreate: 'created',
+  shellOpUpdate: 'updated',
+  shellOpDelete: 'deleted',
+  shellOpApprove: 'approved',
+  shellOpReject: 'rejected',
+  shellOpLogin: 'signed in',
+  shellOpLogout: 'signed out',
+  shellOpOtpRequest: 'sign-in code requested',
+  shellOpOtpVerify: 'sign-in code confirmed',
+  shellOpTotpSetup: 'two-factor authentication set up',
+  shellOpTotpVerify: 'two-factor code confirmed',
+  shellOpFailedLogin: 'sign-in failed',
 
   // CommandPalette
   cmdPlaceholder: 'Type a command…',

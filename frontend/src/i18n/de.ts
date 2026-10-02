@@ -953,6 +953,26 @@ export const de: Record<TranslationKey, string> = {
 
   // App shell — layout, navigation, drawers and popovers
   shellNotificationsUnread: 'Benachrichtigungen, {n} ungelesen',
+  shellEntityOrganization: 'Organisation',
+  shellEntityContact: 'Kontakt',
+  shellEntityEndpoint: 'Endpunkt',
+  shellEntityCertificate: 'Zertifikat',
+  shellEntityMembership: 'Mitgliedschaft',
+  shellEntityAuth: 'Konto',
+  shellEntityApproval: 'Genehmigungsantrag',
+  shellEntityMarketplace: 'Marktplatz',
+  shellOpCreate: 'erstellt',
+  shellOpUpdate: 'aktualisiert',
+  shellOpDelete: 'gelöscht',
+  shellOpApprove: 'genehmigt',
+  shellOpReject: 'abgelehnt',
+  shellOpLogin: 'angemeldet',
+  shellOpLogout: 'abgemeldet',
+  shellOpOtpRequest: 'Anmeldecode angefordert',
+  shellOpOtpVerify: 'Anmeldecode bestätigt',
+  shellOpTotpSetup: 'Zwei-Faktor-Authentifizierung eingerichtet',
+  shellOpTotpVerify: 'Zwei-Faktor-Code bestätigt',
+  shellOpFailedLogin: 'Anmeldung fehlgeschlagen',
 
   // CommandPalette
   cmdPlaceholder: 'Befehl eingeben…',

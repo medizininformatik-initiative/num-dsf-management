@@ -172,7 +172,7 @@ export function AppPage() {
             <Outlet />
           </div>
         )}
-        <AppFooter />
+        <AppFooter>{isCanvasRoute && <ActivityFeed />}</AppFooter>
       </div>
 
       {showRightPanel && isCanvasRoute && <RightPanel instanceId={activeInstanceId} />}
@@ -208,7 +208,6 @@ export function AppPage() {
         </button>
       )}
 
-      {isCanvasRoute && <ActivityFeed />}
       <CommandPalette />
 
       {activeInstanceId && (

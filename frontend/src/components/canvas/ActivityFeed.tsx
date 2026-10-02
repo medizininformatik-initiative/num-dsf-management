@@ -1,22 +1,60 @@
 /**
- * ActivityFeed.tsx – Compact floating activity feed from audit log
- * Dependencies: TanStack Query, entities.api, canvas.store
+ * ActivityFeed.tsx – "Recent activity" button with a popover listing the
+ * latest audit entries of the active instance: resource and operation as
+ * translated labels, relative times. AppPage docks it at the end of the
+ * footer bar on the canvas route, so it never overlaps the cards or the status
+ * panel. The popover grows from the button on thin glass and leaves faster;
+ * focus moves into it, Escape returns to the button, an outside click or
+ * focus leaving closes it. Entries are fetched only while it is open.
+ * Dependencies: TanStack Query, entities.api, canvas.store, i18n.store,
+ * lib/dateUtils, layout/usePopover, layout/Popover, ui/Icon, ui/Button.
  */
-import { useState } from 'react';
+import { useId, type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/entities.api';
 import { useCanvasStore } from '../../stores/canvas.store';
 import { useI18n } from '../../stores/i18n.store';
+import type { TranslationKey } from '../../i18n/en';
 import { relTime } from '../../lib/dateUtils';
+import { usePopover } from '../layout/usePopover';
+import { PopoverPanel } from '../layout/Popover';
+import { Icon } from '../ui/Icon';
+import { Button } from '../ui/Button';
 
-const OP_STYLES: Record<string, { icon: string; color: string }> = {
-  CREATE: { icon: 'add_circle', color: '#22c55e' },
-  UPDATE: { icon: 'edit', color: 'var(--primary)' },
-  DELETE: { icon: 'remove_circle', color: '#ef4444' },
-  APPROVE: { icon: 'check_circle', color: '#22c55e' },
-  REJECT: { icon: 'cancel', color: '#ef4444' },
-  LOGIN: { icon: 'login', color: '#4a90d9' },
-  DEFAULT: { icon: 'info', color: 'var(--text-muted)' },
+interface OperationMeta {
+  icon: string;
+  className: string;
+  label?: TranslationKey;
+}
+
+const MUTED = 'text-[color:var(--text-muted)]';
+
+// Audit operations and resource types as written by backend audit.service.ts.
+const OPERATIONS: Record<string, OperationMeta> = {
+  CREATE: { icon: 'add_circle', className: 'text-success-fg', label: 'shellOpCreate' },
+  UPDATE: { icon: 'edit', className: 'text-brand-700 dark:text-brand-400', label: 'shellOpUpdate' },
+  DELETE: { icon: 'remove_circle', className: 'text-danger-fg', label: 'shellOpDelete' },
+  APPROVE: { icon: 'check_circle', className: 'text-success-fg', label: 'shellOpApprove' },
+  REJECT: { icon: 'cancel', className: 'text-danger-fg', label: 'shellOpReject' },
+  LOGIN: { icon: 'login', className: 'text-info-fg', label: 'shellOpLogin' },
+  LOGOUT: { icon: 'logout', className: MUTED, label: 'shellOpLogout' },
+  OTP_REQUEST: { icon: 'mail', className: MUTED, label: 'shellOpOtpRequest' },
+  OTP_VERIFY: { icon: 'mark_email_read', className: 'text-info-fg', label: 'shellOpOtpVerify' },
+  TOTP_SETUP: { icon: 'qr_code_2', className: 'text-info-fg', label: 'shellOpTotpSetup' },
+  TOTP_VERIFY: { icon: 'password', className: 'text-info-fg', label: 'shellOpTotpVerify' },
+  FAILED_LOGIN: { icon: 'gpp_bad', className: 'text-danger-fg', label: 'shellOpFailedLogin' },
+};
+const UNKNOWN_OPERATION: OperationMeta = { icon: 'info', className: MUTED };
+
+const RESOURCES: Record<string, TranslationKey> = {
+  ORGANIZATION: 'shellEntityOrganization',
+  CONTACT: 'shellEntityContact',
+  ENDPOINT: 'shellEntityEndpoint',
+  CERTIFICATE: 'shellEntityCertificate',
+  MEMBERSHIP: 'shellEntityMembership',
+  AUTH: 'shellEntityAuth',
+  APPROVAL: 'shellEntityApproval',
+  MARKETPLACE: 'shellEntityMarketplace',
 };
 
 interface AuditEntry {
@@ -27,9 +65,11 @@ interface AuditEntry {
 }
 
 export function ActivityFeed() {
-  const [expanded, setExpanded] = useState(false);
   const activeInstanceId = useCanvasStore((s) => s.activeInstanceId);
   const { t } = useI18n();
+  const popover = usePopover();
+  const panelId = useId();
+  const titleId = useId();
 
   const { data } = useQuery({
     queryKey: ['activity-feed', activeInstanceId],
@@ -38,7 +78,7 @@ export function ActivityFeed() {
       const res = await api(activeInstanceId).getAuditLog('limit=8&page=1');
       return (res.data?.data as AuditEntry[]) || [];
     },
-    enabled: !!activeInstanceId && expanded,
+    enabled: !!activeInstanceId && popover.open,
     refetchInterval: 15_000,
     staleTime: 10_000,
   });
@@ -46,116 +86,76 @@ export function ActivityFeed() {
   const entries: AuditEntry[] = data || [];
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        // Sit above the persistent AppFooter (the disclaimer bar) so the
-        // floating button never overlaps it.
-        bottom: '48px',
-        right: '300px',
-        zIndex: 30,
-        fontFamily: 'Inter, system-ui, sans-serif',
-      }}
-    >
-      {expanded && (
-        <div
-          style={{
-            width: '280px',
-            marginBottom: '8px',
-            background: 'var(--bg-card)',
-            borderRadius: '12px',
-            border: '1px solid var(--border)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              padding: '10px 14px',
-              borderBottom: '1px solid var(--bg-page)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              {t('recentActivity')}
-            </span>
-            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-              {t('activityEntryCount', { n: entries.length })}
-            </span>
-          </div>
-          <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
-            {entries.map((log) => {
-              const style = OP_STYLES[log.operation] ?? OP_STYLES.DEFAULT;
-              return (
-                <div
-                  key={log.id}
-                  style={{
-                    display: 'flex',
-                    gap: '8px',
-                    padding: '8px 14px',
-                    borderBottom: '1px solid var(--bg-hover)',
-                  }}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{
-                      fontSize: '14px',
-                      color: style.color,
-                      flexShrink: 0,
-                      marginTop: '1px',
-                    }}
-                  >
-                    {style.icon}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-primary)' }}>
-                      <strong>{log.operation}</strong> {log.resource_type}
-                    </p>
-                    <p style={{ margin: 0, fontSize: '9px', color: 'var(--text-muted)' }}>
-                      {relTime(log.timestamp, t)}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-            {entries.length === 0 && (
-              <p
-                style={{
-                  padding: '16px',
-                  textAlign: 'center',
-                  fontSize: '11px',
-                  color: 'var(--text-muted)',
-                  margin: 0,
-                }}
-              >
-                {t('noActivityYet')}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          background: 'var(--primary)',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 2px 8px rgba(176,30,102,0.3)',
-          float: 'right',
-        }}
+    <div {...popover.rootProps} className="relative">
+      <Button
+        ref={popover.triggerRef}
+        variant="ghost"
+        size="sm"
+        onClick={popover.toggle}
+        aria-expanded={popover.open}
+        aria-controls={panelId}
+        className="min-h-0 gap-1.5 px-2 py-0.5"
       >
-        <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#fff' }}>
-          {expanded ? 'close' : 'history'}
-        </span>
-      </button>
+        <Icon name="history" size={16} />
+        {t('recentActivity')}
+      </Button>
+
+      <PopoverPanel
+        ref={popover.panelRef}
+        id={panelId}
+        open={popover.open}
+        origin="bottom-right"
+        role="region"
+        aria-labelledby={titleId}
+        className="bottom-full right-0 mb-2 w-[300px] overflow-hidden"
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-[color:var(--border)] px-3.5 py-2.5">
+          <h2 id={titleId} className="text-xs font-bold text-[color:var(--text-primary)]">
+            {t('recentActivity')}
+          </h2>
+          <span className="text-[11px] text-[color:var(--text-muted)]">
+            {t('activityEntryCount', { n: entries.length })}
+          </span>
+        </div>
+        <div className="max-h-[260px] overflow-y-auto">
+          {entries.length === 0 ? (
+            <p className="px-4 py-4 text-center text-xs text-[color:var(--text-muted)]">
+              {t('noActivityYet')}
+            </p>
+          ) : (
+            <ul>
+              {entries.map((log, i) => {
+                const operation = OPERATIONS[log.operation] ?? UNKNOWN_OPERATION;
+                const resource = RESOURCES[log.resource_type];
+                return (
+                  <li
+                    key={log.id}
+                    className="flex animate-list-item-in gap-2 border-b border-[color:var(--border)] px-3.5 py-2 last:border-b-0"
+                    style={{ '--stagger-index': i } as CSSProperties}
+                  >
+                    <Icon
+                      name={operation.icon}
+                      size={16}
+                      className={`mt-px shrink-0 ${operation.className}`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-[color:var(--text-primary)]">
+                        <strong className="font-semibold">
+                          {resource ? t(resource) : log.resource_type}
+                        </strong>{' '}
+                        {operation.label ? t(operation.label) : log.operation}
+                      </p>
+                      <p className="text-[11px] text-[color:var(--text-muted)]">
+                        <time dateTime={log.timestamp}>{relTime(log.timestamp, t)}</time>
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </PopoverPanel>
     </div>
   );
 }

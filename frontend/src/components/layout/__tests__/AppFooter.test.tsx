@@ -11,4 +11,14 @@ describe('AppFooter', () => {
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '/app/legal');
   });
+
+  it('renders trailing content such as the activity button inside the footer', () => {
+    renderWithProviders(
+      <AppFooter>
+        <button type="button">Recent Activity</button>
+      </AppFooter>,
+    );
+    const footer = screen.getByRole('contentinfo');
+    expect(footer).toContainElement(screen.getByRole('button', { name: 'Recent Activity' }));
+  });
 });
