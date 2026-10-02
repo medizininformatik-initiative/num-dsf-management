@@ -1,97 +1,111 @@
 /**
- * fhir.routes.ts – FHIR-compatible Bundle endpoint for DSF process
- * Authenticates via client certificate (mTLS): matches the SHA-512
- * fingerprint first, falling back to the SHA-256 thumbprint for
- * organizations onboarded before the SHA-512 migration.
- * No JWT auth required — this is a machine-to-machine endpoint.
+ * fhir.routes.ts – FHIR read endpoint for the DSF allow-list process.
+ *
+ * The DSF plugin dsf-process-allow-list (DownloadAllowList) reads the bundle
+ * referenced in its start Task with the site's DSF client certificate:
+ *   GET {base}/Bundle/{id}   Accept: application/fhir+json
+ * so the reference https://<host>/fhir/Bundle/<endpoint-identifier> yields
+ * the allow list scoped to that endpoint of the caller's organization.
+ *
+ * Authentication is mTLS only (no JWT). The certificate is resolved to an
+ * organization by, in order: the SHA-512 login fingerprint, the legacy
+ * SHA-256 login thumbprint, or a certificate registered in the
+ * organization's certificate list (the DSF client certificate whose
+ * thumbprint the allow list publishes).
  * Dependencies: express, fhir.service, audit.service, db/connection, clientCert lib
  */
 import { Router, Request, Response } from 'express';
 import { db } from '../db/connection';
 import { generateBundle, generateFullBundle } from '../services/fhir.service';
 import { writeAuditLog } from '../services/audit.service';
-import { extractClientCert } from '../lib/clientCert';
+import { extractClientCert, type ClientCertInfo } from '../lib/clientCert';
 
 export const fhirRouter = Router();
 
+const FHIR_JSON = 'application/fhir+json';
+
+type CertMatch = 'sha512' | 'sha256' | 'certificate';
+
+interface ResolvedOrg {
+  org: { identifier: string; instance_id: string };
+  match: CertMatch;
+}
+
 /**
- * Lookup the organization registered for the given client cert: match the
- * SHA-512 fingerprint first, then fall back to the SHA-256 thumbprint so
- * organizations onboarded before the SHA-512 migration keep working.
- * Returns the org row or null if neither matches.
+ * Reply with a FHIR OperationOutcome. The DSF client parses error bodies as
+ * OperationOutcome, so the media type must be a FHIR one.
  */
-async function findOrgByClientCert(cert: { fingerprint: string | null; thumbprint: string }) {
+function sendOutcome(res: Response, status: number, code: string, diagnostics: string) {
+  return res
+    .status(status)
+    .type(FHIR_JSON)
+    .send(
+      JSON.stringify({
+        resourceType: 'OperationOutcome',
+        issue: [{ severity: 'error', code, diagnostics }],
+      }),
+    );
+}
+
+async function findOrgByClientCert(cert: ClientCertInfo): Promise<ResolvedOrg | null> {
   if (cert.fingerprint) {
-    // Coalesce the resolved row, not the (always-truthy) query promise.
     const byFingerprint = await db('organizations')
       .where({ client_cert_fingerprint: cert.fingerprint })
       .first();
-    if (byFingerprint) return byFingerprint;
+    if (byFingerprint) return { org: byFingerprint, match: 'sha512' };
   }
   const byThumbprint = await db('organizations')
     .where({ client_cert_thumbprint: cert.thumbprint })
     .first();
-  return byThumbprint ?? null;
+  if (byThumbprint) return { org: byThumbprint, match: 'sha256' };
+
+  // A DSF BPE presents the organization's DSF client certificate, which is
+  // usually not the certificate used for the browser login. Accept it when
+  // exactly one organization registered it; an ambiguous match is refused.
+  const owners: Array<{ organization_id: string }> = await db('certificates')
+    .where({ thumbprint: cert.thumbprint })
+    .distinct('organization_id');
+  if (owners.length !== 1) return null;
+  const byCertificate = await db('organizations')
+    .where({ identifier: owners[0].organization_id })
+    .first();
+  return byCertificate ? { org: byCertificate, match: 'certificate' } : null;
 }
 
-// GET /fhir/Bundle/:endpointId — Fetch a specific bundle by endpoint identifier
+/**
+ * Shared mTLS gate: only a proxy-verified handshake is trusted.
+ * extractClientCert enforces X-Client-Verify === 'SUCCESS' as well; checking
+ * here too keeps a forged X-Client-Cert away from every lookup.
+ */
+async function authenticate(req: Request, res: Response): Promise<ResolvedOrg | null> {
+  const cert = req.headers['x-client-verify'] === 'SUCCESS' ? extractClientCert(req) : null;
+  if (!cert) {
+    sendOutcome(res, 401, 'security', 'Client certificate required');
+    return null;
+  }
+  const resolved = await findOrgByClientCert(cert);
+  if (!resolved) {
+    sendOutcome(res, 403, 'forbidden', 'Client certificate not registered');
+    return null;
+  }
+  return resolved;
+}
+
+// GET /fhir/Bundle/:endpointId — allow list for one endpoint of the caller's organization
 fhirRouter.get('/Bundle/:endpointId', async (req: Request, res: Response) => {
   try {
-    // Only an nginx-verified mTLS handshake is trusted. extractClientCert
-    // already enforces X-Client-Verify === 'SUCCESS'; reject here too so a
-    // forged X-Client-Cert never reaches the thumbprint lookup.
-    if (req.headers['x-client-verify'] !== 'SUCCESS') {
-      return res.status(401).json({
-        resourceType: 'OperationOutcome',
-        issue: [
-          { severity: 'error', code: 'security', diagnostics: 'Client certificate required' },
-        ],
-      });
-    }
-    const cert = extractClientCert(req);
-    if (!cert) {
-      return res.status(401).json({
-        resourceType: 'OperationOutcome',
-        issue: [
-          { severity: 'error', code: 'security', diagnostics: 'Client certificate required' },
-        ],
-      });
-    }
+    const resolved = await authenticate(req, res);
+    if (!resolved) return;
+    const { org, match } = resolved;
 
-    const org = await findOrgByClientCert(cert);
-    if (!org) {
-      return res.status(403).json({
-        resourceType: 'OperationOutcome',
-        issue: [
-          {
-            severity: 'error',
-            code: 'forbidden',
-            diagnostics: 'Client certificate not registered',
-          },
-        ],
-      });
-    }
-    // Deterministic given client_cert_fingerprint is UNIQUE: if this org's
-    // fingerprint equals the presented cert's, the fingerprint lookup above
-    // is what found it — the thumbprint fallback only runs when that lookup
-    // returns no row.
-    const match =
-      cert.fingerprint && org.client_cert_fingerprint === cert.fingerprint ? 'sha512' : 'sha256';
-
-    // Scope the bundle to the caller's own instance + the requested endpoint.
-    // generateBundle filters endpoints by `(instance_id, identifier)`, so a
-    // cert registered for org A cannot pull a bundle for org B's endpoint —
-    // the lookup returns ENDPOINT_NOT_FOUND and the catch below maps it to
-    // a 404. Previously this route returned generateFullBundle() ignoring
-    // :endpointId entirely, so ANY cert could enumerate every endpoint in
-    // the federation through this path.
+    // Scoped to the caller's own instance: generateBundle only finds the
+    // endpoint among the organization's endpoints, so a certificate of org A
+    // cannot read a bundle addressed to org B's endpoint (404).
     const bundle = await generateBundle(org.instance_id, req.params.endpointId);
 
-    // Audit: record the download (non-blocking — failure must not disrupt the response).
-    // userEmail intentionally omitted — this caller is a client cert, not a user.
-    // The matched id goes into diffJson, masked to a 16-char prefix, so
-    // audit-by-user queries stay clean (filtering 'cert:...' polluted the
-    // user_email column previously) and the full cert/pem is never logged.
+    // Non-blocking audit; the caller is a certificate, not a user, so only a
+    // masked identifier prefix is recorded and never the certificate itself.
+    const cert = extractClientCert(req)!;
     writeAuditLog({
       instanceId: org.instance_id,
       resourceType: 'CERTIFICATE',
@@ -105,67 +119,24 @@ fhirRouter.get('/Bundle/:endpointId', async (req: Request, res: Response) => {
       ipAddress: req.ip || 'unknown',
     }).catch(() => {});
 
-    res.setHeader('Content-Type', 'application/fhir+json');
-    return res.json(bundle);
+    return res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'unknown';
     if (message === 'ENDPOINT_NOT_FOUND' || message === 'ORGANIZATION_NOT_FOUND') {
-      return res.status(404).json({
-        resourceType: 'OperationOutcome',
-        issue: [{ severity: 'error', code: 'not-found', diagnostics: message }],
-      });
+      return sendOutcome(res, 404, 'not-found', message);
     }
-    return res.status(500).json({
-      resourceType: 'OperationOutcome',
-      issue: [{ severity: 'error', code: 'exception', diagnostics: 'Internal server error' }],
-    });
+    return sendOutcome(res, 500, 'exception', 'Internal server error');
   }
 });
 
-// GET /fhir/Bundle — Search by client cert; returns first endpoint bundle wrapped in a searchset
+// GET /fhir/Bundle — network-wide allow list for any registered certificate
 fhirRouter.get('/Bundle', async (req: Request, res: Response) => {
   try {
-    // Only an nginx-verified mTLS handshake is trusted (see :endpointId route).
-    if (req.headers['x-client-verify'] !== 'SUCCESS') {
-      return res.status(401).json({
-        resourceType: 'OperationOutcome',
-        issue: [
-          { severity: 'error', code: 'security', diagnostics: 'Client certificate required' },
-        ],
-      });
-    }
-    const cert = extractClientCert(req);
-    if (!cert) {
-      return res.status(401).json({
-        resourceType: 'OperationOutcome',
-        issue: [
-          { severity: 'error', code: 'security', diagnostics: 'Client certificate required' },
-        ],
-      });
-    }
-
-    const org = await findOrgByClientCert(cert);
-    if (!org) {
-      return res.status(403).json({
-        resourceType: 'OperationOutcome',
-        issue: [
-          {
-            severity: 'error',
-            code: 'forbidden',
-            diagnostics: 'Client certificate not registered',
-          },
-        ],
-      });
-    }
-
+    const resolved = await authenticate(req, res);
+    if (!resolved) return;
     const bundle = await generateFullBundle();
-
-    res.setHeader('Content-Type', 'application/fhir+json');
-    return res.json(bundle);
+    return res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
   } catch {
-    return res.status(500).json({
-      resourceType: 'OperationOutcome',
-      issue: [{ severity: 'error', code: 'exception', diagnostics: 'Internal server error' }],
-    });
+    return sendOutcome(res, 500, 'exception', 'Internal server error');
   }
 });

@@ -12,6 +12,8 @@
  *  - 200 as application/fhir+json; the caller's own Organization/Endpoint are
  *    referenced conditionally, an approved peer is embedded with its SHA-512
  *    thumbprint, and the bundle passes the DSF acceptance rules
+ *  - the organization's DSF client certificate from the certificate list
+ *    (what a DSF BPE presents) is accepted as well
  *  - DSGVO: the serialized body never contains the seeded contact's PII
  *  - 401 with no client cert header
  *  - 401 when a cert is presented but X-Client-Verify is not SUCCESS
@@ -40,7 +42,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { app } from '../../app';
 import { db } from '../../db/connection';
 import { sha512FingerprintFromPem } from '../../lib/certFingerprint';
-import { removeSites, seedSite, type Site } from '../helpers/allowListSites';
+import { mtlsHeaders, removeSites, seedSite, type Site } from '../helpers/allowListSites';
 import { dsfAllowListViolations } from '../helpers/dsfAllowListChecks';
 
 // Static self-signed cert (CERTIFICATE only — no private key). nginx would
@@ -322,6 +324,24 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
       ).toEqual([]);
     });
 
+    it("accepts the organization's DSF client certificate from its certificate list (BPE)", async () => {
+      // A DSF BPE presents the organization's DSF certificate, not the login one.
+      const res = await request(app)
+        .get(`/fhir/Bundle/${peer.endpointIds[0]}`)
+        .set('Accept', 'application/fhir+json')
+        .set(mtlsHeaders(peer.certPem!));
+      expect(res.status).toBe(200);
+      const entries = (res.body as FhirBundle).entry ?? [];
+      const hasOrg = (identifier: string) =>
+        entries.some(
+          (e) =>
+            e.resource?.resourceType === 'Organization' &&
+            (e.resource.identifier ?? []).some((i) => i.value === identifier),
+        );
+      expect(hasOrg(orgId)).toBe(true);
+      expect(hasOrg(peer.orgId)).toBe(false);
+    });
+
     it('DSGVO: the serialized bundle never contains the contact PII', async () => {
       const res = await request(app)
         .get(`/fhir/Bundle/${endpointId}`)
@@ -338,6 +358,8 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
     it('returns 401 (OperationOutcome) with no client cert header', async () => {
       const res = await request(app).get(`/fhir/Bundle/${endpointId}`);
       expect(res.status).toBe(401);
+      // The DSF client parses error bodies as FHIR OperationOutcome.
+      expect(res.headers['content-type']).toMatch(/^application\/fhir\+json/);
       expect(res.body.resourceType).toBe('OperationOutcome');
       expect(res.body.issue?.[0]?.code).toBe('security');
     });
