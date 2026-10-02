@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'jest-axe';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 import { useModals } from '../../../hooks/useModals';
 
@@ -71,6 +72,14 @@ describe('CertificatesCard', () => {
     ]);
     expect(items[1]).toHaveClass('animate-list-item-in');
     expect(items[1].style.getPropertyValue('--stagger-index')).toBe('1');
+  });
+
+  it('has no detectable accessibility violations', async () => {
+    rows = [cert, { ...cert, id: 'cert2', issuerTrusted: false, issuerDn: 'CN=Example Test CA' }];
+    const { container } = renderWithProviders(<CertificatesCard instanceId="i1" />);
+    // "region" expects page landmarks, which a card rendered alone cannot have.
+    const results = await axe(container, { rules: { region: { enabled: false } } });
+    expect(results.violations).toEqual([]);
   });
 
   it('shows a load error with a retry instead of the empty state', async () => {
