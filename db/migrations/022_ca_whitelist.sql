@@ -1,0 +1,80 @@
+-- 022_ca_whitelist.sql
+--
+-- CA whitelist: the certificate authorities the Data Sharing Framework accepts
+-- in production. A site certificate issued by a CLIENT entry is accepted by the
+-- DSF FHIR proxies of the other sites; any other issuer (self-signed included)
+-- is flagged in the portal and rejected on upload when CA_WHITELIST_ENFORCE=true.
+-- The blacklist refuses entries that are on this list.
+--
+-- Seeded at init with the defaults of DSF 2.1.1:
+--   CLIENT  /opt/fhir/ca/client_ca_chains in ghcr.io/datasharingframework/fhir:2.1.1
+--           (issuing CAs and roots of DSF client certificates)
+--   SERVER  /opt/bpe/ca/server_root_cas in ghcr.io/datasharingframework/bpe:2.1.1
+--           (roots a DSF BPE trusts for server certificates, such as this portal's)
+-- fingerprint is the SHA-256 of the CA certificate DER, upper-case hex.
+--
+-- Idempotent: CREATE TABLE IF NOT EXISTS and INSERT IGNORE, safe to re-run.
+
+CREATE TABLE IF NOT EXISTS `ca_whitelist` (
+  `id`          CHAR(36)     NOT NULL DEFAULT (UUID()),
+  `subject_dn`  VARCHAR(500) NOT NULL,
+  `fingerprint` CHAR(64),
+  `kind`        VARCHAR(16)  NOT NULL,
+  `not_after`   DATE,
+  `source`      VARCHAR(32)  NOT NULL DEFAULT 'manual',
+  `reason`      TEXT,
+  `added_by`    VARCHAR(255) NOT NULL,
+  `added_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_caw_subject_kind` (`subject_dn`, `kind`),
+  KEY `idx_caw_fingerprint` (`fingerprint`)
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO `ca_whitelist`
+  (`id`, `subject_dn`, `fingerprint`, `kind`, `not_after`, `source`, `added_by`)
+VALUES
+  (UUID(), 'C=DE,O=Verein zur Foerderung eines Deutschen Forschungsnetzes e. V.,OU=DFN-PKI,CN=DFN-Verein Certification Authority 2', 'F660B0C256481CB2BFC67661C1EA8FEEE395B7141BCAC36C36E04D08CD9E1582', 'CLIENT', '2031-02-22', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=Verein zur Foerderung eines Deutschen Forschungsnetzes e. V.,OU=DFN-PKI,CN=DFN-Verein Community Issuing CA 2022', 'BAD041D62916B6A3809714791F86F17D5470CB3D6F8C7A87CBB6FBC560B8C7A2', 'CLIENT', '2042-01-21', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=Verein zur Foerderung eines Deutschen Forschungsnetzes e. V.,OU=DFN-PKI,CN=DFN-Verein Community Root CA 2022', '3CDC2C9E9E5A36CB5888FD1796CB912F846253B682C1B32057532033510C7BB6', 'CLIENT', '2042-01-21', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=Verein zur Foerderung eines Deutschen Forschungsnetzes e. V.,OU=DFN-PKI,CN=DFN-Verein Global Issuing CA', '1257AAC2F4EEAC6CA4942C2C83F0B67B41A3B47120C4D53429929513ACAD468C', 'CLIENT', '2031-02-22', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=D-Trust GmbH,CN=D-TRUST Limited Basic CA 1-2 2019', '2C0EB67E87B8B1CEB1B06809E33491607F01F2037350C123728B52DA4FAB4854', 'CLIENT', '2034-06-19', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=D-Trust GmbH,CN=D-TRUST Limited Basic CA 1-3 2019', '3FECFBDD983268A19325DCAECC4A13452722954DA2077C48E009EB2972EAE2F9', 'CLIENT', '2034-06-19', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=D-Trust GmbH,CN=D-TRUST Limited Basic Root CA 1 2019', '7359589909B840F066C7F6F830695B35DB7A0B3E96DCE0B9EB37860EEE4FC046', 'CLIENT', '2034-06-19', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=D-Trust GmbH,CN=D-TRUST Root Class 3 CA 2 2009', '49E7A442ACF0EA6287050054B52564B650E4F49E42E348D6AA38E039E957B1C1', 'CLIENT', '2029-11-05', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=D-Trust GmbH,CN=D-TRUST SSL Class 3 CA 1 2009', '6AC159B4C2BC8E729F3B84642EF1286BCC80D775FE278C740ADA468D59439025', 'CLIENT', '2029-11-05', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=Fraunhofer,OU=Fraunhofer Corporate PKI,CN=Fraunhofer Service CA 2022', 'DCC4B2DCFC13CD0ACB18B47982D0D265C6D1D32116034BE53EED0214A6E5D898', 'CLIENT', '2042-01-21', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=Fraunhofer,OU=Fraunhofer Corporate PKI,CN=Fraunhofer User CA 2022', '007E1547ADAAFD66072D7117F42615D2F1851D7B9DE7346410A3E54169762EA1', 'CLIENT', '2042-01-21', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,ST=Bayern,L=Muenchen,O=Fraunhofer,OU=Fraunhofer Corporate PKI,CN=Fraunhofer User CA - G02', '562CBBCBDEBEEB3CB55946BDCE248CA4A623D2BA6E77B63B754D3A571F67DFA2', 'CLIENT', '2031-02-22', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=NL,O=GEANT Vereniging,CN=GEANT OV ECC CA 4', '083799E8B2B9016E44702EBF9BF369CE253FE1FBEB650E5DF10EF44D87BF3BAE', 'CLIENT', '2033-05-01', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=NL,O=GEANT Vereniging,CN=GEANT OV RSA CA 4', '37834FA5EA40FBF7B61196955962E1CA0558872435E4206653D3F620DD8E988E', 'CLIENT', '2033-05-01', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=NL,O=GEANT Vereniging,CN=GEANT Personal CA 4', '16D9DE945A428011FA3A08323DA0E4347438F5AF1CE3E80283223E25A46C2A9E', 'CLIENT', '2033-05-01', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=NL,O=GEANT Vereniging,CN=GEANT Personal ECC CA 4', 'B1A8FD40B437DED972F574370622E2BBB2F9B9593BC0504D7E2030F2B24E67FA', 'CLIENT', '2033-05-01', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=GEANT S/MIME ECC 1', '6EF2FEA64B86A61203FC7D53F2F212A8E3FBE085934D60A5A88ABF46DCC2114A', 'CLIENT', '2039-12-31', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=GEANT S/MIME RSA 1', '149C1FAC7DB7AF8868897D18529E6798DA20C0456439802B4CC8223FA1E476B3', 'CLIENT', '2039-12-31', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=GEANT TLS ECC 1', '6CDF0BA1711E856D228BA00CA04C5C1C3D79944C037B713B155A4EE4B47EC53C', 'CLIENT', '2039-12-31', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=GEANT TLS RSA 1', '5B678DC44095A52895B63B31F27227F4B36C3E347491BF2BFA691837A5FB8C79', 'CLIENT', '2039-12-31', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=NL,O=GEANT Vereniging,CN=GEANT eScience Personal CA 4', 'D0382AC5819F95AD10238CBE6E3C4ED3D8241CD954D2653FEA470AC9F390CD4D', 'CLIENT', '2033-05-01', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=NL,O=GEANT Vereniging,CN=GEANT eScience Personal ECC CA 4', '6021D4A3CDEBD98D5298235F5881F4B969D71D43F3EE3DF156BF23630B07AE3B', 'CLIENT', '2033-05-01', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=HARICA Client Authentication ECC', '0F4BE73B561A822B273E8C5E65D118D78170A5B52FC7E5D047E4231138EC0A0B', 'CLIENT', '2036-03-15', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=HARICA Client Authentication RSA', '858D7018873D31678AA155D071B3E0F2E09025169DD7938ECE98CAB81034A81D', 'CLIENT', '2036-03-15', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=HARICA Client ECC Root CA 2021', '8DD4B5373CB0DE36769C12339280D82746B3AA6CD426E797A31BABE4279CF00B', 'CLIENT', '2045-02-13', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=HARICA Client RSA Root CA 2021', '1BE7ABE30686B16348AFD1C61B6866A0EA7F4821E67D5E8AF937CF8011BC750D', 'CLIENT', '2045-02-13', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=HARICA OV TLS ECC', '3293500CAA507B1E920A441F277BADCBB75002CAEC6282D23A3578F7817D2380', 'CLIENT', '2036-03-15', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=HARICA OV TLS RSA', '9FBD886945FB6CB63EEBF11077DAC980E45368D2458BA5EF0A8D727046FCD292', 'CLIENT', '2036-03-15', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=HARICA S/MIME ECC', 'E5CBD6659190C6188897D09E1AD62A4FB73CE11D8727A4476D3C579F0E1599F9', 'CLIENT', '2036-03-15', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=HARICA S/MIME RSA', 'B13EC301E7BFE1DDB9C5BFC071DC29C55E82EE933273A23134946FBDFD3ACE63', 'CLIENT', '2036-03-15', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=HARICA TLS ECC Root CA 2021', '3F99CC474ACFCE4DFED58794665E478D1547739F2E780F1BB4CA9B133097D401', 'CLIENT', '2045-02-13', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=HARICA TLS RSA Root CA 2021', 'D95D0E8EDA79525BF9BEB11B14D2100D3294985F0C62D9FABD9CD999ECCB7B1D', 'CLIENT', '2045-02-13', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=Max-Planck-Gesellschaft,CN=MPG Community CA', 'BE656CB6017D777CB8A706A921DB2F8593B7D0F20C7AC3DA2F557B53EC12875A', 'CLIENT', '2042-01-21', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GB,ST=Greater Manchester,L=Salford,O=Sectigo Limited,CN=Sectigo ECC Organization Validation Secure Server CA', '3457106752400212903A3545CA3B2EF384A456972BD951D8D840C1B0A379EFA1', 'CLIENT', '2030-12-31', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GB,ST=Greater Manchester,L=Salford,O=Sectigo Limited,CN=Sectigo RSA Organization Validation Secure Server CA', '72A34AC2B424AED3F6B0B04755B88CC027DCCC806FDDB22B4CD7C47773973EC0', 'CLIENT', '2030-12-31', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=T-Systems Enterprise Services GmbH,OU=T-Systems Trust Center,CN=T-TeleSec GlobalRoot Class 2', '91E2F5788D5810EBA7BA58737DE1548A8ECACD014598BC0B143E041B17052552', 'CLIENT', '2033-10-01', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=US,ST=New Jersey,L=Jersey City,O=The USERTRUST Network,CN=USERTrust ECC Certification Authority', '4FF460D54B9C86DABFBCFC5712E0400D2BED3FBC4D4FBDAA86E06ADCD2A9AD7A', 'CLIENT', '2038-01-18', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=US,ST=New Jersey,L=Jersey City,O=The USERTRUST Network,CN=USERTrust RSA Certification Authority', 'E793C9B02FD8AA13E21C31228ACCB08119643B749C898964B1746D46C3D4CBD2', 'CLIENT', '2038-01-18', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=D-Trust GmbH,CN=D-TRUST BR Root CA 1 2020', 'E59AAA816009C22BFF5B25BAD37DF306F049797C1F81D85AB089E657BD8F0044', 'SERVER', '2035-02-11', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=D-Trust GmbH,CN=D-TRUST BR Root CA 2 2023', '0552E6F83FDF65E8FA9670E666DF28A4E21340B510CBE52566F97C4FB94B2BD1', 'SERVER', '2038-05-09', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=DE,O=D-Trust GmbH,CN=D-TRUST Root Class 3 CA 2 2009', '49E7A442ACF0EA6287050054B52564B650E4F49E42E348D6AA38E039E957B1C1', 'SERVER', '2029-11-05', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=HARICA TLS ECC Root CA 2021', '3F99CC474ACFCE4DFED58794665E478D1547739F2E780F1BB4CA9B133097D401', 'SERVER', '2045-02-13', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=HARICA TLS RSA Root CA 2021', 'D95D0E8EDA79525BF9BEB11B14D2100D3294985F0C62D9FABD9CD999ECCB7B1D', 'SERVER', '2045-02-13', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=US,ST=New Jersey,L=Jersey City,O=The USERTRUST Network,CN=USERTrust ECC Certification Authority', '4FF460D54B9C86DABFBCFC5712E0400D2BED3FBC4D4FBDAA86E06ADCD2A9AD7A', 'SERVER', '2038-01-18', 'dsf-2.1.1', 'SYSTEM:init'),
+  (UUID(), 'C=US,ST=New Jersey,L=Jersey City,O=The USERTRUST Network,CN=USERTrust RSA Certification Authority', 'E793C9B02FD8AA13E21C31228ACCB08119643B749C898964B1746D46C3D4CBD2', 'SERVER', '2038-01-18', 'dsf-2.1.1', 'SYSTEM:init');
