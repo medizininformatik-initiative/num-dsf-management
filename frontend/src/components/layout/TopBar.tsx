@@ -1,14 +1,25 @@
 /**
- * TopBar.tsx – Canvas top bar
- * Dependencies: SearchBar, NotificationCenter, theme.store, i18n.store
+ * TopBar.tsx – Canvas top bar on the chrome glass material: history
+ * navigation, the app title with the environment badge (TEST and PRODUCTION
+ * differ in colour, icon and text, like the sidebar's marker), search, theme
+ * and language toggles, notifications and the instance actions with one
+ * primary CTA. The approval CTA follows the active instance's latest request:
+ * while one is PENDING it is disabled and reads "Waiting for approval".
+ * Fits a 1024 px wide bar: below xl the download action shows its icon only,
+ * the title appears from 1440 px.
+ * Dependencies: SearchBar, NotificationCenter, Button, Icon, lib/environment,
+ * canvas.store, useApproval, theme.store, i18n.store
  */
 import { useNavigate } from 'react-router-dom';
 import { SearchBar } from './SearchBar';
 import { NotificationCenter } from './NotificationCenter';
+import { Button } from '../ui/Button';
+import { Icon } from '../ui/Icon';
+import { DSF_ENVIRONMENT, ENV_ACCENT, IS_PRODUCTION } from '../../lib/environment';
+import { useApprovalStatus, type ApprovalStatus } from '../../hooks/useApproval';
+import { useCanvasStore } from '../../stores/canvas.store';
 import { useI18n } from '../../stores/i18n.store';
 import { useThemeStore } from '../../stores/theme.store';
-
-const ENV = import.meta.env.VITE_DSF_ENVIRONMENT || 'TEST';
 
 export function TopBar({
   onDownload,
@@ -22,108 +33,102 @@ export function TopBar({
   const { t, lang, setLang } = useI18n();
   const { dark, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
+  const activeInstanceId = useCanvasStore((s) => s.activeInstanceId);
+  const { data } = useApprovalStatus(showInstanceActions ? activeInstanceId : null);
+  const approval: ApprovalStatus | null | undefined = data;
+  const pending = approval?.status === 'PENDING';
+  const envLabel = IS_PRODUCTION ? t('topBarEnvProduction') : t('topBarEnvTest');
+
   return (
-    <div
-      className="flex items-center justify-between px-6 py-3 flex-shrink-0 z-40"
-      style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}
-    >
-      <div className="flex items-center gap-3">
-        <button
+    <div className="glass-chrome relative z-40 flex flex-shrink-0 items-center justify-between gap-3 px-4 py-2.5 xl:px-6">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => navigate(-1)}
-          className="transition-colors"
-          style={{
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            padding: '4px',
-            color: 'var(--text-muted)',
-          }}
+          className="hidden px-1.5 sm:inline-flex"
           title={t('ariaGoBack')}
           aria-label={t('ariaGoBack')}
         >
-          <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-        </button>
-        <button
+          <Icon name="arrow_back" size={20} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => navigate(1)}
-          className="transition-colors"
-          style={{
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            padding: '4px',
-            color: 'var(--text-muted)',
-          }}
+          className="hidden px-1.5 sm:inline-flex"
           title={t('ariaGoForward')}
           aria-label={t('ariaGoForward')}
         >
-          <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-        </button>
-        <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full shadow-sm">
-          <span className="text-sm font-semibold text-slate-700">Allow List Management</span>
-          <span className="text-slate-300">·</span>
-          <span className="text-sm text-primary font-medium">{ENV}-Environment</span>
-        </div>
+          <Icon name="arrow_forward" size={20} />
+        </Button>
+        <span className="ml-1 hidden truncate text-sm font-semibold text-[color:var(--text-primary)] min-[1440px]:inline">
+          {t('topBarAppTitle')}
+        </span>
+        <span
+          data-env={DSF_ENVIRONMENT}
+          title={envLabel}
+          className="ml-1 inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase leading-none tracking-wide text-white shadow-sm"
+          style={{ backgroundColor: ENV_ACCENT }}
+        >
+          <Icon name={IS_PRODUCTION ? 'verified_user' : 'science'} size={14} filled />
+          <span className="sr-only sm:not-sr-only">{envLabel}</span>
+        </span>
       </div>
 
-      {showInstanceActions && <SearchBar />}
+      {showInstanceActions && (
+        <div className="hidden lg:block">
+          <SearchBar />
+        </div>
+      )}
 
-      <div className="flex items-center gap-3">
-        {/* Theme toggle */}
-        <button
+      <div className="flex flex-shrink-0 items-center gap-1.5">
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={toggleTheme}
+          className="px-1.5"
           aria-label={t('ariaToggleTheme')}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            padding: '6px',
-            borderRadius: '8px',
-          }}
           title={dark ? t('lightMode') : t('darkMode')}
         >
-          <span
-            className="material-symbols-outlined"
-            style={{ fontSize: '20px', color: 'var(--text-secondary)' }}
-          >
-            {dark ? 'light_mode' : 'dark_mode'}
-          </span>
-        </button>
-
-        {/* Language toggle */}
-        <button
+          <Icon name={dark ? 'light_mode' : 'dark_mode'} size={20} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setLang(lang === 'en' ? 'de' : 'en')}
+          className="px-2 font-bold"
           aria-label={t('ariaToggleLanguage')}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            padding: '6px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: 700,
-            color: 'var(--text-secondary)',
-          }}
           title={lang === 'en' ? 'Deutsch' : 'English'}
         >
           {lang.toUpperCase()}
-        </button>
+        </Button>
 
         <NotificationCenter />
         {showInstanceActions && (
           <>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={onDownload}
-              className="text-sm text-slate-600 hover:text-slate-900 transition-colors font-medium"
+              className="ml-1"
+              title={t('downloadAllowList')}
             >
-              {t('downloadAllowList')}
-            </button>
-            <button
+              <Icon name="download" size={16} />
+              <span className="sr-only xl:not-sr-only">{t('downloadAllowList')}</span>
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={onApproval}
-              className="px-5 py-2 rounded-xl text-white text-sm font-bold shadow-sm hover:opacity-90 transition-opacity"
-              style={{ background: 'linear-gradient(135deg, #8a1750, #675df9)' }}
+              disabled={pending}
+              title={pending ? t('approvalPendingBlocked') : undefined}
             >
-              {t('sendForApproval')}
-            </button>
+              <Icon name={pending ? 'hourglass_top' : 'send'} size={16} />
+              <span className="sr-only sm:not-sr-only">
+                {pending ? t('approvalWaitingLabel') : t('sendForApproval')}
+              </span>
+            </Button>
           </>
         )}
       </div>

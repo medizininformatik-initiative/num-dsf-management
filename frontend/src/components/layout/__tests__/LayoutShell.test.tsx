@@ -35,6 +35,8 @@ vi.mock('../../../hooks/useContacts', () => ({ useContacts: () => ({ data: [] })
 vi.mock('../../../hooks/useEndpoints', () => ({ useEndpoints: () => ({ data: [] }) }));
 vi.mock('../../../hooks/useCertificates', () => ({ useCertificates: () => ({ data: [] }) }));
 vi.mock('../../../hooks/useMemberships', () => ({ useMemberships: () => ({ data: [] }) }));
+// TopBar reads the active instance's approval status for its CTA.
+vi.mock('../../../hooks/useApproval', () => ({ useApprovalStatus: () => ({ data: null }) }));
 
 import { Sidebar } from '../Sidebar';
 import { TopBar } from '../TopBar';
