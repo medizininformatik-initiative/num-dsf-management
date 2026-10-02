@@ -314,8 +314,8 @@ export const en = {
   // MembershipsCard
   membershipCardFkOrganization: 'Organization',
   membershipCardFkEndpoint: 'Endpoint',
-  membershipCardEditAria: 'Edit membership',
-  membershipCardDeleteAria: 'Delete membership',
+  membershipCardEditAria: 'Edit membership in {parent}',
+  membershipCardDeleteAria: 'Delete membership in {parent}',
 
   // Certificate card & entity rows (contacts, endpoints, certificates, memberships)
   contactCardDeleteTitle: 'Delete contact?',

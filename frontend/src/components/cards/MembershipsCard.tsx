@@ -1,28 +1,38 @@
 /**
- * MembershipsCard.tsx — entity card listing memberships (parent org + roles) with FK links to org/endpoint.
- * Supports add/edit (useModals) and confirmed cross-user-guarded deletion.
+ * MembershipsCard.tsx — entity card listing memberships: parent organization, roles and the
+ * endpoint each membership is bound to, as a foreign key to that endpoint's row. Rows stagger
+ * in and carry data-entity-row="memberships:<id>"; the body shows a skeleton or an error with
+ * retry while the query loads or fails. Supports add/edit (useModals) and confirmed
+ * cross-user-guarded deletion.
+ * Dependencies: useMemberships, useOrganization, confirmDelete, parseJsonArray, EntityCard,
+ * FkLink, StatusPill, Button, Icon.
  */
+import type { CSSProperties } from 'react';
 import { useMemberships, useDeleteMembership } from '../../hooks/useMemberships';
 import { useOrganization } from '../../hooks/useOrganization';
-import { useEndpoints } from '../../hooks/useEndpoints';
 import { EntityCard } from './EntityCard';
 import { FkLink } from './FkLink';
 import { parseJsonArray } from '../../lib/parseJsonArray';
 import { useModals } from '../../hooks/useModals';
 import { useI18n } from '../../stores/i18n.store';
 import { useConfirmDelete } from '../../lib/confirmDelete';
+import { StatusPill } from '../ui/StatusPill';
+import { Button } from '../ui/Button';
+import { Icon } from '../ui/Icon';
 
 interface MembershipRow {
   id: string;
   parent_organization: string;
+  /** Identifier (FQDN) of the endpoint this membership is bound to. */
+  endpoint_id?: string;
   roles: unknown;
 }
 
 export function MembershipsCard({ instanceId }: { instanceId: string }) {
   const { t } = useI18n();
-  const { data: memberships = [], isLoading } = useMemberships(instanceId);
+  const { data, isLoading, isError, refetch } = useMemberships(instanceId);
+  const memberships: MembershipRow[] = data ?? [];
   const { data: org } = useOrganization(instanceId);
-  const { data: endpoints = [] } = useEndpoints(instanceId);
   const deleteMut = useDeleteMembership(instanceId);
   const confirmDelete = useConfirmDelete();
 
@@ -47,137 +57,80 @@ export function MembershipsCard({ instanceId }: { instanceId: string }) {
       title={t('memberships')}
       borderColor="#4a90d9"
       icon="groups"
+      status={isLoading ? 'loading' : isError && !data ? 'error' : 'ready'}
+      onRetry={() => void refetch()}
       onAdd={() => useModals.getState().openModal('membership-add')}
     >
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-        {org && (
-          <FkLink
-            label={t('membershipCardFkOrganization')}
-            targetEntity="organization"
-            value={org.identifier}
-          />
-        )}
-        {endpoints[0] && (
-          <FkLink
-            label={t('membershipCardFkEndpoint')}
-            targetEntity="endpoints"
-            value={endpoints[0].identifier}
-          />
-        )}
-      </div>
+      {org && (
+        <FkLink
+          label={t('membershipCardFkOrganization')}
+          targetEntity="organization"
+          value={org.identifier}
+        />
+      )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {isLoading && (
-          <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{t('loading')}</p>
-        )}
-        {memberships.map((ms: MembershipRow) => {
-          const roles = parseJsonArray(ms.roles);
-          return (
-            <div
-              key={ms.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '8px',
-                borderRadius: '8px',
-                background: 'rgba(74,144,217,0.05)',
-                border: '1px solid rgba(74,144,217,0.1)',
-                transition: 'border-color 0.15s',
-              }}
-            >
-              <div>
-                <p style={{ fontSize: '12px', fontWeight: 700 }}>{ms.parent_organization}</p>
-                {roles.map((r: string) => (
-                  <span
-                    key={r}
-                    style={{
-                      fontSize: '9px',
-                      fontWeight: 700,
-                      color: '#2563eb',
-                      marginRight: '4px',
-                    }}
+      {memberships.length > 0 ? (
+        <ul className="mt-3 flex flex-col gap-2">
+          {memberships.map((ms, index) => {
+            const parent = ms.parent_organization;
+            return (
+              <li
+                key={ms.id}
+                data-entity-row={`memberships:${ms.id}`}
+                className="hover-lift animate-list-item-in flex items-start gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-3"
+                style={{ '--stagger-index': index } as CSSProperties}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-semibold text-[color:var(--text-primary)]">
+                    {parent}
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {parseJsonArray(ms.roles).map((role) => (
+                      <StatusPill key={role} tone="info">
+                        {role}
+                      </StatusPill>
+                    ))}
+                  </div>
+                  {ms.endpoint_id && (
+                    <div className="mt-2">
+                      <FkLink
+                        label={t('membershipCardFkEndpoint')}
+                        targetEntity="endpoints"
+                        value={ms.endpoint_id}
+                        targetKey={ms.endpoint_id}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t('membershipCardEditAria', { parent })}
+                    onClick={() => useModals.getState().openModal('membership-edit', ms.id)}
+                    className="h-8 w-8 !px-0"
                   >
-                    {r}{' '}
-                  </span>
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    useModals.getState().openModal('membership-edit', ms.id);
-                  }}
-                  title={t('membershipCardEditAria')}
-                  aria-label={t('membershipCardEditAria')}
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#fde3ef')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: '16px', color: 'var(--primary)' }}
+                    <Icon name="edit" size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t('membershipCardDeleteAria', { parent })}
+                    onClick={() => requestDelete(ms)}
+                    className="h-8 w-8 !px-0 text-danger-fg hover:!bg-danger-surface hover:!text-danger-fg"
                   >
-                    edit
-                  </span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    requestDelete(ms);
-                  }}
-                  title={t('membershipCardDeleteAria')}
-                  aria-label={t('membershipCardDeleteAria')}
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#fee2e2')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: '16px', color: '#ef4444' }}
-                  >
-                    delete
-                  </span>
-                </button>
-              </div>
-            </div>
-          );
-        })}
-        {!isLoading && memberships.length === 0 && (
-          <p
-            style={{
-              color: 'var(--text-muted)',
-              fontSize: '12px',
-              textAlign: 'center',
-              padding: '16px 0',
-            }}
-          >
-            {t('emptyMembershipsHint')}
-          </p>
-        )}
-      </div>
+                    <Icon name="delete" size={16} />
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="py-4 text-center text-xs text-[color:var(--text-muted)]">
+          {t('emptyMembershipsHint')}
+        </p>
+      )}
     </EntityCard>
   );
 }

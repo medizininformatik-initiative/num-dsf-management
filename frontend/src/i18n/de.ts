@@ -319,8 +319,8 @@ export const de: Record<TranslationKey, string> = {
   // MembershipsCard
   membershipCardFkOrganization: 'Organisation',
   membershipCardFkEndpoint: 'Endpunkt',
-  membershipCardEditAria: 'Mitgliedschaft bearbeiten',
-  membershipCardDeleteAria: 'Mitgliedschaft löschen',
+  membershipCardEditAria: 'Mitgliedschaft in {parent} bearbeiten',
+  membershipCardDeleteAria: 'Mitgliedschaft in {parent} löschen',
 
   // Certificate card & entity rows (contacts, endpoints, certificates, memberships)
   contactCardDeleteTitle: 'Kontakt löschen?',
