@@ -58,7 +58,7 @@ export function assertSeedAllowed(env: NodeJS.ProcessEnv): void {
   }
 }
 
-interface SeedSummaryRow {
+export interface SeedSummaryRow {
   email: string;
   org: string;
   admin: boolean;
@@ -123,7 +123,11 @@ async function cleanPriorSeed(
   await trx('email_whitelist').where({ email }).del();
 }
 
-async function seedUser(user: HackathonUser, parentOrganization: string): Promise<SeedSummaryRow> {
+// Exported for the hackathon replay tests, which seed through this exact path.
+export async function seedUser(
+  user: HackathonUser,
+  parentOrganization: string,
+): Promise<SeedSummaryRow> {
   const now = new Date();
 
   const instanceId = await db.transaction(async (trx) => {
