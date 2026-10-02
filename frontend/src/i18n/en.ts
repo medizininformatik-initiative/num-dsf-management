@@ -372,6 +372,9 @@ export const en = {
     'With the next allow-list bundle, other DSF instances stop accepting this certificate.',
   certCardDeleteLastValid:
     'This is the last valid certificate of your organization: once the next allow-list bundle is out, other DSF instances reject every connection from your site.',
+  expiryBannerExpired: 'A certificate has expired',
+  expiryBannerExpiredPlural: '{n} certificates have expired',
+  expiryBannerRenew: 'Renew now',
   membershipCardLabel: 'Membership in {parent}',
   membershipCardDeleteTitle: 'Delete membership?',
   membershipCardDeleteMessage: 'The membership in {parent} ({roles}) will be removed.',

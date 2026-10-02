@@ -378,6 +378,9 @@ export const de: Record<TranslationKey, string> = {
     'Mit dem nächsten Allow-List-Bundle akzeptieren andere DSF-Instanzen dieses Zertifikat nicht mehr.',
   certCardDeleteLastValid:
     'Dies ist das letzte gültige Zertifikat Ihrer Organisation: Sobald das nächste Allow-List-Bundle veröffentlicht ist, lehnen andere DSF-Instanzen jede Verbindung Ihres Standorts ab.',
+  expiryBannerExpired: 'Ein Zertifikat ist abgelaufen',
+  expiryBannerExpiredPlural: '{n} Zertifikate sind abgelaufen',
+  expiryBannerRenew: 'Jetzt erneuern',
   membershipCardLabel: 'Mitgliedschaft in {parent}',
   membershipCardDeleteTitle: 'Mitgliedschaft löschen?',
   membershipCardDeleteMessage: 'Die Mitgliedschaft in {parent} ({roles}) wird entfernt.',
