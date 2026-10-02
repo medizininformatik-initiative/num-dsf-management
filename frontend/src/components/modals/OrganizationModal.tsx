@@ -1,13 +1,16 @@
 /**
  * OrganizationModal.tsx — edit modal for the organization record (identity, address, cert thumbprint).
  * React Hook Form + organizationSchema; thumbprint changes require a TOTP code, saved via the cross-user guard.
+ * The "active" switch is a labelled role="switch"; unsaved input asks before the dialog is dismissed.
+ * Dependencies: Modal, FormField, Icon, useOrganization, useCrossUserGuard, i18n store, authMode.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
 import { FormField, inputClass, ModalFooter } from './FormField';
+import { Icon } from '../ui/Icon';
 import { organizationSchema, OrganizationFormData } from '../../schemas/organization.schema';
 import { useUpdateOrganization } from '../../hooks/useOrganization';
 import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
@@ -32,11 +35,14 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
     handleSubmit,
     reset,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<OrganizationFormData>({
     resolver: zodResolver(organizationSchema),
     defaultValues: { active: true, ...defaultValues },
   });
+  const locked = !!defaultValues?.identifier;
+  const activeId = useId();
+  const activeHintId = useId();
 
   useEffect(() => {
     if (open && defaultValues) {
@@ -59,8 +65,9 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
         });
       });
       toast.success(t('orgModalSaveSuccess'));
+      // No reset here: the content would change while the dialog animates
+      // out; the next opening resets the form.
       onClose();
-      reset();
     } catch (err: unknown) {
       toast.error(
         getErrorMessageForStepUp(err, t('orgModalSaveFailed'), t('certStepUpFailedToast')),
@@ -74,35 +81,34 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
       onClose={onClose}
       title={t('orgModalTitle')}
       subtitle={t('orgModalSubtitle')}
+      isDirty={isDirty || totpCode !== ''}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <FormField
           label={t('orgModalFieldIdentifier')}
           required
           error={errors.identifier?.message}
-          hint={
-            defaultValues?.identifier ? t('identifierLockedHelp') : t('orgModalFieldIdentifierHint')
-          }
+          hint={locked ? t('identifierLockedHelp') : t('orgModalFieldIdentifierHint')}
         >
-          <input
-            {...register('identifier')}
-            className={inputClass}
-            placeholder={t('orgModalFieldIdentifierPlaceholder')}
-            readOnly={!!defaultValues?.identifier}
-            disabled={!!defaultValues?.identifier}
-            title={defaultValues?.identifier ? t('identifierLockedHelp') : undefined}
-            data-testid="org-identifier-input"
-          />
-          {defaultValues?.identifier && (
-            <p
-              className="text-[10px] mt-1 flex items-center gap-1"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
-                lock
-              </span>
-              <span>{t('identifierLocked')}</span>
-            </p>
+          {(control) => (
+            <>
+              <input
+                {...register('identifier')}
+                {...control}
+                className={inputClass}
+                placeholder={t('orgModalFieldIdentifierPlaceholder')}
+                readOnly={locked}
+                disabled={locked}
+                title={locked ? t('identifierLockedHelp') : undefined}
+                data-testid="org-identifier-input"
+              />
+              {locked && (
+                <p className="flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+                  <Icon name="lock" size={14} />
+                  <span>{t('identifierLocked')}</span>
+                </p>
+              )}
+            </>
           )}
         </FormField>
         <FormField label={t('orgModalFieldName')} required error={errors.name?.message}>
@@ -120,15 +126,32 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
             placeholder={t('orgModalFieldEmailPlaceholder')}
           />
         </FormField>
-        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-[color:var(--border)] bg-white/50 p-3 dark:bg-white/[0.03]">
           <div>
-            <p className="text-sm font-semibold text-slate-700">{t('orgModalActiveLabel')}</p>
-            <p className="text-[10px] text-slate-400">{t('orgModalActiveHint')}</p>
+            <label
+              htmlFor={activeId}
+              className="block cursor-pointer text-sm font-semibold text-[color:var(--text-primary)]"
+            >
+              {t('orgModalActiveLabel')}
+            </label>
+            <p id={activeHintId} className="text-xs text-[color:var(--text-muted)]">
+              {t('orgModalActiveHint')}
+            </p>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" {...register('active')} className="sr-only peer" />
-            <div className="w-10 h-6 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
-          </label>
+          <span className="relative inline-flex shrink-0 items-center">
+            <input
+              id={activeId}
+              type="checkbox"
+              role="switch"
+              aria-describedby={activeHintId}
+              {...register('active')}
+              className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+            />
+            <span
+              aria-hidden="true"
+              className="h-6 w-10 rounded-full bg-[color:var(--border-strong)] transition-colors duration-short ease-standard after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform after:duration-medium after:ease-spring-bouncy after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-4 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[color:var(--focus-ring)] dark:peer-checked:bg-brand-400"
+            />
+          </span>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <FormField label={t('orgModalFieldAddress')} error={errors.addressLine?.message}>
@@ -174,7 +197,8 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
         >
           <input
             {...register('clientCertThumbprint')}
-            className={inputClass}
+            className={`${inputClass} font-mono`}
+            spellCheck={false}
             placeholder={t('orgModalFieldThumbprintPlaceholder')}
             maxLength={128}
           />
@@ -190,8 +214,10 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 maxLength={6}
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 placeholder="000000"
-                style={{ fontFamily: 'monospace', letterSpacing: '4px', textAlign: 'center' }}
+                className={`${inputClass} text-center font-mono tracking-[0.3em]`}
               />
             </FormField>
           )}

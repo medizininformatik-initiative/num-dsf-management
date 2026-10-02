@@ -30,4 +30,36 @@ describe('OrganizationModal', () => {
     // identifier/name/email are required by organizationSchema — inline errors surface.
     expect((await screen.findAllByText(/required|valid|invalid/i)).length).toBeGreaterThan(0);
   });
+
+  it('exposes "active" as a labelled, described switch', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <OrganizationModal
+        open
+        onClose={() => {}}
+        instanceId="i1"
+        defaultValues={{ identifier: 'klinik.example.de', name: 'Klinik', email: 'a@b.de' }}
+      />,
+    );
+    const toggle = screen.getByRole('switch', { name: 'Active' });
+    expect(toggle).toHaveAccessibleDescription(/active in the network/i);
+    expect(toggle).toBeChecked();
+    await user.click(toggle);
+    expect(toggle).not.toBeChecked();
+  });
+
+  it('locks the identifier of an existing organization and says why', () => {
+    renderWithProviders(
+      <OrganizationModal
+        open
+        onClose={() => {}}
+        instanceId="i1"
+        defaultValues={{ identifier: 'klinik.example.de', name: 'Klinik', email: 'a@b.de' }}
+      />,
+    );
+    const identifier = screen.getByRole('textbox', { name: /identifier \(fqdn\)/i });
+    expect(identifier).toBeDisabled();
+    expect(identifier).toHaveAccessibleDescription(/other allowlist tools reference/i);
+    expect(screen.getByText(/immutable in federated mode/i)).toBeInTheDocument();
+  });
 });
