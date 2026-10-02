@@ -1030,6 +1030,9 @@ export const de: Record<TranslationKey, string> = {
     'Die Anmeldung mit deinem Zertifikat ist fehlgeschlagen. Kontaktiere den IMI-Betreiber.',
   certStatusRetry: 'Erneut versuchen',
 
+  // Entity canvas — FK links and organization card
+  fkLinkAria: '{label}: {value}. Zur Karte {target} springen',
+
   // Guided canvas — glossary
   glossaryDic:
     'DIC = Data Integration Center: integriert und stellt die klinischen Daten eines Standorts im Netzwerk bereit.',

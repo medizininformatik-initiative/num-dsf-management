@@ -1011,6 +1011,9 @@ export const en = {
   certStatusGeneric: 'Sign-in with your certificate failed. Contact the IMI operator.',
   certStatusRetry: 'Retry',
 
+  // Entity canvas — FK links and organization card
+  fkLinkAria: '{label}: {value}. Jump to the {target} card',
+
   // Guided canvas — glossary
   glossaryDic:
     'DIC = Data Integration Center: integrates and provides a site’s clinical data into the network.',
