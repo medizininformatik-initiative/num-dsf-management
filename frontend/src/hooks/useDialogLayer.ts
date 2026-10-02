@@ -16,7 +16,7 @@
  *
  * Dependencies: react.
  */
-import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
 export interface DialogLayerOptions {
   /** The dialog's open prop: the layer is registered while true. */
@@ -82,7 +82,10 @@ export function useDialogLayer({
     escape: () => escapeRef.current(),
   }));
 
-  useLayoutEffect(() => {
+  // A passive effect on purpose: React re-focuses the previously focused
+  // element at the end of each commit, which would undo a focus restore made
+  // in a layout-effect cleanup while the closing dialog is still mounted.
+  useEffect(() => {
     if (!open) return;
     const container = containerRef.current;
     const opener = document.activeElement;
