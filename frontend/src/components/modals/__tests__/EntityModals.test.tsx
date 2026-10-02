@@ -25,6 +25,8 @@ const downloadIp = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../hooks/useCertificates', () => ({
   useCreateCertificate: () => ({ mutateAsync: certCreate, isPending: false }),
+  // The upload preview stays pending; it never blocks these submits.
+  usePreviewCertificate: () => ({ mutate: vi.fn(), isPending: true, isError: false }),
 }));
 
 const endpointsFixture = [
@@ -126,6 +128,8 @@ describe('EndpointModal', () => {
     fireEvent.change(screen.getByPlaceholderText(/dsf-fhir\.hospital\.de\/fhir/i), {
       target: { value: 'https://dsf-fhir.hospital.de/fhir' },
     });
+    // New endpoints start without IP rows.
+    fireEvent.click(screen.getByRole('button', { name: /add ip address/i }));
     fireEvent.change(screen.getByPlaceholderText(/128\.176\.232\.132/), {
       target: { value: '128.176.232.132' },
     });
