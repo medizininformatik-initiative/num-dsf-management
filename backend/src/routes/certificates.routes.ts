@@ -55,7 +55,9 @@ certificatesRouter.post('/', validate(createCertificateSchema), async (req, res)
         .status(400)
         .json({ error: { code: 'PRIVATE_KEY_REJECTED', message: 'Private keys are not allowed' } });
     }
-    res.status(400).json({ error: { code: 'FAILED', message: 'Certificate upload failed' } });
+    // Known business codes (INVALID_PEM, CA_BLACKLISTED, CA_NOT_WHITELISTED)
+    // pass through so the UI can explain the rejection; anything else is masked.
+    res.status(400).json({ error: sanitizeError(err) });
   }
 });
 
