@@ -653,9 +653,9 @@ export const de: Record<TranslationKey, string> = {
   mapDetailsCertExpired: 'Abgelaufen',
   mapDetailsCertNone: 'Kein Zertifikat',
   mapDetailsExpiredText:
-    'Dieses Zertifikat ist abgelaufen. Erneuere es, damit dieser Knoten aktiv bleibt.',
+    'Dieses Zertifikat ist abgelaufen. Erneuern Sie es, damit dieser Knoten aktiv bleibt.',
   mapDetailsExpiringText:
-    'Dieses Zertifikat läuft bald ab. Plane eine Erneuerung, um Ausfälle zu vermeiden.',
+    'Dieses Zertifikat läuft bald ab. Planen Sie eine Erneuerung, um Ausfälle zu vermeiden.',
   mapDetailsDayRemainingOne: '1 Tag verbleibend',
   mapDetailsDaysRemainingMany: '{n} Tage verbleibend',
   mapDetailsExpiredAgoOne: 'Vor 1 Tag abgelaufen',

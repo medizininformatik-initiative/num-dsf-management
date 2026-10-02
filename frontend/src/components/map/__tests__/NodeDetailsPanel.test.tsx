@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../../test/renderWithProviders';
+import { formatDate } from '../../../lib/dateUtils';
 import { NodeDetailsPanel } from '../NodeDetailsPanel';
 import type {
   MapOrganization,
@@ -100,8 +102,8 @@ describe('NodeDetailsPanel', () => {
         onSelectMember={vi.fn()}
       />,
     );
-    // next_cert_expiry rendered via toLocaleDateString — assert the localized form.
-    expect(screen.getByText(new Date('2026-07-01').toLocaleDateString())).toBeInTheDocument();
+    // next_cert_expiry follows the app language (formatDate), not the browser locale.
+    expect(screen.getByText(formatDate('2026-07-01', 'en'))).toBeInTheDocument();
     // cert_days_until = 9 → "9 days remaining"
     expect(screen.getByText('9 days remaining')).toBeInTheDocument();
     expect(screen.getByText(/expires soon/i)).toBeInTheDocument();
@@ -228,5 +230,110 @@ describe('NodeDetailsPanel', () => {
     // No org/cluster body content is rendered.
     expect(screen.queryByRole('button', { name: 'Close details' })).not.toBeInTheDocument();
     expect(aside?.textContent).toBe('');
+  });
+});
+
+/** Opens and closes the panel like MapPage: a selection button and onClose. */
+function Harness({ onCloseSpy }: { onCloseSpy?: () => void }) {
+  const [selected, setSelected] = useState<MapOrganization | null>(null);
+  return (
+    <div>
+      <button onClick={() => setSelected(adminOrg())}>select alpha</button>
+      <NodeDetailsPanel
+        org={selected}
+        cluster={null}
+        isAdmin
+        onClose={() => {
+          onCloseSpy?.();
+          setSelected(null);
+        }}
+        onSelectMember={vi.fn()}
+      />
+    </div>
+  );
+}
+
+describe('NodeDetailsPanel motion and dismissal', () => {
+  it('slides in from the right as a labelled glass sheet', async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithProviders(<Harness />);
+    const aside = container.querySelector('aside') as HTMLElement;
+    expect(aside).toHaveAttribute('hidden');
+
+    await user.click(screen.getByRole('button', { name: 'select alpha' }));
+
+    expect(aside).not.toHaveAttribute('hidden');
+    expect(aside).toHaveAttribute('data-state', 'open');
+    expect(aside.className).toContain('glass');
+    expect(aside.className).toContain('data-[state=open]:animate-sheet-in-right');
+    expect(screen.getByRole('complementary', { name: 'Alpha Klinik' })).toBe(aside);
+  });
+
+  it('keeps its content while sliding out, then empties and hides', async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithProviders(<Harness />);
+    await user.click(screen.getByRole('button', { name: 'select alpha' }));
+
+    await user.click(screen.getByRole('button', { name: 'Close details' }));
+
+    const aside = container.querySelector('aside') as HTMLElement;
+    expect(aside).toHaveAttribute('data-state', 'closed');
+    expect(aside).toHaveAttribute('aria-hidden', 'true');
+    expect(aside).toHaveTextContent('Alpha Klinik');
+
+    await waitFor(() => expect(aside).toHaveAttribute('hidden'));
+    expect(aside.textContent).toBe('');
+  });
+
+  it('returns focus to the opener when it closes with focus inside', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Harness />);
+    const opener = screen.getByRole('button', { name: 'select alpha' });
+    await user.click(opener);
+
+    await user.click(screen.getByRole('button', { name: 'Close details' }));
+
+    expect(opener).toHaveFocus();
+  });
+
+  it('closes on Escape', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderWithProviders(<Harness onCloseSpy={onClose} />);
+    await user.click(screen.getByRole('button', { name: 'select alpha' }));
+
+    await user.keyboard('{Escape}');
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves Escape to a modal dialog on top and to controls that handled it', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderWithProviders(<Harness onCloseSpy={onClose} />);
+    await user.click(screen.getByRole('button', { name: 'select alpha' }));
+
+    // A modal dialog (as DialogShell / Drawer render it) is open on top.
+    const modal = document.createElement('div');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.dataset.state = 'open';
+    document.body.appendChild(modal);
+
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+
+    modal.remove();
+    const handled = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    handled.preventDefault();
+    document.body.dispatchEvent(handled);
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
