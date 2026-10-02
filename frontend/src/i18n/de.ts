@@ -1029,6 +1029,9 @@ export const de: Record<TranslationKey, string> = {
   caWhitelistConflict: 'Diese CA steht bereits auf der Whitelist.',
   caBlacklistAddBtn: 'Zur Blacklist hinzufügen',
   caBlacklistLoadFailed: 'CA-Blacklist konnte nicht geladen werden.',
+  caBlacklistWhitelisted:
+    'Diese CA steht auf der CA-Whitelist und kann nicht auf die Blacklist gesetzt werden. Entfernen Sie sie zuerst aus der Whitelist.',
+  caShowInWhitelist: 'In der Whitelist anzeigen',
   caRemoveFromBlacklistAria: '{name} von der Blacklist entfernen',
   caBlacklistRemoveTitle: 'CA von der Blacklist entfernen?',
   caBlacklistRemoveConsequence: 'Zertifikate dieser CA können wieder hochgeladen werden.',

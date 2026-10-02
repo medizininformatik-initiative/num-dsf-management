@@ -3,7 +3,9 @@
  * form (subject DN with suggestions from the known Mozilla CAs, reason and,
  * in OTP sessions, the TOTP step-up code) and the blacklisted CAs, each
  * removable after a confirmation (useConfirm, or the step-up dialog with the
- * TOTP code in OTP sessions).
+ * TOTP code in OTP sessions). A CA on the whitelist cannot be blacklisted
+ * (409 CA_WHITELISTED); that refusal is explained inline with a shortcut to
+ * the entry in the whitelist.
  * Dependencies: caBlacklist.api, useAdmin keys, useConfirm, lib/authMode,
  * lib/dateUtils, lib/getErrorMessage, Button, Icon, CaFingerprint,
  * StepUpConfirmDialog, TotpCodeField, fieldClasses, caDn, i18n store, sonner,
@@ -18,7 +20,7 @@ import { useConfirm } from '../../hooks/useConfirm';
 import { useI18n } from '../../stores/i18n.store';
 import { needsTotpStepUp } from '../../lib/authMode';
 import { formatDate } from '../../lib/dateUtils';
-import { getErrorMessageForStepUp } from '../../lib/getErrorMessage';
+import { getErrorCode, getErrorMessageForStepUp } from '../../lib/getErrorMessage';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { CaFingerprint } from './CaFingerprint';
@@ -32,6 +34,8 @@ interface CaBlacklistPanelProps {
   knownCas: KnownCaRow[];
   isLoading: boolean;
   isError: boolean;
+  /** Switch to the whitelist tab, filtered to the given DN's CA. */
+  onShowInWhitelist: (subjectDn: string) => void;
 }
 
 export function CaBlacklistPanel({
@@ -39,6 +43,7 @@ export function CaBlacklistPanel({
   knownCas,
   isLoading,
   isError,
+  onShowInWhitelist,
 }: CaBlacklistPanelProps) {
   const { t } = useI18n();
   const qc = useQueryClient();
@@ -47,6 +52,7 @@ export function CaBlacklistPanel({
   const [subjectDn, setSubjectDn] = useState('');
   const [reason, setReason] = useState('');
   const [totpCode, setTotpCode] = useState('');
+  const [whitelistedDn, setWhitelistedDn] = useState<string | null>(null);
   const [removing, setRemoving] = useState<CaBlacklistRow | null>(null);
   const [removeCode, setRemoveCode] = useState('');
 
@@ -70,6 +76,10 @@ export function CaBlacklistPanel({
     },
     onError: (err: unknown) => {
       setTotpCode('');
+      if (getErrorCode(err) === 'CA_WHITELISTED') {
+        setWhitelistedDn(dn);
+        return;
+      }
       toast.error(
         getErrorMessageForStepUp(err, t('caBlacklistAddFailed'), t('certStepUpFailedToast')),
       );
@@ -136,7 +146,10 @@ export function CaBlacklistPanel({
                 id={`${formId}-dn`}
                 className={`${FIELD_CLASS} font-mono`}
                 value={subjectDn}
-                onChange={(e) => setSubjectDn(e.target.value)}
+                onChange={(e) => {
+                  setSubjectDn(e.target.value);
+                  setWhitelistedDn(null);
+                }}
                 list={`${formId}-known`}
                 placeholder={t('caSubjectDnPlaceholder')}
                 maxLength={500}
@@ -162,6 +175,23 @@ export function CaBlacklistPanel({
               />
             </div>
           </div>
+
+          {whitelistedDn && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-start gap-x-3 gap-y-2 rounded-lg border border-danger-border bg-danger-surface p-3 text-sm text-danger-fg"
+            >
+              <Icon name="gpp_bad" size={20} className="shrink-0" />
+              <p className="min-w-0 flex-1">{t('caBlacklistWhitelisted')}</p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onShowInWhitelist(whitelistedDn)}
+              >
+                {t('caShowInWhitelist')}
+              </Button>
+            </div>
+          )}
 
           <div className="flex flex-wrap items-end justify-between gap-4">
             {stepUp ? (

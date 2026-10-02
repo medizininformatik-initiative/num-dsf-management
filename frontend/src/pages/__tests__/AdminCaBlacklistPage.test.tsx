@@ -3,10 +3,11 @@
  * blacklist tabs. caWhitelistApi and caBlacklistApi are mocked (four
  * whitelist entries, one blacklist entry). Covers the default whitelist tab
  * with both tab counts, switching tabs by click, arrow key and ?tab= URL, the
- * whitelist search (text and pasted fingerprint) and kind filter, and the
- * blacklist add with the 6-digit TOTP step-up. A separate describe block
- * mocks lib/authMode to exercise cert mode, where the TOTP field is not
- * rendered and add omits totpCode entirely.
+ * whitelist search (text and pasted fingerprint) and kind filter, the
+ * blacklist add with the 6-digit TOTP step-up, and the inline explanation of
+ * a refused blacklisting (409 CA_WHITELISTED) with its shortcut into the
+ * whitelist. A separate describe block mocks lib/authMode to exercise cert
+ * mode, where the TOTP field is not rendered and add omits totpCode entirely.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
@@ -225,6 +226,42 @@ describe('AdminCaBlacklistPage', () => {
         expect.objectContaining({ subjectDn: 'CN=New CA,O=Test,C=DE', totpCode: '123456' }),
       ),
     );
+  });
+
+  it('explains a refused blacklisting of a whitelisted CA and jumps to its whitelist entry', async () => {
+    addMock.mockRejectedValue({
+      response: {
+        status: 409,
+        data: { error: { code: 'CA_WHITELISTED', message: 'This CA is on the CA whitelist.' } },
+      },
+    });
+    renderWithProviders(<AdminCaBlacklistPage />, { route: BLACKLIST_ROUTE });
+    await screen.findByText('CN=Bad CA');
+
+    fireEvent.change(screen.getByTestId('ca-blacklist-subject-input'), {
+      target: { value: 'C=DE,O=Example Research Network,OU=PKI,CN=Example Issuing CA 2022' },
+    });
+    fireEvent.change(screen.getByTestId('ca-blacklist-totp-input'), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByTestId('ca-blacklist-add-btn'));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'This CA is on the CA whitelist and cannot be blacklisted. Remove it from the whitelist first.',
+    );
+
+    fireEvent.click(within(alert).getByRole('button', { name: 'Show in whitelist' }));
+    expect(screen.getByRole('tab', { name: /CA Whitelist/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByRole('searchbox', { name: 'Search the whitelist' })).toHaveValue(
+      'Example Issuing CA 2022',
+    );
+    const rows = screen.getAllByTestId('ca-whitelist-row');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent('Example Issuing CA 2022');
   });
 });
 

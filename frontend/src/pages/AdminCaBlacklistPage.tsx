@@ -6,7 +6,7 @@
  * URL (?tab=blacklist) so it can be linked and survives a reload; both panels
  * stay mounted so a half-filled form survives a tab switch.
  * Dependencies: useAdmin (useCaWhitelist, useCaBlacklist), AdminPageHeader,
- * CaWhitelistPanel, CaBlacklistPanel, Icon, fieldClasses, i18n store,
+ * CaWhitelistPanel, CaBlacklistPanel, caDn, Icon, fieldClasses, i18n store,
  * react-router.
  */
 import { useRef, useState, type KeyboardEvent } from 'react';
@@ -17,6 +17,7 @@ import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { CaWhitelistPanel, type CaKindFilter } from '../components/admin/CaWhitelistPanel';
 import { CaBlacklistPanel } from '../components/admin/CaBlacklistPanel';
 import { FIELD_CLASS } from '../components/admin/fieldClasses';
+import { commonName } from '../components/admin/caDn';
 import { Icon } from '../components/ui/Icon';
 
 type CaTab = 'whitelist' | 'blacklist';
@@ -34,6 +35,12 @@ export function AdminCaBlacklistPage() {
 
   function selectTab(next: CaTab) {
     setParams(next === 'whitelist' ? {} : { tab: next }, { replace: true });
+  }
+
+  function showInWhitelist(subjectDn: string) {
+    setKind('ALL');
+    setQuery(commonName(subjectDn));
+    selectTab('whitelist');
   }
 
   const counts: Record<CaTab, number | undefined> = {
@@ -90,6 +97,7 @@ export function AdminCaBlacklistPage() {
             knownCas={blacklist.data?.knownCas ?? []}
             isLoading={blacklist.isLoading}
             isError={blacklist.isError}
+            onShowInWhitelist={showInWhitelist}
           />
         </div>
       </div>

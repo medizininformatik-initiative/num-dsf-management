@@ -1012,6 +1012,9 @@ export const en = {
   caWhitelistConflict: 'This CA is already on the whitelist.',
   caBlacklistAddBtn: 'Add to blacklist',
   caBlacklistLoadFailed: 'Failed to load the CA blacklist.',
+  caBlacklistWhitelisted:
+    'This CA is on the CA whitelist and cannot be blacklisted. Remove it from the whitelist first.',
+  caShowInWhitelist: 'Show in whitelist',
   caRemoveFromBlacklistAria: 'Remove {name} from the blacklist',
   caBlacklistRemoveTitle: 'Remove CA from the blacklist?',
   caBlacklistRemoveConsequence: 'Certificates issued by this CA can be uploaded again.',
