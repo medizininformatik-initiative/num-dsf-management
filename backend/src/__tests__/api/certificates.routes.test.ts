@@ -204,4 +204,46 @@ describe('Certificates API', () => {
       expect(res.body.error).toBeDefined();
     });
   });
+
+  describe('POST /api/v1/instances/:id/certificates/preview', () => {
+    it('parses a certificate without storing it', async () => {
+      const pem = generateLeafPem();
+      const before = await db('certificates').where({ organization_id: orgId }).count('* as n');
+      const res = await request(app)
+        .post(`/api/v1/instances/${instanceId}/certificates/preview`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ pem });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({
+        subject: `dsf-fhir.${orgId}`,
+        thumbprintSha512: sha512FingerprintFromPem(pem),
+        issuerTrusted: false,
+        issuerBlacklisted: false,
+        whitelistEnforced: false,
+      });
+      expect(res.body.data.thumbprint).toMatch(/^[A-F0-9]{64}$/);
+      expect(res.body.data.issuerDn).toContain(`RouteTestCA-${sfx}`);
+      const after = await db('certificates').where({ organization_id: orgId }).count('* as n');
+      expect(after).toEqual(before);
+    });
+
+    it('rejects a private key and an unparsable certificate', async () => {
+      const keys = forge.pki.rsa.generateKeyPair({ bits: 1024 });
+      const withKey = await request(app)
+        .post(`/api/v1/instances/${instanceId}/certificates/preview`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ pem: `${generateLeafPem()}\n${forge.pki.privateKeyToPem(keys.privateKey)}` });
+      expect(withKey.status).toBe(400);
+      expect(withKey.body.error.code).toBe('PRIVATE_KEY_REJECTED');
+      expect(JSON.stringify(withKey.body)).not.toContain('PRIVATE KEY');
+
+      const garbled = await request(app)
+        .post(`/api/v1/instances/${instanceId}/certificates/preview`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ pem: '-----BEGIN CERTIFICATE-----\nnot-a-cert\n-----END CERTIFICATE-----' });
+      expect(garbled.status).toBe(400);
+      expect(garbled.body.error.code).toBe('INVALID_PEM');
+    });
+  });
 });
