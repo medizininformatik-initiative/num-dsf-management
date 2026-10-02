@@ -1,0 +1,39 @@
+/* CertRenewalModal.css — step transition of the renewal flow. The incoming
+   step slides in from the reading direction (forward: from the right, back:
+   from the left) while it fades in, on the no-overshoot spring. The class
+   names contain "animate-" so index.css's global reduced-motion rule leaves
+   them to the override below, which turns them into a plain crossfade. */
+@keyframes renewal-step-in-forward {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+@keyframes renewal-step-in-back {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes renewal-step-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.renewal-animate-step-forward {
+  animation: renewal-step-in-forward var(--duration-medium) var(--ease-spring) both;
+}
+
+.renewal-animate-step-back {
+  animation: renewal-step-in-back var(--duration-medium) var(--ease-spring) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .renewal-animate-step-forward,
+  .renewal-animate-step-back {
+    animation: renewal-step-fade-in var(--duration-short) var(--ease-standard) both;
+  }
+}

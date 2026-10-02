@@ -529,8 +529,6 @@ export const de: Record<TranslationKey, string> = {
   certRenewalReplacingLabel: 'Ersetzt wird:',
   certRenewalDropHint: 'Neue .pem-, .crt- oder .cer-Datei hier ablegen oder das PEM unten einfügen',
   certRenewalPastePlaceholder: 'Oder PEM-Inhalt hier einfügen...',
-  certRenewalPrivateKeyError:
-    'Enthält einen PRIVATEN SCHLÜSSEL. Laden Sie nur das öffentliche Zertifikat hoch.',
   certRenewalBackBtn: 'Zurück',
   certRenewalReviewBtn: 'Prüfen',
   certRenewalConfirmHint: 'Das neue Zertifikat wird hochgeladen und das alte gelöscht:',

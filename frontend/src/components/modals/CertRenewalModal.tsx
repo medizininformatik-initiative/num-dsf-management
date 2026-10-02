@@ -1,17 +1,40 @@
 /**
- * CertRenewalModal.tsx – Guided certificate renewal flow
- * Steps: 1. Select expiring cert → 2. Upload new PEM → 3. Compare → 4. Confirm swap
- * Dependencies: Modal, ModalFooter, useCertificates, daysUntil, sonner
+ * CertRenewalModal.tsx — guided certificate renewal in three steps under a
+ * "Step n of 3" indicator: 1. choose the certificate to replace, 2. enter the
+ * new PEM (drop, pick or paste) with the same server preview as the upload
+ * dialog, 3. compare and confirm the swap. Steps slide in from the reading
+ * direction (forward from the right, back from the left; a crossfade under
+ * Reduce Motion) and focus moves to the step title. "Back" returns one step,
+ * "Cancel" leaves the flow, and entered PEM text asks before the dialog is
+ * dismissed. Upload error codes are mapped to translated messages.
+ * Dependencies: Modal, FormField, PemInput, CertificatePreviewPanel,
+ *               useCertificatePreview, Callout, StatusPill, Icon, useCertificates,
+ *               useCrossUserGuard, lib (certStatus, dateUtils, fingerprint),
+ *               CertRenewalModal.css.
  */
-import { useState } from 'react';
-import { Modal } from './Modal';
-import { ModalFooter } from './FormField';
-import { useCertificates, useRenewCertificate } from '../../hooks/useCertificates';
-import { daysUntil } from '../../lib/dateUtils';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { Modal } from './Modal';
+import { FormField, ModalFooter } from './FormField';
+import { Callout } from './Callout';
+import { PemInput } from './PemInput';
+import { CertificatePreviewPanel, DistinguishedName } from './CertificatePreviewPanel';
+import { useCertificatePreview, type CertificatePreviewState } from './useCertificatePreview';
+import { certificateUploadError, certValidityLabel } from './certificateUpload';
+import { StatusPill } from '../ui/StatusPill';
+import { Icon } from '../ui/Icon';
+import { certificateSchema, CertificateFormData } from '../../schemas/certificate.schema';
+import { useCertificates, useRenewCertificate } from '../../hooks/useCertificates';
 import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
 import { useI18n } from '../../stores/i18n.store';
-import { getErrorMessage } from '../../lib/getErrorMessage';
+import { certValidity, CERT_STATE_TONE } from '../../lib/certStatus';
+import { formatDate } from '../../lib/dateUtils';
+import { fingerprintGroups } from '../../lib/fingerprint';
+import type { ApiCertificate, CertificatePreview } from '../../api/entities.api';
+import type { TranslationKey } from '../../i18n/en';
+import './CertRenewalModal.css';
 
 interface Props {
   open: boolean;
@@ -19,44 +42,86 @@ interface Props {
   instanceId: string;
 }
 
+type Step = 'select' | 'upload' | 'confirm';
+
+const STEPS: readonly Step[] = ['select', 'upload', 'confirm'];
+
+const STEP_TITLE: Record<Step, TranslationKey> = {
+  select: 'formRenewalStepSelect',
+  upload: 'formRenewalStepUpload',
+  confirm: 'formRenewalStepConfirm',
+};
+
+const CHOICE =
+  'press-effect hover-lift flex w-full items-center justify-between gap-3 rounded-xl border ' +
+  'border-[color:var(--border)] bg-white/50 p-3 text-left dark:bg-white/[0.03] ' +
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ' +
+  'focus-visible:outline-[color:var(--focus-ring)]';
+
+function previewOf(state: CertificatePreviewState): CertificatePreview | undefined {
+  if (state.kind === 'ready') return state.preview;
+  if (state.kind === 'loading') return state.previous;
+  return undefined;
+}
+
 export function CertRenewalModal({ open, onClose, instanceId }: Props) {
-  const { t } = useI18n();
-  const { data: certs = [] } = useCertificates(instanceId);
+  const { t, lang } = useI18n();
+  const { data } = useCertificates(instanceId);
+  const certs: ApiCertificate[] = data ?? [];
   const renewMut = useRenewCertificate(instanceId);
   const guard = useCrossUserGuard();
 
-  const [step, setStep] = useState<'select' | 'upload' | 'confirm'>('select');
+  const [step, setStep] = useState<Step>('select');
+  const [direction, setDirection] = useState<'forward' | 'back'>('forward');
   const [selectedCertId, setSelectedCertId] = useState<string | null>(null);
-  const [newPem, setNewPem] = useState('');
-  const [dragOver, setDragOver] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const navigated = useRef(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    getValues,
+    formState: { errors, isDirty },
+  } = useForm<CertificateFormData>({
+    resolver: zodResolver(certificateSchema),
+    defaultValues: { pem: '' },
+  });
+  const pem = watch('pem') ?? '';
+  const preview = useCertificatePreview(instanceId, pem);
+  const selectedCert = certs.find((c) => c.id === selectedCertId);
+  const stepIndex = STEPS.indexOf(step);
 
-  const selectedCert = certs.find((c: any) => c.id === selectedCertId);
-
-  function reset() {
+  // Every opening starts a fresh flow (resetting on close would flash the
+  // first step while the dialog animates out).
+  useEffect(() => {
+    if (!open) return;
+    navigated.current = false;
     setStep('select');
+    setDirection('forward');
     setSelectedCertId(null);
-    setNewPem('');
-    onClose();
-  }
+    reset({ pem: '' });
+  }, [open, reset]);
 
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setNewPem(reader.result as string);
-    reader.readAsText(file);
+  // The control that moved on is gone; continue from the new step's title.
+  useEffect(() => {
+    if (navigated.current) headingRef.current?.focus();
+  }, [step]);
+
+  function goTo(next: Step) {
+    setDirection(STEPS.indexOf(next) > stepIndex ? 'forward' : 'back');
+    navigated.current = true;
+    setStep(next);
   }
 
   async function handleConfirm() {
-    if (!selectedCertId || !newPem.trim()) return;
-
+    if (!selectedCertId) return;
     try {
       await new Promise<void>((resolve, reject) => {
         guard(async () => {
           try {
-            await renewMut.mutateAsync({ certId: selectedCertId, pem: newPem });
+            await renewMut.mutateAsync({ certId: selectedCertId, pem: getValues('pem') });
             resolve();
           } catch (e) {
             reject(e);
@@ -64,299 +129,212 @@ export function CertRenewalModal({ open, onClose, instanceId }: Props) {
         });
       });
       toast.success(t('certRenewalSuccess'));
-      reset();
+      onClose();
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err, t('certRenewalFailed')));
+      toast.error(certificateUploadError(err, t, t('certRenewalFailed')));
     }
   }
 
-  // Sort certs by expiry (soonest first)
+  // Soonest expiry first.
   const sortedCerts = [...certs].sort(
-    (a: any, b: any) => new Date(a.valid_until).getTime() - new Date(b.valid_until).getTime(),
+    (a, b) => new Date(a.valid_until).getTime() - new Date(b.valid_until).getTime(),
   );
 
   return (
-    <Modal open={open} onClose={reset} title={t('certRenewalTitle')} width="max-w-lg">
-      {step === 'select' && (
-        <div>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-            {t('certRenewalSelectHint')}
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {sortedCerts.map((cert: any) => {
-              const days = daysUntil(cert.valid_until);
-              const color = days < 30 ? '#ef4444' : days < 90 ? '#f5a623' : '#22c55e';
-              return (
-                <button
-                  key={cert.id}
-                  onClick={() => {
-                    setSelectedCertId(cert.id);
-                    setStep('upload');
-                  }}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg-hover)',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    width: '100%',
-                  }}
-                >
-                  <div>
-                    <p
-                      style={{
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: 'var(--text-primary)',
-                        margin: 0,
-                      }}
-                    >
-                      {cert.subject}
-                    </p>
-                    <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                      {t('certRenewalValidUntil', { date: cert.valid_until })}
-                    </p>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      color,
-                      padding: '2px 8px',
-                      borderRadius: '6px',
-                      background: `${color}18`,
-                    }}
-                  >
-                    {days < 0 ? 'EXPIRED' : `${days}d`}
-                  </span>
-                </button>
-              );
-            })}
-            {sortedCerts.length === 0 && (
-              <p
-                style={{
-                  fontSize: '12px',
-                  color: 'var(--text-muted)',
-                  textAlign: 'center',
-                  padding: '20px',
-                }}
-              >
-                {t('certRenewalNoCerts')}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {step === 'upload' && selectedCert && (
-        <div>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-            {t('certRenewalReplacingLabel')}{' '}
-            <strong style={{ color: 'var(--text-primary)' }}>{selectedCert.subject}</strong>
-          </p>
-
-          {/* Drop zone */}
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            style={{
-              border: `2px dashed ${dragOver ? 'var(--accent)' : 'var(--border)'}`,
-              borderRadius: '10px',
-              padding: '20px',
-              textAlign: 'center',
-              background: dragOver ? '#ede9ff' : 'transparent',
-              marginBottom: '12px',
-              transition: 'all 0.2s',
-            }}
-          >
-            <span
-              className="material-symbols-outlined"
-              style={{
-                fontSize: '32px',
-                color: dragOver ? 'var(--accent)' : 'var(--text-muted)',
-                display: 'block',
-                marginBottom: '4px',
-              }}
-            >
-              upload_file
-            </span>
-            <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-              {t('certRenewalDropHint')}
-            </p>
-          </div>
-
-          <textarea
-            value={newPem}
-            onChange={(e) => setNewPem(e.target.value)}
-            placeholder={t('certRenewalPastePlaceholder')}
-            rows={6}
-            style={{
-              width: '100%',
-              padding: '10px',
-              borderRadius: '10px',
-              border: '1px solid var(--border)',
-              fontSize: '11px',
-              fontFamily: 'monospace',
-              resize: 'vertical',
-              outline: 'none',
-              color: 'var(--text-primary)',
-              background: 'var(--bg-input)',
-            }}
+    <Modal open={open} onClose={onClose} title={t('certRenewalTitle')} isDirty={isDirty}>
+      <div aria-hidden="true" className="mb-3 flex gap-1.5">
+        {STEPS.map((s, i) => (
+          <span
+            key={s}
+            className={`h-1 flex-1 rounded-full transition-colors duration-medium ease-standard ${
+              i <= stepIndex ? 'bg-primary dark:bg-brand-400' : 'bg-[color:var(--border-strong)]'
+            }`}
           />
+        ))}
+      </div>
+      {/* Clips the horizontal slide; the padding keeps focus rings visible. */}
+      <div className="-mx-2 overflow-x-clip px-2">
+        <div
+          key={step}
+          className={
+            direction === 'forward' ? 'renewal-animate-step-forward' : 'renewal-animate-step-back'
+          }
+        >
+          <h3 ref={headingRef} tabIndex={-1} className="mb-4 outline-none">
+            <span className="block text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+              {t('formStepOf', { n: stepIndex + 1, total: STEPS.length })}
+            </span>
+            <span className="block text-sm font-semibold text-[color:var(--text-primary)]">
+              {t(STEP_TITLE[step])}
+            </span>
+          </h3>
 
-          {newPem.includes('PRIVATE KEY') && (
-            <div
-              style={{
-                padding: '8px 12px',
-                background: '#fef2f2',
-                borderRadius: '8px',
-                border: '1px solid #fecaca',
-                marginTop: '8px',
-              }}
-            >
-              <p style={{ fontSize: '11px', color: '#991b1b', margin: 0 }}>
-                {t('certRenewalPrivateKeyError')}
+          {step === 'select' && (
+            <>
+              <p className="mb-3 text-xs text-[color:var(--text-secondary)]">
+                {t('certRenewalSelectHint')}
               </p>
-            </div>
+              {sortedCerts.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-[color:var(--border-strong)] p-5 text-center text-xs text-[color:var(--text-muted)]">
+                  {t('certRenewalNoCerts')}
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {sortedCerts.map((cert, i) => {
+                    const validity = certValidity(cert.valid_until);
+                    return (
+                      <li
+                        key={cert.id}
+                        className="animate-list-item-in"
+                        style={{ '--stagger-index': i } as CSSProperties}
+                      >
+                        <button
+                          type="button"
+                          className={CHOICE}
+                          onClick={() => {
+                            setSelectedCertId(cert.id);
+                            goTo('upload');
+                          }}
+                        >
+                          <span className="min-w-0">
+                            <span className="block break-words text-sm font-semibold text-[color:var(--text-primary)]">
+                              {cert.subject}
+                            </span>
+                            <span className="block text-xs text-[color:var(--text-muted)]">
+                              {t('certRenewalValidUntil', {
+                                date: formatDate(cert.valid_until, lang),
+                              })}
+                            </span>
+                          </span>
+                          <span className="flex shrink-0 items-center gap-1">
+                            <StatusPill tone={CERT_STATE_TONE[validity.state]}>
+                              {certValidityLabel(validity, t)}
+                            </StatusPill>
+                            <Icon
+                              name="chevron_right"
+                              size={20}
+                              className="text-[color:var(--text-muted)]"
+                            />
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <ModalFooter onCancel={onClose} hideSubmit />
+            </>
           )}
 
-          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-            <button
-              onClick={() => setStep('select')}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '10px',
-                border: '1px solid var(--border)',
-                background: 'var(--bg-card)',
-                color: 'var(--text-secondary)',
-                fontSize: '12px',
-                cursor: 'pointer',
-              }}
-            >
-              {t('certRenewalBackBtn')}
-            </button>
-            <button
-              onClick={() => setStep('confirm')}
-              disabled={!newPem.trim() || newPem.includes('PRIVATE KEY')}
-              style={{
-                flex: 1,
-                padding: '8px 16px',
-                borderRadius: '10px',
-                border: 'none',
-                background:
-                  newPem.trim() && !newPem.includes('PRIVATE KEY')
-                    ? 'var(--accent)'
-                    : 'var(--bg-hover)',
-                color:
-                  newPem.trim() && !newPem.includes('PRIVATE KEY') ? '#fff' : 'var(--text-muted)',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              {t('certRenewalReviewBtn')}
-            </button>
-          </div>
+          {step === 'upload' && selectedCert && (
+            <form onSubmit={handleSubmit(() => goTo('confirm'))} className="space-y-4" noValidate>
+              <p className="text-xs text-[color:var(--text-secondary)]">
+                {t('certRenewalReplacingLabel')}{' '}
+                <strong className="break-words font-semibold text-[color:var(--text-primary)]">
+                  {selectedCert.subject}
+                </strong>
+              </p>
+              <FormField
+                label={t('formRenewalNewPemLabel')}
+                required
+                error={errors.pem?.message}
+                hint={t('hintCertificatePem')}
+              >
+                {(control) => (
+                  <PemInput
+                    textareaProps={{
+                      ...register('pem'),
+                      ...control,
+                      placeholder: t('certRenewalPastePlaceholder'),
+                    }}
+                    onFileText={(text) =>
+                      setValue('pem', text, { shouldValidate: true, shouldDirty: true })
+                    }
+                    dropHint={t('certRenewalDropHint')}
+                  />
+                )}
+              </FormField>
+              <CertificatePreviewPanel result={preview} />
+              <ModalFooter
+                onBack={() => goTo('select')}
+                backLabel={t('certRenewalBackBtn')}
+                onCancel={onClose}
+                disabled={preview.blocking}
+                submitLabel={t('certRenewalReviewBtn')}
+              />
+            </form>
+          )}
+
+          {step === 'confirm' && selectedCert && (
+            <>
+              <p className="mb-4 text-xs text-[color:var(--text-secondary)]">
+                {t('certRenewalConfirmHint')}
+              </p>
+              <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-danger-border bg-danger-surface p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-danger-fg">
+                    {t('certRenewalRemovingLabel')}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-[color:var(--text-primary)]">
+                    <DistinguishedName value={selectedCert.subject} />
+                  </p>
+                  <p className="mt-0.5 text-xs text-[color:var(--text-secondary)]">
+                    {t('certRenewalUntil', { date: formatDate(selectedCert.valid_until, lang) })}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-success-border bg-success-surface p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-success-fg">
+                    {t('certRenewalAddingLabel')}
+                  </p>
+                  <NewCertificateSummary preview={previewOf(preview.state)} pem={pem} />
+                </div>
+              </div>
+              <Callout tone="info" icon="info">
+                {t('certRenewalApprovalHint')}
+              </Callout>
+              <ModalFooter
+                onBack={() => goTo('upload')}
+                backLabel={t('certRenewalBackBtn')}
+                onCancel={onClose}
+                onSubmit={handleConfirm}
+                loading={renewMut.isPending}
+                submitLabel={t('certRenewalConfirmBtn')}
+              />
+            </>
+          )}
         </div>
-      )}
-
-      {step === 'confirm' && selectedCert && (
-        <div>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-            {t('certRenewalConfirmHint')}
-          </p>
-
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-            <div
-              style={{
-                flex: 1,
-                padding: '10px',
-                borderRadius: '10px',
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-              }}
-            >
-              <p
-                style={{
-                  fontSize: '9px',
-                  fontWeight: 700,
-                  color: '#991b1b',
-                  textTransform: 'uppercase',
-                  margin: '0 0 4px',
-                }}
-              >
-                {t('certRenewalRemovingLabel')}
-              </p>
-              <p style={{ fontSize: '11px', color: 'var(--text-primary)', margin: 0 }}>
-                {selectedCert.subject}
-              </p>
-              <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                {t('certRenewalUntil', { date: selectedCert.valid_until })}
-              </p>
-            </div>
-            <div
-              style={{
-                flex: 1,
-                padding: '10px',
-                borderRadius: '10px',
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-              }}
-            >
-              <p
-                style={{
-                  fontSize: '9px',
-                  fontWeight: 700,
-                  color: '#15803d',
-                  textTransform: 'uppercase',
-                  margin: '0 0 4px',
-                }}
-              >
-                {t('certRenewalAddingLabel')}
-              </p>
-              <p
-                style={{
-                  fontSize: '11px',
-                  color: 'var(--text-primary)',
-                  margin: 0,
-                  fontFamily: 'monospace',
-                  wordBreak: 'break-all',
-                }}
-              >
-                {newPem.slice(0, 60)}...
-              </p>
-            </div>
-          </div>
-
-          <div
-            style={{
-              padding: '8px 12px',
-              background: 'var(--bg-hover)',
-              borderRadius: '8px',
-              marginBottom: '16px',
-            }}
-          >
-            <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
-              {t('certRenewalApprovalHint')}
-            </p>
-          </div>
-
-          <ModalFooter
-            onCancel={() => setStep('upload')}
-            loading={renewMut.isPending}
-            submitLabel={t('certRenewalConfirmBtn')}
-            onSubmit={handleConfirm}
-          />
-        </div>
-      )}
+      </div>
     </Modal>
+  );
+}
+
+/** The incoming certificate: from the preview when available, else a PEM excerpt. */
+function NewCertificateSummary({
+  preview,
+  pem,
+}: {
+  preview: CertificatePreview | undefined;
+  pem: string;
+}) {
+  const { t, lang } = useI18n();
+  if (!preview) {
+    return (
+      <p className="mt-1 break-all font-mono text-xs text-[color:var(--text-primary)]">
+        {pem.trim().slice(0, 60)}…
+      </p>
+    );
+  }
+  return (
+    <>
+      <p className="mt-1 text-xs font-medium text-[color:var(--text-primary)]">
+        <DistinguishedName value={preview.subject} />
+      </p>
+      <p className="mt-0.5 text-xs text-[color:var(--text-secondary)]">
+        {t('certRenewalUntil', { date: formatDate(preview.validUntil, lang) })}
+      </p>
+      <p className="mt-0.5 font-mono text-xs text-[color:var(--text-secondary)]">
+        SHA-512 {fingerprintGroups(preview.thumbprintSha512).slice(0, 4).join(' ')} …
+      </p>
+    </>
   );
 }

@@ -523,7 +523,6 @@ export const en = {
   certRenewalReplacingLabel: 'Replacing:',
   certRenewalDropHint: 'Drop the new .pem, .crt or .cer file here, or paste the PEM below',
   certRenewalPastePlaceholder: 'Or paste PEM content here...',
-  certRenewalPrivateKeyError: 'This contains a PRIVATE KEY. Only upload the public certificate.',
   certRenewalBackBtn: 'Back',
   certRenewalReviewBtn: 'Review',
   certRenewalConfirmHint: 'This will upload the new certificate and delete the old one:',
