@@ -1,13 +1,24 @@
 /**
  * MembershipModal.tsx — add/edit modal for a membership (parent org, endpoint, roles).
  * React Hook Form + membershipSchema; create/update through useMemberships behind the cross-user guard.
+ * Roles are a labelled checkbox group with translated descriptions; unsaved input asks before the
+ * dialog is dismissed.
+ * Dependencies: Modal, FormField (FormField, FormFieldGroup, CheckboxCards), useMemberships,
+ *               useEndpoints, useCrossUserGuard, i18n store.
  */
 import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
-import { FormField, selectClass, ModalFooter } from './FormField';
+import {
+  CheckboxCards,
+  FormField,
+  FormFieldGroup,
+  selectClass,
+  ModalFooter,
+  type CheckboxCardOption,
+} from './FormField';
 import { membershipSchema, MembershipFormData } from '../../schemas/membership.schema';
 import { parseJsonArray } from '../../lib/parseJsonArray';
 import {
@@ -19,6 +30,7 @@ import { useEndpoints } from '../../hooks/useEndpoints';
 import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
 import { useI18n } from '../../stores/i18n.store';
 import { getErrorMessage } from '../../lib/getErrorMessage';
+import type { TranslationKey } from '../../i18n/en';
 
 const PARENT_ORGS = [
   'medizininformatik-initiative.de',
@@ -26,12 +38,28 @@ const PARENT_ORGS = [
   'eyematics.org',
   'dktk.dkfz.de',
 ];
-const ROLES = [
-  { value: 'DIC', label: 'DIC', desc: 'Data Integration Center' },
-  { value: 'HRP', label: 'HRP', desc: 'Health Research Platform' },
-  { value: 'DMS', label: 'DMS', desc: 'Data Management Site' },
-  { value: 'AMS', label: 'AMS', desc: 'Allow-List Management Site' },
-] as const;
+
+type Role = MembershipFormData['roles'][number];
+
+const ROLES: readonly { value: Role; desc: TranslationKey }[] = [
+  { value: 'DIC', desc: 'formRoleDicDesc' },
+  { value: 'HRP', desc: 'formRoleHrpDesc' },
+  { value: 'DMS', desc: 'formRoleDmsDesc' },
+  { value: 'AMS', desc: 'formRoleAmsDesc' },
+];
+
+interface EndpointOption {
+  identifier: string;
+  name?: string | null;
+  address: string;
+}
+
+interface MembershipRow {
+  id: string;
+  parent_organization: string;
+  endpoint_id?: string | null;
+  roles: unknown;
+}
 
 interface Props {
   open: boolean;
@@ -54,18 +82,23 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
     control,
     reset,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<MembershipFormData>({
     resolver: zodResolver(membershipSchema),
     defaultValues: { roles: [], ...defaultValues },
   });
+  const roleOptions: CheckboxCardOption<Role>[] = ROLES.map(({ value, desc }) => ({
+    value,
+    label: value,
+    description: t(desc),
+  }));
 
   const { data: memberships = [] } = useMemberships(instanceId);
   const currentParent = watch('parentOrganization');
 
   useEffect(() => {
     if (open && membershipId) {
-      const ms = memberships.find((m: any) => m.id === membershipId);
+      const ms = (memberships as MembershipRow[]).find((m) => m.id === membershipId);
       if (ms) {
         const roles = parseJsonArray(ms.roles) as MembershipFormData['roles'];
         reset({
@@ -118,8 +151,9 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
       open={open}
       onClose={onClose}
       title={membershipId ? t('membershipModalTitleEdit') : t('membershipModalTitleAdd')}
+      isDirty={isDirty}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <FormField
           label={t('membershipModalFieldParent')}
           required
@@ -146,14 +180,14 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
         >
           <select {...register('endpointId')} className={selectClass}>
             <option value="">{t('membershipModalFieldEndpointPlaceholder')}</option>
-            {endpoints.map((ep: any) => (
+            {(endpoints as EndpointOption[]).map((ep) => (
               <option key={ep.identifier} value={ep.identifier}>
                 {ep.name || ep.identifier} ({ep.address})
               </option>
             ))}
           </select>
         </FormField>
-        <FormField
+        <FormFieldGroup
           label={t('membershipModalFieldRoles')}
           required
           error={errors.roles?.message}
@@ -163,35 +197,15 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
             name="roles"
             control={control}
             render={({ field }) => (
-              <div className="space-y-2">
-                {ROLES.map(({ value, label, desc }) => (
-                  <label
-                    key={value}
-                    className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/30 cursor-pointer transition-all"
-                  >
-                    <input
-                      type="checkbox"
-                      value={value}
-                      checked={field.value?.includes(value)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          field.onChange([...(field.value || []), value]);
-                        } else {
-                          field.onChange(field.value?.filter((v: string) => v !== value));
-                        }
-                      }}
-                      className="mt-0.5 accent-primary"
-                    />
-                    <div>
-                      <span className="text-xs font-bold text-slate-700">{label}</span>
-                      <p className="text-[10px] text-slate-400">{desc}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
+              <CheckboxCards
+                options={roleOptions}
+                value={field.value ?? []}
+                onChange={field.onChange}
+                firstInputRef={field.ref}
+              />
             )}
           />
-        </FormField>
+        </FormFieldGroup>
         <ModalFooter
           onCancel={onClose}
           loading={isPending}

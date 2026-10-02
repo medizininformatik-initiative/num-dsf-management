@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 
@@ -33,5 +33,18 @@ describe('MembershipModal', () => {
     renderWithProviders(<MembershipModal open onClose={() => {}} instanceId="i1" />);
     await user.click(screen.getByRole('button', { name: /add membership/i }));
     expect(await screen.findByText(/parent organization is required/i)).toBeInTheDocument();
+  });
+
+  it('presents the roles as a labelled group with translated descriptions', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<MembershipModal open onClose={() => {}} instanceId="i1" />, {
+      lang: 'de',
+    });
+    const group = screen.getByRole('group', { name: /^Rollen/ });
+    expect(within(group).getAllByRole('checkbox')).toHaveLength(4);
+    expect(screen.getByText(/Datenintegrationszentrum/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /mitgliedschaft hinzufügen/i }));
+    expect(group).toHaveAccessibleDescription(/mindestens eine rolle/i);
   });
 });
