@@ -1034,6 +1034,11 @@ export const en = {
     'The address is removed from the whitelist and can no longer sign in.',
   adminUsersConfirmBody_promote:
     'A second admin from another site must approve before the account becomes an admin.',
+  adminPromotionsConfirmBody_approve: 'The account becomes an admin as soon as you approve.',
+  adminPromotionsConfirmBody_reject: 'The request is closed; the account stays a regular user.',
+  adminPromotionsConfirmBody_cancel: 'Your request is withdrawn; the account stays a regular user.',
+  adminPromotionsWithdrawBtn: 'Withdraw request',
+  adminPromotionsRejectReasonLabel: 'Reason (required)',
   // ─── Bundle Versions (federation hardening 2026-05-18) ────────────────────
   download: 'Download',
   bundleVersionsTitle: 'Bundle versions',

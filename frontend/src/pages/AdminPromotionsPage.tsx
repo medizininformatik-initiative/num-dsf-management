@@ -1,22 +1,51 @@
 /**
  * AdminPromotionsPage.tsx – /app/admin/promotions
  * Pending 4-eyes admin promotion requests. A second admin from a different
- * site approves or rejects. The requester can cancel.
- * Dependencies: adminPromotionsApi, useI18n, useMe, tanstack-query, sonner
+ * site approves or rejects. The requester can cancel. Every decision is
+ * confirmed in the step-up dialog (foundation Modal; TOTP code in OTP
+ * sessions); why Approve is unavailable is shown as text.
+ * Dependencies: adminPromotionsApi, useI18n, useMe, useToastMutation,
+ * AdminPageHeader, StepUpConfirmDialog, Button, StatusPill, Icon, Skeleton,
+ * fieldClasses, lib/getErrorMessage, lib/dateUtils, tanstack-query, sonner
  */
-import { useState } from 'react';
+import { useId, useState, type CSSProperties } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { adminPromotionsApi, type PromotionRequest } from '../api/admin.api';
 import { useI18n } from '../stores/i18n.store';
+import type { TranslationKey } from '../i18n/en';
 import { useMe } from '../hooks/useMe';
 import { getErrorMessageForStepUp } from '../lib/getErrorMessage';
-import { needsTotpStepUp } from '../lib/authMode';
 import { relTime } from '../lib/dateUtils';
 import { useToastMutation } from '../hooks/useToastMutation';
+import { AdminPageHeader } from '../components/admin/AdminPageHeader';
+import { StepUpConfirmDialog } from '../components/admin/StepUpConfirmDialog';
+import { FIELD_CLASS, LABEL_CLASS } from '../components/admin/fieldClasses';
+import { Button } from '../components/ui/Button';
+import { StatusPill } from '../components/ui/StatusPill';
+import { Icon } from '../components/ui/Icon';
+import { Skeleton } from '../components/ui/Skeleton';
 
 type ActionKind = 'approve' | 'reject' | 'cancel';
+
+const TITLE_KEY: Record<ActionKind, TranslationKey> = {
+  approve: 'adminPromotionsConfirmApprove',
+  reject: 'adminPromotionsConfirmReject',
+  cancel: 'adminPromotionsConfirmCancel',
+};
+
+const BODY_KEY: Record<ActionKind, TranslationKey> = {
+  approve: 'adminPromotionsConfirmBody_approve',
+  reject: 'adminPromotionsConfirmBody_reject',
+  cancel: 'adminPromotionsConfirmBody_cancel',
+};
+
+const CONFIRM_KEY: Record<ActionKind, TranslationKey> = {
+  approve: 'adminPromotionsApprove',
+  reject: 'adminPromotionsReject',
+  cancel: 'adminPromotionsWithdrawBtn',
+};
 
 function siteOf(email: string): string {
   return (email.split('@')[1] || '').toLowerCase();
@@ -24,6 +53,7 @@ function siteOf(email: string): string {
 
 export function AdminPromotionsPage() {
   const { t } = useI18n();
+  const reasonId = useId();
 
   const { data: me } = useMe();
   const qc = useQueryClient();
@@ -62,6 +92,7 @@ export function AdminPromotionsPage() {
       adminPromotionsApi.reject(vars.id, vars.reason, vars.totpCode),
     successMessage: t('promotionRejectedToast'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'promotions'] }),
+    errorFallback: t('genericActionFailed'),
   });
 
   const mutCancel = useToastMutation({
@@ -69,6 +100,7 @@ export function AdminPromotionsPage() {
       adminPromotionsApi.cancel(vars.id, vars.totpCode),
     successMessage: t('promotionCancelledToast'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'promotions'] }),
+    errorFallback: t('genericActionFailed'),
   });
 
   if (me && !me.isAdmin) return <Navigate to="/app" replace />;
@@ -81,314 +113,194 @@ export function AdminPromotionsPage() {
     (pending?.kind === 'reject' && mutReject.isPending) ||
     (pending?.kind === 'cancel' && mutCancel.isPending);
 
-  function reset() {
+  function close() {
     setPending(null);
     setTotpCode('');
     setReason('');
   }
 
-  function execute() {
+  function open(kind: ActionKind, req: PromotionRequest) {
+    setTotpCode('');
+    setReason('');
+    setPending({ kind, req });
+  }
+
+  function execute(code: string | undefined) {
     if (!pending) return;
-    if (needsTotpStepUp() && totpCode.length !== 6) {
-      toast.error(t('totpRequired'));
-      return;
-    }
-    const totpField = needsTotpStepUp() ? { totpCode } : {};
+    const totpField = code !== undefined ? { totpCode: code } : {};
+    // Success closes the dialog; a failure keeps it open for a fresh code.
+    const settle = { onSuccess: close, onError: () => setTotpCode('') };
     if (pending.kind === 'approve') {
-      mutApprove.mutate({ id: pending.req.id, ...totpField }, { onSettled: reset });
+      mutApprove.mutate({ id: pending.req.id, ...totpField }, settle);
     } else if (pending.kind === 'reject') {
       if (!reason.trim()) {
         toast.error(t('adminPromotionsRejectReasonRequired'));
         return;
       }
-      mutReject.mutate({ id: pending.req.id, reason, ...totpField }, { onSettled: reset });
+      mutReject.mutate({ id: pending.req.id, reason: reason.trim(), ...totpField }, settle);
     } else if (pending.kind === 'cancel') {
-      mutCancel.mutate({ id: pending.req.id, ...totpField }, { onSettled: reset });
+      mutCancel.mutate({ id: pending.req.id, ...totpField }, settle);
     }
   }
 
   return (
-    <div
-      style={{
-        flex: 1,
-        padding: '32px',
-        overflowY: 'auto',
-        fontFamily: 'Inter, system-ui, sans-serif',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: '28px', color: 'var(--primary)' }}
-          aria-hidden="true"
-        >
-          verified_user
-        </span>
-        <div>
-          <h1
-            style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}
-          >
-            {t('adminPromotionsTitle')}
-          </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-            {t('adminPromotionsSubtitle')}
-          </p>
-        </div>
-      </div>
+    <div className="flex-1 overflow-y-auto">
+      <AdminPageHeader
+        icon="verified_user"
+        title={t('adminPromotionsTitle')}
+        subtitle={t('adminPromotionsSubtitle')}
+      />
 
-      <div style={{ height: '1px', background: 'var(--border)', margin: '20px 0 24px' }} />
-
-      <div
-        style={{
-          background: '#fff7ed',
-          border: '1px solid #fed7aa',
-          borderRadius: '12px',
-          padding: '14px 18px',
-          marginBottom: '20px',
-        }}
-      >
-        <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 700, color: '#7c2d12' }}>
-          {t('adminPromotionsRule')}
-        </p>
-        <p style={{ margin: 0, fontSize: '12px', color: '#7c2d12' }}>
-          {t('adminPromotionsRuleHint')}
-        </p>
-      </div>
-
-      {isLoading && <p style={{ color: 'var(--text-muted)' }}>{t('loading')}</p>}
-      {!isLoading && requests && requests.length === 0 && (
-        <p style={{ color: 'var(--text-muted)' }}>{t('adminPromotionsEmpty')}</p>
-      )}
-
-      {requests && requests.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {requests.map((req) => {
-            const isMyRequest =
-              me?.email != null && req.requested_by.toLowerCase() === me.email.toLowerCase();
-            const sameSiteAsRequester =
-              me?.email != null && siteOf(me.email) === siteOf(req.requested_by);
-            const canApprove = !isMyRequest && !sameSiteAsRequester;
-
-            return (
-              <div
-                key={req.id}
-                style={{
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '12px',
-                  padding: '16px 20px',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    gap: '12px',
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}
-                    >
-                      {req.target_email}
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      {t('adminPromotionsRequestedBy')}:{' '}
-                      <span style={{ fontFamily: 'monospace' }}>{req.requested_by}</span>
-                      {' · '}
-                      <span>{relTime(req.requested_at, t)}</span>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                    {isMyRequest && (
-                      <button
-                        onClick={() => setPending({ kind: 'cancel', req })}
-                        style={cancelActBtn}
-                      >
-                        {t('adminPromotionsCancel')}
-                      </button>
-                    )}
-                    {!isMyRequest && (
-                      <>
-                        <button
-                          disabled={!canApprove}
-                          title={!canApprove ? t('adminPromotionsSameSiteHint') : ''}
-                          onClick={() => setPending({ kind: 'approve', req })}
-                          style={canApprove ? approveBtn : approveDisabledBtn}
-                        >
-                          {t('adminPromotionsApprove')}
-                        </button>
-                        <button
-                          onClick={() => setPending({ kind: 'reject', req })}
-                          style={rejectBtn}
-                        >
-                          {t('adminPromotionsReject')}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {pending && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={reset}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 1000,
-            background: 'rgba(15,23,42,0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'var(--bg-card)',
-              borderRadius: '16px',
-              padding: '24px',
-              maxWidth: '440px',
-              width: '90%',
-            }}
-          >
-            <h2
-              style={{
-                margin: '0 0 4px',
-                fontSize: '16px',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-              }}
-            >
-              {pending.kind === 'approve' && t('adminPromotionsConfirmApprove')}
-              {pending.kind === 'reject' && t('adminPromotionsConfirmReject')}
-              {pending.kind === 'cancel' && t('adminPromotionsConfirmCancel')}
-            </h2>
-            <p
-              style={{
-                margin: '0 0 16px',
-                fontFamily: 'monospace',
-                fontSize: '12px',
-                color: 'var(--text-muted)',
-              }}
-            >
-              {pending.req.target_email}
-            </p>
-            {pending.kind === 'reject' && (
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={t('adminPromotionsRejectReasonPlaceholder')}
-                rows={3}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border)',
-                  marginBottom: '12px',
-                  background: 'var(--bg-page)',
-                  color: 'var(--text-primary)',
-                  boxSizing: 'border-box',
-                }}
-              />
-            )}
-            {needsTotpStepUp() && (
-              <input
-                value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-                maxLength={6}
-                style={{
-                  width: '180px',
-                  padding: '8px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border)',
-                  fontFamily: 'monospace',
-                  letterSpacing: '4px',
-                  textAlign: 'center',
-                  fontSize: '14px',
-                  background: 'var(--bg-page)',
-                  color: 'var(--text-primary)',
-                }}
-              />
-            )}
-            <div
-              style={{ marginTop: '12px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}
-            >
-              <button onClick={reset} style={modalCancelBtn}>
-                {t('cancel')}
-              </button>
-              <button
-                onClick={execute}
-                disabled={confirmPending}
-                style={{ ...modalConfirmBtn, opacity: confirmPending ? 0.6 : 1 }}
-              >
-                {t('confirm')}
-              </button>
-            </div>
+      <div className="mx-auto max-w-5xl space-y-5 px-6 py-6 sm:px-8">
+        <div className="flex gap-3 rounded-xl border border-info-border bg-info-surface p-4 text-info-fg">
+          <Icon name="shield" size={22} className="mt-px shrink-0" />
+          <div className="text-[13px] leading-5">
+            <p className="font-semibold">{t('adminPromotionsRule')}</p>
+            <p>{t('adminPromotionsRuleHint')}</p>
           </div>
         </div>
-      )}
+
+        {isLoading && (
+          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">
+            <Skeleton lines={3} />
+          </div>
+        )}
+        {!isLoading && requests && requests.length === 0 && (
+          <p className="flex items-center gap-2 rounded-xl border border-dashed border-[color:var(--border)] p-4 text-sm text-[color:var(--text-muted)]">
+            <Icon name="check_circle" size={20} className="text-success-fg" />
+            {t('adminPromotionsEmpty')}
+          </p>
+        )}
+
+        {requests && requests.length > 0 && (
+          <ul className="flex flex-col gap-3">
+            {requests.map((req, i) => (
+              <PromotionItem
+                key={req.id}
+                req={req}
+                index={i}
+                meEmail={me?.email ?? null}
+                onAction={(kind) => open(kind, req)}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <StepUpConfirmDialog
+        open={pending !== null}
+        title={pending ? t(TITLE_KEY[pending.kind]) : ''}
+        subtitle={pending?.req.target_email}
+        message={pending ? t(BODY_KEY[pending.kind]) : undefined}
+        confirmLabel={pending ? t(CONFIRM_KEY[pending.kind]) : t('confirm')}
+        destructive={pending?.kind === 'reject' || pending?.kind === 'cancel'}
+        pending={confirmPending}
+        confirmDisabled={pending?.kind === 'reject' && !reason.trim()}
+        isDirty={pending?.kind === 'reject' && reason.trim() !== ''}
+        totpCode={totpCode}
+        onTotpCodeChange={setTotpCode}
+        onConfirm={execute}
+        onCancel={close}
+      >
+        {pending?.kind === 'reject' && (
+          <div>
+            <label htmlFor={reasonId} className={LABEL_CLASS}>
+              {t('adminPromotionsRejectReasonLabel')}
+            </label>
+            <textarea
+              id={reasonId}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={t('adminPromotionsRejectReasonPlaceholder')}
+              rows={3}
+              required
+              className={`${FIELD_CLASS} resize-y`}
+            />
+          </div>
+        )}
+      </StepUpConfirmDialog>
     </div>
   );
 }
 
-const approveBtn: React.CSSProperties = {
-  padding: '6px 14px',
-  border: 'none',
-  background: '#16a34a',
-  color: '#fff',
-  borderRadius: '8px',
-  fontSize: '12px',
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-const approveDisabledBtn: React.CSSProperties = {
-  ...approveBtn,
-  background: '#cbd5e1',
-  cursor: 'not-allowed',
-};
-const rejectBtn: React.CSSProperties = {
-  padding: '6px 14px',
-  border: '1px solid #ef4444',
-  background: 'transparent',
-  color: '#ef4444',
-  borderRadius: '8px',
-  fontSize: '12px',
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-const cancelActBtn: React.CSSProperties = {
-  padding: '6px 14px',
-  border: '1px solid var(--border)',
-  background: 'var(--bg-card)',
-  color: 'var(--text-secondary)',
-  borderRadius: '8px',
-  fontSize: '12px',
-  cursor: 'pointer',
-};
-const modalCancelBtn: React.CSSProperties = {
-  padding: '8px 16px',
-  borderRadius: '10px',
-  border: '1px solid var(--border)',
-  background: 'transparent',
-  cursor: 'pointer',
-  color: 'var(--text-primary)',
-};
-const modalConfirmBtn: React.CSSProperties = {
-  padding: '8px 16px',
-  borderRadius: '10px',
-  border: 'none',
-  background: 'var(--primary)',
-  color: '#fff',
-  fontWeight: 600,
-  cursor: 'pointer',
-};
+function PromotionItem({
+  req,
+  index,
+  meEmail,
+  onAction,
+}: {
+  req: PromotionRequest;
+  index: number;
+  meEmail: string | null;
+  onAction: (kind: ActionKind) => void;
+}) {
+  const { t } = useI18n();
+  const reasonId = useId();
+  const isMyRequest = meEmail != null && req.requested_by.toLowerCase() === meEmail.toLowerCase();
+  const sameSiteAsRequester = meEmail != null && siteOf(meEmail) === siteOf(req.requested_by);
+  const canApprove = !isMyRequest && !sameSiteAsRequester;
+
+  return (
+    <li
+      style={{ '--stagger-index': index } as CSSProperties}
+      className="animate-list-item-in rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] px-5 py-4"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="break-all text-sm font-bold text-[color:var(--text-primary)]">
+              {req.target_email}
+            </span>
+            {req.status === 'PENDING' && (
+              <StatusPill tone="warning" icon="hourglass_top">
+                {t('pending')}
+              </StatusPill>
+            )}
+          </div>
+          <div className="mt-1 text-xs text-[color:var(--text-muted)]">
+            {t('adminPromotionsRequestedBy')}: <span className="font-mono">{req.requested_by}</span>
+            {' · '}
+            <span>{relTime(req.requested_at, t)}</span>
+          </div>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          {isMyRequest ? (
+            <Button size="sm" variant="secondary" onClick={() => onAction('cancel')}>
+              {t('adminPromotionsCancel')}
+            </Button>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                disabled={!canApprove}
+                aria-describedby={!canApprove ? reasonId : undefined}
+                onClick={() => onAction('approve')}
+              >
+                <Icon name="check" size={16} />
+                {t('adminPromotionsApprove')}
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="text-danger-fg"
+                onClick={() => onAction('reject')}
+              >
+                <Icon name="close" size={16} />
+                {t('adminPromotionsReject')}
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+      {!isMyRequest && !canApprove && (
+        <p
+          id={reasonId}
+          className="mt-2 flex items-center gap-1.5 text-xs text-[color:var(--text-secondary)]"
+        >
+          <Icon name="info" size={16} className="shrink-0" />
+          {t('adminPromotionsSameSiteHint')}
+        </p>
+      )}
+    </li>
+  );
+}

@@ -1052,6 +1052,13 @@ export const de: Record<TranslationKey, string> = {
     'Die Adresse wird von der Whitelist entfernt und kann sich nicht mehr anmelden.',
   adminUsersConfirmBody_promote:
     'Ein zweiter Admin eines anderen Standorts muss zustimmen, bevor das Konto Admin wird.',
+  adminPromotionsConfirmBody_approve: 'Mit Ihrer Genehmigung wird das Konto sofort Admin.',
+  adminPromotionsConfirmBody_reject:
+    'Der Antrag wird geschlossen; das Konto bleibt ein normaler Nutzer.',
+  adminPromotionsConfirmBody_cancel:
+    'Ihr Antrag wird zurückgezogen; das Konto bleibt ein normaler Nutzer.',
+  adminPromotionsWithdrawBtn: 'Antrag zurückziehen',
+  adminPromotionsRejectReasonLabel: 'Grund (erforderlich)',
   // ─── Bundle-Versionen (Föderationshärtung 2026-05-18) ────────────────────
   download: 'Herunterladen',
   bundleVersionsTitle: 'Bundle-Versionen',

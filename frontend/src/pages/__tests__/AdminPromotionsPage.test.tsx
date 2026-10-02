@@ -2,10 +2,11 @@
  * AdminPromotionsPage.test.tsx — pending 4-eyes admin-promotion approvals.
  * adminPromotionsApi.list is mocked with one PENDING request and useMe is mocked
  * to an admin from a different site than the requester (so Approve is enabled).
- * Asserts the request card renders, then drives the approve action (open modal →
- * enter 6-digit TOTP → confirm) and asserts adminPromotionsApi.approve is called
- * with the request id and the entered code. A second case covers the same-site
- * guard disabling Approve.
+ * Asserts the request card renders, then drives the decisions through the
+ * step-up dialog (foundation Modal): approve sends the request id and the
+ * entered code; reject needs a reason before it can be confirmed; Escape
+ * closes without acting. The same-site guard disables Approve and says why as
+ * visible text.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
@@ -70,6 +71,7 @@ describe('AdminPromotionsPage', () => {
     // The request card renders the target email and the requester from mocked data.
     expect(await screen.findByText('candidate@imi-b.example.de')).toBeInTheDocument();
     expect(screen.getByText('alice@imi-b.example.de')).toBeInTheDocument();
+    expect(screen.getByText('Pending')).toBeInTheDocument();
   });
 
   it('approves a request: confirm fires adminPromotionsApi.approve with the id and TOTP code', async () => {
@@ -83,22 +85,69 @@ describe('AdminPromotionsPage', () => {
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Approve admin promotion')).toBeInTheDocument();
     expect(within(dialog).getByText('candidate@imi-b.example.de')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('The account becomes an admin as soon as you approve.'),
+    ).toBeInTheDocument();
 
     const totpInput = within(dialog).getByPlaceholderText('000000');
     fireEvent.change(totpInput, { target: { value: '246810' } });
-    await user.click(within(dialog).getByRole('button', { name: 'Confirm' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Approve' }));
 
     await waitFor(() => expect(approveMock).toHaveBeenCalledWith('req-1', '246810'), {
       timeout: 4000,
     });
   });
 
-  it('disables Approve when the reviewer is on the same site as the requester', async () => {
+  it('rejects only with a reason', async () => {
+    renderWithProviders(<AdminPromotionsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Reject' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Reject admin promotion' });
+    fireEvent.change(within(dialog).getByPlaceholderText('000000'), {
+      target: { value: '135790' },
+    });
+    const confirm = within(dialog).getByRole('button', { name: 'Reject' });
+    expect(confirm).toBeDisabled();
+
+    fireEvent.change(within(dialog).getByLabelText('Reason (required)'), {
+      target: { value: '  not a site admin  ' },
+    });
+    expect(confirm).toBeEnabled();
+    fireEvent.click(confirm);
+    await waitFor(() =>
+      expect(rejectMock).toHaveBeenCalledWith('req-1', 'not a site admin', '135790'),
+    );
+  });
+
+  it('closes the dialog with Escape without acting', async () => {
+    renderWithProviders(<AdminPromotionsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Approve' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(approveMock).not.toHaveBeenCalled();
+  });
+
+  it('disables Approve when the reviewer is on the same site as the requester and says why', async () => {
     // Viewer shares the imi-b domain with the requester → 4-eyes guard disables Approve.
     useMe.mockReturnValue({ data: { email: 'reviewer@imi-b.example.de', isAdmin: true } });
     renderWithProviders(<AdminPromotionsPage />);
 
     const approveBtn = await screen.findByRole('button', { name: 'Approve' });
     expect(approveBtn).toBeDisabled();
+    const why = screen.getByText('Approver must be from a different site than the requester.');
+    expect(why).toBeVisible();
+    expect(approveBtn).toHaveAttribute('aria-describedby', why.id);
+  });
+
+  it('lets the requester withdraw their own request', async () => {
+    useMe.mockReturnValue({ data: { email: 'alice@imi-b.example.de', isAdmin: true } });
+    renderWithProviders(<AdminPromotionsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel my request' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByPlaceholderText('000000'), {
+      target: { value: '112233' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Withdraw request' }));
+    await waitFor(() => expect(cancelMock).toHaveBeenCalledWith('req-1', '112233'));
   });
 });
