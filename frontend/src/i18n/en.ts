@@ -441,14 +441,9 @@ export const en = {
   approvalModalTitle: 'Submit for Approval',
   approvalModalSubtitle: 'Review all data carefully. Changes will be sent to IMI for verification.',
   approvalModalPendingNote:
-    'Once submitted, the request status will show as PENDING until IMI approves or rejects it.',
+    'After you submit, IMI reviews the request under the four-eyes principle. Its status appears in the right panel.',
   approvalModalAllPassed: 'All checks passed',
   approvalModalSomeFailed: 'Some checks failed',
-  approvalModalCheckOrg: 'Organization configured',
-  approvalModalCheckEndpoint: 'At least 1 endpoint',
-  approvalModalCheckCert: 'At least 1 certificate',
-  approvalModalCheckMedic: 'MEDIC contact assigned',
-  approvalModalCheckMembership: 'At least 1 membership',
   approvalModalNoContacts: 'No contacts.',
   approvalModalNoEndpoints: 'No endpoints.',
   approvalModalNoCerts: 'No certificates.',
@@ -457,8 +452,8 @@ export const en = {
   approvalModalSubmitSuccess: 'Approval request submitted to IMI.',
   approvalModalSubmitFailed: 'Failed to submit approval request.',
   approvalModalAlreadyPending: 'A pending approval request already exists.',
-  approvalModalActive: '✓ active',
-  approvalModalInactive: '✗ inactive',
+  approvalModalActive: 'Active',
+  approvalModalInactive: 'Inactive',
   approvalModalExpires: 'Expires: {date}',
 
   // CertRenewalModal

@@ -4,6 +4,7 @@ import { renderWithProviders } from '../../../test/renderWithProviders';
 
 vi.mock('../../../hooks/useApproval', () => ({
   useSubmitApproval: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useApprovalStatus: () => ({ data: null, isLoading: false }),
 }));
 vi.mock('../../../hooks/useOrganization', () => ({
   useOrganization: () => ({ data: null, isLoading: false }),

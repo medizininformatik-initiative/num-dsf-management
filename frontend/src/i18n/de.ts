@@ -446,14 +446,9 @@ export const de: Record<TranslationKey, string> = {
   approvalModalSubtitle:
     'Alle Daten sorgfältig prüfen. Die Änderungen werden zur Verifizierung an das IMI gesendet.',
   approvalModalPendingNote:
-    'Nach dem Einreichen zeigt der Anfragestatus AUSSTEHEND, bis das IMI genehmigt oder ablehnt.',
+    'Nach dem Einreichen prüft das IMI den Antrag nach dem Vier-Augen-Prinzip. Den Status sehen Sie in der rechten Seitenleiste.',
   approvalModalAllPassed: 'Alle Prüfungen bestanden',
   approvalModalSomeFailed: 'Einige Prüfungen fehlgeschlagen',
-  approvalModalCheckOrg: 'Organisation konfiguriert',
-  approvalModalCheckEndpoint: 'Mindestens 1 Endpunkt',
-  approvalModalCheckCert: 'Mindestens 1 Zertifikat',
-  approvalModalCheckMedic: 'MEDIC-Kontakt zugewiesen',
-  approvalModalCheckMembership: 'Mindestens 1 Mitgliedschaft',
   approvalModalNoContacts: 'Keine Kontakte.',
   approvalModalNoEndpoints: 'Keine Endpunkte.',
   approvalModalNoCerts: 'Keine Zertifikate.',
@@ -462,8 +457,8 @@ export const de: Record<TranslationKey, string> = {
   approvalModalSubmitSuccess: 'Genehmigungsantrag an das IMI gesendet.',
   approvalModalSubmitFailed: 'Genehmigungsantrag konnte nicht eingereicht werden.',
   approvalModalAlreadyPending: 'Es gibt bereits einen ausstehenden Genehmigungsantrag.',
-  approvalModalActive: '✓ aktiv',
-  approvalModalInactive: '✗ inaktiv',
+  approvalModalActive: 'Aktiv',
+  approvalModalInactive: 'Inaktiv',
   approvalModalExpires: 'Läuft ab: {date}',
 
   // CertRenewalModal

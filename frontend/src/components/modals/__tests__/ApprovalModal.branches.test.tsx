@@ -2,17 +2,21 @@
  * ApprovalModal.branches.test.tsx — covers the submit-path branches the base
  * ApprovalModal.test.tsx does not: a fully-passing checklist enabling submit,
  * the success path (guard-wrapped mutateAsync → success toast + onClose), the
- * ALREADY_PENDING failure mapped to its dedicated toast, the generic failure
- * path (getErrorMessage), and the empty draft state rendering every per-section
- * "no X" placeholder. The cross-user guard is exercised through its real default
- * context (executes the action directly), and sonner is mocked so toast calls
- * are asserted without side effects. The real i18n translator runs, so asserted
- * strings are the actual rendered output.
+ * ALREADY_PENDING and ORGANIZATION_NOT_FOUND failures mapped to their toasts,
+ * the generic failure path (getErrorMessage), the empty draft state rendering
+ * every per-section "no X" placeholder, the shared readiness rule (expired
+ * certificate, inactive organization), the request state shown up front
+ * (PENDING blocks submit, REJECTED shows its reason) and open items that close
+ * the dialog and jump to their card. The cross-user guard runs through its
+ * real default context (executes the action directly), and sonner is mocked
+ * so toast calls are asserted without side effects. The real i18n translator
+ * runs, so asserted strings are the actual rendered output.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 import { useI18n } from '../../../stores/i18n.store';
+import { useCanvasStore } from '../../../stores/canvas.store';
 
 // Hoisted submit double + per-test data state so each hook returns the shape the
 // component expects while letting individual tests flip the checklist outcome.
@@ -23,10 +27,12 @@ const data = vi.hoisted(() => ({
   endpoints: [] as Record<string, unknown>[],
   certs: [] as Record<string, unknown>[],
   memberships: [] as Record<string, unknown>[],
+  approval: null as Record<string, unknown> | null,
 }));
 
 vi.mock('../../../hooks/useApproval', () => ({
   useSubmitApproval: () => ({ mutate: vi.fn(), mutateAsync, isPending: false }),
+  useApprovalStatus: () => ({ data: data.approval, isLoading: false }),
 }));
 vi.mock('../../../hooks/useOrganization', () => ({
   useOrganization: () => ({ data: data.org, isLoading: false }),
@@ -53,6 +59,7 @@ vi.mock('sonner', () => ({
 import { ApprovalModal } from '../ApprovalModal';
 
 const t = useI18n.getState().t;
+const submitButton = () => screen.getByRole('button', { name: /send request for approval/i });
 
 /** Populate every entity so all five readiness checks pass and submit enables. */
 function seedPassingData() {
@@ -70,6 +77,7 @@ function seedPassingData() {
   ];
   data.certs = [{ id: 'cert-1', subject: 'CN=ukm.de', valid_until: '2030-01-01' }];
   data.memberships = [{ id: 'm1', parent_organization: 'num.de', roles: ['DIC'] }];
+  data.approval = null;
 }
 
 function seedEmptyData() {
@@ -78,11 +86,13 @@ function seedEmptyData() {
   data.endpoints = [];
   data.certs = [];
   data.memberships = [];
+  data.approval = null;
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
   seedEmptyData();
+  useCanvasStore.setState({ highlightedEntity: null, highlightedKey: null });
 });
 
 describe('ApprovalModal — submit + empty-state branches', () => {
@@ -94,7 +104,7 @@ describe('ApprovalModal — submit + empty-state branches', () => {
     renderWithProviders(<ApprovalModal open onClose={onClose} instanceId="i1" />);
 
     expect(screen.getByText(t('approvalModalAllPassed'))).toBeInTheDocument();
-    const submit = screen.getByRole('button', { name: /send request for approval/i });
+    const submit = submitButton();
     expect(submit).toBeEnabled();
 
     fireEvent.click(submit);
@@ -119,13 +129,29 @@ describe('ApprovalModal — submit + empty-state branches', () => {
 
     renderWithProviders(<ApprovalModal open onClose={onClose} instanceId="i1" />);
 
-    fireEvent.click(screen.getByRole('button', { name: /send request for approval/i }));
+    fireEvent.click(submitButton());
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith(t('approvalModalAlreadyPending')), {
       timeout: 4000,
     });
     expect(toastSuccess).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('maps ORGANIZATION_NOT_FOUND to a translated message', async () => {
+    seedPassingData();
+    mutateAsync.mockRejectedValueOnce({
+      response: {
+        data: { error: { code: 'ORGANIZATION_NOT_FOUND', message: 'ORGANIZATION_NOT_FOUND' } },
+      },
+    });
+
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+    fireEvent.click(submitButton());
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(t('approvalModalOrgMissing')), {
+      timeout: 4000,
+    });
   });
 
   it('surfaces a generic backend error message on the failure path', async () => {
@@ -137,7 +163,7 @@ describe('ApprovalModal — submit + empty-state branches', () => {
 
     renderWithProviders(<ApprovalModal open onClose={onClose} instanceId="i1" />);
 
-    fireEvent.click(screen.getByRole('button', { name: /send request for approval/i }));
+    fireEvent.click(submitButton());
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('Backend exploded'), {
       timeout: 4000,
@@ -156,6 +182,99 @@ describe('ApprovalModal — submit + empty-state branches', () => {
     expect(screen.getByText(t('approvalModalNoCerts'))).toBeInTheDocument();
     expect(screen.getByText(t('approvalModalNoMemberships'))).toBeInTheDocument();
 
-    expect(screen.getByRole('button', { name: /send request for approval/i })).toBeDisabled();
+    expect(submitButton()).toBeDisabled();
+  });
+});
+
+describe('ApprovalModal — shared readiness rule', () => {
+  it('does not accept an expired certificate', () => {
+    seedPassingData();
+    data.certs = [{ id: 'cert-1', subject: 'CN=ukm.de', valid_until: '2001-01-01' }];
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+
+    expect(screen.getByRole('button', { name: /Missing Valid certificate/ })).toBeInTheDocument();
+    expect(screen.getByText('Expired')).toBeInTheDocument();
+    expect(submitButton()).toBeDisabled();
+  });
+
+  it('does not accept an inactive organization', () => {
+    seedPassingData();
+    data.org = { ...data.org, active: 0 };
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+
+    expect(screen.getByRole('button', { name: /Missing Active organization/ })).toBeInTheDocument();
+    expect(screen.getByText(t('approvalModalInactive'))).toBeInTheDocument();
+    expect(submitButton()).toBeDisabled();
+  });
+
+  it('closes and jumps to the card of an open item', () => {
+    seedPassingData();
+    data.memberships = [];
+    const card = document.createElement('div');
+    card.id = 'card-memberships';
+    card.scrollIntoView = vi.fn();
+    document.body.appendChild(card);
+    const onClose = vi.fn();
+    renderWithProviders(<ApprovalModal open onClose={onClose} instanceId="i1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Missing Membership/ }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(useCanvasStore.getState().highlightedEntity).toBe('memberships');
+    expect(card.scrollIntoView).toHaveBeenCalled();
+    card.remove();
+  });
+});
+
+describe('ApprovalModal — request state up front', () => {
+  it('shows a pending request before submitting and blocks a second one', () => {
+    seedPassingData();
+    data.approval = {
+      id: 'r1',
+      status: 'PENDING',
+      created_at: '2026-09-28T09:30:00Z',
+      submitted_at: '2026-09-28T09:30:00Z',
+      fourEyes: { approvals: 1, required: 2, silentConsentAt: null },
+    };
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+
+    expect(screen.getByText(t('approvalPendingBlocked'))).toBeInTheDocument();
+    expect(screen.getByText('1 of 2 approvals')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /send request for approval/i })).toBeNull();
+    const waiting = screen.getByRole('button', { name: /waiting for approval/i });
+    expect(waiting).toBeDisabled();
+    fireEvent.click(waiting);
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('shows the rejection reason and allows resubmitting', () => {
+    seedPassingData();
+    data.approval = {
+      id: 'r2',
+      status: 'REJECTED',
+      created_at: '2026-09-28T09:30:00Z',
+      resolved_at: '2026-09-30T14:05:00Z',
+      resolved_by: 'admin@imi.example.de',
+      comment: 'Wrong endpoint address',
+    };
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+
+    expect(screen.getByText('Wrong endpoint address')).toBeInTheDocument();
+    expect(submitButton()).toBeEnabled();
+  });
+
+  it('notes that an approved request can be followed by a new review', () => {
+    seedPassingData();
+    data.approval = {
+      id: 'r3',
+      status: 'APPROVED',
+      created_at: '2026-09-28T09:30:00Z',
+      resolved_at: '2026-09-30T14:05:00Z',
+      resolved_by: 'admin@imi.example.de',
+    };
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+
+    expect(screen.getByText(t('approvalModalApprovedHint'))).toBeInTheDocument();
+    expect(submitButton()).toBeEnabled();
   });
 });

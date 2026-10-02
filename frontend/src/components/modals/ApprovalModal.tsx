@@ -1,14 +1,20 @@
 /**
- * ApprovalModal.tsx — review-and-submit modal for an instance approval request.
- * Runs a readiness checklist (org/endpoint/cert/MEDIC contact/membership) and submits via cross-user guard.
+ * ApprovalModal.tsx — review-and-submit dialog for an instance approval request.
+ * Shows the latest request up front (ApprovalStatusBanner): a PENDING request
+ * blocks a second one before anyone presses submit, a rejection shows its
+ * reason. The checklist is the shared readiness rule (deriveReadiness, as in
+ * the wizard and the right panel); an open item closes the dialog and jumps to
+ * its card. Below, the data the request will snapshot. Submits through the
+ * cross-user guard; backend refusals map to translated messages.
+ * Dependencies: Modal, Button, Icon, StatusPill, ApprovalStatusBanner,
+ * lib/readiness, lib/certStatus, lib/dateUtils, entity hooks, useApproval,
+ * useCrossUserGuard, i18n store.
  */
-import { useState } from 'react';
-import React from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
-import { ModalFooter } from './FormField';
 import { parseJsonArray } from '../../lib/parseJsonArray';
-import { useSubmitApproval } from '../../hooks/useApproval';
+import { useApprovalStatus, useSubmitApproval, type ApprovalStatus } from '../../hooks/useApproval';
 import { useOrganization } from '../../hooks/useOrganization';
 import { useContacts } from '../../hooks/useContacts';
 import { useEndpoints } from '../../hooks/useEndpoints';
@@ -16,7 +22,43 @@ import { useCertificates } from '../../hooks/useCertificates';
 import { useMemberships } from '../../hooks/useMemberships';
 import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
 import { useI18n } from '../../stores/i18n.store';
-import { getErrorMessage } from '../../lib/getErrorMessage';
+import { getErrorCode, getErrorMessage } from '../../lib/getErrorMessage';
+import {
+  deriveReadiness,
+  READINESS_ICON,
+  READINESS_LABEL,
+  revealReadinessCard,
+  type ReadinessKey,
+} from '../../lib/readiness';
+import { certValidity } from '../../lib/certStatus';
+import { formatDate } from '../../lib/dateUtils';
+import { ApprovalStatusBanner } from '../layout/ApprovalStatusBanner';
+import { Button } from '../ui/Button';
+import { Icon } from '../ui/Icon';
+import { StatusPill } from '../ui/StatusPill';
+
+interface ContactRow {
+  id: string;
+  name?: string | null;
+  types?: unknown;
+  email_validated?: boolean | number | null;
+}
+interface EndpointRow {
+  identifier: string;
+  name?: string | null;
+  address?: string;
+  ipAddresses?: { id?: string; ip: string }[];
+}
+interface CertificateRow {
+  id: string;
+  subject: string;
+  valid_until: string;
+}
+interface MembershipRow {
+  id: string;
+  parent_organization: string;
+  roles?: unknown;
+}
 
 function Section({
   title,
@@ -24,35 +66,47 @@ function Section({
   defaultOpen = true,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const bodyId = useId();
   return (
-    <div className="border border-slate-100 rounded-xl overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-[color:var(--border)]">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
+        aria-expanded={open}
+        aria-controls={bodyId}
+        className="flex w-full items-center justify-between bg-[color:var(--bg-hover)] px-4 py-3 text-left transition-colors duration-short ease-standard hover:bg-[color:var(--border)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
-        <span className="text-xs font-bold text-slate-700">{title}</span>
-        <span className="material-symbols-outlined text-[18px] text-slate-400">
-          {open ? 'expand_less' : 'expand_more'}
-        </span>
+        <span className="text-xs font-bold text-[color:var(--text-primary)]">{title}</span>
+        <Icon
+          name="expand_more"
+          size={18}
+          className={`text-[color:var(--text-muted)] transition-transform duration-medium ease-spring ${open ? 'rotate-180' : ''}`}
+        />
       </button>
-      {open && <div className="px-4 py-3 space-y-2">{children}</div>}
+      {open && (
+        <div id={bodyId} className="animate-fade-in space-y-2 px-4 py-3">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
 
-function KV({ k, v }: { k: string; v: React.ReactNode }) {
+function KV({ k, v }: { k: string; v: ReactNode }) {
   return (
-    <div className="flex justify-between items-center text-xs py-1 border-b border-slate-50 last:border-0">
-      <span className="text-slate-400 font-medium">{k}</span>
-      <span className="text-slate-700 font-semibold">{v}</span>
+    <div className="flex items-center justify-between gap-3 border-b border-[color:var(--border)] py-1 text-xs last:border-0">
+      <span className="font-medium text-[color:var(--text-muted)]">{k}</span>
+      <span className="text-right font-semibold text-[color:var(--text-primary)]">{v}</span>
     </div>
   );
 }
+
+const itemBox = 'rounded-lg bg-[color:var(--bg-hover)] p-2';
+const empty = 'text-xs text-[color:var(--text-muted)]';
 
 interface Props {
   open: boolean;
@@ -61,28 +115,35 @@ interface Props {
 }
 
 export function ApprovalModal({ open, onClose, instanceId }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { mutateAsync, isPending } = useSubmitApproval(instanceId);
   const guard = useCrossUserGuard();
+  const statusQuery = useApprovalStatus(instanceId);
+  const approval: ApprovalStatus | null | undefined = statusQuery.data;
   const { data: org } = useOrganization(instanceId);
-  const { data: contacts = [] } = useContacts(instanceId);
-  const { data: endpoints = [] } = useEndpoints(instanceId);
-  const { data: certs = [] } = useCertificates(instanceId);
-  const { data: memberships = [] } = useMemberships(instanceId);
+  const { data: contactData } = useContacts(instanceId);
+  const { data: endpointData } = useEndpoints(instanceId);
+  const { data: certData } = useCertificates(instanceId);
+  const { data: membershipData } = useMemberships(instanceId);
+  const contacts: ContactRow[] = Array.isArray(contactData) ? contactData : [];
+  const endpoints: EndpointRow[] = Array.isArray(endpointData) ? endpointData : [];
+  const certs: CertificateRow[] = Array.isArray(certData) ? certData : [];
+  const memberships: MembershipRow[] = Array.isArray(membershipData) ? membershipData : [];
 
-  const checks = [
-    { label: t('approvalModalCheckOrg'), ok: !!org, icon: 'corporate_fare' },
-    { label: t('approvalModalCheckEndpoint'), ok: endpoints.length > 0, icon: 'hub' },
-    { label: t('approvalModalCheckCert'), ok: certs.length > 0, icon: 'verified_user' },
-    {
-      label: t('approvalModalCheckMedic'),
-      ok: contacts.some((c: any) => parseJsonArray(c.types).includes('MEDIC')),
-      icon: 'contact_phone',
-    },
-    { label: t('approvalModalCheckMembership'), ok: memberships.length > 0, icon: 'groups' },
-  ];
+  const readiness = deriveReadiness({
+    organization: org,
+    contacts,
+    endpoints,
+    certificates: certs,
+    memberships,
+    approval,
+  });
+  const canSubmit = readiness.canSubmit && !statusQuery.isLoading;
 
-  const allPassed = checks.every((c) => c.ok);
+  function jumpTo(key: ReadinessKey) {
+    onClose();
+    revealReadinessCard(key);
+  }
 
   async function handleSubmit() {
     try {
@@ -99,9 +160,12 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
       toast.success(t('approvalModalSubmitSuccess'));
       onClose();
     } catch (err: unknown) {
+      const code = getErrorCode(err);
       const msg = getErrorMessage(err, '');
-      if (msg.includes('ALREADY_PENDING')) {
+      if (code === 'APPROVAL_ALREADY_PENDING' || msg.includes('ALREADY_PENDING')) {
         toast.error(t('approvalModalAlreadyPending'));
+      } else if (code === 'ORGANIZATION_NOT_FOUND' || msg === 'ORGANIZATION_NOT_FOUND') {
+        toast.error(t('approvalModalOrgMissing'));
       } else {
         toast.error(msg || t('approvalModalSubmitFailed'));
       }
@@ -117,47 +181,87 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
       subtitle={t('approvalModalSubtitle')}
     >
       <div className="space-y-3">
-        <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
-          <p className="text-xs text-indigo-700">{t('approvalModalPendingNote')}</p>
-        </div>
-        {/* Validation Checklist */}
+        {approval ? (
+          <ApprovalStatusBanner approval={approval} />
+        ) : (
+          <p className="rounded-xl border border-info-border bg-info-surface p-3 text-xs text-[color:var(--text-primary)]">
+            {t('approvalModalPendingNote')}
+          </p>
+        )}
+        {readiness.pending && (
+          <p role="status" className="text-xs font-medium text-warning-fg">
+            {t('approvalPendingBlocked')}
+          </p>
+        )}
+        {approval?.status === 'APPROVED' && (
+          <p className="text-xs text-[color:var(--text-secondary)]">
+            {t('approvalModalApprovedHint')}
+          </p>
+        )}
+
+        {/* Readiness checklist — the same rule as the wizard and the right panel */}
         <div
-          style={{
-            marginBottom: '16px',
-            padding: '12px 16px',
-            background: allPassed ? '#f0fdf4' : '#fef2f2',
-            borderRadius: '12px',
-            border: `1px solid ${allPassed ? '#bbf7d0' : '#fecaca'}`,
-          }}
+          className={`rounded-xl border p-3 ${
+            readiness.ready
+              ? 'border-success-border bg-success-surface'
+              : 'border-danger-border bg-danger-surface'
+          }`}
         >
           <p
-            style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              color: allPassed ? '#15803d' : '#991b1b',
-              marginBottom: '8px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
+            className={`mb-2 text-[11px] font-bold uppercase tracking-wide ${
+              readiness.ready ? 'text-success-fg' : 'text-danger-fg'
+            }`}
           >
-            {allPassed ? t('approvalModalAllPassed') : t('approvalModalSomeFailed')}
+            {readiness.ready ? t('approvalModalAllPassed') : t('approvalModalSomeFailed')}
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {checks.map((c, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: '16px', color: c.ok ? '#22c55e' : '#ef4444' }}
-                >
-                  {c.ok ? 'check_circle' : 'cancel'}
-                </span>
-                <span style={{ fontSize: '12px', color: c.ok ? 'var(--text-primary)' : '#991b1b' }}>
-                  {c.label}
-                </span>
-              </div>
-            ))}
-          </div>
+          <ul className="space-y-1">
+            {readiness.items.map((item) => {
+              const label = t(READINESS_LABEL[item.key]);
+              if (item.done) {
+                return (
+                  <li
+                    key={item.key}
+                    className="flex items-center gap-2 px-1 py-0.5 text-xs text-[color:var(--text-primary)]"
+                  >
+                    <Icon
+                      name="check_circle"
+                      size={16}
+                      filled
+                      label={t('readinessItemDone')}
+                      className="text-success-fg"
+                    />
+                    <Icon
+                      name={READINESS_ICON[item.key]}
+                      size={14}
+                      className="text-[color:var(--text-muted)]"
+                    />
+                    <span>{label}</span>
+                  </li>
+                );
+              }
+              return (
+                <li key={item.key}>
+                  <button
+                    type="button"
+                    onClick={() => jumpTo(item.key)}
+                    className="press-effect flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-xs font-medium text-danger-fg hover:bg-[color:var(--bg-card)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+                  >
+                    <Icon name="cancel" size={16} label={t('readinessItemMissing')} />
+                    <Icon name={READINESS_ICON[item.key]} size={14} />
+                    <span className="flex-1">{label}</span>
+                    <Icon name="arrow_forward" size={14} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {!readiness.ready && (
+            <p className="mt-2 text-[11px] text-[color:var(--text-secondary)]">
+              {t('approvalModalOpenItemsHint')}
+            </p>
+          )}
         </div>
+
         {org && (
           <Section title={t('organization')}>
             <KV
@@ -166,21 +270,26 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
             />
             <KV k={t('orgCardName')} v={org.name} />
             <KV k={t('orgCardEmail')} v={org.email} />
-            <KV k={t('orgCardCity')} v={`${org.city} · ${org.country_code}`} />
+            <KV
+              k={t('orgCardCity')}
+              v={[org.city, org.country_code].filter(Boolean).join(' · ') || '—'}
+            />
             <KV
               k={t('orgModalActiveLabel')}
-              v={org.active ? t('approvalModalActive') : t('approvalModalInactive')}
+              v={
+                <StatusPill tone={org.active ? 'success' : 'danger'}>
+                  {org.active ? t('approvalModalActive') : t('approvalModalInactive')}
+                </StatusPill>
+              }
             />
           </Section>
         )}
         <Section title={t('requestCardSectionContacts', { n: contacts.length })}>
-          {contacts.length === 0 && (
-            <p className="text-xs text-slate-400">{t('approvalModalNoContacts')}</p>
-          )}
-          {contacts.map((c: any) => (
-            <div key={c.id} className="p-2 bg-slate-50 rounded-lg">
-              <p className="text-xs font-bold text-slate-700">{c.name || '—'}</p>
-              <p className="text-[10px] text-slate-400">
+          {contacts.length === 0 && <p className={empty}>{t('approvalModalNoContacts')}</p>}
+          {contacts.map((c) => (
+            <div key={c.id} className={itemBox}>
+              <p className="text-xs font-bold text-[color:var(--text-primary)]">{c.name || '—'}</p>
+              <p className="text-[11px] text-[color:var(--text-muted)]">
                 {parseJsonArray(c.types).join(' · ')} ·{' '}
                 {c.email_validated ? t('contactEmailValidated') : t('contactEmailNotValidated')}
               </p>
@@ -188,65 +297,81 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
           ))}
         </Section>
         <Section title={t('requestCardSectionEndpoints', { n: endpoints.length })}>
-          {endpoints.length === 0 && (
-            <p className="text-xs text-slate-400">{t('approvalModalNoEndpoints')}</p>
-          )}
-          {endpoints.map((ep: any) => (
-            <div key={ep.identifier} className="p-2 bg-slate-50 rounded-lg">
-              <p className="text-xs font-bold text-slate-700">{ep.name || ep.identifier}</p>
-              <p className="text-[10px] font-mono text-slate-400">{ep.address}</p>
-              <div className="flex gap-1 mt-1">
-                {(ep.ipAddresses || []).map((ip: any) => (
-                  <span
-                    key={ip.id}
-                    className="px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded text-[9px] font-mono"
-                  >
-                    {ip.ip}
-                  </span>
-                ))}
-              </div>
+          {endpoints.length === 0 && <p className={empty}>{t('approvalModalNoEndpoints')}</p>}
+          {endpoints.map((ep) => (
+            <div key={ep.identifier} className={itemBox}>
+              <p className="text-xs font-bold text-[color:var(--text-primary)]">
+                {ep.name || ep.identifier}
+              </p>
+              <p className="break-all font-mono text-[11px] text-[color:var(--text-muted)]">
+                {ep.address}
+              </p>
+              {(ep.ipAddresses ?? []).length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {(ep.ipAddresses ?? []).map((ip) => (
+                    <StatusPill key={ip.id ?? ip.ip} tone="neutral" className="font-mono">
+                      {ip.ip}
+                    </StatusPill>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </Section>
         <Section title={t('requestCardSectionCertificates', { n: certs.length })}>
-          {certs.length === 0 && (
-            <p className="text-xs text-slate-400">{t('approvalModalNoCerts')}</p>
-          )}
-          {certs.map((c: any) => (
-            <div key={c.id} className="p-2 bg-slate-50 rounded-lg">
-              <p className="mono-id text-[11px] text-primary">{c.subject}</p>
-              <p className="text-[10px] text-slate-400">
-                {t('approvalModalExpires', { date: c.valid_until })}
+          {certs.length === 0 && <p className={empty}>{t('approvalModalNoCerts')}</p>}
+          {certs.map((c) => {
+            const expired = certValidity(c.valid_until).state === 'expired';
+            const date = formatDate(c.valid_until, lang) || c.valid_until;
+            return (
+              <div key={c.id} className={`${itemBox} flex items-start justify-between gap-2`}>
+                <div className="min-w-0">
+                  <p className="mono-id break-all text-[11px] text-primary">{c.subject}</p>
+                  <p className="text-[11px] text-[color:var(--text-muted)]">
+                    {expired
+                      ? t('approvalModalExpired', { date })
+                      : t('approvalModalExpires', { date })}
+                  </p>
+                </div>
+                {expired && <StatusPill tone="danger">{t('expiryTimelineExpired')}</StatusPill>}
+              </div>
+            );
+          })}
+        </Section>
+        <Section title={t('requestCardSectionMemberships', { n: memberships.length })}>
+          {memberships.length === 0 && <p className={empty}>{t('approvalModalNoMemberships')}</p>}
+          {memberships.map((ms) => (
+            <div key={ms.id} className={itemBox}>
+              <p className="text-xs font-bold text-[color:var(--text-primary)]">
+                {ms.parent_organization}
+              </p>
+              <p className="text-[11px] font-bold text-info-fg">
+                {parseJsonArray(ms.roles).join(' · ')}
               </p>
             </div>
           ))}
         </Section>
-        <Section title={t('requestCardSectionMemberships', { n: memberships.length })}>
-          {memberships.length === 0 && (
-            <p className="text-xs text-slate-400">{t('approvalModalNoMemberships')}</p>
-          )}
-          {memberships.map((ms: any) => (
-            <div
-              key={ms.id}
-              className="p-2 bg-slate-50 rounded-lg flex items-center justify-between"
-            >
-              <div>
-                <p className="text-xs font-bold text-slate-700">{ms.parent_organization}</p>
-                <p className="text-[10px] text-blue-600 font-bold">
-                  {parseJsonArray(ms.roles).join(' · ')}
-                </p>
-              </div>
-            </div>
-          ))}
-        </Section>
       </div>
-      <ModalFooter
-        onCancel={onClose}
-        onSubmit={handleSubmit}
-        loading={isPending}
-        submitLabel={t('approvalModalSubmitBtn')}
-        disabled={!allPassed}
-      />
+      <div className="mt-4 flex justify-end gap-3 border-t border-[color:var(--border)] pt-4">
+        <Button variant="secondary" onClick={onClose}>
+          {t('modalCancelBtn')}
+        </Button>
+        <Button onClick={handleSubmit} disabled={!canSubmit || isPending}>
+          {readiness.pending ? (
+            <>
+              <Icon name="hourglass_top" size={16} />
+              {t('approvalWaitingLabel')}
+            </>
+          ) : isPending ? (
+            t('modalSavingBtn')
+          ) : (
+            <>
+              <Icon name="send" size={16} />
+              {t('approvalModalSubmitBtn')}
+            </>
+          )}
+        </Button>
+      </div>
     </Modal>
   );
 }
