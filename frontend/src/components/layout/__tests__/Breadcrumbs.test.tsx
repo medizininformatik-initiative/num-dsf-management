@@ -17,4 +17,22 @@ describe('Breadcrumbs', () => {
     expect(link).toHaveAttribute('href', '/app');
     expect(screen.getByText(/audit log/i)).toBeInTheDocument();
   });
+
+  it('names the trail and marks the current page', () => {
+    renderWithProviders(<Breadcrumbs />, { route: '/app/admin/users' });
+    const nav = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(nav.querySelectorAll('li')).toHaveLength(3);
+    expect(screen.getByText('User management')).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Approval Review' })).toHaveAttribute(
+      'href',
+      '/app/admin',
+    );
+  });
+
+  it('translates every route segment instead of showing the raw path', () => {
+    renderWithProviders(<Breadcrumbs />, { route: '/app/admin/ca-blacklist', lang: 'de' });
+    expect(screen.getByRole('navigation', { name: 'Brotkrümelnavigation' })).toBeInTheDocument();
+    expect(screen.queryByText('ca-blacklist')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Übersicht' })).toHaveAttribute('href', '/app');
+  });
 });
