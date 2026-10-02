@@ -10,7 +10,7 @@
  * The root fills its box; AppPage owns width, position and motion.
  * Dependencies: auth.store, canvas.store, i18n.store, useInstance, useMe,
  * usePresence, authApi, react-router-dom, lib/environment, lib/motion,
- * ui/Icon, ui/Button, InstanceCreateModal.
+ * ui/Icon, ui/Button, InstanceSwitcher, sidebarStyles.
  */
 import { useId, useState, type CSSProperties, type ReactNode, type Ref } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -25,7 +25,8 @@ import { ENV_ACCENT, IS_PRODUCTION } from '../../lib/environment';
 import { exitMs } from '../../lib/motion';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
-import { InstanceCreateModal } from '../modals/InstanceCreateModal';
+import { InstanceSwitcher } from './InstanceSwitcher';
+import { ACTIVE, IDLE, ROW, fade } from './sidebarStyles';
 
 export type SidebarVariant = 'full' | 'rail' | 'drawer';
 export type SidebarGroup = 'admin' | 'resources';
@@ -52,31 +53,6 @@ interface LinkItem {
   icon: string;
   label: string;
   end?: boolean;
-}
-
-const PINNED_KEY = 'dsf-pinned-instances';
-
-function readPinned(): string[] {
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem(PINNED_KEY) || '[]');
-    return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
-const FOCUS_RING =
-  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]';
-// Icons sit 22 px from the column edge in every variant, so they stay put
-// while the column narrows to the rail.
-const ROW = `press-effect flex w-full items-center gap-3 overflow-hidden whitespace-nowrap rounded-lg px-[10px] text-left text-xs ${FOCUS_RING}`;
-const IDLE =
-  'text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)]';
-const ACTIVE = 'bg-brand-50 font-bold text-brand-700 dark:bg-brand-400/15 dark:text-brand-100';
-
-/** Labels fade out in the rail, where the narrowing column also clips them. */
-function fade(rail: boolean): string {
-  return `transition-opacity duration-short ease-standard ${rail ? 'opacity-0' : ''}`;
 }
 
 const stagger = (index: number) => ({ '--stagger-index': index }) as CSSProperties;
@@ -206,97 +182,6 @@ function EnvBadge({ rail }: { rail: boolean }) {
       <Icon name={icon} size={16} className="shrink-0" />
       <span className="truncate text-xs font-semibold">{label}</span>
     </div>
-  );
-}
-
-function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
-  const { t } = useI18n();
-  const navigate = useNavigate();
-  const { data: instances = [] } = useInstances();
-  const activeInstanceId = useCanvasStore((s) => s.activeInstanceId);
-  const setActiveInstance = useCanvasStore((s) => s.setActiveInstance);
-  const [showCreate, setShowCreate] = useState(false);
-  const [pinnedIds, setPinnedIds] = useState(readPinned);
-  const headingId = useId();
-
-  function togglePin(id: string) {
-    setPinnedIds((prev) => {
-      const next = prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id];
-      localStorage.setItem(PINNED_KEY, JSON.stringify(next));
-      return next;
-    });
-  }
-
-  function select(id: string) {
-    setActiveInstance(id);
-    navigate('/app');
-    onNavigate?.();
-  }
-
-  // Pinned instances first; the sort is stable, so the API order is kept otherwise.
-  const sorted = [...instances].sort(
-    (a, b) => Number(pinnedIds.includes(b.id)) - Number(pinnedIds.includes(a.id)),
-  );
-
-  return (
-    <section aria-labelledby={headingId} className="shrink-0 animate-fade-in px-3 pb-2">
-      <div className="mb-1 flex items-center justify-between gap-2 pl-1">
-        <h2
-          id={headingId}
-          className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--text-muted)]"
-        >
-          {t('instances')}
-        </h2>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowCreate(true)}
-          className="min-h-0 px-1.5 py-0.5 text-[11px] text-brand-700 dark:text-brand-400"
-        >
-          {t('newInstance')}
-        </Button>
-      </div>
-      <ul className="flex max-h-[200px] flex-col gap-0.5 overflow-y-auto">
-        {sorted.map((inst) => {
-          const isPinned = pinnedIds.includes(inst.id);
-          const isActive = inst.id === activeInstanceId;
-          return (
-            <li
-              key={inst.id}
-              className={`flex items-center rounded-lg ${
-                isActive
-                  ? ACTIVE
-                  : 'text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)]'
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => select(inst.id)}
-                aria-current={isActive ? 'true' : undefined}
-                className={`min-w-0 flex-1 truncate rounded-lg py-1.5 pl-2 text-left text-xs ${
-                  isActive ? 'font-bold' : 'font-medium'
-                } ${FOCUS_RING}`}
-              >
-                {inst.label}
-              </button>
-              <button
-                type="button"
-                onClick={() => togglePin(inst.id)}
-                aria-pressed={isPinned}
-                aria-label={t('shellPinInstance', { label: inst.label })}
-                title={t(isPinned ? 'shellUnpin' : 'shellPinToTop')}
-                className={`press-effect mr-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${
-                  isPinned ? 'text-warning-fg' : 'text-[color:var(--text-muted)]'
-                } ${FOCUS_RING}`}
-              >
-                <Icon name="push_pin" size={14} filled={isPinned} />
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      <InstanceCreateModal open={showCreate} onClose={() => setShowCreate(false)} />
-    </section>
   );
 }
 
