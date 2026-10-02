@@ -1,6 +1,7 @@
 /**
- * canvas.store.test.ts — pure test for the canvas store: which DSF instance is
- * currently active on the entity graph.
+ * canvas.store.test.ts — pure test for the canvas store: the active DSF
+ * instance, FK highlights (auto-clear, row keys, replay counter) and the
+ * active relation the overlay draws.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { findEntityRow, useCanvasStore } from '../canvas.store';
@@ -68,6 +69,25 @@ describe('useCanvasStore row targets and relations', () => {
     const relation = { sourceId: 'fk-1', target: 'endpoints' as const, targetKey: 'ep' };
     useCanvasStore.getState().setActiveRelation(relation);
     expect(useCanvasStore.getState().activeRelation).toEqual(relation);
+  });
+
+  it('clears the active relation only for the source that owns it', () => {
+    useCanvasStore.getState().setActiveRelation({ sourceId: 'fk-2', target: 'organization' });
+    // A stale leave/blur from another FK link must not hide the current line.
+    useCanvasStore.getState().clearActiveRelation('fk-1');
+    expect(useCanvasStore.getState().activeRelation?.sourceId).toBe('fk-2');
+    useCanvasStore.getState().clearActiveRelation('fk-2');
+    expect(useCanvasStore.getState().activeRelation).toBeNull();
+  });
+
+  it('counts highlights so the same target can pulse again', () => {
+    const before = useCanvasStore.getState().highlightSeq;
+    useCanvasStore.getState().highlightEntity('organization');
+    useCanvasStore.getState().highlightEntity('organization');
+    expect(useCanvasStore.getState().highlightSeq).toBe(before + 2);
+    // Clearing is not a new highlight.
+    useCanvasStore.getState().highlightEntity(null);
+    expect(useCanvasStore.getState().highlightSeq).toBe(before + 2);
   });
 
   it('finds a row by entity and key, including keys with special characters', () => {

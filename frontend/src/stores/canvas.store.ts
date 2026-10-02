@@ -24,15 +24,22 @@ export interface ActiveRelation {
   targetKey?: string;
 }
 
+/** How long a highlight stays before it clears itself. */
+export const HIGHLIGHT_MS = 1800;
+
 interface CanvasState {
   activeInstanceId: string | null;
   highlightedEntity: EntityId | null;
   /** Row key inside the highlighted card, if the highlight targets one row. */
   highlightedKey: string | null;
+  /** Counts highlights, so highlighting the same target again replays its pulse. */
+  highlightSeq: number;
   activeRelation: ActiveRelation | null;
   setActiveInstance: (id: string | null) => void;
   highlightEntity: (id: EntityId | null, key?: string) => void;
   setActiveRelation: (relation: ActiveRelation | null) => void;
+  /** Clears the active relation only if it still belongs to this source. */
+  clearActiveRelation: (sourceId: string) => void;
 }
 
 // Tracks the pending auto-clear timer so a new highlight cancels the previous
@@ -43,19 +50,26 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   activeInstanceId: null,
   highlightedEntity: null,
   highlightedKey: null,
+  highlightSeq: 0,
   activeRelation: null,
   setActiveInstance: (id) => set({ activeInstanceId: id }),
   highlightEntity: (id, key) => {
     if (highlightTimer) clearTimeout(highlightTimer);
-    set({ highlightedEntity: id, highlightedKey: id ? (key ?? null) : null });
+    set((s) => ({
+      highlightedEntity: id,
+      highlightedKey: id ? (key ?? null) : null,
+      highlightSeq: id ? s.highlightSeq + 1 : s.highlightSeq,
+    }));
     if (id) {
       highlightTimer = setTimeout(
         () => set({ highlightedEntity: null, highlightedKey: null }),
-        1800,
+        HIGHLIGHT_MS,
       );
     }
   },
   setActiveRelation: (relation) => set({ activeRelation: relation }),
+  clearActiveRelation: (sourceId) =>
+    set((s) => (s.activeRelation?.sourceId === sourceId ? { activeRelation: null } : s)),
 }));
 
 /** The row element for a key in an entity card, or null when it is not rendered. */
