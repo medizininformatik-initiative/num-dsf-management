@@ -8,7 +8,6 @@
  * Usage:  npm run sync:cas    (from backend/)
  */
 import 'dotenv/config';
-import forge from 'node-forge';
 import crypto from 'crypto';
 import { db } from '../db/connection';
 import { logger } from '../lib/logger';
@@ -25,21 +24,17 @@ export function splitPems(bundle: string): string[] {
   return bundle.match(re) ?? [];
 }
 
+// node:crypto rather than node-forge: forge reads RSA keys only and skipped
+// every EC root as malformed, among them HARICA TLS ECC Root CA 2021 and
+// USERTrust ECC, which DSF trusts.
 export function fingerprintOf(pem: string): string {
-  const cert = forge.pki.certificateFromPem(pem);
-  const der = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
-  return crypto.createHash('sha256').update(Buffer.from(der, 'binary')).digest('hex').toUpperCase();
+  const cert = new crypto.X509Certificate(pem);
+  return crypto.createHash('sha256').update(cert.raw).digest('hex').toUpperCase();
 }
 
+/** Subject DN in certificate order, joined like the certificate service's issuer DN. */
 export function subjectDnOf(pem: string): string {
-  const cert = forge.pki.certificateFromPem(pem);
-  return cert.subject.attributes
-    .map((a: forge.pki.CertificateField) => {
-      const key = a.shortName || a.name || 'UNKNOWN';
-      const val = typeof a.value === 'string' ? a.value : String(a.value ?? '');
-      return `${key}=${val}`;
-    })
-    .join(',');
+  return new crypto.X509Certificate(pem).subject.split('\n').join(',');
 }
 
 export async function syncOnce(text: string): Promise<{ upserted: number; skipped: number }> {
