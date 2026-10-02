@@ -119,6 +119,35 @@ async function assertIssuerAllowed(issuerDn: string): Promise<void> {
   }
 }
 
+/**
+ * Parse a PEM without storing it, for the upload preview: what the portal
+ * would register (subject, expiry, both thumbprints) and how the upload
+ * checks would decide (blacklisted issuer, issuer on the CA whitelist).
+ * @throws PRIVATE_KEY_REJECTED / INVALID_PEM on a bad PEM.
+ */
+export async function previewCertificate(pem: string): Promise<{
+  subject: string;
+  validUntil: Date;
+  thumbprint: string;
+  thumbprintSha512: string;
+  issuerDn: string;
+  issuerTrusted: boolean;
+  issuerBlacklisted: boolean;
+  whitelistEnforced: boolean;
+}> {
+  const { subject, thumbprint, validUntil, issuerDn } = parseCertificate(pem);
+  return {
+    subject,
+    validUntil,
+    thumbprint,
+    thumbprintSha512: sha512FingerprintFromPem(pem),
+    issuerDn,
+    issuerTrusted: await isIssuerWhitelisted(issuerDn),
+    issuerBlacklisted: await isCaBlacklisted({ subjectDn: issuerDn }),
+    whitelistEnforced: isWhitelistEnforced(),
+  };
+}
+
 export async function getCertificates(instanceId: string) {
   const org = await db('organizations').where({ instance_id: instanceId }).first();
   if (!org) return [];

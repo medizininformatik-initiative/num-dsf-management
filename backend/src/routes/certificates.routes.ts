@@ -1,5 +1,5 @@
 /**
- * certificates.routes.ts – Certificate CRUD + renewal + expiry probe
+ * certificates.routes.ts – Certificate CRUD + renewal + upload preview + expiry probe
  * Dependencies: auth/instance middleware, certificate.service, sanitizeError
  *
  * SECURITY: PEM uploads are screened by rejectPrivateKey() before any
@@ -57,6 +57,21 @@ certificatesRouter.post('/', validate(createCertificateSchema), async (req, res)
     }
     // Known business codes (INVALID_PEM, CA_BLACKLISTED, CA_NOT_WHITELISTED)
     // pass through so the UI can explain the rejection; anything else is masked.
+    res.status(400).json({ error: sanitizeError(err) });
+  }
+});
+
+// Parse without storing, so the upload dialog can show what would be
+// registered (subject, expiry, DSF fingerprint, issuer checks) before saving.
+certificatesRouter.post('/preview', validate(createCertificateSchema), async (req, res) => {
+  try {
+    res.json({ data: await svc.previewCertificate(req.body.pem) });
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'PRIVATE_KEY_REJECTED') {
+      return res
+        .status(400)
+        .json({ error: { code: 'PRIVATE_KEY_REJECTED', message: 'Private keys are not allowed' } });
+    }
     res.status(400).json({ error: sanitizeError(err) });
   }
 });
