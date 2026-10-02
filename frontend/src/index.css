@@ -436,6 +436,8 @@ body {
      .glass-chrome  bars: bottom hairline only, no drop shadow (move the
                     hairline with border utilities, e.g. border-b-0 border-r)
      .scrim         the dimmed, lightly blurred layer behind a dialog
+     .dsf-toast     sonner toasts (ToastProvider); sonner's rich colours
+                    still win for success / info / warning / error toasts
    Contrast: .glass-thick and .glass-chrome keep --text-primary and
    --text-secondary at >= 4.5:1 over any backdrop; .glass and .glass-thin rely
    on the app canvas behind them, where every text token stays >= 4.5:1.
@@ -447,7 +449,8 @@ body {
   .glass-thin,
   .glass,
   .glass-thick,
-  .glass-chrome {
+  .glass-chrome,
+  .dsf-toast {
     background-color: rgb(var(--glass-tint) / var(--_glass-opacity));
     -webkit-backdrop-filter: blur(var(--_glass-blur)) saturate(var(--glass-saturate));
     backdrop-filter: blur(var(--_glass-blur)) saturate(var(--glass-saturate));
@@ -477,12 +480,21 @@ body {
     -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
   }
+  /* Overrides sonner's zero-specificity base style for neutral toasts only. */
+  .dsf-toast {
+    --_glass-opacity: var(--glass-opacity-thick);
+    --_glass-blur: 24px;
+    border-radius: 14px;
+    color: var(--text-primary);
+    font-family: theme('fontFamily.sans');
+  }
 
   @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
     .glass-thin,
     .glass,
     .glass-thick,
-    .glass-chrome {
+    .glass-chrome,
+    .dsf-toast {
       background-color: var(--bg-card);
     }
     .scrim {
@@ -494,7 +506,8 @@ body {
     .glass-thin,
     .glass,
     .glass-thick,
-    .glass-chrome {
+    .glass-chrome,
+    .dsf-toast {
       background-color: var(--bg-card);
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
