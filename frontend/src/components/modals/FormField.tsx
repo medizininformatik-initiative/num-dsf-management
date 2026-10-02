@@ -33,7 +33,7 @@ interface FormFieldProps {
   hint?: string;
   infoKey?: TranslationKey;
   /** The control, or a render function placing the control props itself. */
-  children: React.ReactNode | ((control: FieldControlProps) => React.ReactNode);
+  children: React.ReactElement | ((control: FieldControlProps) => React.ReactNode);
 }
 
 /**
@@ -105,16 +105,14 @@ export function FormField({ label, required, error, hint, infoKey, children }: F
       'aria-describedby': describedBy,
       'aria-invalid': error ? true : undefined,
     });
-  } else if (React.isValidElement(children)) {
+  } else {
     const own = children.props as { id?: string; 'aria-describedby'?: string };
     controlId = own.id ?? fieldId;
-    control = React.cloneElement(children as React.ReactElement, {
+    control = React.cloneElement(children, {
       id: controlId,
       'aria-describedby': joinIds(own['aria-describedby'], describedBy),
       ...(error ? { 'aria-invalid': true } : {}),
     });
-  } else {
-    control = children;
   }
 
   return (
