@@ -198,14 +198,14 @@ The portal supports two passwordless authentication paths:
 Two distinct certificate hashes are in play; do not confuse them:
 
 - **Human sign-in** matches the client cert's **SHA-512 fingerprint** against `admin_cert_fingerprints` (admins are checked first) and then `organizations.client_cert_fingerprint` (per site). This is the allow-list gate for logging in.
-- **FHIR bundle download** by a DSF process still matches the machine cert's **SHA-256 thumbprint** against `organizations.client_cert_thumbprint`. That path is unchanged and independent of sign-in.
+- **FHIR bundle download** by a DSF process resolves the machine cert by the SHA-512 login fingerprint, then the legacy SHA-256 `organizations.client_cert_thumbprint`, then a certificate registered in the organization's certificate list (the DSF client certificate a BPE presents). See "Allow-list bundle download" below.
 
 A third, separate hash lives in the allow-list bundle content itself: each Organization's `extension-certificate-thumbprint` extension carries the **SHA-512** DSF thumbprint required by DSF's `dsf-extension-certificate-thumbprint-2.0.0` StructureDefinition (the `hex-128-length` constraint: 128 lower-case hex characters), computed from the stored certificate PEM. The `certificates.thumbprint` database column stays SHA-256; it is used only for the FHIR mTLS match above, not for the bundle content.
 
 For the browser sign-in to work, nginx terminates TLS, requests the client cert, and forwards it to the backend:
 
 - Mount `/etc/nginx/certs/server.crt` and `/etc/nginx/certs/server.key` (the TLS cert/key for the HTTPS listener).
-- Mount `/etc/nginx/certs/client-ca.crt`. With `ssl_verify_client optional_no_ca`, even a self-signed DSF leaf cert completes the handshake and is forwarded to the backend; the fingerprint match is the real gate.
+- Mount `/etc/nginx/certs/client-ca.crt`. With `ssl_verify_client optional_no_ca`, even a self-signed DSF leaf cert completes the handshake and is forwarded to the backend; the fingerprint match is the real gate. nginx loads it as `ssl_trusted_certificate`, so it is not sent to clients as the only acceptable issuer (Java clients such as the DSF BPE would otherwise present no certificate).
 
 nginx forwards the URL-encoded PEM as `X-Client-Cert` and the verify result as `X-Client-Verify`. The backend trusts the cert only when `X-Client-Verify: SUCCESS`, so nginx must be the only ingress; the HTTP vhost clears these headers and redirects to HTTPS.
 
@@ -464,12 +464,54 @@ The scheduler starts at backend boot (`backend/src/index.ts`). Jobs swallow indi
 
 ## Allow-list bundle download
 
-The portal is the central authority that generates the **network-wide** DSF allow-list. There is one bundle — every site downloads the same thing and installs it at its local DSF FHIR server.
+The portal generates the DSF allow list in the format of the legacy allow-list portal: Organization, Endpoint and OrganizationAffiliation resources as conditional PUTs, plus DELETE entries for removed affiliations. Only approved organizations with at least one certificate and one endpoint are published, because the DSF organization profile requires both.
 
-- **GUI:** authenticated users hit `GET /api/v1/download/full-bundle` (cookie auth) and receive a FHIR JSON Bundle.
-- **DSF process (mTLS):** the upstream `dsf-process-allow-list/DownloadAllowList` BPMN task reads `GET /fhir/Bundle?identifier=http://dsf.dev/fhir/CodeSystem/allow-list|allow_list` from this portal's FHIR endpoint; client cert is matched by SHA-256 thumbprint against `organizations.client_cert_thumbprint`.
+### DSF process `downloadAllowList` (dsf-process-allow-list)
 
-The previous per-instance route (`/api/v1/instances/:id/download/bundle?endpointId=...`) is retained for backward compatibility with older clients but should NOT be used for new integrations.
+A site starts the process locally on its own DSF FHIR server (requester `LOCAL_ALL` or a `DSF_ADMIN` practitioner) and sets the Task input `http://dsf.dev/fhir/CodeSystem/allow-list|allow_list` to:
+
+```
+https://dsf-management.imi.uni-muenster.de/fhir/Bundle/<endpoint identifier>
+```
+
+The BPE reads that URL with `GET {base}/Bundle/{id}` and `Accept: application/fhir+json`, using the site's DSF client certificate. It then checks the bundle (`checkAllowList`) and posts it as a transaction to its own FHIR server (`insertAllowList`).
+
+The response is the allow list for that endpoint:
+- every other approved organization;
+- once the site itself is approved, its own affiliations for that endpoint. These reference the site's Organization and Endpoint conditionally, because the site's DSF server already holds them.
+
+The portal's GUI download `GET /api/v1/instances/:id/download/bundle?endpointId=...` (signed) returns the same list.
+
+Requirements on the site:
+- **Identifiers.** The organization identifier and the endpoint identifier in the portal must equal the DSF FHIR server's `DEV_DSF_FHIR_SERVER_ORGANIZATION_IDENTIFIER_VALUE` and the host of `DEV_DSF_FHIR_SERVER_BASE_URL`. DSF derives the endpoint identifier from that host. If they differ, the conditional references of the site's own affiliations do not resolve and the whole transaction fails.
+- **Client certificate.** The BPE's client certificate must be registered for the organization, either as the login certificate (SHA-512 fingerprint) or in the organization's certificate list. An unregistered certificate gets `403`, no certificate gets `401`. Both errors are FHIR OperationOutcomes, so the BPE logs the reason.
+- **Server trust.** The BPE validates the portal's TLS certificate against `DEV_DSF_BPE_FHIR_CLIENT_TRUST_SERVER_CERTIFICATE_CAS`.
+  - DSF 2.1.1 ships only D-TRUST, HARICA and USERTrust (Sectigo/GEANT) roots. **Let's Encrypt (ISRG Root X1) is not included.** A default BPE therefore fails with `PKIX path building failed` against a portal that uses a Let's Encrypt certificate.
+  - Fix on the portal side: use a certificate from one of these CAs (GEANT TCS via DFN).
+  - Fix on each site: add ISRG Root X1 to that trust store.
+- **No issuer list.** The front proxy must request the client certificate without an issuer list. Java clients only present a certificate whose issuer appears in a non-empty list.
+  - Apache: `SSLVerifyClient optional_no_ca`, without `SSLCACertificateFile` or `SSLCADNRequestFile`.
+  - Bundled nginx: `ssl_trusted_certificate`, not `ssl_client_certificate`.
+
+Quick check with a site's DSF certificate (the same read the BPE performs):
+
+```bash
+curl --cert dsf-client.crt --key dsf-client.key -H 'Accept: application/fhir+json' \
+  https://dsf-management.imi.uni-muenster.de/fhir/Bundle/<endpoint identifier>
+```
+
+### Network-wide bundle
+
+`GET /fhir/Bundle` (mTLS, any registered certificate) and `GET /api/v1/download/full-bundle` (GUI) return all approved organizations, without the receiver view.
+
+### End-to-end test with the real DSF software
+
+`bash scripts/dsf-e2e/run.sh`, with the dev stack running, does the following:
+- starts DSF FHIR 2.1.1 with `fhir_proxy`, and BPE 2.1.1 with `dsf-process-allow-list` 1.0.0.1;
+- seeds a receiving site and two peers into the dev portal;
+- runs `downloadAllowList` five times: through an Apache front configured like production, again in place, after a peer left the hub, through the repository nginx, and against a server certificate from a CA the BPE does not trust (expected to fail, standing in for Let's Encrypt).
+
+The script needs Docker, OpenSSL and Node on the host and cleans up after itself; `--keep` leaves everything running for inspection. The API-level replay of the hackathon runs in the backend test suite (`hackathon-replay*.test.ts`).
 
 ## Federation safety
 
