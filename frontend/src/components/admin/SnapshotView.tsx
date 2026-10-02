@@ -2,16 +2,37 @@
  * SnapshotView.tsx — Read-only viewer for an approval-request data snapshot.
  * Renders the quick change-count summary and the per-entity detail grid.
  * Extracted from RequestCard.tsx (project 500-line file limit); pure
- * presentation driven by a parsed SnapshotData.
+ * presentation driven by a parsed SnapshotData. Entity colours only tint the
+ * section icons and accent borders; all text uses theme tokens with AA
+ * contrast in light and dark mode.
  *
- * Dependencies: parseSnapshot (SnapshotData type), useI18n (translate fn type).
+ * Dependencies: parseSnapshot (SnapshotData type), useI18n (translate fn type,
+ * app language for dates), lib/dateUtils, StatusPill, Icon.
  */
+import type { ReactNode } from 'react';
 import type { SnapshotData } from './parseSnapshot';
 import type { TranslationKey } from '../../i18n/en';
+import { useI18n } from '../../stores/i18n.store';
+import { formatDate } from '../../lib/dateUtils';
+import { StatusPill } from '../ui/StatusPill';
+import { Icon } from '../ui/Icon';
 
 type TranslateFn = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
+/** Entity accent colours (icons and borders only, never text). */
+const ACCENT = {
+  organization: 'var(--accent)',
+  endpoints: '#3ecfb2',
+  certificates: '#f5a623',
+  memberships: '#4a90d9',
+  contacts: '#8b5cf6',
+} as const;
+
+const CHIP_CLASS =
+  'rounded bg-[color:var(--bg-hover)] px-1.5 py-px font-mono text-[11px] text-[color:var(--text-secondary)]';
+
 export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: TranslateFn }) {
+  const { lang } = useI18n();
   const endpoints = snapshot.endpoints ?? [];
   const certificates = snapshot.certificates ?? [];
   const memberships = snapshot.memberships ?? [];
@@ -21,72 +42,32 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
     <>
       {/* Quick change summary */}
       {snapshot.organization && (
-        <div style={{ marginTop: '8px', marginBottom: '4px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            <span
-              style={{
-                fontSize: '10px',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                background: '#ede9ff',
-                color: 'var(--accent)',
-                fontWeight: 600,
-              }}
-            >
-              {t('requestCardCountEndpoints', { n: (snapshot.endpoints || []).length })}
-            </span>
-            <span
-              style={{
-                fontSize: '10px',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                background: '#fef9e7',
-                color: '#b45309',
-                fontWeight: 600,
-              }}
-            >
-              {t('requestCardCountCertificates', { n: (snapshot.certificates || []).length })}
-            </span>
-            <span
-              style={{
-                fontSize: '10px',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                background: '#e8f4fd',
-                color: '#1d4ed8',
-                fontWeight: 600,
-              }}
-            >
-              {t('requestCardCountMemberships', { n: (snapshot.memberships || []).length })}
-            </span>
-            <span
-              style={{
-                fontSize: '10px',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                background: '#f0fff8',
-                color: '#059669',
-                fontWeight: 600,
-              }}
-            >
-              {t('requestCardCountContacts', { n: (snapshot.contacts || []).length })}
-            </span>
-          </div>
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          <StatusPill icon="dns">
+            {t('requestCardCountEndpoints', { n: endpoints.length })}
+          </StatusPill>
+          <StatusPill icon="verified_user">
+            {t('requestCardCountCertificates', { n: certificates.length })}
+          </StatusPill>
+          <StatusPill icon="group_work">
+            {t('requestCardCountMemberships', { n: memberships.length })}
+          </StatusPill>
+          <StatusPill icon="contacts">
+            {t('requestCardCountContacts', { n: contacts.length })}
+          </StatusPill>
         </div>
       )}
 
       {/* Snapshot viewer */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '12px',
-        }}
-      >
+      <div className="grid gap-3 sm:grid-cols-2">
         {/* Organization */}
-        <SnapshotSection title={t('organization')} color="#6c63ff" icon="corporate_fare">
+        <SnapshotSection
+          title={t('organization')}
+          color={ACCENT.organization}
+          icon="corporate_fare"
+        >
           {snapshot.organization ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div className="flex flex-col gap-1">
               <SnapshotField label={t('orgCardName')} value={snapshot.organization.name} />
               <SnapshotField
                 label={t('requestCardFieldId')}
@@ -120,42 +101,23 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
         {/* Endpoints */}
         <SnapshotSection
           title={t('requestCardSectionEndpoints', { n: endpoints.length })}
-          color="#3ecfb2"
+          color={ACCENT.endpoints}
           icon="dns"
         >
           {endpoints.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="flex flex-col gap-2">
               {endpoints.map((ep, i) => (
-                <div key={i} style={{ borderLeft: '3px solid #3ecfb2', paddingLeft: '8px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                <AccentItem key={i} color={ACCENT.endpoints}>
+                  <div className="text-xs font-semibold text-[color:var(--text-primary)]">
                     {ep.name ?? ep.identifier ?? '—'}
                   </div>
-                  <div
-                    style={{
-                      fontSize: '11px',
-                      color: '#6b7280',
-                      fontFamily: 'monospace',
-                      wordBreak: 'break-all',
-                    }}
-                  >
+                  <div className="break-all font-mono text-[11px] text-[color:var(--text-muted)]">
                     {ep.address}
                   </div>
                   {ep.ips && ep.ips.length > 0 && (
-                    <div
-                      style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}
-                    >
+                    <div className="mt-1 flex flex-wrap gap-1">
                       {ep.ips.map((ip, j) => (
-                        <span
-                          key={j}
-                          style={{
-                            fontSize: '10px',
-                            fontFamily: 'monospace',
-                            background: '#e6faf7',
-                            color: '#0d9488',
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                          }}
-                        >
+                        <span key={j} className={CHIP_CLASS}>
                           {ip.ip}
                           {ip.is_fhir ? ' [FHIR]' : ''}
                           {ip.is_bpe ? ' [BPE]' : ''}
@@ -163,7 +125,7 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
                       ))}
                     </div>
                   )}
-                </div>
+                </AccentItem>
               ))}
             </div>
           ) : (
@@ -174,41 +136,29 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
         {/* Certificates */}
         <SnapshotSection
           title={t('requestCardSectionCertificates', { n: certificates.length })}
-          color="#f5a623"
+          color={ACCENT.certificates}
           icon="verified_user"
         >
           {certificates.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="flex flex-col gap-2">
               {certificates.map((cert, i) => (
-                <div key={i} style={{ borderLeft: '3px solid #f5a623', paddingLeft: '8px' }}>
-                  <div
-                    style={{
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      color: 'var(--text-primary)',
-                      wordBreak: 'break-all',
-                    }}
-                  >
+                <AccentItem key={i} color={ACCENT.certificates}>
+                  <div className="break-all text-xs font-semibold text-[color:var(--text-primary)]">
                     {cert.subject ?? '—'}
                   </div>
                   {cert.thumbprint && (
-                    <div
-                      style={{
-                        fontSize: '10px',
-                        fontFamily: 'monospace',
-                        color: 'var(--text-muted)',
-                        wordBreak: 'break-all',
-                      }}
-                    >
+                    <div className="break-all font-mono text-[11px] text-[color:var(--text-muted)]">
                       {cert.thumbprint}
                     </div>
                   )}
                   {cert.valid_until && (
-                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
-                      {t('adminSnapshotExpires', { date: cert.valid_until })}
+                    <div className="text-[11px] text-[color:var(--text-secondary)]">
+                      {t('adminSnapshotExpires', {
+                        date: formatDate(cert.valid_until, lang) || cert.valid_until,
+                      })}
                     </div>
                   )}
-                </div>
+                </AccentItem>
               ))}
             </div>
           ) : (
@@ -219,50 +169,31 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
         {/* Memberships */}
         <SnapshotSection
           title={t('requestCardSectionMemberships', { n: memberships.length })}
-          color="#4a90d9"
+          color={ACCENT.memberships}
           icon="group_work"
         >
           {memberships.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="flex flex-col gap-2">
               {memberships.map((m, i) => (
-                <div key={i} style={{ borderLeft: '3px solid #4a90d9', paddingLeft: '8px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                <AccentItem key={i} color={ACCENT.memberships}>
+                  <div className="text-xs font-semibold text-[color:var(--text-primary)]">
                     {m.parent_organization ?? '—'}
                   </div>
                   {m.roles && m.roles.length > 0 && (
-                    <div
-                      style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '3px' }}
-                    >
+                    <div className="mt-1 flex flex-wrap gap-1">
                       {m.roles.map((role, j) => (
-                        <span
-                          key={j}
-                          style={{
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            background: '#e8f0fb',
-                            color: '#4a90d9',
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                          }}
-                        >
+                        <StatusPill key={j} tone="info">
                           {role}
-                        </span>
+                        </StatusPill>
                       ))}
                     </div>
                   )}
                   {m.endpoint_id && (
-                    <div
-                      style={{
-                        fontSize: '10px',
-                        fontFamily: 'monospace',
-                        color: 'var(--text-muted)',
-                        marginTop: '2px',
-                      }}
-                    >
+                    <div className="mt-0.5 font-mono text-[11px] text-[color:var(--text-muted)]">
                       {m.endpoint_id}
                     </div>
                   )}
-                </div>
+                </AccentItem>
               ))}
             </div>
           ) : (
@@ -272,32 +203,24 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
 
         {/* Contacts — spans full width if present */}
         {contacts.length > 0 && (
-          <div style={{ gridColumn: '1 / -1' }}>
+          <div className="sm:col-span-2">
             <SnapshotSection
               title={t('requestCardSectionContacts', { n: contacts.length })}
-              color="#8b5cf6"
+              color={ACCENT.contacts}
               icon="contacts"
             >
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div className="flex flex-wrap gap-2">
                 {contacts.map((c, i) => (
                   <div
                     key={i}
-                    style={{
-                      background: '#f5f3ff',
-                      border: '1px solid #ddd6fe',
-                      borderRadius: '8px',
-                      padding: '6px 10px',
-                      minWidth: '160px',
-                    }}
+                    className="min-w-[10rem] rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-hover)] px-2.5 py-1.5"
                   >
-                    <div
-                      style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}
-                    >
+                    <div className="text-xs font-semibold text-[color:var(--text-primary)]">
                       {c.name ?? '—'}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#6b7280' }}>{c.email}</div>
+                    <div className="text-[11px] text-[color:var(--text-secondary)]">{c.email}</div>
                     {c.types && c.types.length > 0 && (
-                      <div style={{ fontSize: '10px', color: '#8b5cf6', marginTop: '2px' }}>
+                      <div className="mt-0.5 text-[11px] text-[color:var(--text-muted)]">
                         {c.types.join(', ')}
                       </div>
                     )}
@@ -321,34 +244,22 @@ function SnapshotSection({
   title: string;
   color: string;
   icon: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <div
-      style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: '12px',
-        padding: '14px 16px',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '16px', color }}>
-          {icon}
-        </span>
-        <span
-          style={{
-            fontSize: '12px',
-            fontWeight: 700,
-            color,
-            fontFamily: 'Inter, system-ui, sans-serif',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-          }}
-        >
-          {title}
-        </span>
-      </div>
+    <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] px-4 py-3.5">
+      <h3 className="mb-2.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-secondary)]">
+        <Icon name={icon} size={16} style={{ color }} />
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function AccentItem({ color, children }: { color: string; children: ReactNode }) {
+  return (
+    <div className="border-l-[3px] pl-2" style={{ borderColor: color }}>
       {children}
     </div>
   );
@@ -364,24 +275,10 @@ function SnapshotField({
   mono?: boolean;
 }) {
   return (
-    <div style={{ display: 'flex', gap: '6px', alignItems: 'baseline' }}>
+    <div className="flex items-baseline gap-1.5">
+      <span className="min-w-[3.25rem] text-[11px] text-[color:var(--text-muted)]">{label}</span>
       <span
-        style={{
-          fontSize: '11px',
-          color: 'var(--text-muted)',
-          minWidth: '50px',
-          fontFamily: 'Inter, system-ui, sans-serif',
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          fontSize: '12px',
-          color: 'var(--text-primary)',
-          fontFamily: mono ? 'monospace' : 'Inter, system-ui, sans-serif',
-          wordBreak: 'break-all',
-        }}
+        className={`break-all text-xs text-[color:var(--text-primary)] ${mono ? 'font-mono' : ''}`}
       >
         {value ?? '—'}
       </span>
@@ -389,17 +286,6 @@ function SnapshotField({
   );
 }
 
-function EmptyNote({ children }: { children: React.ReactNode }) {
-  return (
-    <span
-      style={{
-        fontSize: '12px',
-        color: 'var(--text-muted)',
-        fontStyle: 'italic',
-        fontFamily: 'Inter, system-ui, sans-serif',
-      }}
-    >
-      {children}
-    </span>
-  );
+function EmptyNote({ children }: { children: ReactNode }) {
+  return <span className="text-xs italic text-[color:var(--text-muted)]">{children}</span>;
 }

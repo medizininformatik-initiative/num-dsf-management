@@ -52,11 +52,11 @@ describe('SnapshotView', () => {
     expect(screen.getByText('10.0.0.5 [FHIR]')).toBeInTheDocument();
   });
 
-  it('renders the certificate subject, thumbprint and expiry', () => {
+  it('renders the certificate subject, thumbprint and expiry in the app language', () => {
     render(<SnapshotView snapshot={SNAPSHOT} t={t} />);
     expect(screen.getByText('CN=ukm.de')).toBeInTheDocument();
     expect(screen.getByText('AB12CD')).toBeInTheDocument();
-    expect(screen.getByText(t('adminSnapshotExpires', { date: '2027-01-01' }))).toBeInTheDocument();
+    expect(screen.getByText(t('adminSnapshotExpires', { date: '1 Jan 2027' }))).toBeInTheDocument();
   });
 
   it('renders the membership parent org, roles and endpoint id', () => {
