@@ -7,7 +7,7 @@
  * Why Approve is unavailable is shown as text next to the buttons.
  *
  * Dependencies: useAdmin (approve/reject mutations), useConfirm, useI18n,
- * sonner toast.
+ * Button, StatusPill, Icon, TotpCodeField, fieldClasses, sonner toast.
  */
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
@@ -18,6 +18,11 @@ import { useI18n } from '../../stores/i18n.store';
 import { getErrorMessageForStepUp } from '../../lib/getErrorMessage';
 import { needsTotpStepUp } from '../../lib/authMode';
 import { formatDate, relTime } from '../../lib/dateUtils';
+import { Button } from '../ui/Button';
+import { StatusPill } from '../ui/StatusPill';
+import { Icon } from '../ui/Icon';
+import { TotpCodeField } from './TotpCodeField';
+import { FIELD_CLASS } from './fieldClasses';
 import { parseSnapshot, type SnapshotData } from './parseSnapshot';
 import { SnapshotView } from './SnapshotView';
 
@@ -38,9 +43,11 @@ interface RequestCardProps {
 export type { RequestCardProps };
 
 export function RequestCard({ request, meEmail }: RequestCardProps) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const confirm = useConfirm();
+  const titleId = useId();
   const disabledReasonId = useId();
+  const commentId = useId();
 
   const [expanded, setExpanded] = useState(false);
   const [rejecting, setRejecting] = useState(false);
@@ -61,12 +68,9 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
   const alreadyDecidedByMe =
     !!meEmail && sigs.some((s) => s.admin_email.toLowerCase() === meEmail.toLowerCase());
   const sameSiteApprovalExists = !!meSite && approvals.some((s) => s.admin_site === meSite);
+  const busy = approveMut.isPending || rejectMut.isPending;
   const approveDisabled =
-    approvals.length >= 2 ||
-    alreadyDecidedByMe ||
-    sameSiteApprovalExists ||
-    approveMut.isPending ||
-    rejectMut.isPending;
+    approvals.length >= 2 || alreadyDecidedByMe || sameSiteApprovalExists || busy;
   const silentConsentDate = approvals[0]
     ? new Date(new Date(approvals[0].signed_at).getTime() + SILENT_CONSENT_MS)
     : null;
@@ -82,7 +86,7 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
           : null;
 
   async function handleApprove() {
-    if (approveMut.isPending || rejectMut.isPending) return;
+    if (busy) return;
     if (needsTotpStepUp() && (!totpCode || totpCode.length !== 6)) {
       toast.error(t('adminToastTotpRequired'));
       return;
@@ -116,7 +120,7 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
   }
 
   async function handleReject() {
-    if (approveMut.isPending || rejectMut.isPending) return;
+    if (busy) return;
     if (!comment.trim()) {
       toast.error(t('adminToastReasonRequired'));
       return;
@@ -146,253 +150,116 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
   }
 
   return (
-    <div
-      style={{
-        background: 'var(--bg-hover)',
-        border: '1px solid var(--border)',
-        borderRadius: '16px',
-        padding: '20px 24px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '16px',
-      }}
+    <article
+      aria-labelledby={titleId}
+      className="flex flex-col gap-4 rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] px-5 py-5 shadow-card sm:px-6"
     >
       {/* Card header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: '12px',
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <span
-              style={{
-                fontFamily: 'Inter, system-ui, sans-serif',
-                fontSize: '15px',
-                fontWeight: 600,
-                color: 'var(--text-primary)',
-              }}
-            >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h2 id={titleId} className="text-[15px] font-semibold text-[color:var(--text-primary)]">
               {orgName}
-            </span>
-            <span
-              style={{
-                fontFamily: 'monospace',
-                fontSize: '12px',
-                color: 'var(--accent)',
-                background: '#ede9ff',
-                padding: '2px 8px',
-                borderRadius: '6px',
-              }}
-            >
+            </h2>
+            <span className="rounded-md bg-[color:var(--bg-hover)] px-2 py-0.5 font-mono text-xs text-[color:var(--text-secondary)]">
               {orgId}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                color: '#b45309',
-                background: '#fef3c7',
-                padding: '2px 8px',
-                borderRadius: '20px',
-                letterSpacing: '0.02em',
-                textTransform: 'uppercase',
-              }}
-            >
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <StatusPill tone="warning" icon="hourglass_top">
               {t('pending')}
-            </span>
+            </StatusPill>
             {timeStr && (
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                {relTime(timeStr, t)}
-              </span>
+              <span className="text-xs text-[color:var(--text-muted)]">{relTime(timeStr, t)}</span>
             )}
           </div>
-          <div
-            style={{
-              marginTop: '8px',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '6px',
-              alignItems: 'center',
-            }}
-          >
-            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold text-[color:var(--text-secondary)]">
               {t('adminApprovals', { n: approvals.length })}
             </span>
             {approvals.map((s) => (
-              <span
-                key={s.id}
-                style={{
-                  fontSize: '10px',
-                  padding: '2px 8px',
-                  borderRadius: '6px',
-                  background: '#dcfce7',
-                  color: '#166534',
-                  fontFamily: 'monospace',
-                }}
-              >
-                ✓ {s.admin_email} <span style={{ opacity: 0.6 }}>· {s.admin_site}</span>
-              </span>
+              <StatusPill key={s.id} tone="success" icon="check" className="font-mono">
+                {s.admin_email} <span className="opacity-80">· {s.admin_site}</span>
+              </StatusPill>
             ))}
             {silentConsentDate && approvals.length === 1 && (
-              <span style={{ fontSize: '10px', color: '#c2410c', fontWeight: 600 }}>
-                {t('adminAutoApproves', { date: silentConsentDate.toLocaleDateString() })}
+              <span className="text-[11px] font-semibold text-warning-fg">
+                {t('adminAutoApproves', {
+                  date: formatDate(silentConsentDate.toISOString(), lang),
+                })}
               </span>
             )}
           </div>
         </div>
 
         {/* Action buttons */}
-        <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-          <button
+        <div className="flex shrink-0 gap-2">
+          <Button
             onClick={handleApprove}
             disabled={approveDisabled}
             aria-describedby={approveBlockedReason ? disabledReasonId : undefined}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '10px',
-              border: 'none',
-              background: approveDisabled ? '#86efac' : '#22c55e',
-              color: '#fff',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: approveDisabled ? 'not-allowed' : 'pointer',
-              fontFamily: 'Inter, system-ui, sans-serif',
-              transition: 'opacity 0.15s',
-            }}
           >
+            <Icon name="check" size={18} />
             {approveMut.isPending ? t('adminApprovingBtn') : t('adminApproveBtn')}
-          </button>
-          {!rejecting ? (
-            <button
+          </Button>
+          {!rejecting && (
+            <Button
+              variant="secondary"
+              className="text-danger-fg"
               onClick={() => setRejecting(true)}
-              disabled={approveMut.isPending || rejectMut.isPending}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '10px',
-                border: '1.5px solid #ef4444',
-                background: 'transparent',
-                color: '#ef4444',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: approveMut.isPending || rejectMut.isPending ? 'not-allowed' : 'pointer',
-                fontFamily: 'Inter, system-ui, sans-serif',
-                transition: 'background 0.15s',
-              }}
+              disabled={busy}
             >
+              <Icon name="close" size={18} />
               {t('adminRejectBtn')}
-            </button>
-          ) : null}
+            </Button>
+          )}
         </div>
       </div>
 
       {approveBlockedReason && (
         <p
           id={disabledReasonId}
-          style={{
-            margin: 0,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '12px',
-            color: 'var(--text-secondary)',
-          }}
+          className="-mt-1 flex items-center gap-1.5 text-xs text-[color:var(--text-secondary)]"
         >
-          <span
-            className="material-symbols-outlined"
-            aria-hidden="true"
-            style={{ fontSize: '16px' }}
-          >
-            info
-          </span>
+          <Icon name="info" size={16} className="shrink-0" />
           {approveBlockedReason}
         </p>
       )}
 
       {/* Reject comment panel */}
       {rejecting && (
-        <div
-          style={{
-            background: '#fff5f5',
-            border: '1px solid #fecaca',
-            borderRadius: '10px',
-            padding: '14px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-          }}
-        >
-          <label
-            style={{
-              fontSize: '12px',
-              fontWeight: 600,
-              color: '#b91c1c',
-              fontFamily: 'Inter, system-ui, sans-serif',
-            }}
-          >
+        <div className="flex animate-fade-in flex-col gap-2.5 rounded-xl border border-danger-border bg-danger-surface p-4">
+          <label htmlFor={commentId} className="text-xs font-semibold text-danger-fg">
             {t('adminRejectionReasonLabel')}
           </label>
           <textarea
+            id={commentId}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder={t('adminRejectionReasonPlaceholder')}
             rows={3}
-            style={{
-              width: '100%',
-              padding: '8px 10px',
-              border: '1px solid #fca5a5',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontFamily: 'Inter, system-ui, sans-serif',
-              color: 'var(--text-primary)',
-              resize: 'vertical',
-              outline: 'none',
-              boxSizing: 'border-box',
-            }}
+            className={`${FIELD_CLASS} resize-y`}
           />
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
               onClick={handleReject}
               disabled={rejectMut.isPending}
-              style={{
-                padding: '7px 14px',
-                borderRadius: '10px',
-                border: 'none',
-                background: rejectMut.isPending ? '#fca5a5' : '#ef4444',
-                color: '#fff',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: rejectMut.isPending ? 'not-allowed' : 'pointer',
-                fontFamily: 'Inter, system-ui, sans-serif',
-              }}
             >
               {rejectMut.isPending ? t('adminRejectingBtn') : t('adminConfirmRejectBtn')}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => {
                 setRejecting(false);
                 setComment('');
               }}
               disabled={rejectMut.isPending}
-              style={{
-                padding: '7px 14px',
-                borderRadius: '10px',
-                border: '1px solid var(--border)',
-                background: 'var(--bg-card)',
-                color: '#6b7280',
-                fontSize: '13px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                fontFamily: 'Inter, system-ui, sans-serif',
-              }}
             >
               {t('cancel')}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -400,65 +267,37 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
       {/* TOTP confirmation input — cert-mode sessions prove possession via the
           client certificate instead, so no code is needed here. */}
       {needsTotpStepUp() && (
-        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span
-            className="material-symbols-outlined"
-            style={{ fontSize: '18px', color: 'var(--accent)' }}
-          >
-            lock
-          </span>
-          <input
-            type="text"
-            value={totpCode}
-            onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            placeholder={t('adminTotpPlaceholder')}
-            maxLength={6}
-            style={{
-              width: '180px',
-              padding: '8px 12px',
-              borderRadius: '10px',
-              border: '1px solid #e2e8f0',
-              fontSize: '14px',
-              fontFamily: 'monospace',
-              letterSpacing: '4px',
-              textAlign: 'center',
-              outline: 'none',
-            }}
-          />
-          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-            {t('adminTotpRequired')}
-          </span>
-        </div>
+        <TotpCodeField
+          label={t('totpCodeLabel')}
+          hint={t('adminTotpRequired')}
+          placeholder={t('adminTotpPlaceholder')}
+          value={totpCode}
+          onChange={setTotpCode}
+        />
       )}
 
       {/* Expand toggle */}
       <button
+        type="button"
+        aria-expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
-        style={{
-          alignSelf: 'flex-start',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '5px 10px',
-          border: '1px solid var(--border)',
-          borderRadius: '8px',
-          background: 'var(--bg-card)',
-          color: '#6b7280',
-          fontSize: '12px',
-          fontWeight: 500,
-          cursor: 'pointer',
-          fontFamily: 'Inter, system-ui, sans-serif',
-        }}
+        className="press-effect inline-flex items-center gap-1.5 self-start rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2.5 py-1.5 text-xs font-medium text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
-        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-          {expanded ? 'expand_less' : 'expand_more'}
-        </span>
+        <Icon
+          name="expand_more"
+          size={16}
+          className={`transition-transform duration-short ease-standard ${expanded ? 'rotate-180' : ''}`}
+        />
         {expanded ? t('adminHideDetails') : t('adminViewDetails')}
       </button>
 
       {/* Snapshot viewer */}
-      {expanded && <SnapshotView snapshot={snapshot} t={t} />}
-    </div>
+      {expanded && (
+        <div className="animate-fade-in">
+          <SnapshotView snapshot={snapshot} t={t} />
+        </div>
+      )}
+    </article>
   );
 }
 
