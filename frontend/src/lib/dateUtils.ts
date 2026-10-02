@@ -14,6 +14,28 @@ export function daysUntil(dateStr: string): number {
   return Math.floor((t - Date.now()) / 86400000);
 }
 
+const LOCALES = { de: 'de-DE', en: 'en-GB' } as const;
+
+function format(dateStr: string, lang: keyof typeof LOCALES, opts: Intl.DateTimeFormatOptions) {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat(LOCALES[lang], opts).format(d);
+}
+
+/**
+ * Date in the app language ("02.10.2026" / "2 Oct 2026"); '' for
+ * unparseable input. Pass the i18n store's `lang` so dates follow the
+ * language toggle instead of the browser locale.
+ */
+export function formatDate(dateStr: string, lang: keyof typeof LOCALES): string {
+  return format(dateStr, lang, { dateStyle: 'medium' });
+}
+
+/** Date and time in the app language; '' for unparseable input. */
+export function formatDateTime(dateStr: string, lang: keyof typeof LOCALES): string {
+  return format(dateStr, lang, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
 type RelTimeKey = 'relJustNow' | 'relAgoMinutes' | 'relAgoHours' | 'relAgoDays';
 
 /**

@@ -3,7 +3,7 @@
  * fixed and the arithmetic is deterministic.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { daysUntil, relTime } from '../dateUtils';
+import { daysUntil, formatDate, formatDateTime, relTime } from '../dateUtils';
 
 // Mirrors the en.ts strings + the i18n store's {n} substitution so the test
 // asserts the real rendered output, not just which key was picked.
@@ -84,5 +84,21 @@ describe('relTime', () => {
 
   it('returns an empty string for an empty date string', () => {
     expect(relTime('', t)).toBe('');
+  });
+});
+
+describe('formatDate / formatDateTime', () => {
+  it('formats in the app language, not the browser locale', () => {
+    expect(formatDate('2026-10-02T12:00:00Z', 'de')).toBe('02.10.2026');
+    expect(formatDate('2026-10-02T12:00:00Z', 'en')).toBe('2 Oct 2026');
+  });
+
+  it('adds the time for formatDateTime', () => {
+    expect(formatDateTime('2026-10-02T12:00:00Z', 'de')).toMatch(/^02\.10\.2026, \d{2}:\d{2}$/);
+  });
+
+  it('returns an empty string for an unparseable date', () => {
+    expect(formatDate('not-a-date', 'en')).toBe('');
+    expect(formatDateTime('', 'de')).toBe('');
   });
 });
