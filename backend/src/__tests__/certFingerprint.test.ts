@@ -18,6 +18,7 @@ import {
   isValidSha512Fingerprint,
   sha512FingerprintFromPem,
 } from '../lib/certFingerprint';
+import { ECC_P256_CERT_PEM, ECC_P256_SHA512 } from './fixtures/eccCertificate';
 
 function makeSelfSignedCert(): string {
   const keys = forge.pki.rsa.generateKeyPair({ bits: 1024 });
@@ -60,6 +61,15 @@ describe('sha512FingerprintFromPem', () => {
     const der = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
     const expected = crypto.createHash('sha512').update(Buffer.from(der, 'binary')).digest('hex');
     expect(sha512FingerprintFromPem(pem)).toBe(expected);
+  });
+
+  it('reads an EC (P-256) certificate and hashes its DER exactly as issued', () => {
+    // Public certificate only; GEANT and HARICA issue EC certificates for DSF.
+    const pem = ECC_P256_CERT_PEM;
+    const der = Buffer.from(pem.replace(/-----(BEGIN|END) CERTIFICATE-----|\s+/g, ''), 'base64');
+    const fingerprint = sha512FingerprintFromPem(pem);
+    expect(fingerprint).toBe(crypto.createHash('sha512').update(der).digest('hex'));
+    expect(fingerprint).toBe(ECC_P256_SHA512);
   });
 
   it('rejects a private key before attempting to parse', () => {

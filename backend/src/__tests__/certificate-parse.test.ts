@@ -13,6 +13,7 @@
  */
 import forge from 'node-forge';
 import { parseCertificate } from '../services/certificate.service';
+import { ECC_P256_CERT_PEM } from './fixtures/eccCertificate';
 
 const NOT_AFTER = new Date('2030-06-01T00:00:00Z');
 
@@ -94,6 +95,14 @@ describe('parseCertificate', () => {
     const marker = 'PRIVATE KEY';
     const pem = `-----BEGIN RSA ${marker}-----\nMIIE...\n-----END RSA ${marker}-----`;
     expect(() => parseCertificate(pem)).toThrow('PRIVATE_KEY_REJECTED');
+  });
+
+  it('parses an EC (P-256) certificate, which node-forge could not read', () => {
+    const parsed = parseCertificate(ECC_P256_CERT_PEM);
+    expect(parsed.subject).toBe('dsf-client.ecc.example.de');
+    expect(parsed.thumbprint).toMatch(/^[0-9A-F]{64}$/);
+    expect(parsed.issuerDn).toBe('C=DE,O=ECC Test,CN=dsf-client.ecc.example.de');
+    expect(parsed.validUntil.toISOString()).toBe('2036-09-29T10:54:41.000Z');
   });
 
   it('throws INVALID_PEM for a malformed certificate body', () => {

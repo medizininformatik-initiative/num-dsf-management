@@ -1,11 +1,10 @@
 /**
  * certFingerprint.ts – SHA-512 certificate fingerprint helper, shared by the
- * mTLS client-cert login and the (future) bulk-import so both agree exactly
- * on how a fingerprint is computed and normalized.
- * Dependencies: node-forge (PEM → DER), crypto (SHA-512 digest).
+ * mTLS client-cert login, the bulk import and the allow-list bundle so all of
+ * them agree exactly on how a fingerprint is computed and normalized.
+ * Dependencies: crypto (X509Certificate, SHA-512 digest).
  */
 import crypto from 'crypto';
-import forge from 'node-forge';
 
 /**
  * Strip every non-hex character (colons, spaces, newlines from
@@ -21,19 +20,16 @@ export function isValidSha512Fingerprint(s: string): boolean {
   return /^[0-9a-f]{128}$/.test(s);
 }
 
-/** SHA-512 hex digest of a certificate's DER bytes (binary-encoded string). */
-export function sha512FingerprintFromDer(derBinary: string): string {
-  return crypto.createHash('sha512').update(Buffer.from(derBinary, 'binary')).digest('hex');
-}
-
 /**
- * Parse an X.509 PEM and compute the SHA-512 fingerprint of its DER.
+ * Parse an X.509 PEM and compute the SHA-512 fingerprint of its DER, the value
+ * DSF publishes as certificate thumbprint. node:crypto parses RSA, EC and EdDSA
+ * certificates alike (node-forge only reads RSA keys) and hashes the DER
+ * exactly as issued, like `openssl x509 -outform DER | openssl dgst -sha512`.
  * Rejects private keys before parsing; never logs the PEM.
  * @throws PRIVATE_KEY_REJECTED if the PEM carries a private key.
  */
 export function sha512FingerprintFromPem(pem: string): string {
   if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(pem)) throw new Error('PRIVATE_KEY_REJECTED');
-  const cert = forge.pki.certificateFromPem(pem);
-  const der = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
-  return sha512FingerprintFromDer(der);
+  const cert = new crypto.X509Certificate(pem);
+  return crypto.createHash('sha512').update(cert.raw).digest('hex');
 }

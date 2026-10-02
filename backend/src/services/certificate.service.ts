@@ -2,7 +2,6 @@
  * certificate.service.ts – PEM parsing, private key check, CRUD
  * SECURITY CRITICAL: Private keys IMMEDIATELY rejected, PEM NEVER in logs
  */
-import forge from 'node-forge';
 import crypto from 'crypto';
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
@@ -57,22 +56,17 @@ export function parseCertificate(pem: string): {
 } {
   rejectPrivateKey(pem);
   try {
-    const cert = forge.pki.certificateFromPem(pem);
+    // node:crypto rather than node-forge: forge reads RSA keys only and threw
+    // on EC certificates, which GEANT/HARICA issue for DSF sites too.
+    const cert = new crypto.X509Certificate(pem);
+    const subjectRdns = cert.subject.split('\n');
     const subject =
-      cert.subject.getField('CN')?.value ||
-      cert.subject.attributes.map((a: any) => `${a.shortName}=${a.value}`).join(', ');
-    const der = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
-    const thumbprint = crypto
-      .createHash('sha256')
-      .update(Buffer.from(der, 'binary'))
-      .digest('hex')
-      .toUpperCase();
-    const validUntil = cert.validity.notAfter;
-    // Issuer Subject DN, used by the CA-blacklist gate. shortName falls back
-    // to the OID when the attribute has no canonical short form.
-    const issuerDn = cert.issuer.attributes
-      .map((a: any) => `${a.shortName || a.name || a.type}=${a.value}`)
-      .join(',');
+      subjectRdns.find((rdn) => rdn.startsWith('CN='))?.slice(3) || subjectRdns.join(', ');
+    const thumbprint = crypto.createHash('sha256').update(cert.raw).digest('hex').toUpperCase();
+    const validUntil = new Date(cert.validTo);
+    // Issuer Subject DN in certificate order, used by the CA-blacklist gate
+    // (normalizeDn compares RDNs order- and case-insensitively).
+    const issuerDn = cert.issuer.split('\n').join(',');
     return { subject, thumbprint, validUntil, issuerDn };
   } catch (err: unknown) {
     if (errMessage(err) === 'PRIVATE_KEY_REJECTED') throw err;
