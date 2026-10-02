@@ -25,8 +25,6 @@ if (import.meta.env.VITE_DEMO === 'true') {
     user: { id: '00000000-0000-4000-8000-000000000001', email: 'demo@imi-test.example.de' },
     isAuthenticated: true,
   });
-  // Register axios interceptor that serves mock responses for failed requests
-  import('./api/mock-adapter').then((m) => m.setupMockAdapter());
 }
 
 // Single-flight token refresh: when several requests 401 at once, only the
@@ -126,17 +124,30 @@ const queryClient = new QueryClient({
   },
 });
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ConfirmProvider>
-          <AuthBootstrap>
-            <RouterProvider router={router} />
-          </AuthBootstrap>
-        </ConfirmProvider>
-        <ToastProvider />
-      </QueryClientProvider>
-    </ErrorBoundary>
-  </React.StrictMode>,
-);
+function renderApp() {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <ConfirmProvider>
+            <AuthBootstrap>
+              <RouterProvider router={router} />
+            </AuthBootstrap>
+          </ConfirmProvider>
+          <ToastProvider />
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </React.StrictMode>,
+  );
+}
+
+// Demo mode: the mock adapter must be registered before the first request,
+// otherwise early requests race it and the app can hang on a loading state.
+if (import.meta.env.VITE_DEMO === 'true') {
+  import('./api/mock-adapter').then((m) => {
+    m.setupMockAdapter();
+    renderApp();
+  });
+} else {
+  renderApp();
+}
