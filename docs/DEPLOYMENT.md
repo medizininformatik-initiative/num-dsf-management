@@ -509,19 +509,19 @@ curl --cert dsf-client.crt --key dsf-client.key -H 'Accept: application/fhir+jso
 `bash scripts/dsf-e2e/run.sh`, with the dev stack running, does the following:
 - starts DSF FHIR 2.1.1 with `fhir_proxy`, and BPE 2.1.1 with `dsf-process-allow-list` 1.0.0.1;
 - seeds a receiving site and two peers into the dev portal;
-- runs `downloadAllowList` five times: through an Apache front configured like production, again in place, after a peer left the hub, through the repository nginx, and against a server certificate from a CA the BPE does not trust (expected to fail, standing in for Let's Encrypt).
+- runs `downloadAllowList` six times: through an Apache front configured like production, again in place, after a peer left the hub, after a peer was withdrawn (its Organization, Endpoints and affiliations must be deleted at the receiver), through the repository nginx, and against a server certificate from a CA the BPE does not trust (expected to fail, standing in for Let's Encrypt).
 
 The script needs Docker, OpenSSL and Node on the host and cleans up after itself; `--keep` leaves everything running for inspection. The API-level replay of the hackathon runs in the backend test suite (`hackathon-replay*.test.ts`).
 
-## Federation safety
+## Removals and deletions
 
-This portal is designed to coexist with other Allow-List tools (e.g. a NUM-operated tool, future regional operators) in a federated DSF P2P network:
+The bundle tells every site what to delete, like the legacy portal does:
 
-- Bundles emit `DELETE` only on `OrganizationAffiliation`. `Organization` and `Endpoint` records are never deleted from a participant's local FHIR server through our bundle — they may be referenced by another tool's allow-list.
-- The site-side `InsertAllowList` BPMN process applies multiple bundles sequentially; conflicts on `Organization` PUTs are idempotent (each tool emits the same single cert thumbprint, since per-site the client cert == server cert).
-- Memberships removed via the UI are soft-deleted; the next bundle emission carries the corresponding DELETE-Affiliation entry; a daily cron at 09:00 UTC hard-deletes soft-rows older than 90 days.
+- **Withdrawn organizations.** An organization is withdrawn when it is deactivated (the "active" switch in the organization dialog) and that change is approved. From then on every bundle carries `DELETE` for its `Organization`, its `Endpoint`s and its `OrganizationAffiliation`s, so no site keeps trusting its certificate. A pending deactivation deletes nothing yet. A site's own bundle never deletes the site itself, and no `DELETE` is emitted for anything the same bundle still publishes.
+- **Memberships** removed in the UI are soft-deleted; the next bundle carries the matching `DELETE` for the affiliation. A daily cron at 09:00 UTC hard-deletes soft-deleted rows older than 90 days, so every site has had time to apply the deletion.
+- A conditional `DELETE` that matches nothing at a site is a no-op in DSF, so sites that never had the organization are unaffected.
 
-To opt out of soft-delete retention (e.g. for non-federated single-tool deployments), set `MEMBERSHIP_SOFT_DELETE_RETENTION_DAYS=0` (cleanup runs every day and removes immediately).
+To opt out of soft-delete retention, set `MEMBERSHIP_SOFT_DELETE_RETENTION_DAYS=0` (cleanup runs every day and removes immediately).
 
 ## Admin grants & user management
 
