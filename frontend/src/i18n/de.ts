@@ -265,8 +265,9 @@ export const de: Record<TranslationKey, string> = {
   totpBackupTitle: 'Backup-Codes speichern',
   totpBackupSubtitle:
     'Bewahre diese Codes sicher auf. Jeder Code kann nur einmal verwendet werden, falls du Zugang zu deiner Authenticator-App verlierst.',
-  totpBackupWarning: '⚠ Diese Codes werden nicht erneut angezeigt. Kopiere sie jetzt.',
-  totpBackupContinueBtn: 'Codes gespeichert → Weiter',
+  totpBackupWarning:
+    'Diese Codes werden nicht erneut angezeigt. Kopieren Sie sie jetzt oder laden Sie sie herunter.',
+  totpBackupContinueBtn: 'Weiter →',
 
   // NotFoundPage
   notFoundMessage: 'Die gesuchte Seite existiert nicht.',
@@ -1069,6 +1070,18 @@ export const de: Record<TranslationKey, string> = {
   otpResendRateLimited: 'Zu viele Anfragen. Sie können in {time} einen neuen Code anfordern.',
   otpResendRateLimitedNoTime:
     'Zu viele Anfragen. Bitte warten Sie einige Minuten, bevor Sie einen neuen Code anfordern.',
+  totpBackupCodesAria: 'Backup-Codes',
+  totpBackupCopyAll: 'Alle kopieren',
+  totpBackupDownload: '.txt herunterladen',
+  totpBackupCopied: 'Backup-Codes in die Zwischenablage kopiert.',
+  totpBackupCopyFailed:
+    'Kopieren nicht möglich. Laden Sie die Codes herunter oder notieren Sie sie.',
+  totpBackupStoredConfirm: 'Ich habe diese Codes sicher aufbewahrt.',
+  totpBackupFileTitle:
+    'DSF Allow List Management ({env}): Backup-Codes für die Zwei-Faktor-Anmeldung',
+  totpBackupFileAccount: 'Konto: {email}',
+  totpBackupFileCreated: 'Erstellt: {date}',
+  totpBackupFileNote: 'Jeder Code ist nur einmal gültig. Bewahren Sie diese Datei sicher auf.',
   // ─── Bundle-Versionen (Föderationshärtung 2026-05-18) ────────────────────
   download: 'Herunterladen',
   bundleVersionsTitle: 'Bundle-Versionen',

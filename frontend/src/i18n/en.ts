@@ -260,8 +260,8 @@ export const en = {
   totpBackupTitle: 'Save your backup codes',
   totpBackupSubtitle:
     'Store these codes somewhere safe. Each code can only be used once if you lose access to your authenticator.',
-  totpBackupWarning: '⚠ These codes will not be shown again. Copy them now.',
-  totpBackupContinueBtn: "I've saved my codes → Continue",
+  totpBackupWarning: 'These codes will not be shown again. Copy or download them now.',
+  totpBackupContinueBtn: 'Continue →',
 
   // NotFoundPage
   notFoundMessage: "The page you're looking for doesn't exist.",
@@ -1048,6 +1048,16 @@ export const en = {
   otpResendRateLimited: 'Too many requests. You can request a new code in {time}.',
   otpResendRateLimitedNoTime:
     'Too many requests. Please wait a few minutes before requesting a new code.',
+  totpBackupCodesAria: 'Backup codes',
+  totpBackupCopyAll: 'Copy all',
+  totpBackupDownload: 'Download .txt',
+  totpBackupCopied: 'Backup codes copied to the clipboard.',
+  totpBackupCopyFailed: 'Could not copy. Download the codes or write them down instead.',
+  totpBackupStoredConfirm: 'I have stored these codes in a safe place.',
+  totpBackupFileTitle: 'DSF Allow List Management ({env}): two-factor backup codes',
+  totpBackupFileAccount: 'Account: {email}',
+  totpBackupFileCreated: 'Created: {date}',
+  totpBackupFileNote: 'Each code can be used once. Keep this file in a safe place.',
   // ─── Bundle Versions (federation hardening 2026-05-18) ────────────────────
   download: 'Download',
   bundleVersionsTitle: 'Bundle versions',
