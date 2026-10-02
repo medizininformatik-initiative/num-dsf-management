@@ -2,15 +2,29 @@
  * LoginPage.tsx – Step 1: Enter email address
  * Checks against backend whitelist. Always gives generic feedback.
  * On success: navigate to /otp with email in router state.
+ * Errors are announced (role="alert"); the client-certificate sign-in is the
+ * secondary action below.
+ * Dependencies: AuthLayout, authApi, auth store, i18n store, Button, Icon.
  */
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AuthLayout } from '../components/AuthLayout';
+import { jwtDecode } from 'jwt-decode';
+import { AuthLayout, AUTH_INPUT_CLASS } from '../components/AuthLayout';
 import { authApi } from '../api/auth.api';
 import { useAuthStore } from '../stores/auth.store';
-import { jwtDecode } from 'jwt-decode';
 import { useI18n } from '../stores/i18n.store';
 import { getErrorMessage } from '../lib/getErrorMessage';
+import { Button } from '../components/ui/Button';
+import { Icon } from '../components/ui/Icon';
+
+function FormError({ children }: { children: string }) {
+  return (
+    <p role="alert" className="flex items-start gap-1.5 text-xs text-danger-fg">
+      <Icon name="error" size={16} className="shrink-0" />
+      {children}
+    </p>
+  );
+}
 
 export function LoginPage() {
   const { t } = useI18n();
@@ -22,7 +36,7 @@ export function LoginPage() {
   const [certLoading, setCertLoading] = useState(false);
   const [certError, setCertError] = useState('');
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
     setLoading(true);
@@ -48,14 +62,29 @@ export function LoginPage() {
     }
   }
 
+  async function handleCertLogin() {
+    setCertLoading(true);
+    setCertError('');
+    try {
+      const res = await authApi.clientCertLogin();
+      const { accessToken } = res.data.data;
+      const decoded = jwtDecode<{ sub: string; email: string }>(accessToken);
+      setTokens(accessToken, { id: decoded.sub, email: decoded.email });
+      navigate('/app', { replace: true });
+    } catch (err: unknown) {
+      setCertError(getErrorMessage(err, t('loginCertFailed')));
+    } finally {
+      setCertLoading(false);
+    }
+  }
+
   return (
     <AuthLayout title={t('signIn')} subtitle={t('loginSubtitle')}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label
             htmlFor="email"
-            className="block text-xs font-medium mb-1.5"
-            style={{ color: 'var(--text-muted)' }}
+            className="mb-1.5 block text-xs font-medium text-[color:var(--text-secondary)]"
           >
             {t('loginEmailLabel')}
           </label>
@@ -68,73 +97,29 @@ export function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t('loginEmailPlaceholder')}
-            className="w-full px-3 py-2.5 text-sm outline-none transition-all"
-            style={{
-              border: '1px solid var(--border)',
-              borderRadius: '10px',
-              color: 'var(--text-primary)',
-              background: 'var(--bg-input)',
-            }}
-            onFocus={(e) => (e.target.style.borderColor = 'var(--accent)')}
-            onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
+            className={AUTH_INPUT_CLASS}
           />
         </div>
 
-        {error && (
-          <p className="text-xs" style={{ color: '#e05c5c' }}>
-            {error}
-          </p>
-        )}
+        {error && <FormError>{error}</FormError>}
 
-        <button
-          type="submit"
-          disabled={loading || !email.trim()}
-          className="w-full py-2.5 text-sm font-medium text-white transition-opacity"
-          style={{
-            background: 'var(--accent)',
-            borderRadius: '10px',
-            opacity: loading || !email.trim() ? 0.6 : 1,
-            cursor: loading || !email.trim() ? 'not-allowed' : 'pointer',
-            border: 'none',
-          }}
-        >
+        <Button type="submit" className="w-full" disabled={loading || !email.trim()}>
           {loading ? t('loginSendingBtn') : t('loginSendBtn')}
-        </button>
+        </Button>
       </form>
 
-      <div className="mt-4 pt-4 border-t border-slate-200">
-        <p className="text-[11px] text-slate-500 mb-2 text-center">{t('loginCertHint')}</p>
-        {certError && (
-          <p className="text-xs mb-2 text-center" style={{ color: '#e05c5c' }}>
-            {certError}
-          </p>
-        )}
-        <button
-          type="button"
+      <div className="mt-5 space-y-2 border-t border-[color:var(--border)] pt-4">
+        <p className="text-center text-xs text-[color:var(--text-muted)]">{t('loginCertHint')}</p>
+        {certError && <FormError>{certError}</FormError>}
+        <Button
+          variant="secondary"
+          className="w-full"
           disabled={certLoading}
-          onClick={async () => {
-            setCertLoading(true);
-            setCertError('');
-            try {
-              const res = await authApi.clientCertLogin();
-              const { accessToken } = res.data.data;
-              const decoded: any = jwtDecode(accessToken);
-              setTokens(accessToken, { id: decoded.sub, email: decoded.email });
-              navigate('/app', { replace: true });
-            } catch (err: unknown) {
-              setCertError(getErrorMessage(err, t('loginCertFailed')));
-            } finally {
-              setCertLoading(false);
-            }
-          }}
-          className="w-full py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors"
-          style={{
-            cursor: certLoading ? 'not-allowed' : 'pointer',
-            opacity: certLoading ? 0.6 : 1,
-          }}
+          onClick={handleCertLogin}
         >
+          <Icon name="badge" size={18} />
           {certLoading ? t('loginCertSigningIn') : t('loginCertBtn')}
-        </button>
+        </Button>
       </div>
     </AuthLayout>
   );
