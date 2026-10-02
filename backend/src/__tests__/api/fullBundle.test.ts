@@ -4,14 +4,18 @@
  * - Cert thumbprints appear as extensions
  * - Parent verbund Organizations are present
  * - All references in the bundle resolve to a fullUrl in the same bundle
+ * - Soft-deleted memberships and organizations whose deactivation was
+ *   approved are published as DELETE entries
  *
- * Dependencies: generateFullBundle (fhir.service), db/connection (Knex)
+ * Dependencies: generateFullBundle (fhir.service), db/connection (Knex),
+ *               helpers/allowListSites
  */
 import forge from 'node-forge';
 import { generateFullBundle } from '../../services/fhir.service';
 import { db } from '../../db/connection';
 import { sha512FingerprintFromPem } from '../../lib/certFingerprint';
 import { v4 as uuidv4 } from 'uuid';
+import { removeSites, seedSite } from '../helpers/allowListSites';
 
 // Real self-signed cert PEM (in-process, like certFingerprint.test.ts) so the
 // bundle's extension-certificate-thumbprint (SHA-512 of the DER) is a genuine
@@ -223,14 +227,39 @@ describe('generateFullBundle', () => {
     }
   });
 
-  it('NEVER emits DELETE Organization or DELETE Endpoint (federation safety)', async () => {
-    const bundle = (await generateFullBundle()) as unknown as {
-      entry: Array<{ request?: { method: string; url: string } }>;
-    };
-    for (const e of bundle.entry) {
-      if (e.request?.method !== 'DELETE') continue;
-      expect(e.request.url.startsWith('Organization?')).toBe(false);
-      expect(e.request.url.startsWith('Endpoint?')).toBe(false);
+  it('deletes an organization whose deactivation was approved, with endpoint and affiliation', async () => {
+    const withdrawn = await seedSite({
+      label: 'withdrawn',
+      active: false,
+      memberships: [{ parent: verbundId, roles: ['DIC'] }],
+    });
+    // Deactivated, but the deactivation is still waiting for approval.
+    const withdrawing = await seedSite({
+      label: 'withdrawing',
+      active: false,
+      approval: 'PENDING',
+    });
+    try {
+      const bundle = (await generateFullBundle()) as unknown as {
+        entry: Array<{ request: { method: string; url: string } }>;
+      };
+      const deletes = bundle.entry
+        .filter((e) => e.request.method === 'DELETE')
+        .map((e) => e.request.url);
+      expect(deletes).toEqual(
+        expect.arrayContaining([
+          `Organization?identifier=http://dsf.dev/sid/organization-identifier|${withdrawn.orgId}`,
+          `Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|${withdrawn.endpointIds[0]}`,
+          `OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|${verbundId}` +
+            `&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|${withdrawn.orgId}` +
+            `&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|${withdrawn.endpointIds[0]}`,
+        ]),
+      );
+      expect(deletes.filter((url) => url.includes(withdrawing.orgId))).toEqual([]);
+      // An active approved organization is never deleted.
+      expect(deletes.filter((url) => url.endsWith(`|${approvedOrgId}`))).toEqual([]);
+    } finally {
+      await removeSites([withdrawn, withdrawing]);
     }
   });
 });

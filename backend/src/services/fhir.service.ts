@@ -19,6 +19,7 @@ import {
   type AllowListBundle,
   type AllowListMember,
   type AllowListReceiver,
+  type AllowListRemoval,
 } from '../lib/allowListBundle';
 
 // Display names of the parent organizations offered in the membership form,
@@ -68,22 +69,57 @@ function groupBy<T>(rows: T[], keyOf: (row: T) => string): Map<string, T[]> {
   return groups;
 }
 
-/**
- * Organizations in the allow list: active, and their LATEST approval request
- * (by created_at) is APPROVED, so a newer REJECTED/PENDING request supersedes
- * an older approval. created_at, id DESC breaks timestamp ties deterministically.
- */
-async function loadApprovedOrganizations(): Promise<OrgSummary[]> {
-  return db('organizations')
-    .where({ active: true })
-    .whereRaw(
-      `(
+// The organization's LATEST approval request (by created_at) is APPROVED, so a
+// newer REJECTED/PENDING request supersedes an older approval. created_at,
+// id DESC breaks timestamp ties deterministically.
+const LATEST_REQUEST_APPROVED = `(
       SELECT status FROM approval_requests
       WHERE instance_id = organizations.instance_id
       ORDER BY created_at DESC, id DESC LIMIT 1
-    ) = 'APPROVED'`,
-    )
+    ) = 'APPROVED'`;
+
+/** Organizations in the allow list: active, latest request approved. */
+async function loadApprovedOrganizations(): Promise<OrgSummary[]> {
+  return db('organizations')
+    .where({ active: true })
+    .whereRaw(LATEST_REQUEST_APPROVED)
     .select('identifier', 'name');
+}
+
+/**
+ * Organizations withdrawn from the allow list: deactivated, and that
+ * deactivation approved. Every site deletes them with their endpoints and
+ * affiliations; a pending deactivation changes nothing yet.
+ */
+async function loadRemovedOrganizations(): Promise<AllowListRemoval[]> {
+  const orgs: OrgSummary[] = await db('organizations')
+    .where({ active: false })
+    .whereRaw(LATEST_REQUEST_APPROVED)
+    .select('identifier', 'name');
+  if (orgs.length === 0) return [];
+  const ids = orgs.map((o) => o.identifier);
+  const [endpoints, memberships] = await Promise.all([
+    db('endpoints').whereIn('organization_id', ids).select('identifier', 'organization_id'),
+    db('memberships')
+      .whereIn('organization_id', ids)
+      .select('organization_id', 'parent_organization', 'endpoint_id'),
+  ]);
+  const endpointsByOrg = groupBy(
+    endpoints as Array<{ identifier: string; organization_id: string }>,
+    (e) => e.organization_id,
+  );
+  const membershipsByOrg = groupBy(
+    memberships as Array<Omit<MembershipWithDeletion, 'roles' | 'deleted_at'>>,
+    (m) => m.organization_id,
+  );
+  return orgs.map((org) => ({
+    identifier: org.identifier,
+    endpoints: (endpointsByOrg.get(org.identifier) ?? []).map((e) => e.identifier),
+    affiliations: (membershipsByOrg.get(org.identifier) ?? []).map((m) => ({
+      parent: m.parent_organization,
+      endpoint: m.endpoint_id,
+    })),
+  }));
 }
 
 /** Batch-load endpoints, certificates and memberships of the given organizations. */
@@ -178,8 +214,11 @@ async function build(members: AllowListMember[], receiver?: AllowListReceiver) {
       ...(receiver?.affiliations.map((a) => a.parent) ?? []),
     ]),
   ).filter(Boolean);
-  const parentNames = await loadParentNames(parentIds);
-  return buildAllowListBundle({ members, parentNames, receiver });
+  const [parentNames, removed] = await Promise.all([
+    loadParentNames(parentIds),
+    loadRemovedOrganizations(),
+  ]);
+  return buildAllowListBundle({ members, removed, parentNames, receiver });
 }
 
 /**
@@ -228,8 +267,9 @@ export async function generateBundle(
 /**
  * Network-wide allow list: every approved organization with its endpoints,
  * SHA-512 thumbprints and affiliations, the parent organizations they point
- * at, and DELETE entries for soft-deleted memberships. Organization and
- * Endpoint are never deleted (federation safety, F-BND-06).
+ * at, DELETE entries for soft-deleted memberships, and DELETE entries for
+ * organizations withdrawn from the allow list (with their endpoints and
+ * affiliations), as the legacy portal publishes them.
  */
 export async function generateFullBundle(): Promise<AllowListBundle> {
   const approved = await loadApprovedOrganizations();
