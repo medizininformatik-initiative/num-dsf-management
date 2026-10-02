@@ -6,9 +6,8 @@
  * either reject the bundle outright or fall back to generic R4 validation
  * (which misses DSF-specific cardinalities and bindings).
  */
-import { db } from '../db/connection';
-import { v4 as uuidv4 } from 'uuid';
 import { generateBundle, generateFullBundle } from '../services/fhir.service';
+import { removeSites, seedSite } from './helpers/allowListSites';
 
 const TAG_SYSTEM = 'http://dsf.dev/fhir/CodeSystem/read-access-tag';
 const PROFILE_ORG = 'http://dsf.dev/fhir/StructureDefinition/organization';
@@ -31,6 +30,7 @@ interface FhirResource {
 }
 interface FhirEntry {
   resource?: FhirResource;
+  request: { method: string; url: string };
 }
 interface FhirBundle {
   meta?: Meta;
@@ -83,59 +83,34 @@ describe('Bundle meta + per-resource meta (Phase A)', () => {
     }
   });
 
-  it('tenant-scoped generateBundle also carries the read-access-tag', async () => {
-    // Seed a minimal instance so generateBundle has something to render.
-    const instanceId = uuidv4();
-    const userId = uuidv4();
-    const orgIdentifier = `meta-test-${Date.now()}.example.de`;
-    const endpointIdentifier = `dsf-fhir.${orgIdentifier}`;
-    const userEmail = `meta-test-${Date.now()}@example.de`;
-    await db('users').insert({
-      id: userId,
-      email: userEmail,
-      totp_enabled: false,
-      created_at: new Date(),
+  it('Bundle envelope carries only the read-access tag, as the legacy portal and UpdateAllowList do', async () => {
+    const bundle = (await generateFullBundle()) as FhirBundle;
+    expect(bundle.meta).toEqual({
+      tag: [{ system: TAG_SYSTEM, code: 'ALL', display: 'everybody' }],
     });
-    await db('instances').insert({
-      id: instanceId,
-      user_id: userId,
-      label: 'meta-test',
-      created_at: new Date(),
-    });
-    await db('organizations').insert({
-      identifier: orgIdentifier,
-      instance_id: instanceId,
-      name: 'Meta Test',
-      active: true,
-      email: `admin@${orgIdentifier}`,
-      address_line: 'x',
-      postal_code: '00000',
-      city: 'x',
-      country_code: 'DE',
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-    await db('endpoints').insert({
-      identifier: endpointIdentifier,
-      organization_id: orgIdentifier,
-      name: 'FHIR',
-      address: `https://${endpointIdentifier}/fhir`,
-      created_at: new Date(),
-      updated_at: new Date(),
+  });
+
+  it('tenant-scoped generateBundle carries the tags and never the receiver itself', async () => {
+    const receiver = await seedSite({ label: 'meta-receiver', approval: null });
+    const peer = await seedSite({
+      label: 'meta-peer',
+      memberships: [{ parent: 'meta-verbund.example.de', roles: ['DIC'] }],
     });
     try {
-      const bundle = (await generateBundle(instanceId, endpointIdentifier)) as FhirBundle;
+      const bundle = (await generateBundle(
+        receiver.instanceId,
+        receiver.endpointIds[0],
+      )) as FhirBundle;
       expect(hasReadAccessTag(bundle.meta)).toBe(true);
-      const org = (bundle.entry ?? []).find((e) => e.resource?.resourceType === 'Organization');
-      expect(hasReadAccessTag(org?.resource?.meta)).toBe(true);
-      // No certificates seeded → extension must be absent, not an empty array
-      // (FHIR R4 rejects extension: []).
-      expect(org?.resource).not.toHaveProperty('extension');
+      const entries = bundle.entry ?? [];
+      for (const entry of entries) {
+        if (entry.resource) expect(hasReadAccessTag(entry.resource.meta)).toBe(true);
+      }
+      // The receiver's DSF server already holds its own Organization/Endpoint.
+      expect(entries.filter((e) => e.request.url.endsWith(`|${receiver.orgId}`))).toEqual([]);
+      expect(entries.some((e) => e.request.url.endsWith(`|${peer.orgId}`))).toBe(true);
     } finally {
-      await db('endpoints').where({ identifier: endpointIdentifier }).del();
-      await db('organizations').where({ identifier: orgIdentifier }).del();
-      await db('instances').where({ id: instanceId }).del();
-      await db('users').where({ id: userId }).del();
+      await removeSites([receiver, peer]);
     }
   });
 });

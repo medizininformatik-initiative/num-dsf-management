@@ -7,9 +7,8 @@
  * stuffed the MIME type into payloadType.coding.code which is the wrong
  * axis and made strict DSF FHIR validators reject the resource.
  */
-import { db } from '../db/connection';
-import { v4 as uuidv4 } from 'uuid';
 import { generateBundle, generateFullBundle } from '../services/fhir.service';
+import { removeSites, seedSite } from './helpers/allowListSites';
 
 const CONNECTION_SYSTEM = 'http://terminology.hl7.org/CodeSystem/endpoint-connection-type';
 const RESOURCE_TYPES_SYSTEM = 'http://hl7.org/fhir/resource-types';
@@ -62,58 +61,24 @@ describe('Endpoint resource shape (Phase C)', () => {
     for (const e of eps) assertEndpoint(e.resource!);
   });
 
-  it('generateBundle emits the same shape for a tenant-scoped bundle', async () => {
-    const instanceId = uuidv4();
-    const userId = uuidv4();
-    const orgIdentifier = `epshape-${Date.now()}.example.de`;
-    const endpointIdentifier = `dsf-fhir.${orgIdentifier}`;
-    const userEmail = `epshape-${Date.now()}@example.de`;
-    await db('users').insert({
-      id: userId,
-      email: userEmail,
-      totp_enabled: false,
-      created_at: new Date(),
-    });
-    await db('instances').insert({
-      id: instanceId,
-      user_id: userId,
-      label: 'epshape-test',
-      created_at: new Date(),
-    });
-    await db('organizations').insert({
-      identifier: orgIdentifier,
-      instance_id: instanceId,
-      name: 'Endpoint Shape',
-      active: true,
-      email: `admin@${orgIdentifier}`,
-      address_line: 'x',
-      postal_code: '00000',
-      city: 'x',
-      country_code: 'DE',
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-    await db('endpoints').insert({
-      identifier: endpointIdentifier,
-      organization_id: orgIdentifier,
-      name: null,
-      address: `https://${endpointIdentifier}/fhir`,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
+  it("generateBundle emits the same shape for an approved peer's endpoint", async () => {
+    const receiver = await seedSite({ label: 'epshape-receiver', approval: null });
+    const peer = await seedSite({ label: 'epshape-peer', endpoints: [null] });
     try {
-      const bundle = (await generateBundle(instanceId, endpointIdentifier)) as FhirBundle;
-      const ep = (bundle.entry ?? []).find((e) => e.resource?.resourceType === 'Endpoint');
+      const bundle = (await generateBundle(
+        receiver.instanceId,
+        receiver.endpointIds[0],
+      )) as unknown as FhirBundle;
+      const ep = (bundle.entry ?? []).find(
+        (e) => e.resource?.resourceType === 'Endpoint' && e.resource.address?.includes(peer.orgId),
+      );
       expect(ep).toBeDefined();
       assertEndpoint(ep!.resource!);
       // When endpoint.name is null in the DB, the bundle MUST fall back to
       // the 'DSF Endpoint for <fqdn>' convention used by other tools.
-      expect(ep!.resource!.name).toBe(`DSF Endpoint for ${endpointIdentifier}`);
+      expect(ep!.resource!.name).toBe(`DSF Endpoint for ${peer.endpointIds[0]}`);
     } finally {
-      await db('endpoints').where({ identifier: endpointIdentifier }).del();
-      await db('organizations').where({ identifier: orgIdentifier }).del();
-      await db('instances').where({ id: instanceId }).del();
-      await db('users').where({ id: userId }).del();
+      await removeSites([receiver, peer]);
     }
   });
 });

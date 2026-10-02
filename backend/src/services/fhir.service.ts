@@ -1,482 +1,237 @@
 /**
- * fhir.service.ts – FHIR R4 Bundle generation per DSF Process Allow List spec
- * Generates a transaction bundle with Organization, Endpoint, and OrganizationAffiliation resources.
- * Contact data NOT included (GDPR).
+ * fhir.service.ts – Loads the allow-list data and builds the DSF bundles.
+ * - generateBundle: receiver-scoped bundle for one endpoint, i.e. what the
+ *   DSF allow-list process of that site downloads from /fhir/Bundle/{endpoint}.
+ * - generateFullBundle: network-wide bundle (GUI download, version snapshots).
+ * The bundle shape itself lives in lib/allowListBundle. Contact data,
+ * including the organization e-mail, is never loaded here (GDPR, F-BND-04).
+ * Dependencies: db/connection, lib/allowListBundle, lib/certFingerprint,
+ *               lib/jsonColumn, lib/logger
  */
 import { db } from '../db/connection';
-import { v4 as uuidv4 } from 'uuid';
-import type { EndpointRow, CertRow } from '../types/rows';
+import type { CertRow } from '../types/rows';
 import { parseJsonStringArray as readRoles } from '../lib/jsonColumn';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
+import { logger } from '../lib/logger';
+import {
+  buildAllowListBundle,
+  isPublishable,
+  type AllowListBundle,
+  type AllowListMember,
+  type AllowListReceiver,
+} from '../lib/allowListBundle';
 
-// Canonical DSF identifier systems (the 'sid' / SystemIDentifier slot). Other
-// AllowList tools in production use these exact URLs — see the reference
-// bundle. Our previous fhir/NamingSystem/* paths were non-canonical and
-// caused silent federation desync because identifier systems didn't match.
-const ORG_ID_SYSTEM = 'http://dsf.dev/sid/organization-identifier';
-const EP_ID_SYSTEM = 'http://dsf.dev/sid/endpoint-identifier';
-// DSF namespaces the role code system, separate from the generic HL7 one.
-// Reference XML uses http://dsf.dev/fhir/CodeSystem/organization-role with
-// codes like DIC, DMS, HRP. Federation peers reject our 'member' code as
-// unknown when we use the HL7 system, because their ConceptMap binds the
-// DSF system only.
-const ORG_ROLE_SYSTEM = 'http://dsf.dev/fhir/CodeSystem/organization-role';
+// Display names of the parent organizations offered in the membership form,
+// as the legacy allow-list portal publishes them. A parent that is registered
+// as an organization in this tool uses its stored name instead.
+const KNOWN_PARENT_NAMES: Readonly<Record<string, string>> = {
+  'medizininformatik-initiative.de': 'Medizininformatik-Initiative',
+  'netzwerk-universitaetsmedizin.de': 'Netzwerk Universitätsmedizin',
+  'eyematics.org': 'Eyematics',
+};
 
-const DISCLAIMER_EXTENSION_URL = 'http://dsf.dev/fhir/StructureDefinition/bundle-disclaimer';
+interface OrgSummary {
+  identifier: string;
+  name: string;
+}
 
-// DSF FHIR servers require every emitted resource (and the Bundle envelope)
-// to declare its read-access scope via meta.tag. 'ALL' = readable by every
-// authenticated peer in the federation. Without this tag a DSF FHIR server
-// treats the resource as LOCAL scope and rejects the bundle.
-const READ_ACCESS_TAG_SYSTEM = 'http://dsf.dev/fhir/CodeSystem/read-access-tag';
-const READ_ACCESS_TAG_ALL = {
-  system: READ_ACCESS_TAG_SYSTEM,
-  code: 'ALL',
-  display: 'everybody',
-} as const;
-
-// DSF profile URLs for the four resource types in an allow-list bundle.
-const PROFILE_ORG = 'http://dsf.dev/fhir/StructureDefinition/organization';
-const PROFILE_ORG_PARENT = 'http://dsf.dev/fhir/StructureDefinition/organization-parent';
-const PROFILE_ENDPOINT = 'http://dsf.dev/fhir/StructureDefinition/endpoint';
-const PROFILE_AFFILIATION = 'http://dsf.dev/fhir/StructureDefinition/organization-affiliation';
-
-const CERT_THUMBPRINT_EXTENSION_URL =
-  'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint';
-
-// Build the `meta` block every emitted resource needs. profile picks the
-// strict validator on the receiver side; tag advertises read-access scope.
-function resourceMeta(profile: string) {
-  return {
-    profile: [profile],
-    tag: [READ_ACCESS_TAG_ALL],
-  };
+interface MembershipWithDeletion {
+  organization_id: string;
+  parent_organization: string;
+  endpoint_id: string;
+  roles: unknown;
+  deleted_at: Date | string | null;
 }
 
 /**
- * Build the Organization extension DSF requires for a member's certificate.
- * DSF's dsf-extension-certificate-thumbprint-2.0.0 StructureDefinition enforces
- * the `hex-128-length` constraint: the value MUST be 128 lower-case hex chars,
- * i.e. SHA-512 of the certificate's DER bytes — NOT the SHA-256 stored in
- * `certificates.thumbprint` (that column is kept only for the FHIR mTLS
- * lookup and the UI). Re-derive SHA-512 from the stored PEM for every bundle.
- * A PEM that fails to parse means corrupted at-rest data; surface that loudly
- * (naming the certificate id) instead of silently dropping the org's cert.
+ * SHA-512 DSF thumbprint of a stored certificate (128 lower-case hex, DSF
+ * constraint hex-128-length). certificates.thumbprint is SHA-256 and stays
+ * internal. A PEM that fails to parse is corrupted at-rest data: surface it,
+ * naming the certificate id, instead of silently dropping the thumbprint.
  */
-function certThumbprintExtension(cert: { id: string; pem: string }): {
-  url: string;
-  valueString: string;
-} {
-  let valueString: string;
+export function dsfThumbprint(cert: Pick<CertRow, 'id' | 'pem'>): string {
   try {
-    valueString = sha512FingerprintFromPem(cert.pem);
+    return sha512FingerprintFromPem(cert.pem);
   } catch {
     throw new Error(`CERTIFICATE_PEM_INVALID:${cert.id}`);
   }
-  return { url: CERT_THUMBPRINT_EXTENSION_URL, valueString };
 }
 
-// Legal disclaimer attached to every emitted bundle's `meta.extension`.
-// Other AllowList tools and DSF FHIR consumers MUST treat this bundle as a
-// recommendation; the receiving site is solely responsible for verifying
-// content, signature, and provenance before deployment.
-const BUNDLE_DISCLAIMER_EXTENSION = {
-  url: DISCLAIMER_EXTENSION_URL,
-  valueString:
-    'This Allow-List bundle is a recommendation. The receiving site is responsible ' +
-    'for verifying its contents, signature, and provenance before deployment. The ' +
-    'Institute of Medical Informatics Muenster operates this tool but does not ' +
-    'assume liability for unverified installation at receiving sites.',
-} as const;
-
-const BUNDLE_META = {
-  tag: [READ_ACCESS_TAG_ALL],
-  extension: [BUNDLE_DISCLAIMER_EXTENSION],
-} as const;
+function groupBy<T>(rows: T[], keyOf: (row: T) => string): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const key = keyOf(row);
+    const list = groups.get(key) ?? [];
+    list.push(row);
+    groups.set(key, list);
+  }
+  return groups;
+}
 
 /**
- * Generate a DSF-compliant Allow List transaction bundle for an instance+endpoint.
- * Includes: Organization, Endpoint, and OrganizationAffiliation resources.
- * All resources use urn:uuid: references and conditional PUT requests.
+ * Organizations in the allow list: active, and their LATEST approval request
+ * (by created_at) is APPROVED, so a newer REJECTED/PENDING request supersedes
+ * an older approval. created_at, id DESC breaks timestamp ties deterministically.
  */
-export async function generateBundle(instanceId: string, endpointId: string): Promise<object> {
+async function loadApprovedOrganizations(): Promise<OrgSummary[]> {
+  return db('organizations')
+    .where({ active: true })
+    .whereRaw(
+      `(
+      SELECT status FROM approval_requests
+      WHERE instance_id = organizations.instance_id
+      ORDER BY created_at DESC, id DESC LIMIT 1
+    ) = 'APPROVED'`,
+    )
+    .select('identifier', 'name');
+}
+
+/** Batch-load endpoints, certificates and memberships of the given organizations. */
+async function loadMembers(orgs: OrgSummary[]): Promise<AllowListMember[]> {
+  if (orgs.length === 0) return [];
+  const ids = orgs.map((o) => o.identifier);
+  const [endpoints, certs, memberships] = await Promise.all([
+    db('endpoints')
+      .whereIn('organization_id', ids)
+      .select('identifier', 'organization_id', 'name', 'address'),
+    db('certificates')
+      .whereIn('organization_id', ids)
+      .select('id', 'organization_id', 'pem')
+      .orderBy([{ column: 'created_at' }, { column: 'id' }]),
+    db('memberships')
+      .whereIn('organization_id', ids)
+      .select('organization_id', 'parent_organization', 'endpoint_id', 'roles', 'deleted_at'),
+  ]);
+  const endpointsByOrg = groupBy(
+    endpoints as Array<{
+      identifier: string;
+      organization_id: string;
+      name: string | null;
+      address: string;
+    }>,
+    (e) => e.organization_id,
+  );
+  const certsByOrg = groupBy(
+    certs as Array<Pick<CertRow, 'id' | 'organization_id' | 'pem'>>,
+    (c) => c.organization_id,
+  );
+  const membershipsByOrg = groupBy(
+    memberships as MembershipWithDeletion[],
+    (m) => m.organization_id,
+  );
+
+  return orgs.map((org) => {
+    const rows = membershipsByOrg.get(org.identifier) ?? [];
+    return {
+      identifier: org.identifier,
+      name: org.name,
+      thumbprints: (certsByOrg.get(org.identifier) ?? []).map(dsfThumbprint),
+      endpoints: (endpointsByOrg.get(org.identifier) ?? []).map((e) => ({
+        identifier: e.identifier,
+        name: e.name,
+        address: e.address,
+      })),
+      affiliations: rows
+        .filter((m) => !m.deleted_at)
+        .map((m) => ({
+          parent: m.parent_organization,
+          endpoint: m.endpoint_id,
+          roles: readRoles(m.roles),
+        })),
+      removedAffiliations: rows
+        .filter((m) => m.deleted_at)
+        .map((m) => ({ parent: m.parent_organization, endpoint: m.endpoint_id })),
+    };
+  });
+}
+
+/** Display names for parents: stored organization name, known name, else the identifier. */
+async function loadParentNames(parentIds: string[]): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  for (const id of parentIds) {
+    if (KNOWN_PARENT_NAMES[id]) names.set(id, KNOWN_PARENT_NAMES[id]);
+  }
+  if (parentIds.length > 0) {
+    const rows: OrgSummary[] = await db('organizations')
+      .whereIn('identifier', parentIds)
+      .select('identifier', 'name');
+    for (const row of rows) names.set(row.identifier, row.name);
+  }
+  return names;
+}
+
+function logUnpublishable(members: AllowListMember[]): void {
+  const skipped = members.filter((m) => !isPublishable(m)).map((m) => m.identifier);
+  if (skipped.length > 0) {
+    logger.warn(
+      { organizations: skipped },
+      'allow-list bundle: approved organizations without certificate or endpoint left out',
+    );
+  }
+}
+
+async function build(members: AllowListMember[], receiver?: AllowListReceiver) {
+  logUnpublishable(members);
+  const parentIds = Array.from(
+    new Set([
+      ...members.flatMap((m) => m.affiliations.map((a) => a.parent)),
+      ...(receiver?.affiliations.map((a) => a.parent) ?? []),
+    ]),
+  ).filter(Boolean);
+  const parentNames = await loadParentNames(parentIds);
+  return buildAllowListBundle({ members, parentNames, receiver });
+}
+
+/**
+ * Receiver-scoped allow list for one endpoint of an instance's organization:
+ * every other approved organization with endpoints, thumbprints and
+ * affiliations, plus the receiver's own affiliations for this endpoint
+ * (only once the receiver itself is approved). The receiver's own
+ * Organization and Endpoint are left out; its DSF server already holds them.
+ * @throws ORGANIZATION_NOT_FOUND / ENDPOINT_NOT_FOUND
+ */
+export async function generateBundle(
+  instanceId: string,
+  endpointId: string,
+): Promise<AllowListBundle> {
   const org = await db('organizations').where({ instance_id: instanceId }).first();
   if (!org) throw new Error('ORGANIZATION_NOT_FOUND');
   const endpoint = await db('endpoints')
     .where({ identifier: endpointId, organization_id: org.identifier })
     .first();
   if (!endpoint) throw new Error('ENDPOINT_NOT_FOUND');
-  const certs = await db('certificates').where({ organization_id: org.identifier });
-  const memberships = await db('memberships')
-    .where({ organization_id: org.identifier })
-    .whereNull('deleted_at');
 
-  // Generate stable UUIDs for cross-referencing within the bundle
-  const orgUuid = uuidv4();
-  const epUuid = uuidv4();
+  const approved = await loadApprovedOrganizations();
+  const members = await loadMembers(approved.filter((o) => o.identifier !== org.identifier));
 
-  // Also need UUIDs for parent organizations referenced in affiliations
-  const parentOrgUuids: Record<string, string> = {};
-  for (const ms of memberships) {
-    const parentId = typeof ms === 'object' ? ms.parent_organization : '';
-    if (parentId && !parentOrgUuids[parentId]) {
-      parentOrgUuids[parentId] = uuidv4();
-    }
-  }
-
-  const entries: object[] = [];
-
-  // --- Organization entry ---
-  // FHIR R4: extension must be absent or non-empty — never []. Omit the key
-  // entirely when the org has no certificate thumbprints.
-  const orgCertExtensions = certs.map(certThumbprintExtension);
-  entries.push({
-    fullUrl: `urn:uuid:${orgUuid}`,
-    resource: {
-      resourceType: 'Organization',
-      id: orgUuid,
-      meta: resourceMeta(PROFILE_ORG),
-      ...(orgCertExtensions.length ? { extension: orgCertExtensions } : {}),
-      identifier: [{ system: ORG_ID_SYSTEM, value: org.identifier }],
-      active: true,
-      name: org.name,
-      endpoint: [{ reference: `urn:uuid:${epUuid}`, type: 'Endpoint' }],
-    },
-    request: {
-      method: 'PUT',
-      url: `Organization?identifier=${ORG_ID_SYSTEM}|${org.identifier}`,
-    },
-  });
-
-  // --- Endpoint entry ---
-  // DSF spec maps:
-  //   status         = 'active' (FHIR R4 1..1 cardinality)
-  //   connectionType = hl7-fhir-rest from
-  //                    http://terminology.hl7.org/CodeSystem/endpoint-connection-type
-  //   payloadType    = Task from http://hl7.org/fhir/resource-types
-  //                    (the WORK type carried, not the MIME wrapper)
-  //   payloadMimeType = ['application/fhir+json', 'application/fhir+xml']
-  //                    separate top-level array, not folded into payloadType.
-  entries.push({
-    fullUrl: `urn:uuid:${epUuid}`,
-    resource: {
-      resourceType: 'Endpoint',
-      id: epUuid,
-      meta: resourceMeta(PROFILE_ENDPOINT),
-      identifier: [{ system: EP_ID_SYSTEM, value: endpoint.identifier }],
-      status: 'active',
-      connectionType: {
-        system: 'http://terminology.hl7.org/CodeSystem/endpoint-connection-type',
-        code: 'hl7-fhir-rest',
-      },
-      name: endpoint.name || `DSF Endpoint for ${endpoint.identifier}`,
-      managingOrganization: { reference: `urn:uuid:${orgUuid}`, type: 'Organization' },
-      payloadType: [
-        {
-          coding: [{ system: 'http://hl7.org/fhir/resource-types', code: 'Task' }],
-        },
-      ],
-      payloadMimeType: ['application/fhir+json', 'application/fhir+xml'],
-      address: endpoint.address,
-    },
-    request: {
-      method: 'PUT',
-      url: `Endpoint?identifier=${EP_ID_SYSTEM}|${endpoint.identifier}`,
-    },
-  });
-
-  // --- Parent Organization entries (for each unique parent) ---
-  // Batch-load all referenced parents in one query (a parent might be an
-  // external consortium like MII not in our DB) and look up the display name
-  // from a Map — avoids one query per parent.
-  const parentIds = Object.keys(parentOrgUuids);
-  const parentRows = parentIds.length
-    ? await db('organizations').whereIn('identifier', parentIds)
-    : [];
-  const parentNameById = new Map<string, string>(
-    parentRows.map((p: { identifier: string; name: string }) => [p.identifier, p.name]),
-  );
-  for (const [parentId, parentUuid] of Object.entries(parentOrgUuids)) {
-    entries.push({
-      fullUrl: `urn:uuid:${parentUuid}`,
-      resource: {
-        resourceType: 'Organization',
-        id: parentUuid,
-        meta: resourceMeta(PROFILE_ORG_PARENT),
-        identifier: [{ system: ORG_ID_SYSTEM, value: parentId }],
-        active: true,
-        name: parentNameById.get(parentId) || parentId,
-      },
-      request: {
-        method: 'PUT',
-        url: `Organization?identifier=${ORG_ID_SYSTEM}|${parentId}`,
-      },
-    });
-  }
-
-  // --- OrganizationAffiliation entries ---
-  for (const ms of memberships) {
-    const parentId: string = ms.parent_organization;
-    const msEndpointId: string = ms.endpoint_id;
-    const parentUuid = parentOrgUuids[parentId];
-    // A membership with a blank parent_organization has no parent UUID; emitting
-    // it would produce an `urn:uuid:undefined` reference. Skip it, mirroring the
-    // guard in generateFullBundle.
-    if (!parentId || !parentUuid) continue;
-    const affUuid = uuidv4();
-
-    // Emit one <code> block per stored role (DIC, DMS, HRP, ...). DSF
-    // tooling expects multiple <code> entries with single coding inside —
-    // NOT one <code> with multiple codings. Fallback to 'DIC' so the
-    // affiliation always carries at least one valid role.
-    const roles = readRoles(ms.roles);
-    const codeBlocks = (roles.length > 0 ? roles : ['DIC']).map((role) => ({
-      coding: [{ system: ORG_ROLE_SYSTEM, code: role }],
-    }));
-    entries.push({
-      fullUrl: `urn:uuid:${affUuid}`,
-      resource: {
-        resourceType: 'OrganizationAffiliation',
-        id: affUuid,
-        meta: resourceMeta(PROFILE_AFFILIATION),
-        organization: { reference: `urn:uuid:${parentUuid}`, type: 'Organization' },
-        participatingOrganization: { reference: `urn:uuid:${orgUuid}`, type: 'Organization' },
-        code: codeBlocks,
-        endpoint: [{ reference: `urn:uuid:${epUuid}`, type: 'Endpoint' }],
-      },
-      request: {
-        method: 'PUT',
-        url: `OrganizationAffiliation?primary-organization:identifier=${ORG_ID_SYSTEM}|${parentId}&participating-organization:identifier=${ORG_ID_SYSTEM}|${org.identifier}&endpoint:identifier=${EP_ID_SYSTEM}|${msEndpointId}`,
-      },
-    });
-  }
-
-  return {
-    resourceType: 'Bundle',
-    type: 'transaction',
-    meta: BUNDLE_META,
-    entry: entries,
+  const receiver: AllowListReceiver = {
+    organization: org.identifier,
+    endpoint: endpoint.identifier,
+    affiliations: [],
+    removedAffiliations: [],
   };
+  if (approved.some((o) => o.identifier === org.identifier)) {
+    const rows: MembershipWithDeletion[] = await db('memberships')
+      .where({ organization_id: org.identifier, endpoint_id: endpoint.identifier })
+      .select('organization_id', 'parent_organization', 'endpoint_id', 'roles', 'deleted_at');
+    receiver.affiliations = rows
+      .filter((m) => !m.deleted_at)
+      .map((m) => ({ parent: m.parent_organization, roles: readRoles(m.roles) }));
+    receiver.removedAffiliations = rows
+      .filter((m) => m.deleted_at)
+      .map((m) => ({ parent: m.parent_organization }));
+  }
+
+  return build(members, receiver);
 }
 
 /**
- * Generate a full allow list bundle containing ALL organizations, endpoints, and affiliations.
- * Used for the global bundle download (not scoped to a single instance).
+ * Network-wide allow list: every approved organization with its endpoints,
+ * SHA-512 thumbprints and affiliations, the parent organizations they point
+ * at, and DELETE entries for soft-deleted memberships. Organization and
+ * Endpoint are never deleted (federation safety, F-BND-06).
  */
-/**
- * Generate the network-wide DSF Allow-List bundle.
- * Mirrors upstream dsf-process-allow-list/UpdateAllowList.java:
- * - Only APPROVED + active organizations.
- * - Each Organization carries the SHA-512 DSF thumbprint of its certificate(s)
- *   as an extension, re-derived from the stored PEM (see certThumbprintExtension).
- *   `certificates.thumbprint` in the database stays SHA-256 and is not used here.
- * - All endpoints of each org included.
- * - All OrganizationAffiliations included.
- * - Parent verbund Organizations (MII/NUM/…) referenced by affiliations are also generated.
- *
- * The receiving DSF FHIR server installs this bundle as its local allow-list so
- * mTLS handshakes can verify peers by thumbprint match.
- */
-export async function generateFullBundle(): Promise<object> {
-  // Only orgs whose LATEST approval_request (by created_at) is 'APPROVED' AND active.
-  // Using a correlated subquery so a newer REJECTED/PENDING entry supersedes an old APPROVED.
-  // created_at, id DESC is a deterministic tiebreaker when timestamps collide.
-  const orgs = await db('organizations').where({ active: true }).whereRaw(`(
-      SELECT status FROM approval_requests
-      WHERE instance_id = organizations.instance_id
-      ORDER BY created_at DESC, id DESC LIMIT 1
-    ) = 'APPROVED'`);
-
-  const orgUuids: Record<string, string> = {};
-  const epUuids: Record<string, string> = {};
-  for (const org of orgs) orgUuids[org.identifier] = uuidv4();
-
-  // Collect all parent verbunds referenced in memberships of approved orgs.
-  const memberships = await db('memberships')
-    .whereIn(
-      'organization_id',
-      orgs.map((o: { identifier: string }) => o.identifier),
-    )
-    .whereNull('deleted_at');
-  const parentIdentifiers = Array.from(
-    new Set(memberships.map((m: { parent_organization: string }) => m.parent_organization)),
-  );
-
-  // Generate UUIDs for parent verbunds.
-  // Reuse if the parent IS itself in our approved-orgs list.
-  const parentUuids: Record<string, string> = {};
-  for (const pid of parentIdentifiers) {
-    parentUuids[pid] = orgUuids[pid] ?? uuidv4();
-  }
-
-  // Batch-load endpoints + certificates for ALL approved orgs in two queries.
-  // Previously this loop ran two queries per org (60 round-trips for 30 orgs).
-  const approvedOrgIds = orgs.map((o: { identifier: string }) => o.identifier);
-  const allEndpoints = approvedOrgIds.length
-    ? await db('endpoints').whereIn('organization_id', approvedOrgIds)
-    : [];
-  const allCerts = approvedOrgIds.length
-    ? await db('certificates').whereIn('organization_id', approvedOrgIds)
-    : [];
-
-  const endpointsByOrg = new Map<string, EndpointRow[]>();
-  for (const ep of allEndpoints as EndpointRow[]) {
-    const list = endpointsByOrg.get(ep.organization_id) ?? [];
-    list.push(ep);
-    endpointsByOrg.set(ep.organization_id, list);
-  }
-  const certsByOrg = new Map<string, CertRow[]>();
-  for (const c of allCerts as CertRow[]) {
-    const list = certsByOrg.get(c.organization_id) ?? [];
-    list.push(c);
-    certsByOrg.set(c.organization_id, list);
-  }
-
-  const entries: object[] = [];
-
-  // Approved member organizations + their endpoints.
-  for (const org of orgs) {
-    const orgUuid = orgUuids[org.identifier];
-    const endpoints = endpointsByOrg.get(org.identifier) ?? [];
-    const certs = certsByOrg.get(org.identifier) ?? [];
-
-    for (const ep of endpoints) {
-      epUuids[`${org.identifier}/${ep.identifier}`] = uuidv4();
-    }
-
-    // FHIR R4: extension must be absent or non-empty — never []. Omit the key
-    // entirely when the org has no certificate thumbprints.
-    const orgCertExtensions = certs.map(certThumbprintExtension);
-    entries.push({
-      fullUrl: `urn:uuid:${orgUuid}`,
-      resource: {
-        resourceType: 'Organization',
-        id: orgUuid,
-        meta: resourceMeta(PROFILE_ORG),
-        ...(orgCertExtensions.length ? { extension: orgCertExtensions } : {}),
-        identifier: [{ system: ORG_ID_SYSTEM, value: org.identifier }],
-        active: true,
-        name: org.name,
-        endpoint: endpoints.map((ep: { identifier: string }) => ({
-          reference: `urn:uuid:${epUuids[`${org.identifier}/${ep.identifier}`]}`,
-          type: 'Endpoint',
-        })),
-      },
-      request: { method: 'PUT', url: `Organization?identifier=${ORG_ID_SYSTEM}|${org.identifier}` },
-    });
-
-    for (const ep of endpoints) {
-      // Same DSF Endpoint shape as in generateBundle — see comment there.
-      entries.push({
-        fullUrl: `urn:uuid:${epUuids[`${org.identifier}/${ep.identifier}`]}`,
-        resource: {
-          resourceType: 'Endpoint',
-          id: epUuids[`${org.identifier}/${ep.identifier}`],
-          meta: resourceMeta(PROFILE_ENDPOINT),
-          identifier: [{ system: EP_ID_SYSTEM, value: ep.identifier }],
-          status: 'active',
-          connectionType: {
-            system: 'http://terminology.hl7.org/CodeSystem/endpoint-connection-type',
-            code: 'hl7-fhir-rest',
-          },
-          name: ep.name || `DSF Endpoint for ${ep.identifier}`,
-          managingOrganization: { reference: `urn:uuid:${orgUuid}`, type: 'Organization' },
-          payloadType: [
-            {
-              coding: [{ system: 'http://hl7.org/fhir/resource-types', code: 'Task' }],
-            },
-          ],
-          payloadMimeType: ['application/fhir+json', 'application/fhir+xml'],
-          address: ep.address,
-        },
-        request: { method: 'PUT', url: `Endpoint?identifier=${EP_ID_SYSTEM}|${ep.identifier}` },
-      });
-    }
-  }
-
-  // Parent verbund Organizations (MII, NUM, ...) — only if not already an approved member org.
-  // Batch-load the external parents' display names in one query instead of one
-  // per parent inside the loop.
-  const externalParentIds = (parentIdentifiers as string[]).filter((pid) => !orgUuids[pid]);
-  const externalParentRows = externalParentIds.length
-    ? await db('organizations').whereIn('identifier', externalParentIds)
-    : [];
-  const externalParentNameById = new Map<string, string>(
-    externalParentRows.map((p: { identifier: string; name: string }) => [p.identifier, p.name]),
-  );
-  for (const pid of parentIdentifiers as string[]) {
-    if (orgUuids[pid]) continue;
-    const parentUuid = parentUuids[pid];
-    entries.push({
-      fullUrl: `urn:uuid:${parentUuid}`,
-      resource: {
-        resourceType: 'Organization',
-        id: parentUuid,
-        meta: resourceMeta(PROFILE_ORG_PARENT),
-        identifier: [{ system: ORG_ID_SYSTEM, value: pid }],
-        active: true,
-        name: externalParentNameById.get(pid) || pid,
-      },
-      request: { method: 'PUT', url: `Organization?identifier=${ORG_ID_SYSTEM}|${pid}` },
-    });
-  }
-
-  // OrganizationAffiliations: only those whose endpoint resolves to an emitted endpoint.
-  for (const ms of memberships) {
-    const memberOrgUuid = orgUuids[ms.organization_id as string];
-    const parentUuid = parentUuids[ms.parent_organization as string];
-    const epUuid = epUuids[`${ms.organization_id as string}/${ms.endpoint_id as string}`];
-    if (!memberOrgUuid || !parentUuid || !epUuid) continue;
-
-    // See note in generateBundle: one <code> per stored role, DSF role system.
-    const roles = readRoles(ms.roles);
-    const codeBlocks = (roles.length > 0 ? roles : ['DIC']).map((role) => ({
-      coding: [{ system: ORG_ROLE_SYSTEM, code: role }],
-    }));
-    const affUuid = uuidv4();
-    entries.push({
-      fullUrl: `urn:uuid:${affUuid}`,
-      resource: {
-        resourceType: 'OrganizationAffiliation',
-        id: affUuid,
-        meta: resourceMeta(PROFILE_AFFILIATION),
-        organization: { reference: `urn:uuid:${parentUuid}`, type: 'Organization' },
-        participatingOrganization: { reference: `urn:uuid:${memberOrgUuid}`, type: 'Organization' },
-        code: codeBlocks,
-        endpoint: [{ reference: `urn:uuid:${epUuid}`, type: 'Endpoint' }],
-      },
-      request: {
-        method: 'PUT',
-        url: `OrganizationAffiliation?primary-organization:identifier=${ORG_ID_SYSTEM}|${ms.parent_organization}&participating-organization:identifier=${ORG_ID_SYSTEM}|${ms.organization_id}&endpoint:identifier=${EP_ID_SYSTEM}|${ms.endpoint_id}`,
-      },
-    });
-  }
-
-  // Federation-safe: emit DELETE OrganizationAffiliation for memberships that
-  // have been soft-deleted (admin removed the membership in the UI). Tool
-  // never emits DELETE for Organization/Endpoint — those records may still be
-  // in another tool's allow-list.
-  const softDeletedMs = await db('memberships')
-    .whereIn(
-      'organization_id',
-      orgs.map((o: { identifier: string }) => o.identifier),
-    )
-    .whereNotNull('deleted_at');
-
-  for (const ms of softDeletedMs) {
-    entries.push({
-      fullUrl: `urn:uuid:${uuidv4()}`,
-      request: {
-        method: 'DELETE',
-        url: `OrganizationAffiliation?primary-organization:identifier=${ORG_ID_SYSTEM}|${ms.parent_organization}&participating-organization:identifier=${ORG_ID_SYSTEM}|${ms.organization_id}&endpoint:identifier=${EP_ID_SYSTEM}|${ms.endpoint_id}`,
-      },
-    });
-  }
-
-  return {
-    resourceType: 'Bundle',
-    type: 'transaction',
-    meta: BUNDLE_META,
-    entry: entries,
-  };
+export async function generateFullBundle(): Promise<AllowListBundle> {
+  const approved = await loadApprovedOrganizations();
+  return build(await loadMembers(approved));
 }

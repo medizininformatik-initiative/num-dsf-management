@@ -32,7 +32,6 @@ function makeCertPem(cn: string): string {
 
 interface Resource {
   resourceType: string;
-  id: string;
   identifier?: Array<{ system: string; value: string }>;
   extension?: Array<{ url: string; valueString: string }>;
   endpoint?: Array<{ reference: string }>;
@@ -40,9 +39,11 @@ interface Resource {
   organization?: { reference: string };
   participatingOrganization?: { reference: string };
 }
+// DELETE entries carry neither fullUrl nor resource.
 interface Entry {
-  fullUrl: string;
-  resource: Resource;
+  fullUrl?: string;
+  resource?: Resource;
+  request?: { method: string; url: string };
 }
 
 describe('generateFullBundle', () => {
@@ -135,10 +136,10 @@ describe('generateFullBundle', () => {
   });
 
   it('includes the approved org but NOT the draft org', async () => {
-    const bundle = (await generateFullBundle()) as { entry: Entry[] };
+    const bundle = (await generateFullBundle()) as unknown as { entry: Entry[] };
     const orgIds = bundle.entry.flatMap((e) =>
-      e.resource.resourceType === 'Organization'
-        ? (e.resource.identifier ?? []).map((i) => i.value)
+      e.resource?.resourceType === 'Organization'
+        ? (e.resource?.identifier ?? []).map((i) => i.value)
         : [],
     );
     expect(orgIds).toContain(approvedOrgId);
@@ -146,24 +147,24 @@ describe('generateFullBundle', () => {
   });
 
   it('emits the parent verbund Organization', async () => {
-    const bundle = (await generateFullBundle()) as { entry: Entry[] };
+    const bundle = (await generateFullBundle()) as unknown as { entry: Entry[] };
     const orgIds = bundle.entry.flatMap((e) =>
-      e.resource.resourceType === 'Organization'
-        ? (e.resource.identifier ?? []).map((i) => i.value)
+      e.resource?.resourceType === 'Organization'
+        ? (e.resource?.identifier ?? []).map((i) => i.value)
         : [],
     );
     expect(orgIds).toContain(verbundId);
   });
 
   it('attaches the SHA-512 DSF thumbprint as an extension on the org', async () => {
-    const bundle = (await generateFullBundle()) as { entry: Entry[] };
+    const bundle = (await generateFullBundle()) as unknown as { entry: Entry[] };
     const approvedEntry = bundle.entry.find(
       (e) =>
-        e.resource.resourceType === 'Organization' &&
-        (e.resource.identifier ?? []).some((i) => i.value === approvedOrgId),
+        e.resource?.resourceType === 'Organization' &&
+        (e.resource?.identifier ?? []).some((i) => i.value === approvedOrgId),
     );
     expect(approvedEntry).toBeDefined();
-    const ext = approvedEntry!.resource.extension ?? [];
+    const ext = approvedEntry!.resource!.extension ?? [];
     const match = ext.find(
       (x) => x.url === 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint',
     );
@@ -176,7 +177,7 @@ describe('generateFullBundle', () => {
   });
 
   it('every internal reference resolves to a fullUrl in the same bundle', async () => {
-    const bundle = (await generateFullBundle()) as { entry: Entry[]; type: string };
+    const bundle = (await generateFullBundle()) as unknown as { entry: Entry[]; type: string };
     // Bundle.identifier removed — DSF spec does not require it on transaction
     // bundles, and strict HAPI FHIR validators flag the custom value. Assert
     // the envelope is still a transaction bundle instead.
@@ -185,6 +186,7 @@ describe('generateFullBundle', () => {
     const refs: string[] = [];
     for (const e of bundle.entry) {
       const r = e.resource;
+      if (!r) continue; // DELETE entry
       if (r.endpoint) refs.push(...r.endpoint.map((x) => x.reference));
       if (r.managingOrganization) refs.push(r.managingOrganization.reference);
       if (r.organization) refs.push(r.organization.reference);
@@ -202,7 +204,7 @@ describe('generateFullBundle', () => {
       .update({ deleted_at: new Date() });
 
     try {
-      const bundle = (await generateFullBundle()) as {
+      const bundle = (await generateFullBundle()) as unknown as {
         entry: Array<{ request?: { method: string; url: string } }>;
       };
       const deleteEntry = bundle.entry.find(
@@ -222,7 +224,7 @@ describe('generateFullBundle', () => {
   });
 
   it('NEVER emits DELETE Organization or DELETE Endpoint (federation safety)', async () => {
-    const bundle = (await generateFullBundle()) as {
+    const bundle = (await generateFullBundle()) as unknown as {
       entry: Array<{ request?: { method: string; url: string } }>;
     };
     for (const e of bundle.entry) {

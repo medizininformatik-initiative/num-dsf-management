@@ -7,9 +7,11 @@
  * computes the SHA-256 thumbprint of the cert DER and looks up the org that
  * registered it via `client_cert_thumbprint`.
  *
- * Covers GET /fhir/Bundle/:endpointId:
- *  - 200 → resourceType 'Bundle' with the seeded Organization + Endpoint and
- *    the certificate thumbprint embedded as an extension
+ * Covers GET /fhir/Bundle/:endpointId, the read the DSF allow-list process
+ * (DownloadAllowList) performs with the site's client certificate:
+ *  - 200 as application/fhir+json; the caller's own Organization/Endpoint are
+ *    referenced conditionally, an approved peer is embedded with its SHA-512
+ *    thumbprint, and the bundle passes the DSF acceptance rules
  *  - DSGVO: the serialized body never contains the seeded contact's PII
  *  - 401 with no client cert header
  *  - 401 when a cert is presented but X-Client-Verify is not SUCCESS
@@ -38,6 +40,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { app } from '../../app';
 import { db } from '../../db/connection';
 import { sha512FingerprintFromPem } from '../../lib/certFingerprint';
+import { removeSites, seedSite, type Site } from '../helpers/allowListSites';
+import { dsfAllowListViolations } from '../helpers/dsfAllowListChecks';
 
 // Static self-signed cert (CERTIFICATE only — no private key). nginx would
 // forward exactly this PEM URL-encoded in the X-Client-Cert header.
@@ -81,7 +85,11 @@ interface BundleEntry {
     active?: boolean;
     identifier?: Array<{ system: string; value: string }>;
     extension?: Array<{ url: string; valueString: string }>;
+    participatingOrganization?: { reference: string; type: string };
+    endpoint?: Array<{ reference: string; type: string }>;
+    code?: Array<{ coding: Array<{ system: string; code: string }> }>;
   };
+  request?: { method: string; url: string };
 }
 interface FhirBundle {
   resourceType: string;
@@ -111,7 +119,14 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
   const contactName = `Dr PiiLeak ${sfx}`;
   const contactPhone = `+4930${String(Date.now()).slice(-7)}`;
 
+  // An approved peer the caller must see in its allow list.
+  let peer: Site;
+
   beforeAll(async () => {
+    peer = await seedSite({
+      label: 'route-peer',
+      memberships: [{ parent: parentId, roles: ['DIC'] }],
+    });
     await db('email_whitelist').insert({
       id: uuidv4(),
       email,
@@ -207,6 +222,7 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
   });
 
   afterAll(async () => {
+    await removeSites([peer]);
     try {
       await db('audit_logs').where({ instance_id: instanceId }).del();
       await db('approval_requests').where({ id: approvalId }).del();
@@ -230,59 +246,80 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
         .set('x-client-verify', 'SUCCESS')
         .set('x-client-cert', encodeURIComponent(SAMPLE_PEM));
       expect(res.status).toBe(200);
+      // The DSF client reads with Accept: application/fhir+json.
+      expect(res.headers['content-type']).toMatch(/^application\/fhir\+json/);
       const bundle = res.body as FhirBundle;
       expect(bundle.resourceType).toBe('Bundle');
       expect(bundle.type).toBe('transaction');
       expect(Array.isArray(bundle.entry)).toBe(true);
     });
 
-    it('embeds the Organization and Endpoint with the expected identifiers', async () => {
+    it("references the caller's own Organization and Endpoint instead of embedding them", async () => {
       const res = await request(app)
         .get(`/fhir/Bundle/${endpointId}`)
         .set('x-client-verify', 'SUCCESS')
         .set('x-client-cert', encodeURIComponent(SAMPLE_PEM));
-      const bundle = res.body as FhirBundle;
-      const entries = bundle.entry ?? [];
-
-      const orgEntry = entries.find(
+      const entries = (res.body as FhirBundle).entry ?? [];
+      // The site's DSF server already holds its own Organization and Endpoint.
+      expect(
+        entries.filter(
+          (e) =>
+            e.resource?.resourceType !== 'OrganizationAffiliation' &&
+            (e.resource?.identifier ?? []).some((i) => i.value === orgId || i.value === endpointId),
+        ),
+      ).toEqual([]);
+      const own = entries.find(
         (e) =>
-          e.resource?.resourceType === 'Organization' &&
-          (e.resource.identifier ?? []).some((i) => i.value === orgId),
+          e.resource?.resourceType === 'OrganizationAffiliation' &&
+          (e.request?.url ?? '').includes(
+            `participating-organization:identifier=http://dsf.dev/sid/organization-identifier|${orgId}&`,
+          ),
       );
-      expect(orgEntry).toBeDefined();
-      expect(orgEntry!.resource!.name).toBe('FHIR Route Org');
-      expect(orgEntry!.resource!.active).toBe(true);
-
-      const epEntry = entries.find(
-        (e) =>
-          e.resource?.resourceType === 'Endpoint' &&
-          (e.resource.identifier ?? []).some((i) => i.value === endpointId),
-      );
-      expect(epEntry).toBeDefined();
-      expect(epEntry!.resource!.address).toBe(`https://${endpointId}/fhir`);
+      expect(own?.resource?.active).toBe(true);
+      expect(own?.resource?.participatingOrganization).toEqual({
+        reference: `Organization?identifier=http://dsf.dev/sid/organization-identifier|${orgId}`,
+        type: 'Organization',
+      });
+      expect(own?.resource?.endpoint).toEqual([
+        {
+          reference: `Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|${endpointId}`,
+          type: 'Endpoint',
+        },
+      ]);
+      expect((own?.resource?.code ?? []).map((c) => c.coding[0].code)).toEqual(['DIC', 'HRP']);
     });
 
-    it('embeds the certificate SHA-512 DSF thumbprint as an Organization extension', async () => {
+    it("embeds an approved peer with the SHA-512 DSF thumbprint of the peer's certificate", async () => {
       const res = await request(app)
         .get(`/fhir/Bundle/${endpointId}`)
         .set('x-client-verify', 'SUCCESS')
         .set('x-client-cert', encodeURIComponent(SAMPLE_PEM));
-      const bundle = res.body as FhirBundle;
-      const orgEntry = (bundle.entry ?? []).find(
+      const peerOrg = ((res.body as FhirBundle).entry ?? []).find(
         (e) =>
           e.resource?.resourceType === 'Organization' &&
-          (e.resource.identifier ?? []).some((i) => i.value === orgId),
+          (e.resource.identifier ?? []).some((i) => i.value === peer.orgId),
       );
-      const ext = orgEntry!.resource!.extension ?? [];
-      const match = ext.find(
-        (x) => x.url === 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint',
-      );
-      expect(match).toBeDefined();
       // SHA-512 of the DER (128 lower-case hex) per DSF's hex-128-length
-      // constraint — not the SHA-256 `certificates.thumbprint` column value.
-      expect(match!.valueString).toBe(sha512FingerprintFromPem(certPem));
-      expect(match!.valueString).toMatch(/^[a-f0-9]{128}$/);
-      expect(match!.valueString).not.toBe(certThumbprint);
+      // constraint, not the SHA-256 `certificates.thumbprint` column value.
+      expect(peerOrg?.resource?.extension).toEqual([
+        {
+          url: 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint',
+          valueString: sha512FingerprintFromPem(peer.certPem!),
+        },
+      ]);
+    });
+
+    it('passes the DSF acceptance rules of the allow-list process', async () => {
+      const res = await request(app)
+        .get(`/fhir/Bundle/${endpointId}`)
+        .set('x-client-verify', 'SUCCESS')
+        .set('x-client-cert', encodeURIComponent(SAMPLE_PEM));
+      expect(
+        dsfAllowListViolations(res.body, {
+          receiverOrganization: orgId,
+          receiverEndpoint: endpointId,
+        }),
+      ).toEqual([]);
     });
 
     it('DSGVO: the serialized bundle never contains the contact PII', async () => {
@@ -484,7 +521,7 @@ describe('GET /fhir/Bundle/:endpointId (SHA-512 fingerprint match, SHA-256 fallb
     expect(res.status).toBe(200);
     const bundle = res.body as FhirBundle;
     expect(bundle.resourceType).toBe('Bundle');
-    expect(Array.isArray(bundle.entry)).toBe(true);
+    expect(bundle.type).toBe('transaction');
   });
 
   it('200 (SHA-256 fallback) when the org has only client_cert_thumbprint set', async () => {
@@ -495,7 +532,7 @@ describe('GET /fhir/Bundle/:endpointId (SHA-512 fingerprint match, SHA-256 fallb
     expect(res.status).toBe(200);
     const bundle = res.body as FhirBundle;
     expect(bundle.resourceType).toBe('Bundle');
-    expect(Array.isArray(bundle.entry)).toBe(true);
+    expect(bundle.type).toBe('transaction');
   });
 
   it('403 when the cert matches neither the fingerprint nor the thumbprint', async () => {

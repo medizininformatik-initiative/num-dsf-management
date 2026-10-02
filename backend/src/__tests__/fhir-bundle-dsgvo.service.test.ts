@@ -2,28 +2,34 @@
  * fhir-bundle-dsgvo.service.test.ts — DB-backed contract + DSGVO tests for
  * fhir.service generateBundle / generateFullBundle.
  *
- * generateBundle: seeds ONE complete instance (organization + endpoint +
- * endpoint_ips + certificate + membership + a CONTACT carrying recognizable
- * PII) and asserts the bundle is a transaction Bundle that embeds the
- * Organization and Endpoint with the expected identifiers/address, embeds the
- * certificate thumbprint as an extension, AND — the load-bearing DSGVO check —
- * never leaks the contact's email or other contact PII into the serialized
- * bundle JSON.
+ * generateBundle: seeds ONE complete, approved instance (organization +
+ * endpoint + endpoint_ips + certificate + membership + a CONTACT carrying
+ * recognizable PII) and a second site as the receiver. The receiver's bundle
+ * must embed the peer's Organization and Endpoint with the expected
+ * identifiers/address and the certificate thumbprint as an extension, pass
+ * the DSF acceptance rules, AND — the load-bearing DSGVO check — never leak
+ * the contact's data or the organization e-mail into the serialized bundle.
  *
  * generateFullBundle: seeds an APPROVED instance and a non-approved (DRAFT)
  * instance and asserts the network-wide bundle aggregates only the approved
  * organization, excluding the non-approved one.
  *
+ * Corrupted at-rest PEMs are covered on dsfThumbprint directly: an approved
+ * organization with a broken PEM would fail every concurrent bundle test.
+ *
  * Each test seeds its own fresh rows with unique identifiers so parallel
  * suites never collide; teardown removes only the rows it created.
  *
- * Dependencies: db/connection, fhir.service
+ * Dependencies: db/connection, fhir.service, helpers/allowListSites,
+ *               helpers/dsfAllowListChecks
  */
 import { v4 as uuidv4 } from 'uuid';
 import forge from 'node-forge';
 import { db } from '../db/connection';
-import { generateBundle, generateFullBundle } from '../services/fhir.service';
+import { dsfThumbprint, generateBundle, generateFullBundle } from '../services/fhir.service';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
+import { removeSites, seedSite, type Site } from './helpers/allowListSites';
+import { dsfAllowListViolations } from './helpers/dsfAllowListChecks';
 
 // Real self-signed cert PEM, generated in-process like certFingerprint.test.ts,
 // so the bundle's extension-certificate-thumbprint (now SHA-512 of the DER)
@@ -48,7 +54,6 @@ interface Coding {
 }
 interface Resource {
   resourceType: string;
-  id: string;
   name?: string;
   address?: string;
   active?: boolean;
@@ -56,9 +61,11 @@ interface Resource {
   extension?: Array<{ url: string; valueString: string }>;
   endpoint?: Array<{ reference: string }>;
 }
+// DELETE entries carry no resource; other suites may add them concurrently.
 interface Entry {
-  fullUrl: string;
-  resource: Resource;
+  fullUrl?: string;
+  resource?: Resource;
+  request: { method: string; url: string };
 }
 interface Bundle {
   resourceType: string;
@@ -68,7 +75,10 @@ interface Bundle {
 
 const uniq = (p: string) => `${p}-${Date.now()}-${uuidv4().slice(0, 8)}`;
 
-describe('fhir.service – generateBundle (single instance + DSGVO)', () => {
+describe('fhir.service – generateBundle (approved peer seen by a receiver + DSGVO)', () => {
+  let receiver: Site;
+  const bundleForReceiver = async () =>
+    (await generateBundle(receiver.instanceId, receiver.endpointIds[0])) as unknown as Bundle;
   const userId = uuidv4();
   const instanceId = uuidv4();
   const orgId = `${uniq('fhir-org')}.example.de`;
@@ -161,10 +171,23 @@ describe('fhir.service – generateBundle (single instance + DSGVO)', () => {
       created_at: new Date(),
       updated_at: new Date(),
     });
+    // Only an approved organization is published to other sites.
+    await db('approval_requests').insert({
+      id: uuidv4(),
+      instance_id: instanceId,
+      status: 'APPROVED',
+      created_at: new Date(),
+      submitted_at: new Date(),
+      resolved_at: new Date(),
+      snapshot_json: JSON.stringify({}),
+    });
+    receiver = await seedSite({ label: 'dsgvo-receiver', approval: null });
   });
 
   afterAll(async () => {
+    await removeSites([receiver]);
     try {
+      await db('approval_requests').where({ instance_id: instanceId }).del();
       await db('contacts').where({ organization_id: orgId }).del();
       await db('memberships').where({ organization_id: orgId }).del();
       await db('certificates').where({ organization_id: orgId }).del();
@@ -178,44 +201,44 @@ describe('fhir.service – generateBundle (single instance + DSGVO)', () => {
   });
 
   it('returns a FHIR transaction Bundle', async () => {
-    const bundle = (await generateBundle(instanceId, endpointId)) as Bundle;
+    const bundle = await bundleForReceiver();
     expect(bundle.resourceType).toBe('Bundle');
     expect(bundle.type).toBe('transaction');
     expect(Array.isArray(bundle.entry)).toBe(true);
   });
 
   it('embeds the Organization with the expected identifier and name', async () => {
-    const bundle = (await generateBundle(instanceId, endpointId)) as Bundle;
+    const bundle = await bundleForReceiver();
     const orgEntry = bundle.entry.find(
       (e) =>
-        e.resource.resourceType === 'Organization' &&
-        (e.resource.identifier ?? []).some((i) => i.value === orgId),
+        e.resource?.resourceType === 'Organization' &&
+        (e.resource?.identifier ?? []).some((i) => i.value === orgId),
     );
     expect(orgEntry).toBeDefined();
-    expect(orgEntry!.resource.name).toBe('FHIR Single Org');
-    expect(orgEntry!.resource.active).toBe(true);
+    expect(orgEntry!.resource!.name).toBe('FHIR Single Org');
+    expect(orgEntry!.resource!.active).toBe(true);
   });
 
   it('embeds the Endpoint with the expected identifier and FHIR address', async () => {
-    const bundle = (await generateBundle(instanceId, endpointId)) as Bundle;
+    const bundle = await bundleForReceiver();
     const epEntry = bundle.entry.find(
       (e) =>
-        e.resource.resourceType === 'Endpoint' &&
-        (e.resource.identifier ?? []).some((i) => i.value === endpointId),
+        e.resource?.resourceType === 'Endpoint' &&
+        (e.resource?.identifier ?? []).some((i) => i.value === endpointId),
     );
     expect(epEntry).toBeDefined();
-    expect(epEntry!.resource.address).toBe(`https://${endpointId}/fhir`);
-    expect(epEntry!.resource.name).toBe('Primary FHIR Endpoint');
+    expect(epEntry!.resource!.address).toBe(`https://${endpointId}/fhir`);
+    expect(epEntry!.resource!.name).toBe('Primary FHIR Endpoint');
   });
 
   it('embeds the certificate SHA-512 DSF thumbprint as an Organization extension', async () => {
-    const bundle = (await generateBundle(instanceId, endpointId)) as Bundle;
+    const bundle = await bundleForReceiver();
     const orgEntry = bundle.entry.find(
       (e) =>
-        e.resource.resourceType === 'Organization' &&
-        (e.resource.identifier ?? []).some((i) => i.value === orgId),
+        e.resource?.resourceType === 'Organization' &&
+        (e.resource?.identifier ?? []).some((i) => i.value === orgId),
     );
-    const ext = orgEntry!.resource.extension ?? [];
+    const ext = orgEntry!.resource!.extension ?? [];
     const expectedSha512 = sha512FingerprintFromPem(certPem);
     const match = ext.find(
       (x) => x.url === 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint',
@@ -230,20 +253,25 @@ describe('fhir.service – generateBundle (single instance + DSGVO)', () => {
   });
 
   it('emits an OrganizationAffiliation referencing the parent verbund', async () => {
-    const bundle = (await generateBundle(instanceId, endpointId)) as Bundle;
-    const aff = bundle.entry.find((e) => e.resource.resourceType === 'OrganizationAffiliation');
+    const bundle = await bundleForReceiver();
+    const aff = bundle.entry.find(
+      (e) =>
+        e.resource?.resourceType === 'OrganizationAffiliation' &&
+        e.request.url.includes(`|${orgId}&`) &&
+        e.request.url.includes(`|${parentId}&`),
+    );
     expect(aff).toBeDefined();
     // Parent verbund Organization is emitted so the affiliation reference resolves.
     const parentOrg = bundle.entry.find(
       (e) =>
-        e.resource.resourceType === 'Organization' &&
-        (e.resource.identifier ?? []).some((i) => i.value === parentId),
+        e.resource?.resourceType === 'Organization' &&
+        (e.resource?.identifier ?? []).some((i) => i.value === parentId),
     );
     expect(parentOrg).toBeDefined();
   });
 
   it('DSGVO: the serialized bundle never contains the contact email or PII', async () => {
-    const bundle = await generateBundle(instanceId, endpointId);
+    const bundle = await bundleForReceiver();
     const serialized = JSON.stringify(bundle);
     expect(serialized).not.toContain(contactEmail);
     expect(serialized).not.toContain(contactName);
@@ -251,6 +279,19 @@ describe('fhir.service – generateBundle (single instance + DSGVO)', () => {
     expect(serialized).not.toContain('Secret Street 9');
     // Defensive: the contact row's primary key must not leak either.
     expect(serialized).not.toContain(contactId);
+    // The organization e-mail is contact data too (F-BND-04): no telecom.
+    expect(serialized).not.toContain('org@example.de');
+    expect(serialized).not.toContain('"telecom"');
+  });
+
+  it('passes the DSF acceptance rules of the allow-list process for the receiver', async () => {
+    const bundle = await bundleForReceiver();
+    expect(
+      dsfAllowListViolations(bundle, {
+        receiverOrganization: receiver.orgId,
+        receiverEndpoint: receiver.endpointIds[0],
+      }),
+    ).toEqual([]);
   });
 });
 
@@ -359,10 +400,10 @@ describe('fhir.service – generateFullBundle (approved-only aggregation)', () =
   });
 
   it('aggregates the APPROVED org but excludes the non-approved org', async () => {
-    const bundle = (await generateFullBundle()) as Bundle;
+    const bundle = (await generateFullBundle()) as unknown as Bundle;
     const orgIds = bundle.entry.flatMap((e) =>
-      e.resource.resourceType === 'Organization'
-        ? (e.resource.identifier ?? []).map((i) => i.value)
+      e.resource?.resourceType === 'Organization'
+        ? (e.resource?.identifier ?? []).map((i) => i.value)
         : [],
     );
     expect(orgIds).toContain(approvedOrgId);
@@ -370,31 +411,31 @@ describe('fhir.service – generateFullBundle (approved-only aggregation)', () =
   });
 
   it('emits the parent verbund Organization for the approved org', async () => {
-    const bundle = (await generateFullBundle()) as Bundle;
+    const bundle = (await generateFullBundle()) as unknown as Bundle;
     const orgIds = bundle.entry.flatMap((e) =>
-      e.resource.resourceType === 'Organization'
-        ? (e.resource.identifier ?? []).map((i) => i.value)
+      e.resource?.resourceType === 'Organization'
+        ? (e.resource?.identifier ?? []).map((i) => i.value)
         : [],
     );
     expect(orgIds).toContain(verbundId);
   });
 
   it('includes the approved org endpoint with the expected address', async () => {
-    const bundle = (await generateFullBundle()) as Bundle;
+    const bundle = (await generateFullBundle()) as unknown as Bundle;
     const epEntry = bundle.entry.find(
       (e) =>
-        e.resource.resourceType === 'Endpoint' &&
-        (e.resource.identifier ?? []).some((i) => i.value === approvedEpId),
+        e.resource?.resourceType === 'Endpoint' &&
+        (e.resource?.identifier ?? []).some((i) => i.value === approvedEpId),
     );
     expect(epEntry).toBeDefined();
-    expect(epEntry!.resource.address).toBe(`https://${approvedEpId}/fhir`);
+    expect(epEntry!.resource!.address).toBe(`https://${approvedEpId}/fhir`);
   });
 
   it('every certificate-thumbprint extension in the full bundle is a 128-hex SHA-512 value', async () => {
-    const bundle = (await generateFullBundle()) as Bundle;
+    const bundle = (await generateFullBundle()) as unknown as Bundle;
     const thumbprintExtensions = bundle.entry.flatMap((e) =>
-      e.resource.resourceType === 'Organization'
-        ? (e.resource.extension ?? []).filter(
+      e.resource?.resourceType === 'Organization'
+        ? (e.resource?.extension ?? []).filter(
             (x) =>
               x.url === 'http://dsf.dev/fhir/StructureDefinition/extension-certificate-thumbprint',
           )
@@ -411,71 +452,18 @@ describe('fhir.service – generateFullBundle (approved-only aggregation)', () =
   });
 });
 
-describe('fhir.service – generateBundle (corrupted certificate PEM)', () => {
-  const userId = uuidv4();
-  const instanceId = uuidv4();
-  const orgId = `${uniq('fhir-badpem')}.example.de`;
-  const endpointId = `dsf-fhir.${orgId}`;
-  const certId = uuidv4();
-
-  beforeAll(async () => {
-    await db('users').insert({
-      id: userId,
-      email: `${userId}@example.de`,
-      totp_enabled: false,
-      created_at: new Date(),
-    });
-    await db('instances').insert({
-      id: instanceId,
-      user_id: userId,
-      label: 'fhir-badpem',
-      created_at: new Date(),
-    });
-    await db('organizations').insert({
-      identifier: orgId,
-      instance_id: instanceId,
-      name: 'FHIR Bad PEM Org',
-      active: true,
-      email: 'org@example.de',
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-    await db('endpoints').insert({
-      identifier: endpointId,
-      organization_id: orgId,
-      name: 'Primary FHIR Endpoint',
-      address: `https://${endpointId}/fhir`,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-    // Corrupted at-rest data: not a parseable PEM. The bundle builder must
-    // surface this loudly (naming the certificate id) instead of silently
-    // dropping the organization's certificate from the allow-list.
-    await db('certificates').insert({
-      id: certId,
-      organization_id: orgId,
-      pem: 'CERT-MARKER',
-      subject: `CN=${orgId}`,
-      thumbprint: 'd'.repeat(64),
-      valid_until: '2099-01-01',
-      created_at: new Date(),
-    });
-  });
-
-  afterAll(async () => {
-    try {
-      await db('certificates').where({ organization_id: orgId }).del();
-      await db('endpoints').where({ identifier: endpointId }).del();
-    } finally {
-      await db('organizations').where({ identifier: orgId }).del();
-      await db('instances').where({ id: instanceId }).del();
-      await db('users').where({ id: userId }).del();
-    }
-  });
-
-  it('rejects with CERTIFICATE_PEM_INVALID naming the certificate id, instead of dropping it silently', async () => {
-    await expect(generateBundle(instanceId, endpointId)).rejects.toThrow(
+describe('fhir.service – dsfThumbprint (corrupted certificate PEM)', () => {
+  it('rejects with CERTIFICATE_PEM_INVALID naming the certificate id, instead of dropping it silently', () => {
+    // Corrupted at-rest data: not a parseable PEM. The bundle must fail loudly,
+    // naming the certificate, rather than publish an organization without it.
+    const certId = uuidv4();
+    expect(() => dsfThumbprint({ id: certId, pem: 'CERT-MARKER' })).toThrow(
       `CERTIFICATE_PEM_INVALID:${certId}`,
     );
+  });
+
+  it('returns the 128-hex SHA-512 of a valid PEM', () => {
+    const pem = makeCertPem('dsf-client.thumbprint.example.de');
+    expect(dsfThumbprint({ id: uuidv4(), pem })).toBe(sha512FingerprintFromPem(pem));
   });
 });

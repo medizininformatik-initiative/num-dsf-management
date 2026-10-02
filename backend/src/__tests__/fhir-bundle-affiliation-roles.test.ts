@@ -9,6 +9,8 @@
 import { db } from '../db/connection';
 import { v4 as uuidv4 } from 'uuid';
 import { generateFullBundle } from '../services/fhir.service';
+import { parseCertificate } from '../services/certificate.service';
+import { makeCertPem } from './helpers/allowListSites';
 
 const ROLE_SYSTEM = 'http://dsf.dev/fhir/CodeSystem/organization-role';
 
@@ -73,6 +75,19 @@ describe('OrganizationAffiliation role fidelity', () => {
       created_at: new Date(),
       updated_at: new Date(),
     });
+    // DSF requires a certificate thumbprint on every published organization;
+    // without one the organization (and this affiliation) is left out.
+    const pem = makeCertPem(`dsf-client.${orgIdentifier}`);
+    const { subject, thumbprint, validUntil } = parseCertificate(pem);
+    await db('certificates').insert({
+      id: uuidv4(),
+      organization_id: orgIdentifier,
+      pem,
+      subject,
+      thumbprint,
+      valid_until: validUntil,
+      created_at: new Date(),
+    });
     await db('memberships').insert({
       id: uuidv4(),
       organization_id: orgIdentifier,
@@ -94,6 +109,7 @@ describe('OrganizationAffiliation role fidelity', () => {
 
   afterAll(async () => {
     await db('memberships').where({ organization_id: orgIdentifier }).del();
+    await db('certificates').where({ organization_id: orgIdentifier }).del();
     await db('approval_requests').where({ instance_id: instanceId }).del();
     await db('endpoints').where({ identifier: endpointIdentifier }).del();
     await db('organizations').where({ identifier: orgIdentifier }).del();

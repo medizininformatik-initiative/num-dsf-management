@@ -35,8 +35,9 @@ function makeCertPem(cn: string): string {
 }
 
 interface BundleEntry {
-  fullUrl: string;
+  fullUrl?: string;
   resource?: { resourceType: string; identifier?: Array<{ system: string; value: string }> };
+  request?: { method: string; url: string };
 }
 
 describe('Download routes', () => {
@@ -192,19 +193,30 @@ describe('Download routes', () => {
       expect(bundle.resourceType).toBe('Bundle');
       expect(bundle.type).toBe('transaction');
 
-      // The seeded org + endpoint are present in the bundle.
+      // The GUI download is exactly what the site's DSF allow-list process
+      // downloads: the site's own Organization and Endpoint are referenced
+      // from its affiliation, never embedded (its DSF server holds them).
       const orgValues = bundle.entry.flatMap((e) =>
         e.resource?.resourceType === 'Organization'
           ? (e.resource.identifier ?? []).map((i) => i.value)
           : [],
       );
-      expect(orgValues).toContain(orgId);
+      expect(orgValues).not.toContain(orgId);
+      expect(orgValues).toContain(parentOrgId);
       const epValues = bundle.entry.flatMap((e) =>
         e.resource?.resourceType === 'Endpoint'
           ? (e.resource.identifier ?? []).map((i) => i.value)
           : [],
       );
-      expect(epValues).toContain(endpointId);
+      expect(epValues).not.toContain(endpointId);
+      const ownAffiliation = bundle.entry.find(
+        (e) =>
+          e.resource?.resourceType === 'OrganizationAffiliation' &&
+          (e.request?.url ?? '').endsWith(
+            `|${orgId}&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|${endpointId}`,
+          ),
+      );
+      expect(ownAffiliation).toBeDefined();
     });
 
     it('returns 401 without an Authorization header', async () => {

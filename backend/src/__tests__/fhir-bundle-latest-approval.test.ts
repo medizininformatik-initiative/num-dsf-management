@@ -79,8 +79,8 @@ describe('generateFullBundle — latest approval filter', () => {
   });
 
   it('excludes an org whose latest approval is REJECTED, even if an older one was APPROVED', async () => {
-    const bundle = (await generateFullBundle()) as { entry: Entry[] };
-    const includedIdentifiers = bundle.entry
+    const bundle = (await generateFullBundle()) as unknown as { entry?: Entry[] };
+    const includedIdentifiers = (bundle.entry ?? [])
       .filter((e) => e.resource?.resourceType === 'Organization')
       .flatMap((e) => (e.resource.identifier ?? []).map((i) => i.value));
     expect(includedIdentifiers).not.toContain(orgIdentifier);
