@@ -29,10 +29,7 @@ export function Sidebar() {
   // Highlight a collapsed group when the active route is one of its children,
   // so the user can see where they are without auto-opening.
   const isAdminRoute = pathname.startsWith('/app/admin') || pathname === '/app/audit';
-  const isResourcesRoute =
-    pathname.startsWith('/app/marketplace') ||
-    pathname === '/app/resources' ||
-    pathname === '/app/skill';
+  const isResourcesRoute = pathname.startsWith('/app/marketplace') || pathname === '/app/resources';
   const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('dsf-pinned-instances') || '[]');
@@ -462,9 +459,9 @@ export function Sidebar() {
           </Link>
         </div>
 
-        {/* Resources — collapsible group (all users): the marketplace, DSF
-          reference links, and the process-skill download. Highlights its header
-          when one of its routes is active and the group is collapsed. */}
+        {/* Resources — collapsible group (all users): the marketplace and the DSF
+          reference links. Highlights its header when one of its routes is
+          active and the group is collapsed. */}
         <div style={{ padding: '0 16px', marginTop: '8px' }}>
           <button
             type="button"
@@ -531,7 +528,6 @@ export function Sidebar() {
               {[
                 { to: '/app/marketplace', icon: 'extension', label: t('sidebarMarketplace') },
                 { to: '/app/resources', icon: 'menu_book', label: t('dsfResourcesNavLabel') },
-                { to: '/app/skill', icon: 'auto_awesome', label: t('processSkillNavLabel') },
               ].map((item) => {
                 const isActive = pathname === item.to || pathname.startsWith(item.to + '/');
                 return (
