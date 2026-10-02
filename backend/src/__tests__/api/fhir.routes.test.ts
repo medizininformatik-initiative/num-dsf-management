@@ -42,6 +42,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { app } from '../../app';
 import { db } from '../../db/connection';
 import { sha512FingerprintFromPem } from '../../lib/certFingerprint';
+import { parseCertificate } from '../../services/certificate.service';
+import { ECC_P256_CERT_PEM } from '../fixtures/eccCertificate';
 import { mtlsHeaders, removeSites, seedSite, type Site } from '../helpers/allowListSites';
 import { dsfAllowListViolations } from '../helpers/dsfAllowListChecks';
 
@@ -340,6 +342,39 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
         );
       expect(hasOrg(orgId)).toBe(true);
       expect(hasOrg(peer.orgId)).toBe(false);
+    });
+
+    it('accepts an EC (P-256) DSF certificate, as GEANT and HARICA issue them', async () => {
+      const eccPem = ECC_P256_CERT_PEM;
+      const { subject, thumbprint, validUntil } = parseCertificate(eccPem);
+      await db('certificates').insert({
+        id: uuidv4(),
+        organization_id: peer.orgId,
+        pem: eccPem,
+        subject,
+        thumbprint,
+        valid_until: validUntil,
+        created_at: new Date(),
+      });
+      const res = await request(app)
+        .get(`/fhir/Bundle/${peer.endpointIds[0]}`)
+        .set('Accept', 'application/fhir+json')
+        .set(mtlsHeaders(eccPem));
+      expect(res.status).toBe(200);
+
+      // The caller now trusts the peer's EC certificate as well.
+      const own = await request(app)
+        .get(`/fhir/Bundle/${endpointId}`)
+        .set('x-client-verify', 'SUCCESS')
+        .set('x-client-cert', encodeURIComponent(SAMPLE_PEM));
+      const peerOrg = ((own.body as FhirBundle).entry ?? []).find(
+        (e) =>
+          e.resource?.resourceType === 'Organization' &&
+          (e.resource.identifier ?? []).some((i) => i.value === peer.orgId),
+      );
+      expect((peerOrg?.resource?.extension ?? []).map((x) => x.valueString)).toContain(
+        sha512FingerprintFromPem(eccPem),
+      );
     });
 
     it('DSGVO: the serialized bundle never contains the contact PII', async () => {
