@@ -272,6 +272,10 @@ export const de: Record<TranslationKey, string> = {
   notFoundMessage: 'Die gesuchte Seite existiert nicht.',
   notFoundBackBtn: 'Zurück zur App',
 
+  // EntityCard (shared card states)
+  cardLoadError: 'Die Daten konnten nicht geladen werden.',
+  cardRetry: 'Erneut versuchen',
+
   // OrganizationCard
   orgCardSharedWith: 'Geteilt mit',
   orgCardIdentifier: 'Kennung',

@@ -37,3 +37,35 @@ describe('EntityCard', () => {
     expect(onAdd).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('EntityCard data states', () => {
+  it('shows a busy skeleton instead of the body while loading', () => {
+    renderWithProviders(
+      <EntityCard id="e" title="Endpoints" borderColor="#000" icon="x" status="loading">
+        <p>card body</p>
+      </EntityCard>,
+    );
+    expect(screen.queryByText('card body')).not.toBeInTheDocument();
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+  });
+
+  it('announces a load error and retries on request', async () => {
+    const onRetry = vi.fn();
+    renderWithProviders(
+      <EntityCard
+        id="e"
+        title="Endpoints"
+        borderColor="#000"
+        icon="x"
+        status="error"
+        onRetry={onRetry}
+      >
+        <p>card body</p>
+      </EntityCard>,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not load this data.');
+    expect(screen.queryByText('card body')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+});

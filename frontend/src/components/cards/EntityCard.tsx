@@ -1,8 +1,12 @@
 /**
- * EntityCard.tsx – Shared wrapper, styled per Stitch code.html
+ * EntityCard.tsx – Shared wrapper, styled per Stitch code.html. `status`
+ * swaps the body for a skeleton while loading or an error with a retry, so a
+ * failed request never looks like "no data yet".
  */
 import React from 'react';
 import { useCanvasStore } from '../../stores/canvas.store';
+import { useI18n } from '../../stores/i18n.store';
+import { Skeleton } from '../ui/Skeleton';
 
 interface EntityCardProps {
   id: string;
@@ -14,6 +18,10 @@ interface EntityCardProps {
   headerRight?: React.ReactNode;
   onAdd?: () => void;
   addLabel?: string;
+  /** Data state of the card body. Default 'ready' renders the children. */
+  status?: 'loading' | 'error' | 'ready';
+  /** Retry handler for the error state (usually the query's refetch). */
+  onRetry?: () => void;
   children: React.ReactNode;
 }
 
@@ -27,8 +35,11 @@ export function EntityCard({
   headerRight,
   onAdd,
   addLabel = '+ Add',
+  status = 'ready',
+  onRetry,
   children,
 }: EntityCardProps) {
+  const { t } = useI18n();
   const highlightedEntity = useCanvasStore((s) => s.highlightedEntity);
   const isHighlighted = highlightedEntity === id;
 
@@ -71,7 +82,26 @@ export function EntityCard({
           )}
         </div>
       </div>
-      {children}
+      {status === 'loading' && (
+        <div aria-busy="true">
+          <Skeleton lines={3} />
+        </div>
+      )}
+      {status === 'error' && (
+        <div role="alert" className="flex items-center justify-between gap-3 text-xs">
+          <span style={{ color: 'var(--text-secondary)' }}>{t('cardLoadError')}</span>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="font-bold px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+            >
+              {t('cardRetry')}
+            </button>
+          )}
+        </div>
+      )}
+      {status === 'ready' && children}
     </div>
   );
 }

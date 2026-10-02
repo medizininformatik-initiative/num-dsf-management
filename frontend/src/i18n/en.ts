@@ -267,6 +267,10 @@ export const en = {
   notFoundMessage: "The page you're looking for doesn't exist.",
   notFoundBackBtn: 'Back to App',
 
+  // EntityCard (shared card states)
+  cardLoadError: 'Could not load this data.',
+  cardRetry: 'Try again',
+
   // OrganizationCard
   orgCardSharedWith: 'Shared with',
   orgCardIdentifier: 'Identifier',
