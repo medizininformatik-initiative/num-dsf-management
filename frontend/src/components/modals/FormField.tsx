@@ -1,11 +1,30 @@
 /**
- * FormField.tsx — shared modal form primitives: FormField wrapper, input/select classNames, and ModalFooter.
- * Renders labels, hints, and error messages; ModalFooter provides cancel/submit buttons with loading state.
+ * FormField.tsx — shared form primitives of the entity modals:
+ * - FormField: label + one control + hint/error. The label points at the
+ *   control (htmlFor/id), hint and error are wired through aria-describedby,
+ *   the control gets aria-invalid, and the required asterisk carries
+ *   screen-reader text. Pass one element (it receives id and aria props) or a
+ *   render function for composite fields such as the PEM drop zone.
+ * - FormFieldGroup: the same for checkbox groups (role="group").
+ * - FieldError: the announced (role="alert") error line that fades/slides in.
+ * - inputClass / selectClass / checkboxClass: one field style with a
+ *   consistent focus ring and translucent, glass-friendly fills in dark mode.
+ * - ModalFooter: Cancel, an optional Back and the one primary CTA (Button).
+ * Dependencies: Button, Icon, InfoHint, i18n store.
  */
-import React from 'react';
+import React, { useId } from 'react';
 import { useI18n } from '../../stores/i18n.store';
 import { en, type TranslationKey } from '../../i18n/en';
 import { InfoHint } from '../ui/InfoHint';
+import { Icon } from '../ui/Icon';
+import { Button } from '../ui/Button';
+
+/** What FormField hands to its control. */
+export interface FieldControlProps {
+  id: string;
+  'aria-describedby'?: string;
+  'aria-invalid'?: true;
+}
 
 interface FormFieldProps {
   label: string;
@@ -13,7 +32,8 @@ interface FormFieldProps {
   error?: string;
   hint?: string;
   infoKey?: TranslationKey;
-  children: React.ReactNode;
+  /** The control, or a render function placing the control props itself. */
+  children: React.ReactNode | ((control: FieldControlProps) => React.ReactNode);
 }
 
 /**
@@ -26,41 +46,229 @@ function resolveError(error: string, t: (key: TranslationKey) => string): string
   return Object.prototype.hasOwnProperty.call(en, error) ? t(error as TranslationKey) : error;
 }
 
+function joinIds(...ids: (string | false | undefined)[]): string | undefined {
+  const joined = ids.filter(Boolean).join(' ');
+  return joined || undefined;
+}
+
+/** Announced error line under a control; `error` may be an i18n key code. */
+export function FieldError({ id, error }: { id: string; error: string }) {
+  const { t } = useI18n();
+  return (
+    <p
+      id={id}
+      role="alert"
+      className="flex animate-list-item-in items-start gap-1 text-xs font-medium text-danger-fg"
+      style={{ animationDuration: 'var(--duration-short)' }}
+    >
+      <Icon name="error" size={14} className="mt-px shrink-0" />
+      <span>{resolveError(error, t)}</span>
+    </p>
+  );
+}
+
+function FieldHint({ id, children }: { id: string; children: React.ReactNode }) {
+  return (
+    <p id={id} className="text-xs text-[color:var(--text-muted)]">
+      {children}
+    </p>
+  );
+}
+
+function RequiredMark() {
+  const { t } = useI18n();
+  return (
+    <>
+      <span aria-hidden="true" className="ml-0.5 text-danger-fg">
+        *
+      </span>
+      <span className="sr-only"> {t('formRequiredSr')}</span>
+    </>
+  );
+}
+
+const labelClass = 'text-xs font-semibold text-[color:var(--text-secondary)]';
+
 export function FormField({ label, required, error, hint, infoKey, children }: FormFieldProps) {
   const { t } = useI18n();
-  const fieldId = React.useId();
+  const fieldId = useId();
+  const hintId = `${fieldId}-hint`;
+  const errorId = `${fieldId}-error`;
+  const showHint = !!hint && !error;
+  const describedBy = joinIds(showHint && hintId, !!error && errorId);
+
+  let controlId = fieldId;
+  let control: React.ReactNode;
+  if (typeof children === 'function') {
+    control = children({
+      id: fieldId,
+      'aria-describedby': describedBy,
+      'aria-invalid': error ? true : undefined,
+    });
+  } else if (React.isValidElement(children)) {
+    const own = children.props as { id?: string; 'aria-describedby'?: string };
+    controlId = own.id ?? fieldId;
+    control = React.cloneElement(children as React.ReactElement, {
+      id: controlId,
+      'aria-describedby': joinIds(own['aria-describedby'], describedBy),
+      ...(error ? { 'aria-invalid': true } : {}),
+    });
+  } else {
+    control = children;
+  }
+
   return (
     <div className="space-y-1.5">
-      <label htmlFor={fieldId} className="block text-xs font-semibold text-slate-600">
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
+      <div className="flex items-center">
+        <label htmlFor={controlId} className={labelClass}>
+          {label}
+          {required && <RequiredMark />}
+        </label>
         {infoKey && <InfoHint text={t(infoKey)} label={t(infoKey)} />}
-      </label>
-      {React.isValidElement(children)
-        ? React.cloneElement(children as React.ReactElement, {
-            id: (children as React.ReactElement).props.id ?? fieldId,
-          })
-        : children}
-      {hint && !error && <p className="text-[10px] text-slate-400">{hint}</p>}
-      {error && (
-        <p className="text-[10px] text-red-500 flex items-center gap-1">
-          <span className="material-symbols-outlined text-[12px]">error</span>
-          {resolveError(error, t)}
-        </p>
-      )}
+      </div>
+      {control}
+      {showHint && <FieldHint id={hintId}>{hint}</FieldHint>}
+      {error && <FieldError id={errorId} error={error} />}
     </div>
   );
 }
 
-export const inputClass =
-  'w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg ' +
-  'text-slate-900 placeholder:text-slate-300 outline-none ' +
-  'focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all';
+interface FormFieldGroupProps {
+  label: string;
+  required?: boolean;
+  error?: string;
+  hint?: string;
+  infoKey?: TranslationKey;
+  children: React.ReactNode;
+}
 
-export const selectClass =
-  'w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg ' +
-  'text-slate-900 outline-none focus:border-primary focus:ring-2 ' +
-  'focus:ring-primary/10 transition-all';
+/** A labelled group of related controls (e.g. role checkboxes). */
+export function FormFieldGroup({
+  label,
+  required,
+  error,
+  hint,
+  infoKey,
+  children,
+}: FormFieldGroupProps) {
+  const { t } = useI18n();
+  const groupId = useId();
+  const labelId = `${groupId}-label`;
+  const hintId = `${groupId}-hint`;
+  const errorId = `${groupId}-error`;
+  const showHint = !!hint && !error;
+  return (
+    <div
+      role="group"
+      aria-labelledby={labelId}
+      aria-describedby={joinIds(showHint && hintId, !!error && errorId)}
+      className="space-y-1.5"
+    >
+      <div className="flex items-center">
+        <span id={labelId} className={labelClass}>
+          {label}
+          {required && <RequiredMark />}
+        </span>
+        {infoKey && <InfoHint text={t(infoKey)} label={t(infoKey)} />}
+      </div>
+      {children}
+      {showHint && <FieldHint id={hintId}>{hint}</FieldHint>}
+      {error && <FieldError id={errorId} error={error} />}
+    </div>
+  );
+}
+
+/** Border, fill, focus ring and invalid/disabled states of every text control. */
+export const fieldSurfaceClass =
+  'rounded-input border border-[color:var(--border-strong)] bg-white/80 outline-none ' +
+  'text-[color:var(--text-primary)] dark:border-white/10 dark:bg-white/[0.06] ' +
+  'transition-[border-color,box-shadow,background-color] duration-short ease-standard ' +
+  'focus:border-[color:var(--focus-ring)] focus:ring-[3px] focus:ring-primary/20 ' +
+  'dark:focus:ring-brand-400/30 aria-[invalid=true]:border-danger-fg ' +
+  'disabled:cursor-not-allowed disabled:opacity-60';
+
+export const inputClass = `w-full px-3 py-2 text-sm placeholder:text-[color:var(--text-muted)] ${fieldSurfaceClass}`;
+
+export const selectClass = `w-full px-3 py-2 text-sm ${fieldSurfaceClass}`;
+
+export const checkboxClass =
+  'h-4 w-4 shrink-0 cursor-pointer rounded accent-primary dark:accent-brand-400 ' +
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ' +
+  'focus-visible:outline-[color:var(--focus-ring)]';
+
+export interface CheckboxCardOption<T extends string> {
+  value: T;
+  label: string;
+  description: string;
+}
+
+interface CheckboxCardsProps<T extends string> {
+  options: readonly CheckboxCardOption<T>[];
+  value: readonly T[];
+  onChange: (next: T[]) => void;
+  /** Ref of the first checkbox, e.g. React Hook Form's field.ref for error focus. */
+  firstInputRef?: React.Ref<HTMLInputElement>;
+}
+
+/** Multi-select as cards (code + description); a checked card is tinted. */
+export function CheckboxCards<T extends string>({
+  options,
+  value,
+  onChange,
+  firstInputRef,
+}: CheckboxCardsProps<T>) {
+  return (
+    <div className="space-y-2">
+      {options.map((option, i) => (
+        <label
+          key={option.value}
+          className="flex cursor-pointer items-start gap-3 rounded-xl border border-[color:var(--border)] bg-white/50 p-3 transition-colors duration-short ease-standard hover:border-[color:var(--border-strong)] has-[:checked]:border-primary/40 has-[:checked]:bg-primary/[0.05] dark:bg-white/[0.03] dark:has-[:checked]:border-brand-400/50 dark:has-[:checked]:bg-brand-400/10"
+        >
+          <input
+            ref={i === 0 ? firstInputRef : undefined}
+            type="checkbox"
+            value={option.value}
+            checked={value.includes(option.value)}
+            onChange={(e) =>
+              onChange(
+                e.target.checked
+                  ? [...value, option.value]
+                  : value.filter((v) => v !== option.value),
+              )
+            }
+            className={`mt-0.5 ${checkboxClass}`}
+          />
+          <span className="min-w-0">
+            <span className="block text-xs font-bold text-[color:var(--text-primary)]">
+              {option.label}
+            </span>
+            <span className="block text-xs text-[color:var(--text-muted)]">
+              {option.description}
+            </span>
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+interface ModalFooterProps {
+  onCancel: () => void;
+  /** Without it the primary button submits the surrounding form. */
+  onSubmit?: () => void;
+  submitLabel?: string;
+  loading?: boolean;
+  disabled?: boolean;
+  /** Defaults to the translated "Cancel". */
+  cancelLabel?: string;
+  /** Busy label while loading; defaults to "Saving…". */
+  loadingLabel?: string;
+  /** Steps back in a multi-step flow; shown at the start of the bar. */
+  onBack?: () => void;
+  backLabel?: string;
+  /** Only Back/Cancel, e.g. on a step that advances by choosing an item. */
+  hideSubmit?: boolean;
+}
 
 export function ModalFooter({
   onCancel,
@@ -68,37 +276,34 @@ export function ModalFooter({
   submitLabel,
   loading,
   disabled,
-}: {
-  onCancel: () => void;
-  onSubmit?: () => void;
-  submitLabel?: string;
-  loading?: boolean;
-  disabled?: boolean;
-}) {
+  cancelLabel,
+  loadingLabel,
+  onBack,
+  backLabel,
+  hideSubmit,
+}: ModalFooterProps) {
   const { t } = useI18n();
-  const isDisabled = loading || disabled;
   return (
-    <div
-      className="flex justify-end gap-3 pt-4 mt-4 border-t"
-      style={{ borderColor: 'var(--border)' }}
-    >
-      <button
-        type="button"
-        onClick={onCancel}
-        className="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
-        style={{ color: 'var(--text-secondary)', background: 'var(--bg-hover)' }}
-      >
-        {t('modalCancelBtn')}
-      </button>
-      <button
-        type={onSubmit ? 'button' : 'submit'}
-        onClick={onSubmit}
-        disabled={isDisabled}
-        className="px-5 py-2 text-sm font-bold text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
-        style={{ background: isDisabled ? '#a0a0a0' : 'linear-gradient(135deg, #4d41df, #675df9)' }}
-      >
-        {loading ? t('modalSavingBtn') : submitLabel || t('modalSaveBtn')}
-      </button>
+    <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-[color:var(--border)] pt-4">
+      {onBack && (
+        <Button variant="ghost" onClick={onBack} className="mr-auto">
+          <Icon name="arrow_back" size={18} />
+          {backLabel ?? t('formBackBtn')}
+        </Button>
+      )}
+      <Button variant="secondary" onClick={onCancel}>
+        {cancelLabel ?? t('modalCancelBtn')}
+      </Button>
+      {!hideSubmit && (
+        <Button
+          type={onSubmit ? 'button' : 'submit'}
+          onClick={onSubmit}
+          disabled={loading || disabled}
+        >
+          {loading && <Icon name="progress_activity" size={18} className="animate-spin" />}
+          {loading ? (loadingLabel ?? t('modalSavingBtn')) : submitLabel || t('modalSaveBtn')}
+        </Button>
+      )}
     </div>
   );
 }
