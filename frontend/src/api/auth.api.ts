@@ -6,6 +6,8 @@
  * the main.tsx interceptors (refresh + error toasts) and the demo mock-adapter
  * hook — so a 401 on /auth/me and global error handling run consistently. The
  * 401-refresh interceptor excludes /auth/*, so these calls never recurse.
+ * Also exports the error helpers the sign-in screens use to tell a rate limit
+ * (with its retry time) or a transport failure apart from a wrong code.
  */
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth.store';
@@ -43,6 +45,50 @@ export interface TotpConfirmResponse {
 
 export interface TotpVerifyResponse {
   data: { accessToken: string };
+}
+
+interface HttpErrorLike {
+  response?: { status?: number; headers?: Record<string, unknown> };
+}
+
+/** True when an auth request was refused by a rate limit (HTTP 429). */
+export function isRateLimited(err: unknown): boolean {
+  return (err as HttpErrorLike)?.response?.status === 429;
+}
+
+/** True when the request never got an HTTP response (offline, DNS, CORS, timeout). */
+export function isTransportError(err: unknown): boolean {
+  return (err as HttpErrorLike)?.response?.status == null;
+}
+
+/**
+ * Seconds until a rate-limited (429) auth request may be retried, from the
+ * Retry-After header (seconds or HTTP date) or the RateLimit-Reset header that
+ * express-rate-limit sends; null when unknown (nginx 429s carry neither) or
+ * when the error is not a 429.
+ */
+export function retryAfterSeconds(err: unknown, now: number = Date.now()): number | null {
+  if (!isRateLimited(err)) return null;
+  const headers = (err as HttpErrorLike).response?.headers ?? {};
+  const read = (name: string): string | null => {
+    const value = headers[name];
+    return typeof value === 'string' || typeof value === 'number' ? String(value).trim() : null;
+  };
+  const retryAfter = read('retry-after');
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds)) return Math.max(0, Math.ceil(seconds));
+    const date = Date.parse(retryAfter);
+    if (!Number.isNaN(date)) return Math.max(0, Math.ceil((date - now) / 1000));
+  }
+  const reset = read('ratelimit-reset');
+  if (reset && Number.isFinite(Number(reset))) return Math.max(0, Math.ceil(Number(reset)));
+  return null;
+}
+
+/** A wait in seconds as "45 s" or, from a minute on, rounded up to "15 min". */
+export function formatWait(seconds: number): string {
+  return seconds < 60 ? `${Math.max(1, Math.ceil(seconds))} s` : `${Math.ceil(seconds / 60)} min`;
 }
 
 export const authApi = {

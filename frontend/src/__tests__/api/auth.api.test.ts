@@ -3,12 +3,21 @@
  * (not under /api/v1) and are sent with withCredentials so the httpOnly refresh
  * cookie rides along. Each test asserts method + path + request body, and that
  * the server response shape is returned unwrapped onto res.data. getMe()
- * additionally attaches the bearer token from the auth store.
+ * additionally attaches the bearer token from the auth store. The error
+ * helpers are covered at the end: 429 detection, the retry time from
+ * Retry-After (seconds or date) or RateLimit-Reset, transport failures and
+ * the wait formatting.
  */
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { authApi } from '../../api/auth.api';
+import {
+  authApi,
+  formatWait,
+  isRateLimited,
+  isTransportError,
+  retryAfterSeconds,
+} from '../../api/auth.api';
 import { useAuthStore } from '../../stores/auth.store';
 
 beforeAll(() => {
@@ -170,5 +179,41 @@ describe('authApi', () => {
     expect(lastRequest?.pathname).toBe('/auth/me');
     expect(lastRequest?.authorization).toBe('Bearer test-token');
     expect(res.data.data.isAdmin).toBe(true);
+  });
+});
+
+describe('auth error helpers', () => {
+  const tooMany = (headers: Record<string, unknown> = {}) => ({
+    response: { status: 429, headers },
+  });
+
+  it('recognises a rate limit and a transport failure', () => {
+    expect(isRateLimited(tooMany())).toBe(true);
+    expect(isRateLimited({ response: { status: 401 } })).toBe(false);
+    expect(isTransportError(new Error('Network Error'))).toBe(true);
+    expect(isTransportError({ response: { status: 500 } })).toBe(false);
+  });
+
+  it('reads the retry time from Retry-After seconds or date, or from RateLimit-Reset', () => {
+    expect(retryAfterSeconds(tooMany({ 'retry-after': '120' }))).toBe(120);
+    const now = Date.parse('2026-10-02T12:00:00Z');
+    expect(
+      retryAfterSeconds(tooMany({ 'retry-after': 'Fri, 02 Oct 2026 12:01:30 GMT' }), now),
+    ).toBe(90);
+    expect(retryAfterSeconds(tooMany({ 'ratelimit-reset': '899' }))).toBe(899);
+  });
+
+  it('returns null when the time is unknown or the error is no rate limit', () => {
+    expect(retryAfterSeconds(tooMany())).toBeNull();
+    expect(
+      retryAfterSeconds({ response: { status: 401, headers: { 'retry-after': '5' } } }),
+    ).toBeNull();
+  });
+
+  it('formats a wait in seconds below a minute and in rounded-up minutes above', () => {
+    expect(formatWait(45)).toBe('45 s');
+    expect(formatWait(0)).toBe('1 s');
+    expect(formatWait(60)).toBe('1 min');
+    expect(formatWait(899)).toBe('15 min');
   });
 });
