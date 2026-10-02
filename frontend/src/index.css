@@ -488,7 +488,8 @@ body {
     -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
   }
-  /* Overrides sonner's zero-specificity base style for neutral toasts only. */
+  /* Beats sonner's zero-specificity base style; its more specific rich-colour
+     rules still colour success / info / warning / error toasts. */
   .dsf-toast {
     --_glass-opacity: var(--glass-opacity-thick);
     --_glass-blur: 24px;
