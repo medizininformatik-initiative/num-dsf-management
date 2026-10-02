@@ -228,6 +228,7 @@ describe('CertificatesCard', () => {
     id: 'cert1',
     subject: 'CN=ukm.de',
     valid_until: farFuture,
+    thumbprint: 'AB12'.repeat(16),
     thumbprintSha512: 'a1'.repeat(64),
   };
 

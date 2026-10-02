@@ -52,9 +52,26 @@ describe('CertificatesCard', () => {
     expect(screen.getByText('CN=ukm.de')).toBeInTheDocument();
   });
 
-  it('renders the DSF SHA-512 thumbprint of the certificate', () => {
+  it('shows the complete DSF fingerprint (SHA-512) of the certificate', () => {
     renderWithProviders(<CertificatesCard instanceId="i1" />);
-    expect(screen.getByTitle(THUMBPRINT_SHA512)).toBeInTheDocument();
+    const fingerprint = screen.getByRole('group', { name: 'DSF fingerprint (SHA-512)' });
+    expect(fingerprint).toHaveTextContent(THUMBPRINT_SHA512);
+    expect(
+      within(fingerprint).getByRole('button', { name: 'Copy DSF fingerprint' }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the SHA-256 fingerprint in a collapsed disclosure with its own copy button', async () => {
+    const user = userEvent.setup();
+    rows = [{ ...cert, thumbprint: 'AB12'.repeat(16) }];
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    const details = screen.getByText('More fingerprints').closest('details') as HTMLElement;
+    expect(details).not.toHaveAttribute('open');
+
+    await user.click(screen.getByText('More fingerprints'));
+    expect(details).toHaveAttribute('open');
+    await user.click(within(details).getByRole('button', { name: 'Copy SHA-256 fingerprint' }));
+    await expect(navigator.clipboard.readText()).resolves.toBe('ab12'.repeat(16));
   });
 
   it('opens the certificate-add modal when Add is clicked', async () => {

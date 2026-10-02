@@ -307,9 +307,9 @@ export const de: Record<TranslationKey, string> = {
   certDaysLeft: '{n}T verbleibend',
   certRemoveBtn: 'Entfernen',
   certCardFkOrganization: 'Organisation',
-  certCardDsfThumbprintLabel: 'DSF-Thumbprint (SHA-512)',
-  certCardCopyThumbprint: 'DSF-Thumbprint kopieren',
-  certCardThumbprintCopied: 'DSF-Thumbprint in die Zwischenablage kopiert.',
+  certCardDsfThumbprintLabel: 'DSF-Fingerprint (SHA-512)',
+  certCardCopyThumbprint: 'DSF-Fingerprint kopieren',
+  certCardThumbprintCopied: 'DSF-Fingerprint in die Zwischenablage kopiert.',
 
   // EndpointsCard
   endpointCardFkOrganization: 'Organisation',
@@ -347,6 +347,11 @@ export const de: Record<TranslationKey, string> = {
   certCardOverallValid: 'Alle Zertifikate sind gültig',
   certCardOverallSoon: 'Ein Zertifikat läuft in weniger als {n} Tagen ab',
   certCardOverallExpired: 'Ein Zertifikat ist abgelaufen',
+  certCardMoreFingerprints: 'Weitere Fingerprints',
+  certCardSha256Label: 'SHA-256-Fingerprint',
+  certCardCopySha256: 'SHA-256-Fingerprint kopieren',
+  certCardSha256Copied: 'SHA-256-Fingerprint in die Zwischenablage kopiert.',
+  certCardCopyFailed: 'Kopieren in die Zwischenablage fehlgeschlagen.',
   certCardDeleteTitle: 'Zertifikat entfernen?',
   certCardDeleteMessage: '{name}, gültig bis {date}, wird aus der Allow-Liste entfernt.',
   certCardDeleteConsequence:

@@ -302,9 +302,9 @@ export const en = {
   certDaysLeft: '{n}d left',
   certRemoveBtn: 'Remove',
   certCardFkOrganization: 'Organization',
-  certCardDsfThumbprintLabel: 'DSF Thumbprint (SHA-512)',
-  certCardCopyThumbprint: 'Copy DSF thumbprint',
-  certCardThumbprintCopied: 'DSF thumbprint copied to clipboard.',
+  certCardDsfThumbprintLabel: 'DSF fingerprint (SHA-512)',
+  certCardCopyThumbprint: 'Copy DSF fingerprint',
+  certCardThumbprintCopied: 'DSF fingerprint copied to the clipboard.',
 
   // EndpointsCard
   endpointCardFkOrganization: 'Organization',
@@ -341,6 +341,11 @@ export const en = {
   certCardOverallValid: 'All certificates are valid',
   certCardOverallSoon: 'A certificate expires within {n} days',
   certCardOverallExpired: 'A certificate has expired',
+  certCardMoreFingerprints: 'More fingerprints',
+  certCardSha256Label: 'SHA-256 fingerprint',
+  certCardCopySha256: 'Copy SHA-256 fingerprint',
+  certCardSha256Copied: 'SHA-256 fingerprint copied to the clipboard.',
+  certCardCopyFailed: 'Could not copy to the clipboard.',
   certCardDeleteTitle: 'Remove certificate?',
   certCardDeleteMessage: '{name}, valid until {date}, will be removed from the allow list.',
   certCardDeleteConsequence:

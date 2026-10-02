@@ -1,17 +1,18 @@
 /**
  * CertificatesCard.tsx — entity card listing the organization's certificates. Each row shows
  * its validity state (certValidity: valid / expiring / renew now / expired) as a StatusPill, a
- * validity bar in the same tone and the days left or since expiry; the header lock follows the
- * worst certificate. Supports renew/add (via useModals) and confirmed, cross-user-guarded
- * deletion that warns before the last valid certificate goes.
+ * validity bar in the same tone and the days left or since expiry, the full DSF fingerprint
+ * (SHA-512) with copy, and the SHA-256 fingerprint in a collapsed disclosure; the header lock
+ * follows the worst certificate. Supports renew/add (via useModals) and confirmed,
+ * cross-user-guarded deletion that warns before the last valid certificate goes.
  * Dependencies: useCertificates, useOrganization, lib/certStatus, lib/dateUtils, confirmDelete,
- * EntityCard, FkLink, StatusPill, Button, Icon.
+ * EntityCard, FkLink, CertificateFingerprint, StatusPill, Button, Icon.
  */
-import { toast } from 'sonner';
 import { useCertificates, useDeleteCertificate } from '../../hooks/useCertificates';
 import { useOrganization } from '../../hooks/useOrganization';
 import { EntityCard } from './EntityCard';
 import { FkLink } from './FkLink';
+import { CertificateFingerprint } from './CertificateFingerprint';
 import { useModals } from '../../hooks/useModals';
 import { formatDate } from '../../lib/dateUtils';
 import {
@@ -23,17 +24,16 @@ import {
 } from '../../lib/certStatus';
 import { useI18n } from '../../stores/i18n.store';
 import type { TranslationKey } from '../../i18n/en';
+import type { ApiCertificate } from '../../api/entities.api';
 import { useConfirmDelete } from '../../lib/confirmDelete';
 import { StatusPill } from '../ui/StatusPill';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 
-interface CertRow {
-  id: string;
-  subject: string;
-  valid_until: string;
-  thumbprintSha512: string;
-}
+type CertRow = Pick<
+  ApiCertificate,
+  'id' | 'subject' | 'valid_until' | 'thumbprint' | 'thumbprintSha512'
+>;
 
 type CertTone = (typeof CERT_STATE_TONE)[CertState];
 
@@ -174,40 +174,7 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
                   {t(STATE_LABEL[state])}
                 </StatusPill>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '8px 0' }}>
-                <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
-                  {t('certCardDsfThumbprintLabel')}
-                </span>
-                <span
-                  className="mono-id"
-                  title={cert.thumbprintSha512}
-                  style={{ fontSize: '10px', color: 'var(--text-secondary)' }}
-                >
-                  {cert.thumbprintSha512.slice(0, 16)}…
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(cert.thumbprintSha512);
-                    toast.success(t('certCardThumbprintCopied'));
-                  }}
-                  title={t('certCardCopyThumbprint')}
-                  aria-label={t('certCardCopyThumbprint')}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: 0,
-                    display: 'flex',
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
-                    content_copy
-                  </span>
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
+              <div className="mt-3 flex items-center gap-2">
                 <div
                   aria-hidden="true"
                   className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border)]"
@@ -223,6 +190,30 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
                     : t('certDaysLeft', { n: days })}
                 </span>
               </div>
+              <CertificateFingerprint
+                className="mt-3"
+                label={t('certCardDsfThumbprintLabel')}
+                hex={cert.thumbprintSha512}
+                copyLabel={t('certCardCopyThumbprint')}
+                copiedMessage={t('certCardThumbprintCopied')}
+              />
+              <details className="group/more mt-2">
+                <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-md text-[11px] font-semibold text-[color:var(--text-secondary)] transition-colors duration-short ease-standard hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
+                  <Icon
+                    name="chevron_right"
+                    size={16}
+                    className="transition-transform duration-short ease-spring group-open/more:rotate-90"
+                  />
+                  {t('certCardMoreFingerprints')}
+                </summary>
+                <CertificateFingerprint
+                  className="mt-1.5 animate-fade-in"
+                  label={t('certCardSha256Label')}
+                  hex={cert.thumbprint}
+                  copyLabel={t('certCardCopySha256')}
+                  copiedMessage={t('certCardSha256Copied')}
+                />
+              </details>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
                 <button
                   onClick={() => requestDelete(cert)}
