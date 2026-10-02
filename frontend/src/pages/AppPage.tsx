@@ -89,7 +89,11 @@ export function AppPage() {
         background: 'var(--bg-page)',
       }}
     >
-      {showSidebar && <Sidebar />}
+      {showSidebar && (
+        <div className="h-full w-[220px] shrink-0 print:hidden">
+          <Sidebar />
+        </div>
+      )}
 
       {/* Toggle button for left sidebar when hidden */}
       {!showSidebar && (
@@ -128,7 +132,6 @@ export function AppPage() {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          marginLeft: showSidebar ? '220px' : '0',
           marginRight: showRightPanel && !!isCanvasRoute ? '280px' : '0',
           transition: 'margin 0.2s ease',
         }}

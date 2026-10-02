@@ -53,9 +53,8 @@ describe('Sidebar', () => {
     useAuthStore.getState().setTokens('tok', { id: 'u1', email: 'op@imi-test.example.de' });
     renderWithProviders(<Sidebar />, { route: '/app' });
 
-    // Nav links — disambiguate the dashboard link by its href (the Status link's
-    // icon text is also "dashboard", so the accessible name alone is ambiguous).
-    const dashboardLink = screen.getByRole('link', { name: 'grid_view Dashboard' });
+    // Nav links — icons are decorative (aria-hidden), so the names are the labels.
+    const dashboardLink = screen.getByRole('link', { name: 'Dashboard' });
     expect(dashboardLink).toHaveAttribute('href', '/app');
     expect(screen.getByRole('link', { name: /network map/i })).toHaveAttribute('href', '/app/map');
     expect(screen.getByRole('link', { name: /status/i })).toHaveAttribute('href', '/app/status');
@@ -80,10 +79,13 @@ describe('Sidebar', () => {
     expect(useCanvasStore.getState().activeInstanceId).toBe('i2');
   });
 
-  it('selecting an instance via the keyboard handler updates the store', () => {
+  it('selecting an instance via the keyboard updates the store', async () => {
+    const user = userEvent.setup();
     renderWithProviders(<Sidebar />, { route: '/app' });
 
-    fireEvent.keyDown(screen.getByRole('button', { name: 'alpha.example.de' }), { key: 'Enter' });
+    // A native button: Enter activates it, no custom key handler needed.
+    screen.getByRole('button', { name: 'alpha.example.de' }).focus();
+    await user.keyboard('{Enter}');
 
     expect(useCanvasStore.getState().activeInstanceId).toBe('i1');
   });
