@@ -4,9 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi } from 'vitest';
 import { DownloadModal } from '../DownloadModal';
 
-// Endpoints hook stubbed — we don't exercise endpoint listing here.
+// One endpoint, so the endpoint bundle has something to download.
 vi.mock('../../../hooks/useEndpoints', () => ({
-  useEndpoints: () => ({ data: [], isLoading: false }),
+  useEndpoints: () => ({ data: [{ identifier: 'fhir.ukm.de' }], isLoading: false }),
 }));
 
 // BundlePreview pulls more API state we don't care about for this gate.
@@ -23,8 +23,14 @@ function Wrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+const downloadButtons = () => [
+  screen.getByTestId('download-bundle-btn'),
+  screen.getByTestId('download-full-bundle-btn'),
+  screen.getByTestId('download-ip-btn'),
+];
+
 describe('DownloadModal disclaimer gate', () => {
-  it('renders the disclaimer block and keeps both download buttons disabled initially', () => {
+  it('renders the disclaimer block and keeps every download button disabled initially', () => {
     render(
       <Wrapper>
         <DownloadModal open={true} onClose={() => {}} instanceId="i1" />
@@ -35,11 +41,14 @@ describe('DownloadModal disclaimer gate', () => {
     const checkbox = screen.getByTestId('disclaimer-checkbox') as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
 
-    expect(screen.getByTestId('download-bundle-btn')).toBeDisabled();
-    expect(screen.getByTestId('download-ip-btn')).toBeDisabled();
+    for (const button of downloadButtons()) expect(button).toBeDisabled();
+    // The disabled buttons point at the reason.
+    expect(screen.getByTestId('download-bundle-btn')).toHaveAccessibleDescription(
+      'Confirm the notice above to enable the downloads.',
+    );
   });
 
-  it('enables both download buttons once the operator ticks the acknowledgment', () => {
+  it('enables every download button once the operator ticks the acknowledgment', () => {
     render(
       <Wrapper>
         <DownloadModal open={true} onClose={() => {}} instanceId="i1" />
@@ -48,7 +57,6 @@ describe('DownloadModal disclaimer gate', () => {
 
     fireEvent.click(screen.getByTestId('disclaimer-checkbox'));
 
-    expect(screen.getByTestId('download-bundle-btn')).toBeEnabled();
-    expect(screen.getByTestId('download-ip-btn')).toBeEnabled();
+    for (const button of downloadButtons()) expect(button).toBeEnabled();
   });
 });

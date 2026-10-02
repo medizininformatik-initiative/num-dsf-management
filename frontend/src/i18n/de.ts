@@ -486,11 +486,10 @@ export const de: Record<TranslationKey, string> = {
 
   // DownloadModal
   downloadModalTitle: 'Allow-Liste herunterladen',
-  downloadModalSelectEndpoint: 'Ausgewählter Endpunkt',
-  downloadModalSelectEndpointPlaceholder: 'Endpunkt auswählen…',
+  downloadModalSelectEndpoint: 'Endpoint',
+  downloadModalSelectEndpointPlaceholder: 'Endpoint auswählen…',
   downloadModalBundleTitle: 'Allow-List-Bundle',
   downloadModalSelectAbove: 'Oben einen Endpunkt auswählen.',
-  downloadModalCopyUrl: 'URL kopieren',
   downloadModalDownloadBundle: 'Bundle herunterladen (JSON)',
   downloadModalDownloading: 'Wird heruntergeladen…',
   downloadModalIpTitle: 'IP-Adressliste',
@@ -498,19 +497,14 @@ export const de: Record<TranslationKey, string> = {
     'Enthält alle ausgehenden IP-Adressen der teilnehmenden Organisationen. Für die Firewall-Konfiguration verwenden.',
   downloadModalDownloadIp: 'IP-Adressliste herunterladen (Excel)',
   downloadModalClose: 'Schließen',
-  downloadModalPluginTip:
-    'Tipp: Installiere das DSF Allow List Plugin, um direkt aus deiner DSF FHIR Server Web-Oberfläche zu aktualisieren.',
   downloadBundleSuccess: 'Bundle heruntergeladen.',
   downloadBundleFailed: 'Bundle konnte nicht heruntergeladen werden.',
   downloadIpSuccess: 'IP-Adressliste heruntergeladen.',
   downloadIpFailed: 'IP-Adressliste konnte nicht heruntergeladen werden.',
-  downloadCopied: 'URL in die Zwischenablage kopiert.',
   downloadNoEndpoint: 'Bitte einen Endpunkt auswählen.',
   downloadFullBundleTitle: 'Netzwerkweite Allow-List (DSF-Bundle)',
   downloadFullBundleHelp:
-    'Ein einzelnes FHIR-Transaktion-Bundle mit allen genehmigten Organisationen, deren Endpoints und Zertifikats-Thumbprints. Installieren Sie es an Ihrem lokalen DSF-FHIR-Server, damit dieser alle anderen Teilnehmer für die mTLS-Prüfung kennt.',
-  downloadEndpointHint:
-    'Die Endpoint-Auswahl ist nur ein Hinweis — das Bundle ist für jede Site identisch.',
+    'Ein signiertes FHIR-Transaktions-Bundle mit allen genehmigten Organisationen, deren Endpoints und Zertifikats-Thumbprints – zur Einsicht oder für einen manuellen Import. Ihr DSF selbst sollte das Endpoint-Bundle verwenden.',
   bundleDownloaded: 'Bundle heruntergeladen.',
   bundleDownloadFailed: 'Bundle-Download fehlgeschlagen.',
 

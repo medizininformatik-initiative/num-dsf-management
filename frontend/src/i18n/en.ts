@@ -479,11 +479,10 @@ export const en = {
 
   // DownloadModal
   downloadModalTitle: 'Download Allow List',
-  downloadModalSelectEndpoint: 'Selected Endpoint',
+  downloadModalSelectEndpoint: 'Endpoint',
   downloadModalSelectEndpointPlaceholder: 'Select endpoint…',
   downloadModalBundleTitle: 'Allow-list bundle',
   downloadModalSelectAbove: 'Select an endpoint above.',
-  downloadModalCopyUrl: 'Copy URL',
   downloadModalDownloadBundle: 'Download Bundle (JSON)',
   downloadModalDownloading: 'Downloading…',
   downloadModalIpTitle: 'IP Address List',
@@ -491,19 +490,14 @@ export const en = {
     'Contains all outgoing IP addresses of participating organizations. Use for firewall configuration.',
   downloadModalDownloadIp: 'Download IP Address List (Excel)',
   downloadModalClose: 'Close',
-  downloadModalPluginTip:
-    'Tip: install the DSF Allow List Plugin to update directly from your DSF FHIR Server Web UI.',
   downloadBundleSuccess: 'Bundle downloaded.',
   downloadBundleFailed: 'Failed to download bundle.',
   downloadIpSuccess: 'IP address list downloaded.',
   downloadIpFailed: 'Failed to download IP address list.',
-  downloadCopied: 'URL copied to clipboard.',
   downloadNoEndpoint: 'Please select an endpoint.',
   downloadFullBundleTitle: 'Network-wide allow list (DSF Bundle)',
   downloadFullBundleHelp:
-    'A single FHIR transaction Bundle containing every approved organization, their endpoints, and their certificate thumbprints. Install this at your local DSF FHIR server so it knows every other participant for mTLS verification.',
-  downloadEndpointHint:
-    'Selecting an endpoint is only a UI hint — the bundle itself is the same for every site.',
+    'One signed FHIR transaction Bundle with every approved organization, its endpoints and certificate thumbprints — for inspection or a manual import. Your DSF itself should use the endpoint bundle.',
   bundleDownloaded: 'Bundle downloaded.',
   bundleDownloadFailed: 'Failed to download the bundle.',
 
