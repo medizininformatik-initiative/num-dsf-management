@@ -915,11 +915,6 @@ export const de: Record<TranslationKey, string> = {
   // OnboardingWizard
   onboardingHeader: 'Erste Schritte',
   onboardingProgress: '{done}/{total} abgeschlossen',
-  onboardingStepOrganization: 'Organisation',
-  onboardingStepContact: 'Kontakt',
-  onboardingStepEndpoint: 'Endpunkt',
-  onboardingStepCertificate: 'Zertifikat',
-  onboardingStepMembership: 'Mitgliedschaft',
   onboardingStepSubmit: 'Einreichen',
 
   // undoDelete (lib)

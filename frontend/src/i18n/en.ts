@@ -900,11 +900,6 @@ export const en = {
   // OnboardingWizard
   onboardingHeader: 'Getting Started',
   onboardingProgress: '{done}/{total} complete',
-  onboardingStepOrganization: 'Organization',
-  onboardingStepContact: 'Contact',
-  onboardingStepEndpoint: 'Endpoint',
-  onboardingStepCertificate: 'Certificate',
-  onboardingStepMembership: 'Membership',
   onboardingStepSubmit: 'Submit',
 
   // undoDelete (lib)
