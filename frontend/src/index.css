@@ -36,6 +36,9 @@
   --scrim-opaque: rgba(24, 28, 32, 0.5);
   /* Keyboard focus outline (>= 3:1 against card and page) */
   --focus-ring: #b01e66;
+  /* Loading placeholders (.skeleton) */
+  --skeleton: #eceef4;
+  --skeleton-shine: rgba(255, 255, 255, 0.75);
   /* Status tones — the central scale behind StatusPill (src/lib/statusColors.ts)
      and the Tailwind colors {success,warning,danger,info,neutral}-{fg,surface,border}.
      Light: 700-tone text on 50-tone surfaces; dark: 300-tone text on tinted
@@ -83,6 +86,8 @@
   --scrim: rgba(5, 6, 10, 0.5);
   --scrim-opaque: rgba(5, 6, 10, 0.72);
   --focus-ring: #e06399;
+  --skeleton: #262838;
+  --skeleton-shine: rgba(255, 255, 255, 0.06);
   --tone-success-fg: #6ee7b7;
   --tone-success-surface: rgba(16, 185, 129, 0.16);
   --tone-success-border: rgba(16, 185, 129, 0.35);
@@ -602,6 +607,21 @@ body {
     line-height: 1rem;
     white-space: nowrap;
   }
+
+  /* Skeleton.tsx: a soft highlight sweeps across the bar (static under
+     Reduce Motion, see the block at the end of this file). */
+  .skeleton {
+    background-color: var(--skeleton);
+    background-image: linear-gradient(
+      90deg,
+      transparent 25%,
+      var(--skeleton-shine) 50%,
+      transparent 75%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    @apply animate-shimmer;
+  }
 }
 
 /* Dark mode overrides for Tailwind utility classes */
@@ -862,12 +882,17 @@ body {
   .animate-ping,
   .animate-bounce,
   .animate-shimmer,
+  .skeleton,
   .status-pulse,
   .dsf-wordmark,
   .auth-aurora::before,
   .auth-aurora::after,
   .auth-aurora > span {
     animation: none !important;
+  }
+
+  .skeleton {
+    background-image: none;
   }
 
   .press-effect:active:not(:disabled):not([aria-disabled='true']) {
