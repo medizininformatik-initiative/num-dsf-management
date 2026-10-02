@@ -1,13 +1,15 @@
 /**
  * BundlePreview.test.tsx — collapsed toggle shows the FHIR resource count, and
- * expanding reveals the organization, endpoint (with IP flags), certificate and
- * affiliation sections with their real values. Also covers the null render when
- * no organization is loaded yet.
+ * expanding (aria-expanded) reveals the organization, endpoint (with FHIR/BPE
+ * address flags), certificate (date in the app language) and affiliation
+ * sections with their real values. Also covers the null render when no
+ * organization is loaded yet.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../../test/renderWithProviders';
+import { formatDate } from '../../../lib/dateUtils';
 
 const orgMock = vi.fn();
 const endpointsMock = vi.fn();
@@ -71,12 +73,14 @@ describe('BundlePreview', () => {
 
   it('expands to reveal organization, endpoint, certificate and affiliation sections', async () => {
     renderWithProviders(<BundlePreview instanceId="i1" />);
-    await userEvent.click(screen.getByRole('button', { name: /Preview Bundle/ }));
+    const toggle = screen.getByRole('button', { name: /Preview Bundle/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(toggle);
 
     // Toggle label flips to Hide once expanded.
     expect(
       await screen.findByRole('button', { name: /Hide Bundle/ }, { timeout: 4000 }),
-    ).toBeInTheDocument();
+    ).toHaveAttribute('aria-expanded', 'true');
 
     // Organization section.
     expect(screen.getByText('Organization')).toBeInTheDocument();
@@ -87,13 +91,13 @@ describe('BundlePreview', () => {
     expect(screen.getByText('Endpoint')).toBeInTheDocument();
     expect(screen.getByText('UKM FHIR Endpoint')).toBeInTheDocument();
     expect(screen.getByText('https://fhir.ukm.de/fhir')).toBeInTheDocument();
-    expect(screen.getByText('10.0.0.1 F')).toBeInTheDocument();
-    expect(screen.getByText('10.0.0.2 B')).toBeInTheDocument();
+    expect(screen.getByText('10.0.0.1 · FHIR')).toBeInTheDocument();
+    expect(screen.getByText('10.0.0.2 · BPE')).toBeInTheDocument();
 
     // Certificate section, including the localized valid-until line.
     expect(screen.getByText('Certificate')).toBeInTheDocument();
     expect(screen.getByText('CN=ukm.de')).toBeInTheDocument();
-    expect(screen.getByText('Valid until: 2027-01-01')).toBeInTheDocument();
+    expect(screen.getByText(`Valid until: ${formatDate('2027-01-01', 'en')}`)).toBeInTheDocument();
 
     // Affiliation (membership) section with parent org and each role.
     expect(screen.getByText('Affiliation')).toBeInTheDocument();

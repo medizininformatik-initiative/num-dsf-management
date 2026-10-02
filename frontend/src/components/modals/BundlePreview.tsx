@@ -1,246 +1,177 @@
 /**
- * BundlePreview.tsx – Readable FHIR Bundle preview
- * Dependencies: useOrganization, useEndpoints, useCertificates, useMemberships
+ * BundlePreview.tsx – Readable preview of the resources this instance
+ * contributes to the allow-list bundle (organization, endpoints with their
+ * FHIR/BPE addresses, certificates, affiliations). A disclosure button
+ * (aria-expanded) reveals the list with a short fade.
+ * Dependencies: useOrganization, useEndpoints, useCertificates, useMemberships,
+ * lib/dateUtils, lib/parseJsonArray, StatusPill, Icon, i18n store
  */
-import { useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { useOrganization } from '../../hooks/useOrganization';
 import { useEndpoints } from '../../hooks/useEndpoints';
 import { useCertificates } from '../../hooks/useCertificates';
 import { useMemberships } from '../../hooks/useMemberships';
 import { useI18n } from '../../stores/i18n.store';
 import { parseJsonArray } from '../../lib/parseJsonArray';
+import { formatDate } from '../../lib/dateUtils';
+import { StatusPill } from '../ui/StatusPill';
+import { Icon } from '../ui/Icon';
 
 interface Props {
   instanceId: string;
 }
 
+interface EndpointRow {
+  identifier: string;
+  name?: string | null;
+  address?: string;
+  ipAddresses?: { ip: string; isFhir?: boolean; isBpe?: boolean }[];
+}
+interface CertificateRow {
+  id: string;
+  subject: string;
+  valid_until: string;
+}
+interface MembershipRow {
+  id: string;
+  parent_organization: string;
+  roles?: unknown;
+}
+
+/** One resource of the bundle: a typed header (decorative icon) and its details. */
+function Resource({
+  icon,
+  iconClass,
+  type,
+  children,
+}: {
+  icon: string;
+  iconClass: string;
+  type: string;
+  children: ReactNode;
+}) {
+  return (
+    <li className="border-b border-[color:var(--border)] px-3.5 py-2.5 last:border-b-0">
+      <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-secondary)]">
+        <Icon name={icon} size={14} className={iconClass} />
+        {type}
+      </p>
+      {children}
+    </li>
+  );
+}
+
 export function BundlePreview({ instanceId }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const listId = useId();
   const [expanded, setExpanded] = useState(false);
   const { data: org } = useOrganization(instanceId);
-  const { data: endpoints = [] } = useEndpoints(instanceId);
-  const { data: certs = [] } = useCertificates(instanceId);
-  const { data: memberships = [] } = useMemberships(instanceId);
+  const { data: endpointData } = useEndpoints(instanceId);
+  const { data: certData } = useCertificates(instanceId);
+  const { data: membershipData } = useMemberships(instanceId);
+  const endpoints: EndpointRow[] = Array.isArray(endpointData) ? endpointData : [];
+  const certs: CertificateRow[] = Array.isArray(certData) ? certData : [];
+  const memberships: MembershipRow[] = Array.isArray(membershipData) ? membershipData : [];
 
   if (!org) return null;
 
   const resourceCount = 1 + endpoints.length + certs.length + memberships.length;
 
   return (
-    <div style={{ marginTop: '16px' }}>
+    <div>
       <button
+        type="button"
         onClick={() => setExpanded(!expanded)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          border: '1px solid var(--border)',
-          borderRadius: '8px',
-          padding: '8px 12px',
-          background: 'var(--bg-card)',
-          cursor: 'pointer',
-          fontSize: '12px',
-          fontWeight: 600,
-          color: 'var(--text-secondary)',
-          width: '100%',
-        }}
+        aria-expanded={expanded}
+        aria-controls={listId}
+        className="press-effect flex w-full items-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-xs font-semibold text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
-        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-          {expanded ? 'expand_less' : 'preview'}
-        </span>
+        <Icon name={expanded ? 'expand_less' : 'preview'} size={16} />
         {expanded ? t('bundlePreviewHide') : t('bundlePreviewShow')}{' '}
         {t('bundlePreviewSuffix', { n: resourceCount })}
       </button>
 
       {expanded && (
-        <div
-          style={{
-            marginTop: '8px',
-            border: '1px solid var(--border)',
-            borderRadius: '10px',
-            overflow: 'hidden',
-          }}
+        <ul
+          id={listId}
+          className="mt-2 animate-fade-in overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)]"
         >
-          {/* Organization */}
-          <div
-            style={{
-              padding: '10px 14px',
-              borderBottom: '1px solid var(--border)',
-              background: 'var(--bg-hover)',
-            }}
+          <Resource
+            icon="corporate_fare"
+            iconClass="text-primary"
+            type={t('bundlePreviewOrganization')}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: '14px', color: 'var(--accent)' }}
-              >
-                corporate_fare
-              </span>
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: 'var(--accent)',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Organization
-              </span>
-            </div>
-            <p
-              style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}
-            >
-              {org.name}
-            </p>
-            <p
-              style={{
-                fontSize: '10px',
-                fontFamily: 'monospace',
-                color: 'var(--text-muted)',
-                margin: '2px 0 0',
-              }}
-            >
+            <p className="text-xs font-semibold text-[color:var(--text-primary)]">{org.name}</p>
+            <p className="mt-0.5 font-mono text-[11px] text-[color:var(--text-muted)]">
               {org.identifier}
             </p>
-          </div>
+          </Resource>
 
-          {/* Endpoints */}
-          {endpoints.map((ep: any) => (
-            <div
+          {endpoints.map((ep) => (
+            <Resource
               key={ep.identifier}
-              style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}
+              icon="hub"
+              iconClass="text-teal-600"
+              type={t('bundlePreviewEndpoint')}
             >
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: '14px', color: '#3ecfb2' }}
-                >
-                  hub
-                </span>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    color: '#3ecfb2',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Endpoint
-                </span>
-              </div>
-              <p
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  margin: 0,
-                }}
-              >
+              <p className="text-xs font-semibold text-[color:var(--text-primary)]">
                 {ep.name || ep.identifier}
               </p>
-              <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+              <p className="mt-0.5 break-all text-[11px] text-[color:var(--text-muted)]">
                 {ep.address}
               </p>
-              <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                {(ep.ipAddresses || []).map((ip: any, i: number) => (
-                  <span
-                    key={i}
-                    style={{
-                      fontSize: '9px',
-                      padding: '1px 6px',
-                      borderRadius: '99px',
-                      background: 'var(--bg-page)',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    {ip.ip}
-                    {ip.isFhir ? ' F' : ''}
-                    {ip.isBpe ? ' B' : ''}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-
-          {/* Certificates */}
-          {certs.map((cert: any) => (
-            <div
-              key={cert.id}
-              style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}
-            >
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: '14px', color: '#f5a623' }}
-                >
-                  verified_user
-                </span>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    color: '#f5a623',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Certificate
-                </span>
-              </div>
-              <p style={{ fontSize: '11px', color: 'var(--text-primary)', margin: 0 }}>
-                {cert.subject}
-              </p>
-              <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                {t('bundlePreviewValidUntil', { date: cert.valid_until })}
-              </p>
-            </div>
-          ))}
-
-          {/* Memberships (OrganizationAffiliation) */}
-          {memberships.map((ms: any) => {
-            const roles = parseJsonArray(ms.roles);
-            return (
-              <div
-                key={ms.id}
-                style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}
-              >
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: '14px', color: '#4a90d9' }}
-                  >
-                    groups
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      color: '#4a90d9',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    Affiliation
-                  </span>
-                </div>
-                <p style={{ fontSize: '11px', color: 'var(--text-primary)', margin: 0 }}>
-                  {ms.parent_organization}
-                </p>
-                <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
-                  {roles.map((r: string) => (
-                    <span key={r} style={{ fontSize: '9px', fontWeight: 700, color: '#4a90d9' }}>
-                      {r}
-                    </span>
+              {(ep.ipAddresses ?? []).length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {(ep.ipAddresses ?? []).map((ip, i) => (
+                    <StatusPill key={i} tone="neutral" className="font-mono">
+                      {[
+                        ip.ip,
+                        ip.isFhir ? t('bundlePreviewIpFhir') : null,
+                        ip.isBpe ? t('bundlePreviewIpBpe') : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </StatusPill>
                   ))}
                 </div>
+              )}
+            </Resource>
+          ))}
+
+          {certs.map((cert) => (
+            <Resource
+              key={cert.id}
+              icon="verified_user"
+              iconClass="text-amber-600"
+              type={t('bundlePreviewCertificate')}
+            >
+              <p className="break-all text-xs text-[color:var(--text-primary)]">{cert.subject}</p>
+              <p className="mt-0.5 text-[11px] text-[color:var(--text-muted)]">
+                {t('bundlePreviewValidUntil', {
+                  date: formatDate(cert.valid_until, lang) || cert.valid_until,
+                })}
+              </p>
+            </Resource>
+          ))}
+
+          {memberships.map((ms) => (
+            <Resource
+              key={ms.id}
+              icon="groups"
+              iconClass="text-blue-600"
+              type={t('bundlePreviewAffiliation')}
+            >
+              <p className="text-xs text-[color:var(--text-primary)]">{ms.parent_organization}</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {parseJsonArray(ms.roles).map((r) => (
+                  <StatusPill key={r} tone="info">
+                    {r}
+                  </StatusPill>
+                ))}
               </div>
-            );
-          })}
-        </div>
+            </Resource>
+          ))}
+        </ul>
       )}
     </div>
   );
