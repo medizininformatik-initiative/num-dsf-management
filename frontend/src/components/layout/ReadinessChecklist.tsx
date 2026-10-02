@@ -1,39 +1,20 @@
 /**
  * ReadinessChecklist.tsx – Right-panel submit-readiness checklist.
  * Reads the five entity hooks for the instance, derives per-step readiness via
- * deriveReadiness, and renders one row per step (✓ done / ⚠ open). Each open row
- * is a button that highlights and scrolls to the matching card. Purely
- * informational — it blocks nothing.
- * Depends on: the five entity hooks, deriveReadiness, canvas.store, i18n.store.
+ * deriveReadiness (the rule the wizard and the approval modal share), and
+ * renders one row per step. The status icon carries a text alternative ("Done"
+ * / "Missing"); each open row is a button that highlights the matching card
+ * and scrolls it into view. Purely informational — it blocks nothing.
+ * Depends on: the five entity hooks, lib/readiness, Icon, i18n.store.
  */
 import { useOrganization } from '../../hooks/useOrganization';
 import { useContacts } from '../../hooks/useContacts';
 import { useEndpoints } from '../../hooks/useEndpoints';
 import { useCertificates } from '../../hooks/useCertificates';
 import { useMemberships } from '../../hooks/useMemberships';
-import { deriveReadiness, type ReadinessKey } from '../../lib/readiness';
-import { useCanvasStore } from '../../stores/canvas.store';
+import { deriveReadiness, READINESS_LABEL, revealReadinessCard } from '../../lib/readiness';
 import { useI18n } from '../../stores/i18n.store';
-
-const ITEM_LABEL_KEY: Record<
-  ReadinessKey,
-  | 'readinessOrganization'
-  | 'readinessContacts'
-  | 'readinessEndpoints'
-  | 'readinessCertificates'
-  | 'readinessMemberships'
-> = {
-  organization: 'readinessOrganization',
-  contacts: 'readinessContacts',
-  endpoints: 'readinessEndpoints',
-  certificates: 'readinessCertificates',
-  memberships: 'readinessMemberships',
-};
-
-function jumpToCard(key: ReadinessKey) {
-  useCanvasStore.getState().highlightEntity(key);
-  document.getElementById(`card-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
+import { Icon } from '../ui/Icon';
 
 export function ReadinessChecklist({ instanceId }: { instanceId: string }) {
   const { t } = useI18n();
@@ -53,27 +34,25 @@ export function ReadinessChecklist({ instanceId }: { instanceId: string }) {
 
   return (
     <div className="space-y-2">
-      <p
-        className="text-[10px] font-bold uppercase tracking-widest"
-        style={{ color: 'var(--text-muted)' }}
-      >
+      <h3 className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--text-muted)]">
         {t('readinessTitle')}
-      </p>
+      </h3>
       <ul className="space-y-1">
         {items.map((item) => {
-          const label = t(ITEM_LABEL_KEY[item.key]);
-          const glyph = item.done ? '✓' : '⚠';
-          const glyphColor = item.done ? '#22c55e' : '#f5a623';
+          const label = t(READINESS_LABEL[item.key]);
           if (item.done) {
             return (
               <li
                 key={item.key}
-                className="flex items-center gap-2 px-2 py-1 rounded-lg text-xs"
-                style={{ color: 'var(--text-primary)' }}
+                className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-[color:var(--text-primary)]"
               >
-                <span aria-hidden="true" style={{ color: glyphColor }}>
-                  {glyph}
-                </span>
+                <Icon
+                  name="check_circle"
+                  size={16}
+                  filled
+                  label={t('readinessItemDone')}
+                  className="text-success-fg"
+                />
                 <span>{label}</span>
               </li>
             );
@@ -82,20 +61,23 @@ export function ReadinessChecklist({ instanceId }: { instanceId: string }) {
             <li key={item.key}>
               <button
                 type="button"
-                onClick={() => jumpToCard(item.key)}
-                className="flex items-center gap-2 w-full px-2 py-1 rounded-lg text-xs text-left transition-colors"
-                style={{ color: 'var(--text-primary)', background: 'var(--bg-hover)' }}
+                onClick={() => revealReadinessCard(item.key)}
+                className="press-effect flex w-full items-center gap-2 rounded-lg bg-[color:var(--bg-hover)] px-2 py-1 text-left text-xs text-[color:var(--text-primary)] hover:bg-warning-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
               >
-                <span aria-hidden="true" style={{ color: glyphColor }}>
-                  {glyph}
-                </span>
-                <span>{label}</span>
+                <Icon
+                  name="error"
+                  size={16}
+                  label={t('readinessItemMissing')}
+                  className="text-warning-fg"
+                />
+                <span className="flex-1">{label}</span>
+                <Icon name="arrow_forward" size={14} className="text-[color:var(--text-muted)]" />
               </button>
             </li>
           );
         })}
       </ul>
-      <p className="text-[11px] font-bold" style={{ color: ready ? '#22c55e' : '#f5a623' }}>
+      <p className={`text-xs font-bold ${ready ? 'text-success-fg' : 'text-warning-fg'}`}>
         {ready ? t('readinessReady') : t('readinessOpen', { count: openCount })}
       </p>
     </div>
