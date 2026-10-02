@@ -92,7 +92,7 @@ export function OnboardingWizard({ instanceId }: Props) {
   return (
     <section
       aria-labelledby={headingId}
-      className="mb-4 animate-fade-in rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] px-4 py-3 shadow-card"
+      className="entity-card-shadow mb-4 animate-fade-in rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] px-4 py-3"
     >
       <div className="mb-1.5 flex items-center justify-between gap-3">
         <h2
