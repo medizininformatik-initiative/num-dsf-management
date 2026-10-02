@@ -348,8 +348,8 @@ body {
 /* ─── Micro-interactions ──────────────────────────────────────────────────
    Opt-in utility classes. Each only animates interaction (hover/active) or a
    one-shot entrance, never the resting appearance, so static visual snapshots
-   are unaffected. All are disabled under prefers-reduced-motion below.
-   Keyframes live in tailwind.config.ts (animate-* utilities). */
+   are unaffected. Reduced motion is handled by the block at the end of this
+   file. Keyframes live in tailwind.config.ts (animate-* utilities). */
 
 /* Legacy entrance classes; new code uses animate-fade-in / animate-scale-in. */
 .anim-fade-in {
@@ -467,24 +467,6 @@ body {
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
     }
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .auth-aurora::before,
-  .auth-aurora::after,
-  .auth-aurora > span,
-  .dsf-wordmark,
-  .anim-fade-in,
-  .anim-scale-in {
-    animation: none !important;
-  }
-  .hover-lift,
-  .hover-lift:hover,
-  .press-effect,
-  .press-effect:active {
-    transition: none !important;
-    transform: none !important;
   }
 }
 
@@ -649,4 +631,144 @@ body {
 .geomap-frame {
   border: 2px solid;
   border-image: linear-gradient(to right, #b01e66 0%, #3a6fb0 50%, #65a93d 100%) 1;
+}
+
+/* ─── Reduced motion — keep this block last ───────────────────────────────
+   Under prefers-reduced-motion: reduce, movement is neutralised app-wide,
+   including Tailwind utilities and inline styles, while short opacity and
+   colour fades remain:
+   1. Transitions may only animate non-movement properties, so transforms,
+      margins and sizes change instantly.
+   2. Keyframe animations collapse to one 1ms iteration: decorative loops stop
+      and entrances land at once. Motion primitives (animate-* utilities and
+      the legacy .anim-* classes) are exempt because their movement keyframes
+      are redefined below as opacity crossfades; animate-spin keeps turning,
+      as a busy indicator should.
+   3. Smooth scrolling is instant. Script-driven scrolling goes through
+      scrollIntoViewSafe() in src/lib/motion.ts.
+   The keyframe overrides only win while this block comes after every rule
+   that emits the same keyframes, hence the explicit variants directive:
+   variant utilities (data-[state=open]:animate-scale-in, hover:, …) would
+   otherwise be appended after it, at the very end of the stylesheet. */
+@tailwind variants;
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-property:
+      opacity, color, background-color, border-color, outline-color, text-decoration-color, fill,
+      stroke, box-shadow !important;
+  }
+
+  :where(:not([class*='animate-'], .anim-fade-in, .anim-scale-in)),
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+  }
+
+  .animate-pulse,
+  .animate-ping,
+  .animate-bounce,
+  .animate-shimmer,
+  .status-pulse,
+  .dsf-wordmark,
+  .auth-aurora::before,
+  .auth-aurora::after,
+  .auth-aurora > span {
+    animation: none !important;
+  }
+
+  .press-effect:active:not(:disabled):not([aria-disabled='true']) {
+    transform: none;
+    opacity: 0.8;
+  }
+
+  /* Entrances settle their fade within ~200ms whatever their duration. */
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+    }
+    60% {
+      opacity: 1;
+    }
+  }
+  @keyframes scale-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes sheet-in-right {
+    from {
+      opacity: 0;
+    }
+    45% {
+      opacity: 1;
+    }
+  }
+  @keyframes sheet-out-right {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes sheet-in-left {
+    from {
+      opacity: 0;
+    }
+    45% {
+      opacity: 1;
+    }
+  }
+  @keyframes sheet-out-left {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes sheet-in-bottom {
+    from {
+      opacity: 0;
+    }
+    45% {
+      opacity: 1;
+    }
+  }
+  @keyframes sheet-out-bottom {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes popover-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes popover-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes list-item-in {
+    from {
+      opacity: 0;
+    }
+    60% {
+      opacity: 1;
+    }
+  }
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+    }
+    60% {
+      opacity: 1;
+    }
+  }
+  @keyframes toast-out {
+    to {
+      opacity: 0;
+    }
+  }
 }
