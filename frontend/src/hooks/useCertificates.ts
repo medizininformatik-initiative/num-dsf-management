@@ -1,10 +1,10 @@
 /**
- * useCertificates.ts — TanStack Query hooks for certificate list, create, delete, and renew.
+ * useCertificates.ts — TanStack Query hooks for certificate list, create, preview, delete, and renew.
  * Wraps the entities API; mutations invalidate certificates and certs-expiring plus
  * the shared post-mutation caches (see invalidateAfterEntityMutation).
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../api/entities.api';
+import { api, type CertificatePreview } from '../api/entities.api';
 import { invalidateAfterEntityMutation } from './useEntityInvalidation';
 
 export function useCertificates(instanceId: string | null) {
@@ -28,6 +28,16 @@ export function useCreateCertificate(instanceId: string) {
       qc.invalidateQueries({ queryKey: ['certs-expiring', instanceId] });
       invalidateAfterEntityMutation(qc, instanceId);
     },
+  });
+}
+
+/** Parse a PEM server-side without storing it, for the upload preview. */
+export function usePreviewCertificate(instanceId: string) {
+  return useMutation({
+    mutationFn: (pem: string) =>
+      api(instanceId)
+        .previewCertificate(pem)
+        .then((r) => r.data.data as CertificatePreview),
   });
 }
 
