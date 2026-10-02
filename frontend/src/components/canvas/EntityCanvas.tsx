@@ -4,13 +4,15 @@
  * canvas's own width (see entity-canvas.css), so cards never remount when
  * the layout changes. Cards enter with a short stagger (--stagger-index;
  * static under Reduce Motion). The canvas is the scroll container and hosts
- * the overlays: the ring on the target of an FK jump.
- * Dependencies: OnboardingWizard, HighlightRing, the entity cards,
- * entity-canvas.css.
+ * the overlays: the ring on the target of an FK jump and the relation line of
+ * the FK link under the pointer or keyboard focus.
+ * Dependencies: OnboardingWizard, HighlightRing, RelationOverlay, the entity
+ * cards, entity-canvas.css.
  */
 import { useRef, type ComponentType, type CSSProperties } from 'react';
 import { OnboardingWizard } from './OnboardingWizard';
 import { HighlightRing } from './HighlightRing';
+import { RelationOverlay } from './RelationOverlay';
 import { OrganizationCard } from '../cards/OrganizationCard';
 import { ContactsCard } from '../cards/ContactsCard';
 import { EndpointsCard } from '../cards/EndpointsCard';
@@ -50,6 +52,7 @@ export function EntityCanvas({ instanceId }: EntityCanvasProps) {
         ))}
       </div>
       <HighlightRing containerRef={containerRef} />
+      <RelationOverlay containerRef={containerRef} />
     </div>
   );
 }
