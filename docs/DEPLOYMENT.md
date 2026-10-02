@@ -45,6 +45,9 @@ All configuration flows through env vars (no hardcoded secrets). Copy `.env.exam
 - `IMI_ADMIN_EMAILS` — comma-separated list. Each admin's email **domain** is treated as their "site" for the 4-eyes approval rule.
 - `IMI_ADMIN_CERT_FINGERPRINTS` (cert-auth variant only). Comma-separated `email=fingerprint` pairs that let IMI admins sign in by client certificate on the login-screen-free box. The fingerprint is the SHA-512 hash of the admin's client cert (128 hex chars; colons and case are ignored). It is re-seeded on every boot, so pairs can be appended later. Use the same address here and in `IMI_ADMIN_EMAILS`: the first grants the login, the second grants the admin role.
 
+**Certificate authorities:**
+- `CA_WHITELIST_ENFORCE`. Set to `true` to reject certificate uploads whose issuer is not on the CA whitelist (`CA_NOT_WHITELISTED`). Unset by default: other issuers, self-signed test certificates included, are accepted and shown without the DSF CA badge. The whitelist is seeded at init with the CAs DSF 2.1.1 accepts by default (migration 022: DFN, D-TRUST, GEANT and HARICA, Sectigo/USERTrust, T-TeleSec and others) and is managed through `/api/v1/admin/ca-whitelist`.
+
 **Approval workflow:**
 - `APPROVAL_SILENT_CONSENT_DAYS` — number of days a single-approved request waits before auto-approving via silent consent (Schweigen als Zustimmung). Default `7`.
 

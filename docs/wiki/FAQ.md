@@ -62,3 +62,11 @@ requests a promotion for the target user at `/app/admin/promotions`, and a
 A list of distrusted certificate authorities (subject DN, optionally pinned by
 SHA-256 fingerprint), managed at `/app/admin/ca-blacklist`. A certificate upload
 whose issuer matches the list is rejected with `CA_BLACKLISTED`.
+
+### "What is the CA whitelist?"
+The certificate authorities the DSF accepts in production, seeded at init with
+the DSF 2.1.1 defaults (DFN, D-TRUST, GEANT and HARICA, Sectigo/USERTrust,
+T-TeleSec and others). Certificates issued by one of them get a DSF CA badge;
+others, self-signed test certificates included, are still accepted unless
+`CA_WHITELIST_ENFORCE=true`, which rejects them with `CA_NOT_WHITELISTED`.
+A whitelisted CA cannot be blacklisted.

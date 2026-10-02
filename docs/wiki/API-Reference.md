@@ -190,6 +190,18 @@ Mounted at `/api/v1/admin/ca-blacklist`. All `requireAdmin`.
 | POST | /api/v1/admin/ca-blacklist | requireAdmin | Add an entry. Body `{ subjectDn, fingerprint? (64-hex), reason? }` → `{ id }` (201). |
 | DELETE | /api/v1/admin/ca-blacklist/:id | requireAdmin | Remove an entry → `{ deleted: true }`. |
 
+### CA Whitelist
+
+Mounted at `/api/v1/admin/ca-whitelist`. All `requireAdmin`; writes need the step-up (TOTP code, or the re-presented client certificate in certificate sessions).
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/admin/ca-whitelist | requireAdmin | Return `{ whitelist, enforced }`; `enforced` mirrors `CA_WHITELIST_ENFORCE`. |
+| POST | /api/v1/admin/ca-whitelist | requireAdmin + step-up | Add an entry. Body `{ subjectDn, kind? (CLIENT, SERVER), fingerprint? (64-hex), reason?, totpCode? }` → `{ id }` (201, 409 if listed). |
+| DELETE | /api/v1/admin/ca-whitelist/:id | requireAdmin + step-up | Remove an entry → `{ deleted: true }` (404 if unknown). |
+
+Adding a whitelisted CA to the blacklist returns `409 CA_WHITELISTED`. Certificates returned by `/api/v1/instances/:id/certificates` carry `issuerDn` and `issuerTrusted`.
+
 ### Bundle Versions
 
 Mounted at `/api/v1/admin/bundle-versions`. All `requireAdmin`.

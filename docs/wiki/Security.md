@@ -31,6 +31,7 @@
 
 - **Audit immutability** — `audit_logs` is append-only at the database level via `BEFORE UPDATE`/`BEFORE DELETE` triggers (migration 013), not just by convention
 - **CA blacklist** — Certificate uploads issued by a distrusted CA (subject DN / fingerprint) are rejected with `CA_BLACKLISTED`
+- **CA whitelist**: The CAs the DSF accepts in production are seeded at init (migration 022); certificates from other issuers are flagged, and rejected with `CA_NOT_WHITELISTED` when `CA_WHITELIST_ENFORCE=true`
 - **PEM size cap** — Uploaded PEM is capped (20 KB) so oversized input cannot tie up the parser
 - **Redis fail-soft** — The idle-timeout check distinguishes a missing activity key from Redis being unreachable, so a transient Redis blip does not log every user out
 - **Bundle key id** — Bundle signatures carry a `kid` header so consumers can verify offline and keys can rotate
