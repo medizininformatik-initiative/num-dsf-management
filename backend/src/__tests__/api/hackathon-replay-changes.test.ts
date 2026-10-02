@@ -142,7 +142,7 @@ describe('Hackathon replay: participants change the allow list', () => {
       const bundle = await allowListOf(viewer);
       expect(affiliation(bundle, 'DELETE', hub, org(leaver), leaver.fhirEndpoint)).toBeDefined();
       expect(affiliation(bundle, 'PUT', hub, org(leaver), leaver.fhirEndpoint)).toBeUndefined();
-      // The organization itself stays published (F-BND-06: no Organization DELETE).
+      // Still an active, approved organization: it stays published.
       expect(organizationsIn(bundle)).toContain(org(leaver));
     }
     const own = await allowListOf(leaver);
@@ -205,5 +205,48 @@ describe('Hackathon replay: participants change the allow list', () => {
     expect(res.status).toBe(200);
     expect(organizationsIn(res.body as Bundle)).toEqual(expect.arrayContaining(sites.map(org)));
     expect(organizationsIn(res.body as Bundle)).not.toContain(newcomerOrg);
+  });
+
+  it('4. a site withdrawn from the allow list is deleted at every other site', async () => {
+    const [a, b, leaver] = sites;
+    const deactivated = await api(leaver).put(
+      `/api/v1/instances/${leaver.instanceId}/organization`,
+      {
+        identifier: org(leaver),
+        name: leaver.user.orgName,
+        email: leaver.user.email,
+        active: false,
+        clientCertThumbprint: leaver.user.thumbprintSha256,
+      },
+    );
+    expect(deactivated.status).toBe(200);
+    // Until the deactivation is approved nothing is deleted.
+    const pendingId = await submit(leaver);
+    const before = (await allowListOf(a)).entry ?? [];
+    expect(
+      before.filter((e) => e.request.method === 'DELETE' && e.request.url.includes(org(leaver))),
+    ).toEqual([]);
+
+    expect(await approveByTwo(pendingId, a, b)).toBe('APPROVED');
+    for (const viewer of [a, b]) {
+      const deletes = ((await allowListOf(viewer)).entry ?? [])
+        .filter((e) => e.request.method === 'DELETE')
+        .map((e) => e.request.url);
+      expect(deletes).toEqual(
+        expect.arrayContaining([
+          `Organization?identifier=http://dsf.dev/sid/organization-identifier|${org(leaver)}`,
+          `Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|${leaver.fhirEndpoint}`,
+          `Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|bpe.${org(leaver)}`,
+        ]),
+      );
+      expect(
+        affiliation(await allowListOf(viewer), 'DELETE', hub, org(leaver), leaver.fhirEndpoint),
+      ).toBeDefined();
+    }
+    // Its own DSF server never receives a DELETE for itself.
+    const own = (await allowListOf(leaver)).entry ?? [];
+    expect(
+      own.filter((e) => e.request.url.endsWith(`|${org(leaver)}`) && e.request.method === 'DELETE'),
+    ).toEqual([]);
   });
 });

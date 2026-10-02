@@ -99,6 +99,7 @@ export function api(p: Pick<Participant, 'token' | 'pem'>) {
   return {
     get: (url: string) => auth(request(app).get(url)),
     post: (url: string, body?: object) => auth(request(app).post(url)).send(body ?? {}),
+    put: (url: string, body: object) => auth(request(app).put(url)).send(body),
     del: (url: string) => auth(request(app).delete(url)),
   };
 }
