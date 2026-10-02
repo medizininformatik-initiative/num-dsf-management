@@ -1,10 +1,17 @@
 /**
- * Modal.tsx — base portal-rendered modal shell with backdrop, Escape-to-close, and a Tab focus trap.
- * Locks body scroll while open and auto-focuses the first focusable element; wraps all app modals.
+ * Modal.tsx — the app's dialog primitive; every entity modal builds on it.
+ * A glass panel over a blurred scrim that springs in and leaves faster
+ * (DialogShell), stacked so that only the top-most dialog reacts to Escape and
+ * scrim clicks, with Tab kept inside, focus restored to the opener on close and
+ * the panel labelled by its title. With `isDirty`, Escape, the scrim and the
+ * close button first ask to discard the changes (ConfirmDialog).
+ * Dependencies: DialogShell, ConfirmDialog, Icon, i18n store.
  */
-import React, { useEffect, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useId, useState } from 'react';
 import { useI18n } from '../../stores/i18n.store';
+import { DialogShell } from '../ui/DialogShell';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { Icon } from '../ui/Icon';
 
 interface ModalProps {
   open: boolean;
@@ -12,7 +19,10 @@ interface ModalProps {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
+  /** Tailwind max-width class of the panel. */
   width?: string;
+  /** Unsaved changes: closing via Escape, scrim or the close button asks first. */
+  isDirty?: boolean;
 }
 
 export function Modal({
@@ -22,89 +32,60 @@ export function Modal({
   subtitle,
   children,
   width = 'max-w-lg',
+  isDirty = false,
 }: ModalProps) {
   const { t } = useI18n();
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    if (open) document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  const titleId = useId();
+  const subtitleId = useId();
+  const [askDiscard, setAskDiscard] = useState(false);
+  // Never carry a pending question over into the next opening.
+  if (!open && askDiscard) setAskDiscard(false);
+  const requestClose = () => (isDirty ? setAskDiscard(true) : onClose());
 
-  useEffect(() => {
-    document.body.style.overflow = open ? 'hidden' : '';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [open]);
-
-  const modalRef = useRef<HTMLDivElement>(null);
-
-  // Focus trap – Tab cycles within modal
-  const handleTabKey = useCallback((e: KeyboardEvent) => {
-    if (e.key !== 'Tab' || !modalRef.current) return;
-    const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-    );
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    document.addEventListener('keydown', handleTabKey);
-    // Auto-focus first focusable element
-    setTimeout(() => {
-      const firstInput = modalRef.current?.querySelector<HTMLElement>(
-        'input, select, textarea, button',
-      );
-      firstInput?.focus();
-    }, 50);
-    return () => document.removeEventListener('keydown', handleTabKey);
-  }, [open, handleTabKey]);
-
-  if (!open) return null;
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 anim-fade-in"
-      style={{ background: 'rgba(24, 28, 32, 0.25)', backdropFilter: 'blur(4px)' }}
-      onClick={onClose}
-    >
-      <div
-        ref={modalRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className={`w-full ${width} rounded-2xl shadow-2xl overflow-hidden anim-scale-in`}
-        style={{ background: 'var(--bg-card)', boxShadow: '0 24px 64px rgba(138,23,80,0.12)' }}
-        onClick={(e) => e.stopPropagation()}
+  return (
+    <>
+      <DialogShell
+        open={open}
+        onDismiss={requestClose}
+        labelledBy={titleId}
+        describedBy={subtitle ? subtitleId : undefined}
+        className={`overflow-hidden ${width}`}
       >
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">{title}</h2>
-            {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+        <div className="flex items-center justify-between gap-4 border-b border-[color:var(--border)] px-6 pb-4 pt-6">
+          <div className="min-w-0">
+            <h2 id={titleId} className="text-base font-bold text-[color:var(--text-primary)]">
+              {title}
+            </h2>
+            {subtitle && (
+              <p id={subtitleId} className="mt-0.5 text-xs text-[color:var(--text-muted)]">
+                {subtitle}
+              </p>
+            )}
           </div>
           <button
-            onClick={onClose}
+            type="button"
+            onClick={requestClose}
             aria-label={t('ariaClose')}
-            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+            className="press-effect rounded-lg p-1.5 text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)]"
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <Icon name="close" size={20} />
           </button>
         </div>
-        <div className="px-6 py-5 max-h-[75vh] overflow-y-auto">{children}</div>
-      </div>
-    </div>,
-    document.body,
+        <div className="max-h-[75vh] overflow-y-auto px-6 py-5">{children}</div>
+      </DialogShell>
+      <ConfirmDialog
+        open={open && askDiscard}
+        title={t('confirmDiscardTitle')}
+        message={t('confirmDiscardMessage')}
+        confirmLabel={t('confirmDiscardConfirmBtn')}
+        cancelLabel={t('confirmDiscardCancelBtn')}
+        destructive
+        onConfirm={() => {
+          setAskDiscard(false);
+          onClose();
+        }}
+        onCancel={() => setAskDiscard(false)}
+      />
+    </>
   );
 }

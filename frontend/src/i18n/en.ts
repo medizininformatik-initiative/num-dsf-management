@@ -869,6 +869,13 @@ export const en = {
   dsfResourcesDescGithub: 'DSF reference implementation source code.',
   dsfResourcesDescCommunity: 'Team, communication channels, and how to contribute.',
 
+  // UI primitives
+  confirmDiscardTitle: 'Discard changes?',
+  confirmDiscardMessage:
+    'Your changes have not been saved and will be lost if you close this dialog.',
+  confirmDiscardConfirmBtn: 'Discard',
+  confirmDiscardCancelBtn: 'Keep editing',
+
   // Certificate-auth status screen (cert deployment variant)
   certStatusTitle: 'Certificate sign-in',
   certStatusChecking: 'Checking your certificate…',

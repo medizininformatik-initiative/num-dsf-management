@@ -881,6 +881,13 @@ export const de: Record<TranslationKey, string> = {
   dsfResourcesDescGithub: 'Quellcode der DSF-Referenzimplementierung.',
   dsfResourcesDescCommunity: 'Team, Kommunikationskanäle und wie man beiträgt.',
 
+  // UI primitives
+  confirmDiscardTitle: 'Änderungen verwerfen?',
+  confirmDiscardMessage:
+    'Ihre Änderungen wurden nicht gespeichert und gehen verloren, wenn Sie diesen Dialog schließen.',
+  confirmDiscardConfirmBtn: 'Verwerfen',
+  confirmDiscardCancelBtn: 'Weiter bearbeiten',
+
   // Zertifikats-Login-Status (Zert-Deployment-Variante)
   certStatusTitle: 'Zertifikats-Anmeldung',
   certStatusChecking: 'Zertifikat wird geprüft…',
