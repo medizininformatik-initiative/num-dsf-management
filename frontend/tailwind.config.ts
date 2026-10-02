@@ -77,11 +77,30 @@ const motion = {
   },
 };
 
+/**
+ * Status tones: the central colour scale behind StatusPill and
+ * src/lib/statusColors.ts, e.g. `text-danger-fg bg-danger-surface
+ * border-danger-border`. Values are the --tone-* custom properties in
+ * src/index.css, which switch with the .dark class (no dark: variant needed).
+ */
+const tone = (name: string) => ({
+  fg: `var(--tone-${name}-fg)`,
+  surface: `var(--tone-${name}-surface)`,
+  border: `var(--tone-${name}-border)`,
+});
+
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  // dark: variants follow the theme store's .dark class on <html>, not the OS.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        success: tone('success'),
+        warning: tone('warning'),
+        danger: tone('danger'),
+        info: tone('info'),
+        neutral: tone('neutral'),
         background: '#f7f9ff',
         surface: '#f7f9ff',
         'surface-container-low': '#f1f3f9',

@@ -32,6 +32,27 @@
     0 2px 8px -2px rgba(24, 28, 32, 0.06);
   --scrim: rgba(24, 28, 32, 0.28);
   --scrim-opaque: rgba(24, 28, 32, 0.5);
+  /* Keyboard focus outline (>= 3:1 against card and page) */
+  --focus-ring: #b01e66;
+  /* Status tones — the central scale behind StatusPill (src/lib/statusColors.ts)
+     and the Tailwind colors {success,warning,danger,info,neutral}-{fg,surface,border}.
+     Light: 700-tone text on 50-tone surfaces; dark: 300-tone text on tinted
+     surfaces. Every fg/surface pair is >= 4.5:1. */
+  --tone-success-fg: #047857;
+  --tone-success-surface: #ecfdf5;
+  --tone-success-border: #a7f3d0;
+  --tone-warning-fg: #b45309;
+  --tone-warning-surface: #fffbeb;
+  --tone-warning-border: #fde68a;
+  --tone-danger-fg: #b91c1c;
+  --tone-danger-surface: #fef2f2;
+  --tone-danger-border: #fecaca;
+  --tone-info-fg: #1d4ed8;
+  --tone-info-surface: #eff6ff;
+  --tone-info-border: #bfdbfe;
+  --tone-neutral-fg: #334155;
+  --tone-neutral-surface: #f1f5f9;
+  --tone-neutral-border: #e2e8f0;
 }
 
 :root.dark {
@@ -58,6 +79,22 @@
   --glass-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.6), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
   --scrim: rgba(5, 6, 10, 0.5);
   --scrim-opaque: rgba(5, 6, 10, 0.72);
+  --focus-ring: #e06399;
+  --tone-success-fg: #6ee7b7;
+  --tone-success-surface: rgba(16, 185, 129, 0.16);
+  --tone-success-border: rgba(16, 185, 129, 0.35);
+  --tone-warning-fg: #fcd34d;
+  --tone-warning-surface: rgba(245, 158, 11, 0.16);
+  --tone-warning-border: rgba(245, 158, 11, 0.35);
+  --tone-danger-fg: #fca5a5;
+  --tone-danger-surface: rgba(239, 68, 68, 0.16);
+  --tone-danger-border: rgba(239, 68, 68, 0.35);
+  --tone-info-fg: #93c5fd;
+  --tone-info-surface: rgba(59, 130, 246, 0.18);
+  --tone-info-border: rgba(59, 130, 246, 0.38);
+  --tone-neutral-fg: #cbd5e1;
+  --tone-neutral-surface: rgba(148, 163, 184, 0.14);
+  --tone-neutral-border: rgba(148, 163, 184, 0.3);
 }
 
 /* ─── Motion tokens ───────────────────────────────────────────────────────
@@ -467,6 +504,87 @@ body {
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
     }
+  }
+}
+
+/* ─── Controls (Button.tsx, StatusPill.tsx) ───────────────────────────────
+   Disabled buttons fade through opacity and keep their colour; pressing is
+   handled by .press-effect, which Button adds. */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border: 1px solid transparent;
+    border-radius: theme('borderRadius.button');
+    font-weight: 600;
+    line-height: 1.25rem;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+  .btn:disabled,
+  .btn[aria-disabled='true'] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-sm {
+    min-height: 2rem;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+  }
+  .btn-md {
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+  .btn-primary {
+    background-color: theme('colors.primary');
+    color: #fff;
+  }
+  .btn-primary:hover:enabled {
+    background-color: theme('colors.primary-container');
+  }
+  .btn-secondary {
+    background-color: var(--bg-card);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+  .btn-secondary:hover:enabled {
+    background-color: var(--bg-hover);
+    border-color: var(--border-strong);
+  }
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover:enabled {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .btn-destructive {
+    background-color: theme('colors.error');
+    color: #fff;
+  }
+  .btn-destructive:hover:enabled {
+    background-color: #93000a;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-width: 1px;
+    border-radius: 9999px;
+    padding: 0.125rem 0.5rem;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1rem;
+    white-space: nowrap;
   }
 }
 
