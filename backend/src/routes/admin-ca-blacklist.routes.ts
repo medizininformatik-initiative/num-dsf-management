@@ -53,8 +53,17 @@ adminCaBlacklistRouter.post(
       });
     }
     const { totpCode: _totpCode, ...entry } = parsed.data;
-    const id = await svc.addToBlacklist(entry, req.user!.email);
-    res.status(201).json({ data: { id } });
+    try {
+      const id = await svc.addToBlacklist(entry, req.user!.email);
+      res.status(201).json({ data: { id } });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === 'CA_WHITELISTED') {
+        return res.status(409).json({
+          error: { code: 'CA_WHITELISTED', message: 'This CA is on the CA whitelist.' },
+        });
+      }
+      throw err;
+    }
   }),
 );
 

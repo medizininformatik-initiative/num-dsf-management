@@ -70,6 +70,13 @@ export async function addToBlacklist(
   entry: { subjectDn: string; fingerprint?: string; reason?: string },
   addedBy: string,
 ): Promise<string> {
+  // A CA that DSF accepts in production (ca_whitelist, migration 022) must not
+  // be blacklisted by accident; remove it from the whitelist first.
+  const whitelisted: Array<{ subject_dn: string }> = await db('ca_whitelist').select('subject_dn');
+  const target = normalizeDn(entry.subjectDn);
+  if (whitelisted.some((r) => normalizeDn(r.subject_dn) === target)) {
+    throw new Error('CA_WHITELISTED');
+  }
   const id = uuidv4();
   await db('ca_blacklist').insert({
     id,
