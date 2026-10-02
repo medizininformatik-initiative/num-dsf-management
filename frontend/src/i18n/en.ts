@@ -318,6 +318,13 @@ export const en = {
   membershipCardDeleteAria: 'Delete membership in {parent}',
 
   // Certificate card & entity rows (contacts, endpoints, certificates, memberships)
+  contactCardTypeMedic: 'MeDIC contact',
+  contactCardTypeDsfAdmin: 'DSF admin',
+  contactCardTypeSecurity: 'Security',
+  contactCardEmailVerified: 'Email verified',
+  contactCardEmailUnverified: 'Email not verified',
+  contactCardEditAria: 'Edit contact {name}',
+  contactCardDeleteAria: 'Delete contact {name}',
   contactCardDeleteTitle: 'Delete contact?',
   contactCardDeleteMessage: '{name} will be removed from the contacts of your organization.',
   contactCardDeleteLastContact:

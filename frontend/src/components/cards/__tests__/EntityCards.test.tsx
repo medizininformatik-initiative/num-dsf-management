@@ -158,10 +158,10 @@ describe('ContactsCard', () => {
 
     expect(screen.getByText('Dr. Alice')).toBeInTheDocument();
     expect(screen.getByText('Bob Admin')).toBeInTheDocument();
-    expect(screen.getByText('MEDIC')).toBeInTheDocument();
-    expect(screen.getByText('DSF_ADMIN')).toBeInTheDocument();
-    expect(screen.getByText('✓ validated')).toBeInTheDocument();
-    expect(screen.getByText('⚠ not validated')).toBeInTheDocument();
+    expect(screen.getByText('MeDIC contact')).toBeInTheDocument();
+    expect(screen.getByText('DSF admin')).toBeInTheDocument();
+    expect(screen.getByText('Email verified')).toBeInTheDocument();
+    expect(screen.getByText('Email not verified')).toBeInTheDocument();
   });
 
   it('renders the empty state', () => {

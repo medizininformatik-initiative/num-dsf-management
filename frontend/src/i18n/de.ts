@@ -323,6 +323,13 @@ export const de: Record<TranslationKey, string> = {
   membershipCardDeleteAria: 'Mitgliedschaft in {parent} löschen',
 
   // Certificate card & entity rows (contacts, endpoints, certificates, memberships)
+  contactCardTypeMedic: 'MeDIC-Kontakt',
+  contactCardTypeDsfAdmin: 'DSF-Admin',
+  contactCardTypeSecurity: 'Sicherheit',
+  contactCardEmailVerified: 'E-Mail bestätigt',
+  contactCardEmailUnverified: 'E-Mail nicht bestätigt',
+  contactCardEditAria: 'Kontakt {name} bearbeiten',
+  contactCardDeleteAria: 'Kontakt {name} löschen',
   contactCardDeleteTitle: 'Kontakt löschen?',
   contactCardDeleteMessage: '{name} wird aus den Kontakten Ihrer Organisation entfernt.',
   contactCardDeleteLastContact:

@@ -1,7 +1,14 @@
 /**
- * ContactsCard.tsx — entity card listing organization contacts with type badges and email-validation state.
- * Supports add/edit (useModals), resend-verification, and confirmed, cross-user-guarded deletion.
+ * ContactsCard.tsx — entity card listing organization contacts: name, email, translated type
+ * badges and the email-verification state. A click anywhere on a row opens the contact
+ * editor; the row's named edit button is the keyboard path to the same action. Rows stagger
+ * in and carry data-entity-row="contacts:<id>"; the body shows a skeleton or an error with
+ * retry while the query loads or fails. Supports add/edit (useModals), resend-verification,
+ * and confirmed, cross-user-guarded deletion.
+ * Dependencies: useContacts, useOrganization, entities api, confirmDelete, parseJsonArray,
+ * EntityCard, FkLink, StatusPill, Button, Icon, sonner.
  */
+import { useState, type CSSProperties, type MouseEvent } from 'react';
 import { useContacts, useDeleteContact } from '../../hooks/useContacts';
 import { EntityCard } from './EntityCard';
 import { FkLink } from './FkLink';
@@ -11,15 +18,19 @@ import { parseJsonArray } from '../../lib/parseJsonArray';
 import { api } from '../../api/entities.api';
 import { toast } from 'sonner';
 import { useI18n } from '../../stores/i18n.store';
+import type { TranslationKey } from '../../i18n/en';
 import { useConfirmDelete } from '../../lib/confirmDelete';
+import { StatusPill } from '../ui/StatusPill';
+import { Button } from '../ui/Button';
+import { Icon } from '../ui/Icon';
 
 /** Contact types that receive the certificate expiry reminders. */
 const REMINDER_TYPES = ['SECURITY', 'DSF_ADMIN'];
 
-const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
-  MEDIC: { bg: '#fde3ef', color: 'var(--primary)' },
-  DSF_ADMIN: { bg: '#e8f0ff', color: '#1d4ed8' },
-  SECURITY: { bg: '#f0fff8', color: '#059669' },
+const CONTACT_TYPE: Record<string, { label: TranslationKey; icon: string }> = {
+  MEDIC: { label: 'contactCardTypeMedic', icon: 'stethoscope' },
+  DSF_ADMIN: { label: 'contactCardTypeDsfAdmin', icon: 'admin_panel_settings' },
+  SECURITY: { label: 'contactCardTypeSecurity', icon: 'shield' },
 };
 
 interface ContactRow {
@@ -30,12 +41,18 @@ interface ContactRow {
   types: unknown;
 }
 
+function openEditor(id: string) {
+  useModals.getState().openModal('contact-edit', id);
+}
+
 export function ContactsCard({ instanceId }: { instanceId: string }) {
   const { t } = useI18n();
-  const { data: contacts = [], isLoading } = useContacts(instanceId);
+  const { data, isLoading, isError, refetch } = useContacts(instanceId);
+  const contacts: ContactRow[] = data ?? [];
   const { data: org } = useOrganization(instanceId);
   const deleteMut = useDeleteContact(instanceId);
   const confirmDelete = useConfirmDelete();
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   function requestDelete(c: ContactRow) {
     const name = c.name || c.email;
@@ -55,179 +72,122 @@ export function ContactsCard({ instanceId }: { instanceId: string }) {
     });
   }
 
+  async function resendVerification(c: ContactRow) {
+    setResendingId(c.id);
+    try {
+      await api(instanceId).resendVerification(c.id);
+      toast.success(t('contactVerificationSent'));
+    } catch {
+      toast.error(t('contactVerificationFailed'));
+    } finally {
+      setResendingId(null);
+    }
+  }
+
+  function handleRowClick(e: MouseEvent<HTMLLIElement>, c: ContactRow) {
+    // Nested controls keep their own action, and selecting text does not open the editor.
+    if ((e.target as Element).closest('button, a')) return;
+    if (window.getSelection()?.toString()) return;
+    openEditor(c.id);
+  }
+
   return (
     <EntityCard
       id="contacts"
       title={t('contacts')}
       borderColor="#9b59b6"
       icon="contact_phone"
+      status={isLoading ? 'loading' : isError && !data ? 'error' : 'ready'}
+      onRetry={() => void refetch()}
       onAdd={() => useModals.getState().openModal('contact-add')}
     >
       {org && (
         <FkLink label={t('organization')} targetEntity="organization" value={org.identifier} />
       )}
 
-      <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        {isLoading && (
-          <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{t('loading')}</div>
-        )}
-        {contacts.map((c: ContactRow) => (
-          <div
-            key={c.id}
-            style={{
-              background: 'var(--bg-hover)',
-              border: '1px solid var(--border)',
-              borderRadius: '10px',
-              padding: '10px 12px',
-              cursor: 'pointer',
-              transition: 'border-color 0.15s',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '10px',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#6c63ff44')}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
-          >
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                flexShrink: 0,
-                background: '#ede9ff',
-                color: 'var(--accent)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '12px',
-                fontWeight: 600,
-              }}
-            >
-              {(c.name || c.email)?.[0]?.toUpperCase()}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  marginBottom: '4px',
-                }}
+      {contacts.length > 0 ? (
+        <ul className="mt-3 flex flex-col gap-2">
+          {contacts.map((c, index) => {
+            const name = c.name || c.email;
+            return (
+              <li
+                key={c.id}
+                data-entity-row={`contacts:${c.id}`}
+                onClick={(e) => handleRowClick(e, c)}
+                className="hover-lift animate-list-item-in flex cursor-pointer items-start gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-3"
+                style={{ '--stagger-index': index } as CSSProperties}
               >
-                {c.name || '—'}
-              </div>
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '4px' }}>
-                {parseJsonArray(c.types).map((t: string) => (
-                  <span
-                    key={t}
-                    style={{
-                      fontSize: '10px',
-                      padding: '1px 6px',
-                      borderRadius: '99px',
-                      background: TYPE_COLORS[t]?.bg || 'var(--bg-page)',
-                      color: TYPE_COLORS[t]?.color || 'var(--text-muted)',
-                      fontWeight: 500,
-                    }}
+                <span
+                  aria-hidden="true"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-border bg-neutral-surface text-xs font-semibold text-neutral-fg"
+                >
+                  {name[0]?.toUpperCase()}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-semibold text-[color:var(--text-primary)]">
+                    {name}
+                  </p>
+                  {c.name && (
+                    <p className="truncate text-xs text-[color:var(--text-muted)]">{c.email}</p>
+                  )}
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {parseJsonArray(c.types).map((type) => (
+                      <StatusPill key={type} tone="neutral" icon={CONTACT_TYPE[type]?.icon}>
+                        {CONTACT_TYPE[type] ? t(CONTACT_TYPE[type].label) : type}
+                      </StatusPill>
+                    ))}
+                    {c.email_validated ? (
+                      <StatusPill tone="success" icon="mark_email_read">
+                        {t('contactCardEmailVerified')}
+                      </StatusPill>
+                    ) : (
+                      <StatusPill tone="warning" icon="mark_email_unread">
+                        {t('contactCardEmailUnverified')}
+                      </StatusPill>
+                    )}
+                  </div>
+                  {!c.email_validated && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={resendingId === c.id}
+                      onClick={() => void resendVerification(c)}
+                      className="-ml-2 mt-1 text-[color:var(--primary)]"
+                    >
+                      <Icon name="forward_to_inbox" size={16} />
+                      {t('contactResendVerification')}
+                    </Button>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t('contactCardEditAria', { name })}
+                    onClick={() => openEditor(c.id)}
+                    className="h-8 w-8 !px-0"
                   >
-                    {t}
-                  </span>
-                ))}
-              </div>
-              <div style={{ fontSize: '11px', color: c.email_validated ? '#4caf8a' : '#f5a623' }}>
-                {c.email_validated ? t('contactEmailValidated') : t('contactEmailNotValidated')}
-              </div>
-              {!c.email_validated && (
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    try {
-                      await api(instanceId).resendVerification(c.id);
-                      toast.success(t('contactVerificationSent'));
-                    } catch {
-                      toast.error(t('contactVerificationFailed'));
-                    }
-                  }}
-                  className="text-[9px] text-primary underline hover:no-underline mt-0.5 block"
-                >
-                  {t('contactResendVerification')}
-                </button>
-              )}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  useModals.getState().openModal('contact-edit', c.id);
-                }}
-                title={t('ariaEditContact')}
-                aria-label={t('ariaEditContact')}
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#ede9ff')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: '16px', color: 'var(--accent)' }}
-                >
-                  edit
-                </span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  requestDelete(c);
-                }}
-                title={t('ariaDeleteContact')}
-                aria-label={t('ariaDeleteContact')}
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#fee2e2')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: '16px', color: '#ef4444' }}
-                >
-                  delete
-                </span>
-              </button>
-            </div>
-          </div>
-        ))}
-        {!isLoading && contacts.length === 0 && (
-          <div
-            style={{
-              color: 'var(--text-muted)',
-              fontSize: '12px',
-              textAlign: 'center',
-              padding: '12px 0',
-            }}
-          >
-            {t('emptyContactsHint')}
-          </div>
-        )}
-      </div>
+                    <Icon name="edit" size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t('contactCardDeleteAria', { name })}
+                    onClick={() => requestDelete(c)}
+                    className="h-8 w-8 !px-0 text-danger-fg hover:!bg-danger-surface hover:!text-danger-fg"
+                  >
+                    <Icon name="delete" size={16} />
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="py-4 text-center text-xs text-[color:var(--text-muted)]">
+          {t('emptyContactsHint')}
+        </p>
+      )}
     </EntityCard>
   );
 }
