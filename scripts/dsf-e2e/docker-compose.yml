@@ -1,0 +1,148 @@
+# Local DSF end-to-end harness for the allow-list download (scripts/dsf-e2e/run.sh).
+# A receiving DSF site (FHIR server, fhir_proxy, BPE with dsf-process-allow-list)
+# downloads its allow list from the running dev portal through two proxies:
+#  - portal-apache: mirrors the production Apache vhost (optional_no_ca, header
+#    mapping), plus a second name whose server certificate the BPE does not trust;
+#  - portal-nginx: the repository's nginx/nginx.conf.
+# Nothing is published on the host; every hostname is a .example.de network alias.
+name: dsf-e2e
+
+x-db: &db
+  image: postgres:18
+  restart: 'no'
+  environment: &db-env
+    POSTGRES_USER: liquibase_user
+    POSTGRES_PASSWORD: e2e-liquibase
+
+services:
+  fhir-db:
+    <<: *db
+    environment:
+      <<: *db-env
+      POSTGRES_DB: fhir
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U liquibase_user -d fhir']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [fhir-backend]
+
+  fhir-app:
+    image: ghcr.io/datasharingframework/fhir:2.1.1
+    restart: 'no'
+    depends_on:
+      fhir-db:
+        condition: service_healthy
+    volumes:
+      - ./.work/certs:/certs:ro
+    environment:
+      TZ: Europe/Berlin
+      DEV_DSF_FHIR_DB_URL: jdbc:postgresql://fhir-db/fhir
+      DEV_DSF_FHIR_DB_LIQUIBASE_PASSWORD: e2e-liquibase
+      DEV_DSF_FHIR_DB_USER_PASSWORD: e2e-fhir-user
+      DEV_DSF_FHIR_DB_USER_PERMANENT_DELETE_PASSWORD: e2e-fhir-delete
+      DEV_DSF_FHIR_CLIENT_TRUST_SERVER_CERTIFICATE_CAS: /certs/root-ca.crt
+      DEV_DSF_FHIR_CLIENT_CERTIFICATE: /certs/org-client.crt
+      DEV_DSF_FHIR_CLIENT_CERTIFICATE_PRIVATE_KEY: /certs/org-client.key
+      DEV_DSF_FHIR_SERVER_BASE_URL: https://fhir.klinik-e2e.example.de/fhir
+      DEV_DSF_FHIR_SERVER_ORGANIZATION_IDENTIFIER_VALUE: klinik-e2e.example.de
+      DEV_DSF_SERVER_AUTH_TRUST_CLIENT_CERTIFICATE_CAS: /certs/ca-chain.crt
+    networks:
+      dsf:
+        ipv4_address: 172.30.81.10
+      fhir-backend: {}
+
+  fhir-proxy:
+    image: ghcr.io/datasharingframework/fhir_proxy:2.1.1
+    restart: 'no'
+    depends_on: [fhir-app]
+    volumes:
+      - ./.work/certs:/certs:ro
+    environment:
+      TZ: Europe/Berlin
+      HTTPS_SERVER_NAME_PORT: fhir.klinik-e2e.example.de:443
+      APP_SERVER_IP: 172.30.81.10
+      SSL_CERTIFICATE_FILE: /certs/fhir-server.crt
+      SSL_CERTIFICATE_KEY_FILE: /certs/fhir-server.key
+      SSL_CERTIFICATE_CHAIN_FILE: /certs/issuing-ca.crt
+      SSL_CA_CERTIFICATE_FILE: /certs/ca-chain.crt
+      SSL_CA_DN_REQUEST_FILE: /certs/issuing-ca.crt
+      SSL_EXPECTED_CLIENT_I_DN_CN_VALUES: "'DSF E2E Issuing CA'"
+    networks:
+      dsf:
+        ipv4_address: 172.30.81.11
+        aliases: [fhir.klinik-e2e.example.de]
+
+  bpe-db:
+    <<: *db
+    environment:
+      <<: *db-env
+      POSTGRES_DB: bpe
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U liquibase_user -d bpe']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [bpe-backend]
+
+  bpe-app:
+    image: ghcr.io/datasharingframework/bpe:2.1.1
+    restart: 'no'
+    depends_on:
+      bpe-db:
+        condition: service_healthy
+      fhir-app:
+        condition: service_healthy
+    volumes:
+      - ./.work/certs:/certs:ro
+      - ./.work/process:/opt/bpe/process:ro
+    environment:
+      TZ: Europe/Berlin
+      DEV_DSF_BPE_DB_URL: jdbc:postgresql://bpe-db/bpe
+      DEV_DSF_BPE_DB_LIQUIBASE_PASSWORD: e2e-liquibase
+      DEV_DSF_BPE_DB_USER_PASSWORD: e2e-bpe-user
+      DEV_DSF_BPE_DB_USER_ENGINE_PASSWORD: e2e-bpe-engine
+      # Trusts the e2e root only: servers signed by any other CA are rejected,
+      # exactly like a default BPE rejects Let's Encrypt (no ISRG Root X1).
+      DEV_DSF_BPE_FHIR_CLIENT_TRUST_SERVER_CERTIFICATE_CAS: /certs/root-ca.crt
+      DEV_DSF_BPE_FHIR_CLIENT_CERTIFICATE: /certs/org-client.crt
+      DEV_DSF_BPE_FHIR_CLIENT_CERTIFICATE_PRIVATE_KEY: /certs/org-client.key
+      DEV_DSF_BPE_FHIR_SERVER_BASE_URL: https://fhir.klinik-e2e.example.de/fhir
+      DEV_DSF_SERVER_AUTH_TRUST_CLIENT_CERTIFICATE_CAS: /certs/ca-chain.crt
+    networks: [dsf, bpe-backend]
+
+  portal-apache:
+    image: httpd:2.4-alpine
+    restart: 'no'
+    volumes:
+      - ./apache-portal.conf:/usr/local/apache2/conf/httpd.conf:ro
+      - ./.work/certs:/certs:ro
+    networks:
+      dsf:
+        aliases: [allowlist.portal-e2e.example.de, untrusted.portal-e2e.example.de]
+      portal: {}
+
+  portal-nginx:
+    image: nginx:1.27-alpine
+    restart: 'no'
+    volumes:
+      - ../../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./.work/nginx-certs:/etc/nginx/certs:ro
+    networks:
+      dsf:
+        aliases: [allowlist-nginx.portal-e2e.example.de]
+      portal: {}
+
+networks:
+  dsf:
+    ipam:
+      config:
+        - subnet: 172.30.81.0/24
+  fhir-backend:
+    internal: true
+  bpe-backend:
+    internal: true
+  # The dev stack's network, so the proxies reach backend:3000 (and frontend).
+  portal:
+    external: true
+    name: num-dsf-allowlist_default

@@ -256,3 +256,6 @@ graphify-out/*
 !graphify-out/GRAPH_REPORT.md
 !graphify-out/.graphify_labels.json
 !graphify-out/.graphify_root
+
+# DSF e2e harness: generated PKI, plugin jar and manifest
+scripts/dsf-e2e/.work/
