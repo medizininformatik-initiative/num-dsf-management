@@ -1012,6 +1012,10 @@ export const en = {
 
   // Entity canvas — FK links and organization card
   fkLinkAria: '{label}: {value}. Jump to the {target} card',
+  orgCardEditFieldAria: 'Edit {field}',
+  orgCardSaveFieldAria: 'Save {field}',
+  orgCardCancelFieldAria: 'Cancel editing {field}',
+  orgCardSaving: 'Saving…',
 
   // Guided canvas — glossary
   glossaryDic:

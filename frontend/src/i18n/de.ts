@@ -1031,6 +1031,10 @@ export const de: Record<TranslationKey, string> = {
 
   // Entity canvas — FK links and organization card
   fkLinkAria: '{label}: {value}. Zur Karte {target} springen',
+  orgCardEditFieldAria: '{field} bearbeiten',
+  orgCardSaveFieldAria: '{field} speichern',
+  orgCardCancelFieldAria: 'Bearbeitung von {field} abbrechen',
+  orgCardSaving: 'Wird gespeichert…',
 
   // Guided canvas — glossary
   glossaryDic:
