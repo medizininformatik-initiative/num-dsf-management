@@ -14,6 +14,7 @@
 #   apache        Apache front configured like production    -> completed, peers applied
 #   apache-again  the same download a second time            -> completed, updated in place
 #   leave-hub     a peer leaves the hub in the portal        -> completed, affiliation deleted
+#   withdraw      a peer is withdrawn (deactivation approved) -> completed, peer deleted
 #   nginx         repository nginx/nginx.conf as front       -> completed
 #   untrusted     server cert from a CA the BPE does not trust
 #                 (stands in for Let's Encrypt)              -> failed
@@ -305,6 +306,14 @@ verify_peers 1
 portal_js "await db('memberships').where({ organization_id: '$PEER2' }).update({ deleted_at: new Date() });"
 scenario leave-hub "https://allowlist.portal-e2e.example.de/fhir/Bundle/$RECEIVER_EP" completed
 verify_peers 0
+
+portal_js "await db('organizations').where({ identifier: '$PEER1' }).update({ active: false });"
+scenario withdraw "https://allowlist.portal-e2e.example.de/fhir/Bundle/$RECEIVER_EP" completed
+check "$PEER1 organization deleted" "$(total "Organization?identifier=$ORG_SID%7C$PEER1")" 0
+check "$PEER1 endpoints deleted" "$(total "Endpoint?identifier=$EP_SID%7Cfhir.$PEER1")" 0
+check "$PEER1 affiliations deleted" \
+  "$(total "OrganizationAffiliation?participating-organization:identifier=$ORG_SID%7C$PEER1")" 0
+check "$PEER2 still present" "$(total "Organization?identifier=$ORG_SID%7C$PEER2")" 1
 
 scenario nginx "https://allowlist-nginx.portal-e2e.example.de/fhir/Bundle/$RECEIVER_EP" completed
 scenario untrusted "https://untrusted.portal-e2e.example.de/fhir/Bundle/$RECEIVER_EP" failed
