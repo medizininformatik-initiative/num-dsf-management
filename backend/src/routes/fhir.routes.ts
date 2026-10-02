@@ -62,8 +62,10 @@ async function findOrgByClientCert(cert: ClientCertInfo): Promise<ResolvedOrg | 
   // A DSF BPE presents the organization's DSF client certificate, which is
   // usually not the certificate used for the browser login. Accept it when
   // exactly one organization registered it; an ambiguous match is refused.
+  // parseCertificate stores the SHA-256 in upper case, extractClientCert
+  // computes it in lower case; match both instead of relying on collation.
   const owners: Array<{ organization_id: string }> = await db('certificates')
-    .where({ thumbprint: cert.thumbprint })
+    .whereIn('thumbprint', [cert.thumbprint, cert.thumbprint.toUpperCase()])
     .distinct('organization_id');
   if (owners.length !== 1) return null;
   const byCertificate = await db('organizations')
