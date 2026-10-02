@@ -307,7 +307,6 @@ export const de: Record<TranslationKey, string> = {
   certDaysLeft: '{n}T verbleibend',
   certRemoveBtn: 'Entfernen',
   certCardFkOrganization: 'Organisation',
-  certCardStatusActive: 'AKTIV',
   certCardDsfThumbprintLabel: 'DSF-Thumbprint (SHA-512)',
   certCardCopyThumbprint: 'DSF-Thumbprint kopieren',
   certCardThumbprintCopied: 'DSF-Thumbprint in die Zwischenablage kopiert.',
@@ -339,6 +338,15 @@ export const de: Record<TranslationKey, string> = {
   endpointCardDeleteMembershipsMany:
     'Die {n} an diesen Endpunkt gebundenen Mitgliedschaften werden mitgelöscht. Mit dem nächsten Allow-List-Bundle verschwinden sie für alle Standorte im Netzwerk.',
   certCardFallbackName: 'Zertifikat',
+  certCardStateValid: 'Gültig',
+  certCardStateWarning: 'Läuft bald ab',
+  certCardStateCritical: 'Jetzt erneuern',
+  certCardStateExpired: 'Abgelaufen',
+  certCardExpiredDaysAgo: 'Vor {n}T abgelaufen',
+  certCardValidUntil: 'Gültig bis {date}',
+  certCardOverallValid: 'Alle Zertifikate sind gültig',
+  certCardOverallSoon: 'Ein Zertifikat läuft in weniger als {n} Tagen ab',
+  certCardOverallExpired: 'Ein Zertifikat ist abgelaufen',
   certCardDeleteTitle: 'Zertifikat entfernen?',
   certCardDeleteMessage: '{name}, gültig bis {date}, wird aus der Allow-Liste entfernt.',
   certCardDeleteConsequence:

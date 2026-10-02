@@ -64,6 +64,52 @@ describe('CertificatesCard', () => {
   });
 });
 
+describe('CertificatesCard status', () => {
+  it.each([
+    [200, 'Valid', 'text-success-fg'],
+    [60, 'Expiring', 'text-warning-fg'],
+    [10, 'Renew now', 'text-danger-fg'],
+    [-5, 'Expired', 'text-danger-fg'],
+  ])('labels a certificate valid for %i days as "%s"', (days, label, toneClass) => {
+    rows = [{ ...cert, valid_until: inDays(days) }];
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.getByText(label).closest('.pill')).toHaveClass(toneClass);
+  });
+
+  it('says how long ago an expired certificate expired instead of a negative count', () => {
+    rows = [{ ...cert, valid_until: inDays(-5) }];
+    const { container } = renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.getByText(/^Expired \d+d ago$/)).toHaveClass('text-danger-fg');
+    expect(container).not.toHaveTextContent(/-\d+d/);
+    expect(container.querySelector('.bg-danger-fg')).not.toBeNull();
+  });
+
+  it('binds the header lock to the worst certificate and stresses Renew', () => {
+    rows = [cert, { ...cert, id: 'old', subject: 'CN=old.ukm.de', valid_until: inDays(-5) }];
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.getByRole('img', { name: 'A certificate has expired' })).toHaveTextContent(
+      'lock_open',
+    );
+    expect(screen.getByRole('button', { name: 'Renew' })).toHaveClass('btn-primary');
+  });
+
+  it('shows a closed lock and a secondary Renew while every certificate is valid', () => {
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.getByRole('img', { name: 'All certificates are valid' })).toHaveTextContent(
+      /^lock$/,
+    );
+    expect(screen.getByRole('button', { name: 'Renew' })).toHaveClass('btn-secondary');
+  });
+
+  it('hides Renew and the lock when there is no certificate', () => {
+    rows = [];
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.queryByRole('button', { name: 'Renew' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.queryByText('Valid')).not.toBeInTheDocument();
+  });
+});
+
 describe('CertificatesCard removal', () => {
   it('warns before the last valid certificate goes and removes it once confirmed', async () => {
     const user = userEvent.setup();

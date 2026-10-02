@@ -223,22 +223,20 @@ describe('EndpointsCard', () => {
 });
 
 describe('CertificatesCard', () => {
-  it('renders a certificate row with subject, active badge and days-left', () => {
-    const farFuture = new Date(Date.now() + 200 * 86400000).toISOString().slice(0, 10);
-    mCerts.mockReturnValue(
-      ok([
-        {
-          id: 'cert1',
-          subject: 'CN=ukm.de',
-          valid_until: farFuture,
-          thumbprintSha512: 'a1'.repeat(64),
-        },
-      ]),
-    );
+  const farFuture = new Date(Date.now() + 200 * 86400000).toISOString().slice(0, 10);
+  const cert = {
+    id: 'cert1',
+    subject: 'CN=ukm.de',
+    valid_until: farFuture,
+    thumbprintSha512: 'a1'.repeat(64),
+  };
+
+  it('renders a certificate row with subject, validity badge and days-left', () => {
+    mCerts.mockReturnValue(ok([cert]));
     renderWithProviders(<CertificatesCard instanceId="i1" />);
 
     expect(screen.getByText('CN=ukm.de')).toBeInTheDocument();
-    expect(screen.getByText('ACTIVE')).toBeInTheDocument();
+    expect(screen.getByText('Valid')).toBeInTheDocument();
     expect(screen.getByText(/\dd left/)).toBeInTheDocument();
   });
 
@@ -255,8 +253,9 @@ describe('CertificatesCard', () => {
   });
 
   it('opens the cert-renew modal when the renew control is clicked', async () => {
+    mCerts.mockReturnValue(ok([cert]));
     renderWithProviders(<CertificatesCard instanceId="i1" />);
-    await userEvent.click(screen.getByText('Renew'));
+    await userEvent.click(screen.getByRole('button', { name: 'Renew' }));
     expect(useModals.getState().open).toBe('cert-renew');
   });
 });

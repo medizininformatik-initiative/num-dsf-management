@@ -302,7 +302,6 @@ export const en = {
   certDaysLeft: '{n}d left',
   certRemoveBtn: 'Remove',
   certCardFkOrganization: 'Organization',
-  certCardStatusActive: 'ACTIVE',
   certCardDsfThumbprintLabel: 'DSF Thumbprint (SHA-512)',
   certCardCopyThumbprint: 'Copy DSF thumbprint',
   certCardThumbprintCopied: 'DSF thumbprint copied to clipboard.',
@@ -333,6 +332,15 @@ export const en = {
   endpointCardDeleteMembershipsMany:
     'The {n} memberships bound to this endpoint are deleted with it. With the next allow-list bundle, they disappear for every site in the network.',
   certCardFallbackName: 'Certificate',
+  certCardStateValid: 'Valid',
+  certCardStateWarning: 'Expiring',
+  certCardStateCritical: 'Renew now',
+  certCardStateExpired: 'Expired',
+  certCardExpiredDaysAgo: 'Expired {n}d ago',
+  certCardValidUntil: 'Valid until {date}',
+  certCardOverallValid: 'All certificates are valid',
+  certCardOverallSoon: 'A certificate expires within {n} days',
+  certCardOverallExpired: 'A certificate has expired',
   certCardDeleteTitle: 'Remove certificate?',
   certCardDeleteMessage: '{name}, valid until {date}, will be removed from the allow list.',
   certCardDeleteConsequence:
