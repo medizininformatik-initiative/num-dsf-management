@@ -10,6 +10,7 @@ import { useAuthStore } from './stores/auth.store';
 import { ToastProvider } from './components/ToastProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthBootstrap } from './components/AuthBootstrap';
+import { ConfirmProvider } from './components/ui/ConfirmDialog';
 import { getErrorMessage } from './lib/getErrorMessage';
 import { reauthRedirect } from './lib/authMode';
 import { useI18n } from './stores/i18n.store';
@@ -129,9 +130,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthBootstrap>
-          <RouterProvider router={router} />
-        </AuthBootstrap>
+        <ConfirmProvider>
+          <AuthBootstrap>
+            <RouterProvider router={router} />
+          </AuthBootstrap>
+        </ConfirmProvider>
         <ToastProvider />
       </QueryClientProvider>
     </ErrorBoundary>

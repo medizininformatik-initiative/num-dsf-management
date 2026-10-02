@@ -1,14 +1,15 @@
 /**
  * renderWithProviders.tsx — render a component inside the providers most of the
- * app's components need: a fresh QueryClient (retries off), a MemoryRouter, and
- * a known i18n language. Network hooks are mocked per test with vi.mock; this
- * helper only supplies the ambient context.
+ * app's components need: a fresh QueryClient (retries off), a MemoryRouter, the
+ * ConfirmProvider behind useConfirm(), and a known i18n language. Network hooks
+ * are mocked per test with vi.mock; this helper only supplies the ambient context.
  */
 import React from 'react';
 import { render, type RenderOptions } from '@testing-library/react';
 import { MemoryRouter, type Location } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useI18n } from '../stores/i18n.store';
+import { ConfirmProvider } from '../components/ui/ConfirmDialog';
 
 interface ProviderOptions {
   // A path string, or a partial location entry (e.g. with `state`) — both are
@@ -29,7 +30,9 @@ export function renderWithProviders(
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+        <MemoryRouter initialEntries={[route]}>
+          <ConfirmProvider>{children}</ConfirmProvider>
+        </MemoryRouter>
       </QueryClientProvider>
     );
   }
