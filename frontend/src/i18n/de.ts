@@ -1059,6 +1059,7 @@ export const de: Record<TranslationKey, string> = {
     'Ihr Antrag wird zurückgezogen; das Konto bleibt ein normaler Nutzer.',
   adminPromotionsWithdrawBtn: 'Antrag zurückziehen',
   adminPromotionsRejectReasonLabel: 'Grund (erforderlich)',
+  authPartnersLabel: 'In Kooperation mit',
   // ─── Bundle-Versionen (Föderationshärtung 2026-05-18) ────────────────────
   download: 'Herunterladen',
   bundleVersionsTitle: 'Bundle-Versionen',

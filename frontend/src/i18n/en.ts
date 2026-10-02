@@ -1039,6 +1039,7 @@ export const en = {
   adminPromotionsConfirmBody_cancel: 'Your request is withdrawn; the account stays a regular user.',
   adminPromotionsWithdrawBtn: 'Withdraw request',
   adminPromotionsRejectReasonLabel: 'Reason (required)',
+  authPartnersLabel: 'In cooperation with',
   // ─── Bundle Versions (federation hardening 2026-05-18) ────────────────────
   download: 'Download',
   bundleVersionsTitle: 'Bundle versions',

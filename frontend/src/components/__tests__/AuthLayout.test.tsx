@@ -1,9 +1,10 @@
 /**
  * AuthLayout.test.tsx — shared auth-page shell. Covers branding (IMI logo,
  * "dsf." wordmark, "Allow List Management"), the title/subtitle, children
- * rendering inside the card, and both environment-badge branches.
+ * rendering inside the glass card that scales in, the translated footer, and
+ * both environment-badge branches (white text on lib/environment's accent).
  *
- * The component reads `import.meta.env.VITE_DSF_ENVIRONMENT` at module load
+ * lib/environment reads `import.meta.env.VITE_DSF_ENVIRONMENT` at module load
  * into module-level constants, so the PRODUCTION branch is exercised by
  * stubbing the env, resetting the module registry, and re-importing.
  */
@@ -65,7 +66,7 @@ describe('AuthLayout', () => {
     expect(screen.queryByText('Enter your email to continue')).not.toBeInTheDocument();
   });
 
-  it('shows the TEST badge with the teal accent by default', async () => {
+  it('shows the TEST badge in the shared teal environment accent by default', async () => {
     const AuthLayout = await loadAuthLayout();
     render(
       <AuthLayout title="Sign in">
@@ -75,11 +76,13 @@ describe('AuthLayout', () => {
 
     const badge = screen.getByText('TEST');
     expect(badge).toBeInTheDocument();
-    expect(badge).toHaveStyle({ color: '#115e59' });
+    // White text on ENV_ACCENT (lib/environment), the AA pairing the app chrome uses.
+    expect(badge).toHaveStyle({ backgroundColor: '#115e59' });
+    expect(badge).toHaveClass('text-white');
     expect(screen.queryByText('PRODUCTION')).not.toBeInTheDocument();
   });
 
-  it('shows the PRODUCTION badge with the blue accent when configured', async () => {
+  it('shows the PRODUCTION badge in the shared blue accent when configured', async () => {
     vi.stubEnv('VITE_DSF_ENVIRONMENT', 'PRODUCTION');
     const AuthLayout = await loadAuthLayout();
     render(
@@ -90,7 +93,24 @@ describe('AuthLayout', () => {
 
     const badge = screen.getByText('PRODUCTION');
     expect(badge).toBeInTheDocument();
-    expect(badge).toHaveStyle({ color: '#4a90d9' });
+    expect(badge).toHaveStyle({ backgroundColor: '#1d4ed8' });
     expect(screen.queryByText('TEST')).not.toBeInTheDocument();
+  });
+
+  it('puts the content on a glass card that scales in, with translated footer text', async () => {
+    const AuthLayout = await loadAuthLayout();
+    render(
+      <AuthLayout title="Sign in">
+        <span>child</span>
+      </AuthLayout>,
+    );
+
+    const card = screen.getByRole('main');
+    expect(card).toHaveClass('glass-thick', 'animate-scale-in');
+    expect(card).toContainElement(screen.getByRole('heading', { name: 'Sign in' }));
+    expect(screen.getByText('In cooperation with')).toBeInTheDocument();
+    expect(
+      screen.getByText('Institute of Medical Informatics, University of Münster'),
+    ).toBeInTheDocument();
   });
 });
