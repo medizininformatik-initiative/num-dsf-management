@@ -1,13 +1,15 @@
 /**
  * CertificatesCard.tsx — entity card listing the organization's certificates. Each row shows
  * its validity state (certValidity: valid / expiring / renew now / expired) as a StatusPill, a
- * validity bar in the same tone and the days left or since expiry, the full DSF fingerprint
- * (SHA-512) with copy, and the SHA-256 fingerprint in a collapsed disclosure; the header lock
- * follows the worst certificate. Supports renew/add (via useModals) and confirmed,
+ * validity bar in the same tone and the days left or since expiry, whether DSF trusts the
+ * issuer, the full DSF fingerprint (SHA-512) with copy, and the SHA-256 fingerprint in a
+ * collapsed disclosure; the header lock follows the worst certificate. Supports renew/add
+ * (via useModals) and confirmed,
  * cross-user-guarded deletion that warns before the last valid certificate goes.
  * Dependencies: useCertificates, useOrganization, lib/certStatus, lib/dateUtils, confirmDelete,
  * EntityCard, FkLink, CertificateFingerprint, StatusPill, Button, Icon.
  */
+import { useId, useState } from 'react';
 import { useCertificates, useDeleteCertificate } from '../../hooks/useCertificates';
 import { useOrganization } from '../../hooks/useOrganization';
 import { EntityCard } from './EntityCard';
@@ -32,7 +34,13 @@ import { Icon } from '../ui/Icon';
 
 type CertRow = Pick<
   ApiCertificate,
-  'id' | 'subject' | 'valid_until' | 'thumbprint' | 'thumbprintSha512'
+  | 'id'
+  | 'subject'
+  | 'valid_until'
+  | 'thumbprint'
+  | 'thumbprintSha512'
+  | 'issuerDn'
+  | 'issuerTrusted'
 >;
 
 type CertTone = (typeof CERT_STATE_TONE)[CertState];
@@ -190,6 +198,7 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
                     : t('certDaysLeft', { n: days })}
                 </span>
               </div>
+              <CertificateIssuer issuerDn={cert.issuerDn} trusted={cert.issuerTrusted} />
               <CertificateFingerprint
                 className="mt-3"
                 label={t('certCardDsfThumbprintLabel')}
@@ -261,5 +270,86 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
         )}
       </div>
     </EntityCard>
+  );
+}
+
+/** The CN of a DN such as "C=GR,O=…,CN=GEANT TLS RSA 1"; the whole DN when it has none. */
+function commonName(dn: string): string {
+  const match = /(?:^|,)\s*CN=((?:\\.|[^,])+)/i.exec(dn);
+  return match ? match[1].trim() : dn;
+}
+
+/**
+ * Whether DSF trusts the issuer: a "DSF-CA" pill revealing the issuer CN on hover or focus
+ * (also its accessible description; Escape hides it), or a warning that production DSF
+ * instances refuse certificates from other CAs, with the issuer DN.
+ */
+function CertificateIssuer({ issuerDn, trusted }: { issuerDn: string; trusted: boolean }) {
+  const { t } = useI18n();
+  const hintId = useId();
+  const [dismissed, setDismissed] = useState(false);
+
+  if (trusted) {
+    const issuer = commonName(issuerDn);
+    return (
+      <div className="mt-3 flex items-center gap-2">
+        <span className="text-[11px] text-[color:var(--text-muted)]">
+          {t('certCardIssuerLabel')}
+        </span>
+        <span
+          className="group/issuer relative inline-flex"
+          onMouseLeave={() => setDismissed(false)}
+        >
+          <StatusPill
+            tone="success"
+            icon="verified"
+            tabIndex={0}
+            aria-describedby={hintId}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setDismissed(true);
+            }}
+            onBlur={() => setDismissed(false)}
+            className="cursor-default focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+          >
+            {t('certCardIssuerTrusted')}
+          </StatusPill>
+          <span id={hintId} className="sr-only">
+            {t('certCardIssuerTrustedHint', { issuer })}
+          </span>
+          {/* Visual tooltip; the description above gives screen readers the same. */}
+          <span
+            aria-hidden="true"
+            className={`invisible absolute bottom-full left-0 z-20 pb-1.5 opacity-0 transition-[opacity,visibility] duration-short ease-standard group-focus-within/issuer:visible group-focus-within/issuer:opacity-100 group-hover/issuer:visible group-hover/issuer:opacity-100 ${
+              dismissed ? '!invisible !opacity-0' : ''
+            }`}
+          >
+            <span className="glass-thin block w-max max-w-[16rem] rounded-lg px-2 py-1 text-[11px] text-[color:var(--text-primary)]">
+              {issuer}
+            </span>
+          </span>
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3">
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-[color:var(--text-muted)]">
+          {t('certCardIssuerLabel')}
+        </span>
+        <StatusPill tone="warning" icon="gpp_maybe">
+          {t('certCardIssuerUntrusted')}
+        </StatusPill>
+      </div>
+      <p className="mt-1 text-[11px] leading-4 text-[color:var(--text-secondary)]">
+        {t('certCardIssuerUntrustedHint')}
+      </p>
+      {issuerDn && (
+        <p className="mono-id mt-1 break-all text-[11px] leading-4 text-[color:var(--text-muted)]">
+          {issuerDn}
+        </p>
+      )}
+    </div>
   );
 }

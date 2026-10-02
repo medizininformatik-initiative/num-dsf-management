@@ -341,6 +341,12 @@ export const en = {
   certCardOverallValid: 'All certificates are valid',
   certCardOverallSoon: 'A certificate expires within {n} days',
   certCardOverallExpired: 'A certificate has expired',
+  certCardIssuerLabel: 'Issuer',
+  certCardIssuerTrusted: 'DSF-CA',
+  certCardIssuerTrustedHint: 'Issued by {issuer}, a CA that DSF trusts.',
+  certCardIssuerUntrusted: 'No DSF CA',
+  certCardIssuerUntrustedHint:
+    'Production DSF instances only accept certificates from CAs that DSF trusts; test setups may use others.',
   certCardMoreFingerprints: 'More fingerprints',
   certCardSha256Label: 'SHA-256 fingerprint',
   certCardCopySha256: 'Copy SHA-256 fingerprint',

@@ -347,6 +347,12 @@ export const de: Record<TranslationKey, string> = {
   certCardOverallValid: 'Alle Zertifikate sind gültig',
   certCardOverallSoon: 'Ein Zertifikat läuft in weniger als {n} Tagen ab',
   certCardOverallExpired: 'Ein Zertifikat ist abgelaufen',
+  certCardIssuerLabel: 'Aussteller',
+  certCardIssuerTrusted: 'DSF-CA',
+  certCardIssuerTrustedHint: 'Ausgestellt von {issuer}, einer CA, der DSF vertraut.',
+  certCardIssuerUntrusted: 'Keine DSF-CA',
+  certCardIssuerUntrustedHint:
+    'Produktive DSF-Instanzen akzeptieren nur Zertifikate von CAs, denen DSF vertraut; Testumgebungen dürfen andere verwenden.',
   certCardMoreFingerprints: 'Weitere Fingerprints',
   certCardSha256Label: 'SHA-256-Fingerprint',
   certCardCopySha256: 'SHA-256-Fingerprint kopieren',

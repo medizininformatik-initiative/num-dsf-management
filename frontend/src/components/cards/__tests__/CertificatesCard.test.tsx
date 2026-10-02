@@ -18,6 +18,8 @@ interface Row {
   thumbprint: string;
   thumbprintSha512: string;
   valid_until: string;
+  issuerDn: string;
+  issuerTrusted: boolean;
 }
 
 const deleteCertificate = vi.hoisted(() => vi.fn());
@@ -39,6 +41,8 @@ const cert: Row = {
   thumbprint: 'AB12',
   thumbprintSha512: THUMBPRINT_SHA512,
   valid_until: inDays(200),
+  issuerDn: 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=GEANT TLS RSA 1',
+  issuerTrusted: true,
 };
 
 beforeEach(() => {
@@ -124,6 +128,36 @@ describe('CertificatesCard status', () => {
     expect(screen.queryByRole('button', { name: 'Renew' })).not.toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     expect(screen.queryByText('Valid')).not.toBeInTheDocument();
+  });
+});
+
+describe('CertificatesCard issuer', () => {
+  it('marks a certificate from a CA that DSF trusts and names the issuer on hover or focus', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    const pill = screen.getByText('DSF-CA').closest('.pill') as HTMLElement;
+    expect(pill).toHaveClass('text-success-fg');
+    expect(pill).toHaveAccessibleDescription('Issued by GEANT TLS RSA 1, a CA that DSF trusts.');
+    const tooltip = screen.getByText('GEANT TLS RSA 1').parentElement as HTMLElement;
+    expect(tooltip).toHaveAttribute('aria-hidden', 'true');
+
+    pill.focus();
+    expect(tooltip).not.toHaveClass('!invisible');
+    await user.keyboard('{Escape}');
+    expect(tooltip).toHaveClass('!invisible');
+  });
+
+  it('warns about other CAs, which production DSF instances refuse, and shows the issuer DN', () => {
+    rows = [{ ...cert, issuerDn: 'CN=Example Test CA,O=Example', issuerTrusted: false }];
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.getByText('No DSF CA').closest('.pill')).toHaveClass('text-warning-fg');
+    expect(
+      screen.getByText(
+        /Production DSF instances only accept certificates from CAs that DSF trusts/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('CN=Example Test CA,O=Example')).toBeInTheDocument();
+    expect(screen.queryByText('DSF-CA')).not.toBeInTheDocument();
   });
 });
 
