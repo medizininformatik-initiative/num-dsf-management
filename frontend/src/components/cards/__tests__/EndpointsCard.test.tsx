@@ -25,6 +25,9 @@ vi.mock('../../../hooks/useEndpoints', () => ({
 vi.mock('../../../hooks/useOrganization', () => ({
   useOrganization: () => ({ data: { identifier: 'ukm.de' }, isLoading: false }),
 }));
+vi.mock('../../../hooks/useMemberships', () => ({
+  useMemberships: () => ({ data: [], isLoading: false }),
+}));
 vi.mock('../../../hooks/useApproval', () => ({
   useApprovalHistory: () => ({ data: [] }),
 }));

@@ -318,6 +318,33 @@ export const en = {
   membershipCardEditAria: 'Edit membership',
   membershipCardDeleteAria: 'Delete membership',
 
+  // Certificate card & entity rows (contacts, endpoints, certificates, memberships)
+  contactCardDeleteTitle: 'Delete contact?',
+  contactCardDeleteMessage: '{name} will be removed from the contacts of your organization.',
+  contactCardDeleteLastContact:
+    'This is the last contact of your organization; an approval request needs at least one.',
+  contactCardDeleteReminders: 'This person no longer receives certificate expiry reminders.',
+  endpointCardDeleteTitle: 'Delete endpoint?',
+  endpointCardDeleteMessage: '{name} will be removed from the allow list.',
+  endpointCardDeleteConsequence:
+    'With the next allow-list bundle, the endpoint disappears for every site in the network.',
+  endpointCardDeleteMembershipsOne:
+    'The membership bound to this endpoint is deleted with it. With the next allow-list bundle, both disappear for every site in the network.',
+  endpointCardDeleteMembershipsMany:
+    'The {n} memberships bound to this endpoint are deleted with it. With the next allow-list bundle, they disappear for every site in the network.',
+  certCardFallbackName: 'Certificate',
+  certCardDeleteTitle: 'Remove certificate?',
+  certCardDeleteMessage: '{name}, valid until {date}, will be removed from the allow list.',
+  certCardDeleteConsequence:
+    'With the next allow-list bundle, other DSF instances stop accepting this certificate.',
+  certCardDeleteLastValid:
+    'This is the last valid certificate of your organization: once the next allow-list bundle is out, other DSF instances reject every connection from your site.',
+  membershipCardLabel: 'Membership in {parent}',
+  membershipCardDeleteTitle: 'Delete membership?',
+  membershipCardDeleteMessage: 'The membership in {parent} ({roles}) will be removed.',
+  membershipCardDeleteConsequence:
+    'With the next allow-list bundle, your organization no longer takes part in {parent} in these roles.',
+
   // ApprovalCard
   approvalCardRequestNum: 'Request #{n}',
 
@@ -893,10 +920,9 @@ export const en = {
   onboardingProgress: '{done}/{total} complete',
   onboardingStepSubmit: 'Submit',
 
-  // undoDelete (lib)
-  undoDeleteSuccess: '{label} deleted.',
-  undoDeleteFailed: 'Failed to delete {label}.',
-  undoDeleteFallbackLabel: 'Contact',
+  // confirmDelete (lib)
+  confirmDeleteSuccess: '{label} deleted.',
+  confirmDeleteFailed: 'Failed to delete {label}.',
 
   // ARIA labels
   ariaClose: 'Close',

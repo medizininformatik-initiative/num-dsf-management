@@ -1,16 +1,17 @@
 /**
  * EndpointsCard.tsx — entity card listing FHIR endpoints with their IP addresses (FHIR/BPE flags).
- * Supports add/edit (useModals), undoable cross-user-guarded deletion, and an IP-diff badge.
+ * Supports add/edit (useModals), confirmed cross-user-guarded deletion (naming the memberships
+ * deleted with the endpoint), and an IP-diff badge.
  */
 import { useEndpoints, useDeleteEndpoint } from '../../hooks/useEndpoints';
+import { useMemberships } from '../../hooks/useMemberships';
 import { useOrganization } from '../../hooks/useOrganization';
 import { EntityCard } from './EntityCard';
 import { FkLink } from './FkLink';
 import { useModals } from '../../hooks/useModals';
 import { IpDiffBadge } from './IpDiffBadge';
 import { useI18n } from '../../stores/i18n.store';
-import { undoableDelete } from '../../lib/undoDelete';
-import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
+import { useConfirmDelete } from '../../lib/confirmDelete';
 
 interface EndpointIpRow {
   id: string;
@@ -30,8 +31,31 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
   const { t } = useI18n();
   const { data: endpoints = [], isLoading } = useEndpoints(instanceId);
   const { data: org } = useOrganization(instanceId);
+  const { data: memberships = [] } = useMemberships(instanceId);
   const deleteMut = useDeleteEndpoint(instanceId);
-  const guard = useCrossUserGuard();
+  const confirmDelete = useConfirmDelete();
+
+  function requestDelete(ep: EndpointRow) {
+    // Memberships reference the endpoint with ON DELETE CASCADE.
+    const bound = memberships.filter(
+      (m: { endpoint_id?: string }) => m.endpoint_id === ep.identifier,
+    ).length;
+    void confirmDelete({
+      label: ep.name || ep.identifier,
+      title: t('endpointCardDeleteTitle'),
+      message: t('endpointCardDeleteMessage', {
+        name: ep.name ? `${ep.name} (${ep.identifier})` : ep.identifier,
+      }),
+      consequence:
+        bound === 0
+          ? t('endpointCardDeleteConsequence')
+          : bound === 1
+            ? t('endpointCardDeleteMembershipsOne')
+            : t('endpointCardDeleteMembershipsMany', { n: bound }),
+      confirmLabel: t('delete'),
+      remove: () => deleteMut.mutateAsync(ep.identifier),
+    });
+  }
 
   return (
     <EntityCard
@@ -150,20 +174,7 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  undoableDelete(
-                    ep.name || ep.identifier,
-                    () =>
-                      new Promise<void>((resolve, reject) => {
-                        guard(async () => {
-                          try {
-                            await deleteMut.mutateAsync(ep.identifier);
-                            resolve();
-                          } catch (e) {
-                            reject(e);
-                          }
-                        });
-                      }),
-                  );
+                  requestDelete(ep);
                 }}
                 title={t('endpointCardDeleteAria')}
                 aria-label={t('endpointCardDeleteAria')}

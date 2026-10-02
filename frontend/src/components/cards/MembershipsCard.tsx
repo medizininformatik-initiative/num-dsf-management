@@ -1,6 +1,6 @@
 /**
  * MembershipsCard.tsx — entity card listing memberships (parent org + roles) with FK links to org/endpoint.
- * Supports add/edit (useModals) and undoable cross-user-guarded deletion.
+ * Supports add/edit (useModals) and confirmed cross-user-guarded deletion.
  */
 import { useMemberships, useDeleteMembership } from '../../hooks/useMemberships';
 import { useOrganization } from '../../hooks/useOrganization';
@@ -10,8 +10,7 @@ import { FkLink } from './FkLink';
 import { parseJsonArray } from '../../lib/parseJsonArray';
 import { useModals } from '../../hooks/useModals';
 import { useI18n } from '../../stores/i18n.store';
-import { undoableDelete } from '../../lib/undoDelete';
-import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
+import { useConfirmDelete } from '../../lib/confirmDelete';
 
 interface MembershipRow {
   id: string;
@@ -25,7 +24,22 @@ export function MembershipsCard({ instanceId }: { instanceId: string }) {
   const { data: org } = useOrganization(instanceId);
   const { data: endpoints = [] } = useEndpoints(instanceId);
   const deleteMut = useDeleteMembership(instanceId);
-  const guard = useCrossUserGuard();
+  const confirmDelete = useConfirmDelete();
+
+  function requestDelete(ms: MembershipRow) {
+    const parent = ms.parent_organization;
+    void confirmDelete({
+      label: t('membershipCardLabel', { parent }),
+      title: t('membershipCardDeleteTitle'),
+      message: t('membershipCardDeleteMessage', {
+        parent,
+        roles: parseJsonArray(ms.roles).join(', '),
+      }),
+      consequence: t('membershipCardDeleteConsequence', { parent }),
+      confirmLabel: t('delete'),
+      remove: () => deleteMut.mutateAsync(ms.id),
+    });
+  }
 
   return (
     <EntityCard
@@ -121,20 +135,7 @@ export function MembershipsCard({ instanceId }: { instanceId: string }) {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    undoableDelete(
-                      ms.parent_organization,
-                      () =>
-                        new Promise<void>((resolve, reject) => {
-                          guard(async () => {
-                            try {
-                              await deleteMut.mutateAsync(ms.id);
-                              resolve();
-                            } catch (e) {
-                              reject(e);
-                            }
-                          });
-                        }),
-                    );
+                    requestDelete(ms);
                   }}
                   title={t('membershipCardDeleteAria')}
                   aria-label={t('membershipCardDeleteAria')}

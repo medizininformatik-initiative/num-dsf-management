@@ -1,6 +1,7 @@
 /**
  * CertificatesCard.tsx — entity card listing org certificates with validity bars and expiry days.
- * Supports renew/add (via useModals) and undoable, cross-user-guarded deletion.
+ * Supports renew/add (via useModals) and confirmed, cross-user-guarded deletion that warns
+ * before the last valid certificate goes.
  */
 import { toast } from 'sonner';
 import { useCertificates, useDeleteCertificate } from '../../hooks/useCertificates';
@@ -8,10 +9,10 @@ import { useOrganization } from '../../hooks/useOrganization';
 import { EntityCard } from './EntityCard';
 import { FkLink } from './FkLink';
 import { useModals } from '../../hooks/useModals';
-import { daysUntil } from '../../lib/dateUtils';
+import { daysUntil, formatDate } from '../../lib/dateUtils';
+import { certValidity } from '../../lib/certStatus';
 import { useI18n } from '../../stores/i18n.store';
-import { undoableDelete } from '../../lib/undoDelete';
-import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
+import { useConfirmDelete } from '../../lib/confirmDelete';
 
 interface CertRow {
   id: string;
@@ -21,11 +22,25 @@ interface CertRow {
 }
 
 export function CertificatesCard({ instanceId }: { instanceId: string }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { data: certs = [], isLoading } = useCertificates(instanceId);
   const { data: org } = useOrganization(instanceId);
   const deleteMut = useDeleteCertificate(instanceId);
-  const guard = useCrossUserGuard();
+  const confirmDelete = useConfirmDelete();
+
+  function requestDelete(cert: CertRow) {
+    const name = cert.subject || t('certCardFallbackName');
+    const stillValid = (c: CertRow) => certValidity(c.valid_until).state !== 'expired';
+    const lastValid = stillValid(cert) && certs.filter(stillValid).length === 1;
+    void confirmDelete({
+      label: name,
+      title: t('certCardDeleteTitle'),
+      message: t('certCardDeleteMessage', { name, date: formatDate(cert.valid_until, lang) }),
+      consequence: lastValid ? t('certCardDeleteLastValid') : t('certCardDeleteConsequence'),
+      confirmLabel: t('certRemoveBtn'),
+      remove: () => deleteMut.mutateAsync(cert.id),
+    });
+  }
 
   return (
     <EntityCard
@@ -167,22 +182,7 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
                 <button
-                  onClick={() => {
-                    undoableDelete(
-                      cert.subject || 'Certificate',
-                      () =>
-                        new Promise<void>((resolve, reject) => {
-                          guard(async () => {
-                            try {
-                              await deleteMut.mutateAsync(cert.id);
-                              resolve();
-                            } catch (e) {
-                              reject(e);
-                            }
-                          });
-                        }),
-                    );
-                  }}
+                  onClick={() => requestDelete(cert)}
                   title={t('delete')}
                   aria-label={t('delete')}
                   style={{

@@ -1,6 +1,6 @@
 /**
  * ContactsCard.tsx — entity card listing organization contacts with type badges and email-validation state.
- * Supports add/edit (useModals), resend-verification, and undoable cross-user-guarded deletion.
+ * Supports add/edit (useModals), resend-verification, and confirmed, cross-user-guarded deletion.
  */
 import { useContacts, useDeleteContact } from '../../hooks/useContacts';
 import { EntityCard } from './EntityCard';
@@ -11,8 +11,10 @@ import { parseJsonArray } from '../../lib/parseJsonArray';
 import { api } from '../../api/entities.api';
 import { toast } from 'sonner';
 import { useI18n } from '../../stores/i18n.store';
-import { undoableDelete } from '../../lib/undoDelete';
-import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
+import { useConfirmDelete } from '../../lib/confirmDelete';
+
+/** Contact types that receive the certificate expiry reminders. */
+const REMINDER_TYPES = ['SECURITY', 'DSF_ADMIN'];
 
 const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
   MEDIC: { bg: '#fde3ef', color: 'var(--primary)' },
@@ -33,7 +35,25 @@ export function ContactsCard({ instanceId }: { instanceId: string }) {
   const { data: contacts = [], isLoading } = useContacts(instanceId);
   const { data: org } = useOrganization(instanceId);
   const deleteMut = useDeleteContact(instanceId);
-  const guard = useCrossUserGuard();
+  const confirmDelete = useConfirmDelete();
+
+  function requestDelete(c: ContactRow) {
+    const name = c.name || c.email;
+    const reminders = parseJsonArray(c.types).some((type) => REMINDER_TYPES.includes(type));
+    void confirmDelete({
+      label: name,
+      title: t('contactCardDeleteTitle'),
+      message: t('contactCardDeleteMessage', { name }),
+      consequence:
+        contacts.length === 1
+          ? t('contactCardDeleteLastContact')
+          : reminders
+            ? t('contactCardDeleteReminders')
+            : undefined,
+      confirmLabel: t('delete'),
+      remove: () => deleteMut.mutateAsync(c.id),
+    });
+  }
 
   return (
     <EntityCard
@@ -166,20 +186,7 @@ export function ContactsCard({ instanceId }: { instanceId: string }) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  undoableDelete(
-                    c.name || t('undoDeleteFallbackLabel'),
-                    () =>
-                      new Promise<void>((resolve, reject) => {
-                        guard(async () => {
-                          try {
-                            await deleteMut.mutateAsync(c.id);
-                            resolve();
-                          } catch (e) {
-                            reject(e);
-                          }
-                        });
-                      }),
-                  );
+                  requestDelete(c);
                 }}
                 title={t('ariaDeleteContact')}
                 aria-label={t('ariaDeleteContact')}

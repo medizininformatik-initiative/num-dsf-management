@@ -323,6 +323,34 @@ export const de: Record<TranslationKey, string> = {
   membershipCardEditAria: 'Mitgliedschaft bearbeiten',
   membershipCardDeleteAria: 'Mitgliedschaft löschen',
 
+  // Certificate card & entity rows (contacts, endpoints, certificates, memberships)
+  contactCardDeleteTitle: 'Kontakt löschen?',
+  contactCardDeleteMessage: '{name} wird aus den Kontakten Ihrer Organisation entfernt.',
+  contactCardDeleteLastContact:
+    'Dies ist der letzte Kontakt Ihrer Organisation; ein Freigabeantrag braucht mindestens einen.',
+  contactCardDeleteReminders:
+    'Diese Person erhält keine Erinnerungen an ablaufende Zertifikate mehr.',
+  endpointCardDeleteTitle: 'Endpunkt löschen?',
+  endpointCardDeleteMessage: '{name} wird aus der Allow-Liste entfernt.',
+  endpointCardDeleteConsequence:
+    'Mit dem nächsten Allow-List-Bundle verschwindet der Endpunkt für alle Standorte im Netzwerk.',
+  endpointCardDeleteMembershipsOne:
+    'Die an diesen Endpunkt gebundene Mitgliedschaft wird mitgelöscht. Mit dem nächsten Allow-List-Bundle verschwinden beide für alle Standorte im Netzwerk.',
+  endpointCardDeleteMembershipsMany:
+    'Die {n} an diesen Endpunkt gebundenen Mitgliedschaften werden mitgelöscht. Mit dem nächsten Allow-List-Bundle verschwinden sie für alle Standorte im Netzwerk.',
+  certCardFallbackName: 'Zertifikat',
+  certCardDeleteTitle: 'Zertifikat entfernen?',
+  certCardDeleteMessage: '{name}, gültig bis {date}, wird aus der Allow-Liste entfernt.',
+  certCardDeleteConsequence:
+    'Mit dem nächsten Allow-List-Bundle akzeptieren andere DSF-Instanzen dieses Zertifikat nicht mehr.',
+  certCardDeleteLastValid:
+    'Dies ist das letzte gültige Zertifikat Ihrer Organisation: Sobald das nächste Allow-List-Bundle veröffentlicht ist, lehnen andere DSF-Instanzen jede Verbindung Ihres Standorts ab.',
+  membershipCardLabel: 'Mitgliedschaft in {parent}',
+  membershipCardDeleteTitle: 'Mitgliedschaft löschen?',
+  membershipCardDeleteMessage: 'Die Mitgliedschaft in {parent} ({roles}) wird entfernt.',
+  membershipCardDeleteConsequence:
+    'Mit dem nächsten Allow-List-Bundle nimmt Ihre Organisation nicht mehr in diesen Rollen an {parent} teil.',
+
   // ApprovalCard
   approvalCardRequestNum: 'Anfrage #{n}',
 
@@ -908,10 +936,9 @@ export const de: Record<TranslationKey, string> = {
   onboardingProgress: '{done}/{total} abgeschlossen',
   onboardingStepSubmit: 'Einreichen',
 
-  // undoDelete (lib)
-  undoDeleteSuccess: '{label} gelöscht.',
-  undoDeleteFailed: '{label} konnte nicht gelöscht werden.',
-  undoDeleteFallbackLabel: 'Kontakt',
+  // confirmDelete (lib)
+  confirmDeleteSuccess: '{label} gelöscht.',
+  confirmDeleteFailed: '{label} konnte nicht gelöscht werden.',
 
   // ARIA labels
   ariaClose: 'Schließen',
