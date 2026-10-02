@@ -5,7 +5,9 @@
  * `npm run sync:cas` job.
  */
 import forge from 'node-forge';
+import crypto from 'crypto';
 import { splitPems, fingerprintOf, subjectDnOf } from '../scripts/sync-mozilla-cas';
+import { ECC_P256_CERT_PEM } from './fixtures/eccCertificate';
 
 function generateTestCa(subjectAttrs: Array<{ shortName: string; value: string }>): string {
   const keys = forge.pki.rsa.generateKeyPair({ bits: 1024 });
@@ -59,5 +61,13 @@ describe('Mozilla CA sync helpers', () => {
     expect(dn).toContain('CN=Test Root CA');
     expect(dn).toContain('O=Acme Trust Authority');
     expect(dn).toContain('C=DE');
+  });
+
+  it('reads EC certificates, which the trust bundle contains and node-forge skipped', () => {
+    const der = new crypto.X509Certificate(ECC_P256_CERT_PEM).raw;
+    expect(fingerprintOf(ECC_P256_CERT_PEM)).toBe(
+      crypto.createHash('sha256').update(der).digest('hex').toUpperCase(),
+    );
+    expect(subjectDnOf(ECC_P256_CERT_PEM)).toBe('C=DE,O=ECC Test,CN=dsf-client.ecc.example.de');
   });
 });
