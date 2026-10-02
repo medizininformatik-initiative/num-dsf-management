@@ -60,7 +60,7 @@ describe('AuthBootstrap', () => {
     renderWithProviders(<AuthBootstrap>{child()}</AuthBootstrap>);
 
     // While restoring, the placeholder is shown, not the children.
-    expect(screen.getByText('Restoring session…')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Restoring session…');
     expect(screen.queryByTestId('app-content')).not.toBeInTheDocument();
 
     // Once refresh resolves, children render and the store is authenticated.
@@ -69,6 +69,13 @@ describe('AuthBootstrap', () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
     expect(useAuthStore.getState().accessToken).toBe('fresh.access.token');
     expect(useAuthStore.getState().user).toEqual({ id: 'user-1', email: 'admin@dsf.de' });
+  });
+
+  it('shows the restore message in the app language', async () => {
+    refresh.mockResolvedValue({ data: { data: { accessToken: 'fresh.access.token' } } });
+    renderWithProviders(<AuthBootstrap>{child()}</AuthBootstrap>, { lang: 'de' });
+    expect(screen.getByRole('status')).toHaveTextContent('Sitzung wird wiederhergestellt…');
+    expect(await screen.findByTestId('app-content', {}, { timeout: 4000 })).toBeInTheDocument();
   });
 
   it('falls through to the app unauthenticated when refresh and dev-login both fail', async () => {

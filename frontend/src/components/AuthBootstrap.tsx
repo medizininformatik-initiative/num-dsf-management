@@ -7,6 +7,7 @@
  *
  * SECURITY: Access token still only in memory (Zustand). Never localStorage.
  * The refresh token is httpOnly — JS can't read it, browser sends it automatically.
+ * While restoring, a translated, theme-aware status line is shown (role="status").
  */
 import { useEffect, useState, ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
@@ -19,6 +20,7 @@ import { isCertMode, reauthRedirect } from '../lib/authMode';
 import { CertStatusPage } from '../pages/CertStatusPage';
 
 export function AuthBootstrap({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [ready, setReady] = useState(false);
   // undefined = not in cert-error state; null = checking; string = backend error code
   const [certError, setCertError] = useState<string | null | undefined>(undefined);
@@ -159,29 +161,11 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
 
   if (!ready) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#f0f2f8',
-          fontFamily: 'Inter, system-ui, sans-serif',
-        }}
-      >
-        <div style={{ textAlign: 'center' }}>
-          <span
-            style={{
-              fontSize: '24px',
-              fontWeight: 700,
-              color: 'var(--primary)',
-              letterSpacing: '-0.5px',
-            }}
-          >
-            dsf.
-          </span>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
-            Restoring session…
+      <div className="flex min-h-screen items-center justify-center bg-[color:var(--bg-page)] font-sans">
+        <div className="animate-fade-in text-center">
+          <span className="dsf-wordmark text-2xl font-bold tracking-tight">dsf.</span>
+          <p role="status" className="mt-2 text-xs text-[color:var(--text-muted)]">
+            {t('authRestoringSession')}
           </p>
         </div>
       </div>
