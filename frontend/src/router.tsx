@@ -22,7 +22,6 @@ import { MapPage } from './pages/MapPage';
 import { MarketplacePage } from './pages/MarketplacePage';
 import { MarketplaceDetailPage } from './pages/MarketplaceDetailPage';
 import { DsfResourcesPage } from './pages/DsfResourcesPage';
-import { SkillPage } from './pages/SkillPage';
 import { LegalPage } from './pages/LegalPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { useAuthStore } from './stores/auth.store';
@@ -75,7 +74,6 @@ export const router = createBrowserRouter([
       { path: 'marketplace', element: <MarketplacePage /> },
       { path: 'marketplace/:slug', element: <MarketplaceDetailPage /> },
       { path: 'resources', element: <DsfResourcesPage /> },
-      { path: 'skill', element: <SkillPage /> },
       { path: 'legal', element: <LegalPage /> },
     ],
   },
