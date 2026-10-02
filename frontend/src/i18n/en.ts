@@ -1024,6 +1024,16 @@ export const en = {
   adminApproveConfirmSecond:
     'This is the second approval: the request is approved at once and enters the allow-list bundle.',
   adminApproveConfirmFinal: 'Your decision is final: you cannot change or withdraw it afterwards.',
+  adminUsersAddLabel: 'Email address to whitelist',
+  adminUsersLockReasonLabel: 'Reason (optional)',
+  adminUsersConfirmBody_add: 'The address can sign in with a one-time code from now on.',
+  adminUsersConfirmBody_lock: 'The address can no longer sign in until it is unlocked.',
+  adminUsersConfirmBody_unlock: 'The address can sign in again.',
+  adminUsersConfirmBody_demote: 'The account keeps its access but loses its admin rights.',
+  adminUsersConfirmBody_remove:
+    'The address is removed from the whitelist and can no longer sign in.',
+  adminUsersConfirmBody_promote:
+    'A second admin from another site must approve before the account becomes an admin.',
   // ─── Bundle Versions (federation hardening 2026-05-18) ────────────────────
   download: 'Download',
   bundleVersionsTitle: 'Bundle versions',

@@ -1042,6 +1042,16 @@ export const de: Record<TranslationKey, string> = {
     'Dies ist die zweite Genehmigung: Der Antrag wird sofort genehmigt und in das Allow-List-Bundle übernommen.',
   adminApproveConfirmFinal:
     'Ihre Entscheidung ist endgültig: Sie können sie danach weder ändern noch zurückziehen.',
+  adminUsersAddLabel: 'E-Mail-Adresse für die Whitelist',
+  adminUsersLockReasonLabel: 'Grund (optional)',
+  adminUsersConfirmBody_add: 'Die Adresse kann sich ab sofort mit einem Einmalcode anmelden.',
+  adminUsersConfirmBody_lock: 'Die Adresse kann sich nicht mehr anmelden, bis sie entsperrt wird.',
+  adminUsersConfirmBody_unlock: 'Die Adresse kann sich wieder anmelden.',
+  adminUsersConfirmBody_demote: 'Das Konto behält seinen Zugang, verliert aber die Admin-Rechte.',
+  adminUsersConfirmBody_remove:
+    'Die Adresse wird von der Whitelist entfernt und kann sich nicht mehr anmelden.',
+  adminUsersConfirmBody_promote:
+    'Ein zweiter Admin eines anderen Standorts muss zustimmen, bevor das Konto Admin wird.',
   // ─── Bundle-Versionen (Föderationshärtung 2026-05-18) ────────────────────
   download: 'Herunterladen',
   bundleVersionsTitle: 'Bundle-Versionen',

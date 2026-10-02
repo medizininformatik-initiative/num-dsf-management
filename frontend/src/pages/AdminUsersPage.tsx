@@ -1,29 +1,73 @@
 /**
  * AdminUsersPage.tsx – /app/admin/users
- * Whitelist + admin-grant management. All actions require TOTP confirmation.
- * Dependencies: adminUsersApi, useI18n, useMe, tanstack-query, sonner
+ * Whitelist + admin-grant management. Every action is confirmed in a dialog
+ * that says what happens and, in OTP sessions, takes the TOTP step-up code
+ * (StepUpConfirmDialog on the foundation Modal: Escape, focus trap and
+ * restore, animation). A failed attempt keeps the dialog open and clears the
+ * spent code.
+ * Dependencies: adminUsersApi, adminPromotionsApi, useI18n, useMe,
+ * useToastMutation, AdminPageHeader, StepUpConfirmDialog, Button, StatusPill,
+ * Icon, Skeleton, fieldClasses, tanstack-query, sonner
  */
-import { useState } from 'react';
+import { useId, useState, type CSSProperties, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { adminUsersApi, adminPromotionsApi, type WhitelistEntry } from '../api/admin.api';
 import { useI18n } from '../stores/i18n.store';
+import type { TranslationKey } from '../i18n/en';
 import { useMe } from '../hooks/useMe';
 import { useToastMutation } from '../hooks/useToastMutation';
-import { needsTotpStepUp } from '../lib/authMode';
+import { AdminPageHeader } from '../components/admin/AdminPageHeader';
+import { StepUpConfirmDialog } from '../components/admin/StepUpConfirmDialog';
+import { FIELD_CLASS, LABEL_CLASS } from '../components/admin/fieldClasses';
+import { Button } from '../components/ui/Button';
+import { StatusPill } from '../components/ui/StatusPill';
+import { Icon } from '../components/ui/Icon';
+import { Skeleton } from '../components/ui/Skeleton';
 
 type ActionKind = 'add' | 'lock' | 'unlock' | 'demote' | 'remove' | 'promote';
 
 interface PendingAction {
   kind: ActionKind;
-  email?: string;
+  email: string;
 }
+
+const TITLE_KEY: Record<ActionKind, TranslationKey> = {
+  add: 'adminUsersConfirm_add',
+  lock: 'adminUsersConfirm_lock',
+  unlock: 'adminUsersConfirm_unlock',
+  demote: 'adminUsersConfirm_demote',
+  remove: 'adminUsersConfirm_remove',
+  promote: 'adminUsersConfirm_promote',
+};
+
+const BODY_KEY: Record<ActionKind, TranslationKey> = {
+  add: 'adminUsersConfirmBody_add',
+  lock: 'adminUsersConfirmBody_lock',
+  unlock: 'adminUsersConfirmBody_unlock',
+  demote: 'adminUsersConfirmBody_demote',
+  remove: 'adminUsersConfirmBody_remove',
+  promote: 'adminUsersConfirmBody_promote',
+};
+
+const CONFIRM_KEY: Record<ActionKind, TranslationKey> = {
+  add: 'adminUsersAdd',
+  lock: 'adminUsersLock',
+  unlock: 'adminUsersUnlock',
+  demote: 'adminUsersDemote',
+  remove: 'adminUsersRemove',
+  promote: 'adminUsersPromote',
+};
+
+const DESTRUCTIVE: ReadonlySet<ActionKind> = new Set(['lock', 'demote', 'remove']);
 
 export function AdminUsersPage() {
   const { t } = useI18n();
   const { data: me } = useMe();
   const qc = useQueryClient();
+  const emailId = useId();
+  const reasonId = useId();
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin', 'users'],
@@ -37,12 +81,14 @@ export function AdminUsersPage() {
   const [lockReason, setLockReason] = useState('');
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+  const errorFallback = t('genericActionFailed');
 
   const mutAdd = useToastMutation({
     mutationFn: (vars: { email: string; totpCode?: string }) =>
       adminUsersApi.add(vars.email, vars.totpCode),
     successMessage: t('adminUsersAddedToast'),
     onSuccess: invalidate,
+    errorFallback,
   });
 
   const mutLock = useToastMutation({
@@ -50,6 +96,7 @@ export function AdminUsersPage() {
       adminUsersApi.lock(vars.email, vars.reason, vars.totpCode),
     successMessage: t('adminUsersLockedToast'),
     onSuccess: invalidate,
+    errorFallback,
   });
 
   const mutUnlock = useToastMutation({
@@ -57,6 +104,7 @@ export function AdminUsersPage() {
       adminUsersApi.unlock(vars.email, vars.totpCode),
     successMessage: t('adminUsersUnlockedToast'),
     onSuccess: invalidate,
+    errorFallback,
   });
 
   const mutDemote = useToastMutation({
@@ -64,6 +112,7 @@ export function AdminUsersPage() {
       adminUsersApi.demote(vars.email, vars.totpCode),
     successMessage: t('adminUsersDemotedToast'),
     onSuccess: invalidate,
+    errorFallback,
   });
 
   const mutRemove = useToastMutation({
@@ -71,6 +120,7 @@ export function AdminUsersPage() {
       adminUsersApi.remove(vars.email, vars.totpCode),
     successMessage: t('adminUsersRemovedToast'),
     onSuccess: invalidate,
+    errorFallback,
   });
 
   const mutPromote = useToastMutation({
@@ -78,6 +128,7 @@ export function AdminUsersPage() {
       adminPromotionsApi.create(vars.email, vars.totpCode),
     successMessage: t('adminUsersPromoteRequestedToast'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'promotions'] }),
+    errorFallback,
   });
 
   if (me && !me.isAdmin) return <Navigate to="/app" replace />;
@@ -93,222 +144,166 @@ export function AdminUsersPage() {
     (pending?.kind === 'remove' && mutRemove.isPending) ||
     (pending?.kind === 'promote' && mutPromote.isPending);
 
-  function reset() {
+  function close() {
     setPending(null);
     setTotpCode('');
     setLockReason('');
-    setNewEmail('');
   }
 
-  function execute() {
+  function execute(code: string | undefined) {
     if (!pending) return;
-    if (needsTotpStepUp() && totpCode.length !== 6) {
-      toast.error(t('totpRequired'));
+    const totpField = code !== undefined ? { totpCode: code } : {};
+    // Success closes the dialog; a failure keeps it open for a fresh code.
+    const settle = { onSuccess: close, onError: () => setTotpCode('') };
+    const { kind, email } = pending;
+    if (kind === 'add') {
+      mutAdd.mutate(
+        { email, ...totpField },
+        {
+          ...settle,
+          onSuccess: () => {
+            close();
+            setNewEmail('');
+          },
+        },
+      );
+    } else if (kind === 'lock') {
+      mutLock.mutate({ email, reason: lockReason, ...totpField }, settle);
+    } else if (kind === 'unlock') {
+      mutUnlock.mutate({ email, ...totpField }, settle);
+    } else if (kind === 'demote') {
+      mutDemote.mutate({ email, ...totpField }, settle);
+    } else if (kind === 'remove') {
+      mutRemove.mutate({ email, ...totpField }, settle);
+    } else if (kind === 'promote') {
+      mutPromote.mutate({ email, ...totpField }, settle);
+    }
+  }
+
+  function requestAdd(e: FormEvent) {
+    e.preventDefault();
+    const email = newEmail.trim();
+    if (!email) {
+      toast.error(t('adminUsersAddPlaceholder'));
       return;
     }
-    const totpField = needsTotpStepUp() ? { totpCode } : {};
-    if (pending.kind === 'add') {
-      mutAdd.mutate({ email: newEmail, ...totpField }, { onSettled: reset });
-    } else if (pending.kind === 'lock') {
-      mutLock.mutate(
-        { email: pending.email!, reason: lockReason, ...totpField },
-        { onSettled: reset },
-      );
-    } else if (pending.kind === 'unlock') {
-      mutUnlock.mutate({ email: pending.email!, ...totpField }, { onSettled: reset });
-    } else if (pending.kind === 'demote') {
-      mutDemote.mutate({ email: pending.email!, ...totpField }, { onSettled: reset });
-    } else if (pending.kind === 'remove') {
-      mutRemove.mutate({ email: pending.email!, ...totpField }, { onSettled: reset });
-    } else if (pending.kind === 'promote') {
-      mutPromote.mutate({ email: pending.email!, ...totpField }, { onSettled: reset });
-    }
+    setTotpCode('');
+    setPending({ kind: 'add', email });
   }
 
   return (
-    <div
-      style={{
-        flex: 1,
-        padding: '32px',
-        overflowY: 'auto',
-        fontFamily: 'Inter, system-ui, sans-serif',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: '28px', color: 'var(--primary)' }}
-          aria-hidden="true"
+    <div className="flex-1 overflow-y-auto">
+      <AdminPageHeader
+        icon="group"
+        title={t('adminUsersTitle')}
+        subtitle={t('adminUsersSubtitle')}
+      />
+
+      <div className="mx-auto max-w-5xl space-y-5 px-6 py-6 sm:px-8">
+        {/* Add row */}
+        <form
+          onSubmit={requestAdd}
+          className="flex flex-wrap items-end gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4"
         >
-          group
-        </span>
-        <div>
-          <h1
-            style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}
-          >
-            {t('adminUsersTitle')}
-          </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-            {t('adminUsersSubtitle')}
-          </p>
-        </div>
+          <div className="min-w-[14rem] flex-1">
+            <label htmlFor={emailId} className={LABEL_CLASS}>
+              {t('adminUsersAddLabel')}
+            </label>
+            <input
+              id={emailId}
+              type="email"
+              autoComplete="off"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              placeholder={t('adminUsersAddPlaceholder')}
+              className={FIELD_CLASS}
+            />
+          </div>
+          <Button type="submit">
+            <Icon name="person_add" size={18} />
+            {t('adminUsersAdd')}
+          </Button>
+        </form>
+
+        {isLoading && (
+          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">
+            <Skeleton lines={4} />
+          </div>
+        )}
+
+        {users && (
+          <div className="overflow-x-auto rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)]">
+            <table className="w-full border-collapse text-left text-[13px]">
+              <thead className="bg-[color:var(--bg-hover)]">
+                <tr className="text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                  <th className="px-4 py-2.5">{t('adminUsersColEmail')}</th>
+                  <th className="px-4 py-2.5">{t('adminUsersColRole')}</th>
+                  <th className="px-4 py-2.5">{t('adminUsersColStatus')}</th>
+                  <th className="px-4 py-2.5">{t('adminUsersColAddedBy')}</th>
+                  <th className="px-4 py-2.5">{t('adminUsersColActions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u, i) => (
+                  <Row
+                    key={u.email}
+                    u={u}
+                    index={i}
+                    meEmail={me?.email ?? null}
+                    onAction={(kind) => {
+                      setTotpCode('');
+                      setPending({ kind, email: u.email });
+                    }}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      <div style={{ height: '1px', background: 'var(--border)', margin: '20px 0 24px' }} />
-
-      {/* Add row */}
-      <div
-        style={{
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border)',
-          borderRadius: '12px',
-          padding: '14px 18px',
-          marginBottom: '20px',
-          display: 'flex',
-          gap: '8px',
-          alignItems: 'center',
-        }}
+      <StepUpConfirmDialog
+        open={pending !== null}
+        title={pending ? t(TITLE_KEY[pending.kind]) : ''}
+        subtitle={pending?.email}
+        message={pending ? t(BODY_KEY[pending.kind]) : undefined}
+        confirmLabel={pending ? t(CONFIRM_KEY[pending.kind]) : t('confirm')}
+        destructive={pending ? DESTRUCTIVE.has(pending.kind) : false}
+        pending={confirmPending}
+        isDirty={pending?.kind === 'lock' && lockReason.trim() !== ''}
+        totpCode={totpCode}
+        onTotpCodeChange={setTotpCode}
+        onConfirm={execute}
+        onCancel={close}
       >
-        <input
-          value={newEmail}
-          onChange={(e) => setNewEmail(e.target.value)}
-          placeholder={t('adminUsersAddPlaceholder')}
-          style={{
-            flex: 1,
-            padding: '8px 12px',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            background: 'var(--bg-page)',
-            color: 'var(--text-primary)',
-          }}
-        />
-        <button
-          onClick={() => {
-            if (!newEmail) {
-              toast.error(t('adminUsersAddPlaceholder'));
-              return;
-            }
-            setPending({ kind: 'add' });
-          }}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '10px',
-            border: 'none',
-            background: 'var(--primary)',
-            color: '#fff',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          {t('adminUsersAdd')}
-        </button>
-      </div>
-
-      {isLoading && <p style={{ color: 'var(--text-muted)' }}>{t('loading')}</p>}
-
-      {users && (
-        <div
-          style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: '12px',
-            overflow: 'hidden',
-          }}
-        >
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-page)' }}>
-                <th style={th}>{t('adminUsersColEmail')}</th>
-                <th style={th}>{t('adminUsersColRole')}</th>
-                <th style={th}>{t('adminUsersColStatus')}</th>
-                <th style={th}>{t('adminUsersColAddedBy')}</th>
-                <th style={th}>{t('adminUsersColActions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <Row
-                  key={u.email}
-                  u={u}
-                  meEmail={me?.email ?? null}
-                  onAction={(kind) => setPending({ kind, email: u.email })}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {pending && (
-        <ConfirmModal
-          onClose={reset}
-          title={t(`adminUsersConfirm_${pending.kind}` as Parameters<typeof t>[0])}
-          subtitle={pending.email ?? newEmail}
-        >
-          {pending.kind === 'lock' && (
+        {pending?.kind === 'lock' && (
+          <div>
+            <label htmlFor={reasonId} className={LABEL_CLASS}>
+              {t('adminUsersLockReasonLabel')}
+            </label>
             <textarea
+              id={reasonId}
               value={lockReason}
               onChange={(e) => setLockReason(e.target.value)}
               placeholder={t('adminUsersLockReasonPlaceholder')}
               rows={3}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                marginBottom: '12px',
-                background: 'var(--bg-page)',
-                color: 'var(--text-primary)',
-                boxSizing: 'border-box',
-              }}
+              className={`${FIELD_CLASS} resize-y`}
             />
-          )}
-          {needsTotpStepUp() && (
-            <input
-              value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000"
-              maxLength={6}
-              style={{
-                width: '180px',
-                padding: '8px 12px',
-                borderRadius: '10px',
-                border: '1px solid var(--border)',
-                fontFamily: 'monospace',
-                letterSpacing: '4px',
-                textAlign: 'center',
-                fontSize: '14px',
-                background: 'var(--bg-page)',
-                color: 'var(--text-primary)',
-              }}
-            />
-          )}
-          <div
-            style={{ marginTop: '12px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}
-          >
-            <button onClick={reset} style={cancelBtn}>
-              {t('cancel')}
-            </button>
-            <button
-              onClick={execute}
-              disabled={confirmPending}
-              style={{ ...confirmBtn, opacity: confirmPending ? 0.6 : 1 }}
-            >
-              {t('confirm')}
-            </button>
           </div>
-        </ConfirmModal>
-      )}
+        )}
+      </StepUpConfirmDialog>
     </div>
   );
 }
 
 function Row({
   u,
+  index,
   meEmail,
   onAction,
 }: {
   u: WhitelistEntry;
+  index: number;
   meEmail: string | null;
   onAction: (k: ActionKind) => void;
 }) {
@@ -317,174 +312,75 @@ function Row({
   const isLocked = u.locked_at != null;
 
   return (
-    <tr style={{ borderTop: '1px solid var(--border)' }}>
-      <td style={td}>
-        {u.email}
+    <tr
+      style={{ '--stagger-index': index } as CSSProperties}
+      className="animate-list-item-in border-t border-[color:var(--border)] align-middle"
+    >
+      <td className="px-4 py-3 text-[color:var(--text-primary)]">
+        <span className="break-all">{u.email}</span>
         {isMe && (
-          <span style={{ marginLeft: '6px', fontSize: '10px', color: 'var(--text-muted)' }}>
+          <span className="ml-1.5 text-[11px] text-[color:var(--text-muted)]">
             ({t('adminUsersYou')})
           </span>
         )}
       </td>
-      <td style={td}>
+      <td className="px-4 py-3">
         {u.is_admin ? (
-          <span style={{ fontWeight: 700, color: 'var(--primary)' }}>
+          <StatusPill tone="info" icon="shield_person">
             {t('adminUsersRoleAdmin')}
-          </span>
+          </StatusPill>
         ) : (
-          <span style={{ color: 'var(--text-muted)' }}>{t('adminUsersRoleUser')}</span>
+          <span className="text-xs text-[color:var(--text-muted)]">{t('adminUsersRoleUser')}</span>
         )}
       </td>
-      <td style={td}>
+      <td className="px-4 py-3">
         {isLocked ? (
-          <span
-            style={{
-              background: '#fee2e2',
-              color: '#b91c1c',
-              padding: '2px 8px',
-              borderRadius: '6px',
-              fontSize: '10px',
-            }}
-          >
+          <StatusPill tone="danger" icon="lock">
             {t('adminUsersStatusLocked')}
-          </span>
+          </StatusPill>
         ) : (
-          <span style={{ color: '#16a34a' }}>● {t('adminUsersStatusActive')}</span>
+          <StatusPill tone="success" icon="check_circle">
+            {t('adminUsersStatusActive')}
+          </StatusPill>
         )}
       </td>
-      <td style={{ ...td, fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+      <td className="px-4 py-3 font-mono text-xs text-[color:var(--text-muted)]">
         {u.created_by ?? '—'}
       </td>
-      <td style={td}>
-        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap gap-1.5">
           {!isLocked && !isMe && (
-            <button onClick={() => onAction('lock')} style={actBtn}>
+            <Button size="sm" variant="secondary" onClick={() => onAction('lock')}>
               {t('adminUsersLock')}
-            </button>
+            </Button>
           )}
           {isLocked && (
-            <button onClick={() => onAction('unlock')} style={actBtn}>
+            <Button size="sm" variant="secondary" onClick={() => onAction('unlock')}>
               {t('adminUsersUnlock')}
-            </button>
+            </Button>
           )}
           {u.is_admin && !isMe && (
-            <button onClick={() => onAction('demote')} style={actBtn}>
+            <Button size="sm" variant="secondary" onClick={() => onAction('demote')}>
               {t('adminUsersDemote')}
-            </button>
+            </Button>
           )}
           {!u.is_admin && !isLocked && !isMe && (
-            <button onClick={() => onAction('promote')} style={actBtn}>
+            <Button size="sm" variant="secondary" onClick={() => onAction('promote')}>
               {t('adminUsersPromote')}
-            </button>
+            </Button>
           )}
           {!isMe && (
-            <button onClick={() => onAction('remove')} style={{ ...actBtn, color: '#b91c1c' }}>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="text-danger-fg"
+              onClick={() => onAction('remove')}
+            >
               {t('adminUsersRemove')}
-            </button>
+            </Button>
           )}
         </div>
       </td>
     </tr>
   );
 }
-
-function ConfirmModal({
-  onClose,
-  title,
-  subtitle,
-  children,
-}: {
-  onClose: () => void;
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        background: 'rgba(15,23,42,0.45)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--bg-card)',
-          borderRadius: '16px',
-          padding: '24px',
-          maxWidth: '440px',
-          width: '90%',
-        }}
-      >
-        <h2
-          style={{
-            margin: '0 0 4px',
-            fontSize: '16px',
-            fontWeight: 700,
-            color: 'var(--text-primary)',
-          }}
-        >
-          {title}
-        </h2>
-        {subtitle && (
-          <p
-            style={{
-              margin: '0 0 16px',
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              color: 'var(--text-muted)',
-            }}
-          >
-            {subtitle}
-          </p>
-        )}
-        {children}
-      </div>
-    </div>
-  );
-}
-
-const th: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '10px 12px',
-  color: 'var(--text-secondary)',
-  fontWeight: 700,
-};
-const td: React.CSSProperties = {
-  padding: '10px 12px',
-  color: 'var(--text-primary)',
-};
-const actBtn: React.CSSProperties = {
-  padding: '4px 10px',
-  border: '1px solid var(--border)',
-  background: 'var(--bg-card)',
-  borderRadius: '6px',
-  fontSize: '11px',
-  cursor: 'pointer',
-  color: 'var(--text-primary)',
-};
-const cancelBtn: React.CSSProperties = {
-  padding: '8px 16px',
-  borderRadius: '10px',
-  border: '1px solid var(--border)',
-  background: 'transparent',
-  cursor: 'pointer',
-  color: 'var(--text-primary)',
-};
-const confirmBtn: React.CSSProperties = {
-  padding: '8px 16px',
-  borderRadius: '10px',
-  border: 'none',
-  background: 'var(--primary)',
-  color: '#fff',
-  fontWeight: 600,
-  cursor: 'pointer',
-};

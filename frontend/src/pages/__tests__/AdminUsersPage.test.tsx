@@ -1,9 +1,11 @@
 /**
  * AdminUsersPage.test.tsx — admin whitelist + role manager. adminUsersApi.list
  * is mocked with two whitelist rows and useMe is mocked to an admin viewer.
- * Asserts the title and the mocked rows render, then drives the remove action
- * (open modal → enter 6-digit TOTP → confirm) and asserts adminUsersApi.remove
- * is called with the row email and the entered code.
+ * Asserts the title and the mocked rows render, then drives the actions
+ * through the step-up dialog (foundation Modal): remove and add send the row
+ * email and the entered 6-digit code, lock sends its reason, Escape closes the
+ * dialog without acting, and a failed attempt keeps the dialog open with the
+ * spent code cleared.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
@@ -14,17 +16,18 @@ import type { WhitelistEntry } from '../../api/admin.api';
 const useMe = vi.hoisted(() => vi.fn());
 vi.mock('../../hooks/useMe', () => ({ useMe }));
 
-const { listMock, addMock, removeMock } = vi.hoisted(() => ({
+const { listMock, addMock, removeMock, lockMock } = vi.hoisted(() => ({
   listMock: vi.fn(),
   addMock: vi.fn().mockResolvedValue({ ok: true }),
   removeMock: vi.fn().mockResolvedValue({}),
+  lockMock: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('../../api/admin.api', () => ({
   adminUsersApi: {
     list: listMock,
     add: addMock,
-    lock: vi.fn(),
+    lock: lockMock,
     unlock: vi.fn(),
     demote: vi.fn(),
     remove: removeMock,
@@ -59,12 +62,21 @@ function users(): WhitelistEntry[] {
   ];
 }
 
+async function openRowAction(name: string) {
+  const bobCell = await screen.findByText('bob@imi-b.example.de');
+  const bobRow = bobCell.closest('tr') as HTMLTableRowElement;
+  fireEvent.click(within(bobRow).getByRole('button', { name }));
+  return screen.findByRole('dialog');
+}
+
 describe('AdminUsersPage', () => {
   beforeEach(() => {
     listMock.mockReset();
     listMock.mockResolvedValue(users());
     addMock.mockClear();
-    removeMock.mockClear();
+    removeMock.mockReset();
+    removeMock.mockResolvedValue({});
+    lockMock.mockClear();
     useMe.mockReturnValue({ data: { email: 'me@imi-a.example.de', isAdmin: true } });
   });
 
@@ -82,28 +94,31 @@ describe('AdminUsersPage', () => {
     expect(screen.getByText(/\(you\)/)).toBeInTheDocument();
   });
 
-  it('removes a whitelisted user: confirm fires adminUsersApi.remove with the TOTP code', async () => {
+  it('removes a whitelisted user: the dialog explains it and sends the TOTP code', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminUsersPage />);
 
-    // Locate the non-self row and click its Remove action.
-    const bobCell = await screen.findByText('bob@imi-b.example.de');
-    const bobRow = bobCell.closest('tr') as HTMLTableRowElement;
-    await user.click(within(bobRow).getByRole('button', { name: 'Remove' }));
-
-    // Confirm modal opens with the row email as subtitle.
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await openRowAction('Remove');
     expect(within(dialog).getByText('Remove from whitelist')).toBeInTheDocument();
     expect(within(dialog).getByText('bob@imi-b.example.de')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        'The address is removed from the whitelist and can no longer sign in.',
+      ),
+    ).toBeInTheDocument();
 
-    // Enter the 6-digit step-up code and confirm.
-    const totpInput = within(dialog).getByPlaceholderText('000000');
-    fireEvent.change(totpInput, { target: { value: '123456' } });
-    await user.click(within(dialog).getByRole('button', { name: 'Confirm' }));
+    // Confirm stays disabled until the 6-digit step-up code is complete.
+    const confirm = within(dialog).getByRole('button', { name: 'Remove' });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(within(dialog).getByPlaceholderText('000000'), {
+      target: { value: '123456' },
+    });
+    await user.click(confirm);
 
     await waitFor(() => expect(removeMock).toHaveBeenCalledWith('bob@imi-b.example.de', '123456'), {
       timeout: 4000,
     });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
   it('adds a whitelisted email: confirm fires adminUsersApi.add with the new email and code', async () => {
@@ -111,19 +126,59 @@ describe('AdminUsersPage', () => {
     renderWithProviders(<AdminUsersPage />);
     await screen.findByText('bob@imi-b.example.de');
 
-    const emailInput = screen.getByPlaceholderText('email@institution.de');
-    fireEvent.change(emailInput, { target: { value: 'new@imi-c.example.de' } });
+    fireEvent.change(screen.getByLabelText('Email address to whitelist'), {
+      target: { value: 'new@imi-c.example.de' },
+    });
     await user.click(screen.getByRole('button', { name: 'Add' }));
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Whitelist new email')).toBeInTheDocument();
 
-    const totpInput = within(dialog).getByPlaceholderText('000000');
-    fireEvent.change(totpInput, { target: { value: '654321' } });
-    await user.click(within(dialog).getByRole('button', { name: 'Confirm' }));
+    fireEvent.change(within(dialog).getByPlaceholderText('000000'), {
+      target: { value: '654321' },
+    });
+    await user.click(within(dialog).getByRole('button', { name: 'Add' }));
 
     await waitFor(() => expect(addMock).toHaveBeenCalledWith('new@imi-c.example.de', '654321'), {
       timeout: 4000,
     });
+  });
+
+  it('locks with the typed reason', async () => {
+    renderWithProviders(<AdminUsersPage />);
+    const dialog = await openRowAction('Lock');
+    fireEvent.change(within(dialog).getByLabelText('Reason (optional)'), {
+      target: { value: 'left the project' },
+    });
+    fireEvent.change(within(dialog).getByPlaceholderText('000000'), {
+      target: { value: '111222' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Lock' }));
+    await waitFor(() =>
+      expect(lockMock).toHaveBeenCalledWith('bob@imi-b.example.de', 'left the project', '111222'),
+    );
+  });
+
+  it('closes the dialog with Escape without acting', async () => {
+    renderWithProviders(<AdminUsersPage />);
+    const dialog = await openRowAction('Remove');
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(removeMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the dialog open and clears the spent code when the action fails', async () => {
+    removeMock.mockRejectedValue({
+      response: { status: 401, data: { error: { code: 'TOTP_INVALID', message: 'Invalid' } } },
+    });
+    renderWithProviders(<AdminUsersPage />);
+    const dialog = await openRowAction('Remove');
+    const code = within(dialog).getByPlaceholderText('000000');
+    fireEvent.change(code, { target: { value: '000000' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => expect(removeMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(code).toHaveValue(''));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
