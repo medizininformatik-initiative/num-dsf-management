@@ -9,6 +9,7 @@
  * Dependencies: supertest, app, db/connection (Knex), auth helper, adminGrants
  */
 
+import crypto from 'crypto';
 import request from 'supertest';
 import forge from 'node-forge';
 import { app } from '../../app';
@@ -242,6 +243,24 @@ describe('Download routes', () => {
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(404);
       expect(res.body.error).toBeDefined();
+    });
+  });
+
+  describe('GET /api/v1/download/full-bundle', () => {
+    it('signs the network-wide bundle and lets the frontend read the verification headers', async () => {
+      const origin = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const res = await request(app)
+        .get('/api/v1/download/full-bundle')
+        .set('Origin', origin)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.headers['x-bundle-signature']).toBeTruthy();
+      expect(res.headers['x-content-hash']).toBe(
+        crypto.createHash('sha256').update(res.text).digest('hex'),
+      );
+      expect(res.headers['access-control-expose-headers']).toContain('X-Content-Hash');
+      expect(res.headers['access-control-expose-headers']).toContain('X-Bundle-Signature');
     });
   });
 
