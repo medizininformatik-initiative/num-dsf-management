@@ -358,6 +358,7 @@ export const de: Record<TranslationKey, string> = {
   certCardCopySha256: 'SHA-256-Fingerprint kopieren',
   certCardSha256Copied: 'SHA-256-Fingerprint in die Zwischenablage kopiert.',
   certCardCopyFailed: 'Kopieren in die Zwischenablage fehlgeschlagen.',
+  certCardRemoveAria: 'Zertifikat {name} entfernen',
   certCardDeleteTitle: 'Zertifikat entfernen?',
   certCardDeleteMessage: '{name}, gültig bis {date}, wird aus der Allow-Liste entfernt.',
   certCardDeleteConsequence:

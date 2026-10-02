@@ -3,13 +3,14 @@
  * its validity state (certValidity: valid / expiring / renew now / expired) as a StatusPill, a
  * validity bar in the same tone and the days left or since expiry, whether DSF trusts the
  * issuer, the full DSF fingerprint (SHA-512) with copy, and the SHA-256 fingerprint in a
- * collapsed disclosure; the header lock follows the worst certificate. Supports renew/add
- * (via useModals) and confirmed,
- * cross-user-guarded deletion that warns before the last valid certificate goes.
+ * collapsed disclosure; the header lock follows the worst certificate. Rows stagger in, carry
+ * data-entity-row="certificates:<id>" for relation targets, and the body shows a skeleton or
+ * an error with retry while the query loads or fails. Supports renew/add (via useModals) and
+ * confirmed, cross-user-guarded deletion that warns before the last valid certificate goes.
  * Dependencies: useCertificates, useOrganization, lib/certStatus, lib/dateUtils, confirmDelete,
  * EntityCard, FkLink, CertificateFingerprint, StatusPill, Button, Icon.
  */
-import { useId, useState } from 'react';
+import { useId, useState, type CSSProperties } from 'react';
 import { useCertificates, useDeleteCertificate } from '../../hooks/useCertificates';
 import { useOrganization } from '../../hooks/useOrganization';
 import { EntityCard } from './EntityCard';
@@ -83,7 +84,7 @@ const TONE_FILL: Record<CertTone, string> = {
 
 export function CertificatesCard({ instanceId }: { instanceId: string }) {
   const { t, lang } = useI18n();
-  const { data, isLoading } = useCertificates(instanceId);
+  const { data, isLoading, isError, refetch } = useCertificates(instanceId);
   const certs: CertRow[] = data ?? [];
   const { data: org } = useOrganization(instanceId);
   const deleteMut = useDeleteCertificate(instanceId);
@@ -124,6 +125,8 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
       borderColor="#f5a623"
       iconColor="var(--tone-warning-fg)"
       icon="verified_user"
+      status={isLoading ? 'loading' : isError && !data ? 'error' : 'ready'}
+      onRetry={() => void refetch()}
       badge={
         worst && (
           <Icon
@@ -156,120 +159,115 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
         />
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {isLoading && (
-          <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{t('loading')}</p>
-        )}
-        {certs.map((cert) => {
-          const { state, days } = certValidity(cert.valid_until);
-          const tone = CERT_STATE_TONE[state];
-          const pct = Math.max(0, Math.min(100, (days / 365) * 100));
-          return (
-            <div
+      {certs.length > 0 ? (
+        <ul className="mt-3 flex flex-col gap-3">
+          {certs.map((cert, index) => (
+            <CertificateItem
               key={cert.id}
-              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-3"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="mono-id break-all text-xs font-semibold text-[color:var(--text-primary)]">
-                    {cert.subject || t('certCardFallbackName')}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-[color:var(--text-muted)]">
-                    {t('certCardValidUntil', { date: formatDate(cert.valid_until, lang) })}
-                  </p>
-                </div>
-                <StatusPill tone={tone} icon={STATE_ICON[state]} className="shrink-0">
-                  {t(STATE_LABEL[state])}
-                </StatusPill>
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <div
-                  aria-hidden="true"
-                  className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border)]"
-                >
-                  <div
-                    className={`h-full rounded-full ${TONE_FILL[tone]}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <span className={`text-[11px] font-bold ${TONE_TEXT[tone]}`}>
-                  {state === 'expired'
-                    ? t('certCardExpiredDaysAgo', { n: -days })
-                    : t('certDaysLeft', { n: days })}
-                </span>
-              </div>
-              <CertificateIssuer issuerDn={cert.issuerDn} trusted={cert.issuerTrusted} />
-              <CertificateFingerprint
-                className="mt-3"
-                label={t('certCardDsfThumbprintLabel')}
-                hex={cert.thumbprintSha512}
-                copyLabel={t('certCardCopyThumbprint')}
-                copiedMessage={t('certCardThumbprintCopied')}
-              />
-              <details className="group/more mt-2">
-                <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-md text-[11px] font-semibold text-[color:var(--text-secondary)] transition-colors duration-short ease-standard hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
-                  <Icon
-                    name="chevron_right"
-                    size={16}
-                    className="transition-transform duration-short ease-spring group-open/more:rotate-90"
-                  />
-                  {t('certCardMoreFingerprints')}
-                </summary>
-                <CertificateFingerprint
-                  className="mt-1.5 animate-fade-in"
-                  label={t('certCardSha256Label')}
-                  hex={cert.thumbprint}
-                  copyLabel={t('certCardCopySha256')}
-                  copiedMessage={t('certCardSha256Copied')}
-                />
-              </details>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-                <button
-                  onClick={() => requestDelete(cert)}
-                  title={t('delete')}
-                  aria-label={t('delete')}
-                  style={{
-                    fontSize: '10px',
-                    color: '#ef4444',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    fontWeight: 600,
-                    transition: 'background 0.15s',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#fee2e2')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: '14px', verticalAlign: 'middle', marginRight: '4px' }}
-                  >
-                    delete
-                  </span>
-                  {t('certRemoveBtn')}
-                </button>
-              </div>
-            </div>
-          );
-        })}
-        {!isLoading && certs.length === 0 && (
-          <p
-            style={{
-              color: 'var(--text-muted)',
-              fontSize: '12px',
-              textAlign: 'center',
-              padding: '16px 0',
-            }}
-          >
-            {t('emptyCertificatesHint')}
-          </p>
-        )}
-      </div>
+              cert={cert}
+              index={index}
+              onRemove={() => requestDelete(cert)}
+            />
+          ))}
+        </ul>
+      ) : (
+        <p className="py-4 text-center text-xs text-[color:var(--text-muted)]">
+          {t('emptyCertificatesHint')}
+        </p>
+      )}
     </EntityCard>
+  );
+}
+
+function CertificateItem({
+  cert,
+  index,
+  onRemove,
+}: {
+  cert: CertRow;
+  index: number;
+  onRemove: () => void;
+}) {
+  const { t, lang } = useI18n();
+  const { state, days } = certValidity(cert.valid_until);
+  const tone = CERT_STATE_TONE[state];
+  const pct = Math.max(0, Math.min(100, (days / 365) * 100));
+  const name = cert.subject || t('certCardFallbackName');
+
+  return (
+    <li
+      data-entity-row={`certificates:${cert.id}`}
+      className="hover-lift animate-list-item-in rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-3"
+      style={{ '--stagger-index': index } as CSSProperties}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="mono-id break-all text-xs font-semibold text-[color:var(--text-primary)]">
+            {name}
+          </p>
+          <p className="mt-0.5 text-[11px] text-[color:var(--text-muted)]">
+            {t('certCardValidUntil', { date: formatDate(cert.valid_until, lang) })}
+          </p>
+        </div>
+        <StatusPill tone={tone} icon={STATE_ICON[state]} className="shrink-0">
+          {t(STATE_LABEL[state])}
+        </StatusPill>
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <div
+          aria-hidden="true"
+          className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border)]"
+        >
+          <div className={`h-full rounded-full ${TONE_FILL[tone]}`} style={{ width: `${pct}%` }} />
+        </div>
+        <span className={`text-[11px] font-bold ${TONE_TEXT[tone]}`}>
+          {state === 'expired'
+            ? t('certCardExpiredDaysAgo', { n: -days })
+            : t('certDaysLeft', { n: days })}
+        </span>
+      </div>
+
+      <CertificateIssuer issuerDn={cert.issuerDn} trusted={cert.issuerTrusted} />
+
+      <CertificateFingerprint
+        className="mt-3"
+        label={t('certCardDsfThumbprintLabel')}
+        hex={cert.thumbprintSha512}
+        copyLabel={t('certCardCopyThumbprint')}
+        copiedMessage={t('certCardThumbprintCopied')}
+      />
+      <details className="group/more mt-2">
+        <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-md text-[11px] font-semibold text-[color:var(--text-secondary)] transition-colors duration-short ease-standard hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
+          <Icon
+            name="chevron_right"
+            size={16}
+            className="transition-transform duration-short ease-spring group-open/more:rotate-90"
+          />
+          {t('certCardMoreFingerprints')}
+        </summary>
+        <CertificateFingerprint
+          className="mt-1.5 animate-fade-in"
+          label={t('certCardSha256Label')}
+          hex={cert.thumbprint}
+          copyLabel={t('certCardCopySha256')}
+          copiedMessage={t('certCardSha256Copied')}
+        />
+      </details>
+
+      <div className="mt-2 flex justify-end">
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={t('certCardRemoveAria', { name })}
+          onClick={onRemove}
+          className="text-danger-fg hover:!bg-danger-surface hover:!text-danger-fg"
+        >
+          <Icon name="delete" size={16} />
+          {t('certRemoveBtn')}
+        </Button>
+      </div>
+    </li>
   );
 }
 

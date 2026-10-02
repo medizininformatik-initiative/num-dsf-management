@@ -1,7 +1,8 @@
 /**
- * CertificatesCard.test.tsx — renders a certificate row (subject, DSF SHA-512
- * thumbprint), opens the certificate-add modal, and removes a certificate only
- * after a confirmation that warns before the last valid certificate goes.
+ * CertificatesCard.test.tsx — renders certificate rows (subject, row target, full DSF
+ * fingerprint, SHA-256 disclosure, validity state, issuer trust), the load-error state with
+ * retry, opens the certificate-add modal, and removes a certificate only after a confirmation
+ * that warns before the last valid certificate goes.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
@@ -23,10 +24,12 @@ interface Row {
 }
 
 const deleteCertificate = vi.hoisted(() => vi.fn());
-let rows: Row[] = [];
+const refetch = vi.hoisted(() => vi.fn());
+let rows: Row[] | undefined = [];
+let isError = false;
 
 vi.mock('../../../hooks/useCertificates', () => ({
-  useCertificates: () => ({ data: rows, isLoading: false }),
+  useCertificates: () => ({ data: rows, isLoading: false, isError, refetch }),
   useDeleteCertificate: () => ({ mutate: vi.fn(), mutateAsync: deleteCertificate }),
 }));
 vi.mock('../../../hooks/useOrganization', () => ({
@@ -47,6 +50,8 @@ const cert: Row = {
 
 beforeEach(() => {
   rows = [cert];
+  isError = false;
+  refetch.mockReset();
   deleteCertificate.mockReset().mockResolvedValue(undefined);
 });
 
@@ -54,6 +59,28 @@ describe('CertificatesCard', () => {
   it('renders a certificate row with its subject', () => {
     renderWithProviders(<CertificatesCard instanceId="i1" />);
     expect(screen.getByText('CN=ukm.de')).toBeInTheDocument();
+  });
+
+  it('tags each row as a relation target and staggers the rows in', () => {
+    rows = [cert, { ...cert, id: 'cert2', subject: 'CN=new.ukm.de' }];
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    const items = screen.getAllByRole('listitem');
+    expect(items.map((li) => li.dataset.entityRow)).toEqual([
+      'certificates:cert1',
+      'certificates:cert2',
+    ]);
+    expect(items[1]).toHaveClass('animate-list-item-in');
+    expect(items[1].style.getPropertyValue('--stagger-index')).toBe('1');
+  });
+
+  it('shows a load error with a retry instead of the empty state', async () => {
+    rows = undefined;
+    isError = true;
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not load this data.');
+    expect(screen.queryByText(/No certificates yet/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it('shows the complete DSF fingerprint (SHA-512) of the certificate', () => {

@@ -352,6 +352,7 @@ export const en = {
   certCardCopySha256: 'Copy SHA-256 fingerprint',
   certCardSha256Copied: 'SHA-256 fingerprint copied to the clipboard.',
   certCardCopyFailed: 'Could not copy to the clipboard.',
+  certCardRemoveAria: 'Remove certificate {name}',
   certCardDeleteTitle: 'Remove certificate?',
   certCardDeleteMessage: '{name}, valid until {date}, will be removed from the allow list.',
   certCardDeleteConsequence:
