@@ -1,26 +1,25 @@
 /**
- * FkLink.tsx – Clickable FK value that highlights the target card.
+ * FkLink.tsx – Clickable FK value that highlights the target card, or the
+ * target row when `targetKey` names one (see the row convention in canvas.store).
  */
-import { useCanvasStore } from '../../stores/canvas.store';
+import { findEntityRow, useCanvasStore, type EntityId } from '../../stores/canvas.store';
 
 interface FkLinkProps {
   label: string;
-  targetEntity:
-    | 'organization'
-    | 'contacts'
-    | 'endpoints'
-    | 'certificates'
-    | 'memberships'
-    | 'approval';
+  targetEntity: EntityId;
   value: string;
+  /** Row key in the target card; defaults to highlighting the whole card. */
+  targetKey?: string;
 }
 
-export function FkLink({ label, targetEntity, value }: FkLinkProps) {
+export function FkLink({ label, targetEntity, value, targetKey }: FkLinkProps) {
   const highlightEntity = useCanvasStore((s) => s.highlightEntity);
 
   function handleClick() {
-    highlightEntity(targetEntity);
-    const el = document.getElementById(`card-${targetEntity}`);
+    highlightEntity(targetEntity, targetKey);
+    const el =
+      (targetKey ? findEntityRow(targetEntity, targetKey) : null) ??
+      document.getElementById(`card-${targetEntity}`);
     el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 

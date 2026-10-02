@@ -22,3 +22,14 @@ describe('FkLink', () => {
     expect(useCanvasStore.getState().highlightedEntity).toBe('endpoints');
   });
 });
+
+describe('FkLink row targets', () => {
+  it('highlights the target row when a key is given', async () => {
+    renderWithProviders(
+      <FkLink label="Endpoint" targetEntity="endpoints" value="ep.ukm.de" targetKey="ep.ukm.de" />,
+    );
+    await userEvent.click(screen.getByText('ep.ukm.de'));
+    expect(useCanvasStore.getState().highlightedEntity).toBe('endpoints');
+    expect(useCanvasStore.getState().highlightedKey).toBe('ep.ukm.de');
+  });
+});
