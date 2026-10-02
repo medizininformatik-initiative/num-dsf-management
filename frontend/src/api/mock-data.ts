@@ -78,13 +78,24 @@ const endpoints = organizations.map((org, i) => ({
 }));
 
 const EXPIRY = [730, 365, 180, 90, 30, 7];
-const certificates = organizations.map((org, i) => ({
-  id: uuid(500 + i),
-  organization_id: org.identifier,
-  subject: `CN=dsf-fhir.${org.identifier}`,
-  thumbprint: `${String(i).padStart(2, '0')}abcdef`.repeat(16).slice(0, 128),
-  valid_until: futureDate(EXPIRY[i % EXPIRY.length]),
-}));
+// Shaped like GET /certificates: SHA-256 thumbprint (64 upper-case hex), the
+// DSF SHA-512 thumbprint (128 lower-case hex) and the issuer checks. Every
+// third site uses a self-signed certificate to show the "no DSF CA" state.
+const GEANT_TLS_RSA = 'C=GR,O=Hellenic Academic and Research Institutions CA,CN=GEANT TLS RSA 1';
+const certificates = organizations.map((org, i) => {
+  const hex = `${String(i).padStart(2, '0')}abcdef`;
+  const selfSigned = i % 3 === 2;
+  return {
+    id: uuid(500 + i),
+    organization_id: org.identifier,
+    subject: `CN=dsf-fhir.${org.identifier}`,
+    thumbprint: hex.repeat(8).toUpperCase(),
+    thumbprintSha512: hex.repeat(16),
+    valid_until: futureDate(EXPIRY[i % EXPIRY.length]),
+    issuerDn: selfSigned ? `CN=dsf-fhir.${org.identifier}` : GEANT_TLS_RSA,
+    issuerTrusted: !selfSigned,
+  };
+});
 
 const PARENT_ORGS = ['mii-testverband.example.de', 'num-testverband.example.de'];
 const ROLES = [['DIC'], ['DMS'], ['HRP'], ['DIC', 'HRP'], ['DIC', 'DMS']];
