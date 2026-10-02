@@ -4,12 +4,11 @@
  * Button named after the card ("+ Add Contacts"). `status` swaps the body for
  * a skeleton while loading or an error with a retry Button, so a failed
  * request never looks like "no data yet". The section (`card-<id>`) is the FK
- * jump target: tabIndex -1 lets FkLink move focus to it.
- * Dependencies: Button, Icon, Skeleton, canvas store, i18n store,
- * entity-card.css.
+ * jump target: tabIndex -1 lets FkLink move focus to it, and the canvas draws
+ * the jump's highlight ring over it (HighlightRing).
+ * Dependencies: Button, Icon, Skeleton, i18n store, entity-card.css.
  */
 import { useId, type CSSProperties, type ReactNode } from 'react';
-import { useCanvasStore } from '../../stores/canvas.store';
 import { useI18n } from '../../stores/i18n.store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
@@ -50,8 +49,6 @@ export function EntityCard({
   children,
 }: EntityCardProps) {
   const { t } = useI18n();
-  const highlightedEntity = useCanvasStore((s) => s.highlightedEntity);
-  const isHighlighted = highlightedEntity === id;
   const uid = useId();
   const titleId = `${uid}-title`;
   const addLabelId = `${uid}-add`;
@@ -63,12 +60,7 @@ export function EntityCard({
       aria-busy={status === 'loading' || undefined}
       tabIndex={-1}
       className="entity-card glass hover-lift flex h-full flex-col rounded-card p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
-      style={
-        {
-          '--card-accent': borderColor,
-          outline: isHighlighted ? `2px solid ${borderColor}66` : undefined,
-        } as CSSProperties
-      }
+      style={{ '--card-accent': borderColor } as CSSProperties}
     >
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">

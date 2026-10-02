@@ -1,0 +1,66 @@
+/* canvas-overlay.css – overlays of the entity canvas, absolutely positioned
+   in its scroll container above the cards: never interactive, hidden from
+   assistive tech (aria-hidden in the markup) and from print.
+   Reduce Motion: they are static. These class names carry no animate-*, so
+   the global rule in index.css already collapses their keyframes; the block
+   at the end removes them outright. */
+
+/* ─── HighlightRing: the target of an FK jump ─────────────────────────────
+   One short pulse on entry, a steady ring while the highlight lasts, then a
+   quick fade. The ring follows the target's corner radius (set inline). */
+.fk-ring {
+  --fk-ring: var(--focus-ring);
+  --fk-ring-soft: rgba(176, 30, 102, 0.28);
+  position: absolute;
+  z-index: 19;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 2px var(--fk-ring),
+    0 0 0 10px transparent;
+}
+:root.dark .fk-ring {
+  --fk-ring-soft: rgba(224, 99, 153, 0.32);
+}
+.fk-ring[data-state='open'] {
+  animation: fk-ring-pulse var(--duration-long) var(--ease-standard) both;
+}
+.fk-ring[data-state='closed'] {
+  animation: fk-ring-out var(--duration-short-exit) var(--ease-exit) both;
+}
+
+@keyframes fk-ring-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 var(--fk-ring),
+      0 0 0 0 var(--fk-ring-soft);
+  }
+  40% {
+    box-shadow:
+      0 0 0 2px var(--fk-ring),
+      0 0 0 6px var(--fk-ring-soft);
+  }
+  100% {
+    box-shadow:
+      0 0 0 2px var(--fk-ring),
+      0 0 0 10px transparent;
+  }
+}
+@keyframes fk-ring-out {
+  to {
+    box-shadow:
+      0 0 0 2px transparent,
+      0 0 0 10px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fk-ring {
+    animation: none !important;
+  }
+}
+
+@media print {
+  .fk-ring {
+    display: none;
+  }
+}

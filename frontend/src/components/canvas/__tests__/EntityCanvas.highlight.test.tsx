@@ -1,181 +1,190 @@
 /**
- * EntityCanvas.highlight.test.tsx — covers the two interaction-driven redraws
- * the canvas is responsible for, distinct from the relation-lines geometry test:
- *
- *  1. FK-highlight emphasis — when the canvas store's `highlightedEntity` matches
- *     a card's id, that card renders the emphasis `outline` while sibling cards
- *     stay un-emphasised; clearing the highlight removes the outline again.
- *  2. Card ids — every card id exists exactly once at any window width (the
- *     column layout itself is covered by EntityCanvas.layout.test.tsx).
- *
- * The five entity data hooks (also read by the OnboardingWizard the canvas
- * mounts) are mocked so the real card DOM renders deterministically. A
- * ResizeObserver stub and a getBoundingClientRect mock keep layout-reading code
- * inert under jsdom.
+ * EntityCanvas.highlight.test.tsx — the FK-jump highlight. When the canvas
+ * store highlights an entity, the canvas draws one ring overlay over the
+ * target row (when the highlight names a rendered row) or over the target
+ * card, matching its box and corner radius, without touching the target's own
+ * DOM. The ring replays its pulse when the same target is highlighted again,
+ * follows the target on scroll, fades out when the highlight clears and is
+ * static under Reduce Motion. The cards are stubbed with known DOM; element
+ * boxes come from a getBoundingClientRect mock.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { act } from '@testing-library/react';
+import { act, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 import { useCanvasStore } from '../../../stores/canvas.store';
 
-// --- Data-hook mocks (filled with empty/loaded defaults below) -------------
-vi.mock('../../../hooks/useOrganization', () => ({
-  useOrganization: vi.fn(),
-  useUpdateOrganization: vi.fn(),
+vi.mock('../OnboardingWizard', () => ({ OnboardingWizard: () => null }));
+vi.mock('../../cards/OrganizationCard', () => ({
+  OrganizationCard: () => (
+    <section id="card-organization" style={{ borderRadius: '16px' }}>
+      org
+    </section>
+  ),
 }));
-vi.mock('../../../hooks/useContacts', () => ({
-  useContacts: vi.fn(),
-  useDeleteContact: vi.fn(),
+vi.mock('../../cards/ContactsCard', () => ({
+  ContactsCard: () => <section id="card-contacts">contacts</section>,
 }));
-vi.mock('../../../hooks/useEndpoints', () => ({
-  useEndpoints: vi.fn(),
-  useDeleteEndpoint: vi.fn(),
+vi.mock('../../cards/EndpointsCard', () => ({
+  EndpointsCard: () => (
+    <section id="card-endpoints" style={{ borderRadius: '16px' }}>
+      <div data-entity-row="endpoints:fhir.ukm.de" style={{ borderRadius: '10px' }}>
+        fhir.ukm.de
+      </div>
+    </section>
+  ),
 }));
-vi.mock('../../../hooks/useCertificates', () => ({
-  useCertificates: vi.fn(),
-  useDeleteCertificate: vi.fn(),
+vi.mock('../../cards/MembershipsCard', () => ({
+  MembershipsCard: () => <section id="card-memberships">memberships</section>,
 }));
-vi.mock('../../../hooks/useMemberships', () => ({
-  useMemberships: vi.fn(),
-  useDeleteMembership: vi.fn(),
+vi.mock('../../cards/CertificatesCard', () => ({
+  CertificatesCard: () => <section id="card-certificates">certificates</section>,
 }));
-vi.mock('../../../hooks/useApproval', () => ({
-  useApprovalStatus: vi.fn(),
-  useApprovalHistory: vi.fn(),
-}));
-
-import { useOrganization, useUpdateOrganization } from '../../../hooks/useOrganization';
-import { useContacts, useDeleteContact } from '../../../hooks/useContacts';
-import { useEndpoints, useDeleteEndpoint } from '../../../hooks/useEndpoints';
-import { useCertificates, useDeleteCertificate } from '../../../hooks/useCertificates';
-import { useMemberships, useDeleteMembership } from '../../../hooks/useMemberships';
-import { useApprovalStatus, useApprovalHistory } from '../../../hooks/useApproval';
 
 import { EntityCanvas } from '../EntityCanvas';
 
-// Minimal query-result shapes — cards/wizard only read .data / .isLoading.
-const ok = (data: unknown) => ({ data, isLoading: false }) as never;
-const mut = () => ({ mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue(undefined) }) as never;
+type Rect = { left: number; top: number; width: number; height: number };
 
-// Read the rendered outline of an EntityCard — the element carrying the
-// FK-highlight outline, targeted by its card class.
-function outlineOf(container: HTMLElement, id: string): string {
-  const cards = container.querySelectorAll<HTMLElement>(`#card-${id}.entity-card`);
-  if (cards.length !== 1) throw new Error(`expected one EntityCard for ${id}, got ${cards.length}`);
-  // jsdom serialises an unset outline as '' and `outline: none` as 'none'; treat
-  // both as "no emphasis" so the assertion is about the coloured outline only.
-  return cards[0].style.outline || 'none';
+// Viewport boxes by element; the canvas sits at the viewport origin.
+let rects: Map<string, Rect>;
+
+function rectKey(el: Element): string {
+  if (el.classList.contains('entity-canvas')) return 'canvas';
+  return (el as HTMLElement).dataset.entityRow ?? el.id;
 }
 
-// Set viewport width and fire the resize the canvas listens for.
-function setViewport(width: number): void {
-  Object.defineProperty(window, 'innerWidth', {
-    configurable: true,
-    writable: true,
-    value: width,
-  });
-  act(() => {
-    window.dispatchEvent(new Event('resize'));
-  });
+function domRect({ left, top, width, height }: Rect): DOMRect {
+  return {
+    x: left,
+    y: top,
+    left,
+    top,
+    width,
+    height,
+    right: left + width,
+    bottom: top + height,
+    toJSON: () => ({}),
+  } as DOMRect;
 }
 
-let originalInnerWidth: number;
-let originalResizeObserver: typeof globalThis.ResizeObserver | undefined;
+function ring(container: HTMLElement): HTMLElement | null {
+  return container.querySelector<HTMLElement>('.fk-ring');
+}
+
+function stubReducedMotion() {
+  vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }));
+}
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  useCanvasStore.setState({ highlightedEntity: null });
-  originalInnerWidth = window.innerWidth;
-
-  // Inert ResizeObserver + getBoundingClientRect so any layout-reading path is
-  // deterministic under jsdom (which provides neither in a useful form).
-  originalResizeObserver = globalThis.ResizeObserver;
-  globalThis.ResizeObserver = class {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-  } as unknown as typeof globalThis.ResizeObserver;
-  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
-    x: 0,
-    y: 0,
-    top: 0,
-    left: 0,
-    right: 100,
-    bottom: 100,
-    width: 100,
-    height: 100,
-    toJSON: () => ({}),
-  } as DOMRect);
-
-  // Loaded org so cards render their real header DOM; everything else empty.
-  vi.mocked(useOrganization).mockReturnValue(ok({ identifier: 'ukm.de', name: 'UKM' }));
-  vi.mocked(useUpdateOrganization).mockReturnValue(mut());
-  vi.mocked(useContacts).mockReturnValue(ok([]));
-  vi.mocked(useDeleteContact).mockReturnValue(mut());
-  vi.mocked(useEndpoints).mockReturnValue(ok([]));
-  vi.mocked(useDeleteEndpoint).mockReturnValue(mut());
-  vi.mocked(useCertificates).mockReturnValue(ok([]));
-  vi.mocked(useDeleteCertificate).mockReturnValue(mut());
-  vi.mocked(useMemberships).mockReturnValue(ok([]));
-  vi.mocked(useDeleteMembership).mockReturnValue(mut());
-  vi.mocked(useApprovalStatus).mockReturnValue(ok({ status: 'PENDING' }));
-  vi.mocked(useApprovalHistory).mockReturnValue(ok([]));
+  rects = new Map([
+    ['canvas', { left: 0, top: 0, width: 1000, height: 800 }],
+    ['card-organization', { left: 16, top: 16, width: 300, height: 400 }],
+    ['card-endpoints', { left: 332, top: 16, width: 300, height: 200 }],
+    ['endpoints:fhir.ukm.de', { left: 352, top: 80, width: 260, height: 48 }],
+  ]);
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    return domRect(rects.get(rectKey(this)) ?? { left: 0, top: 0, width: 0, height: 0 });
+  });
 });
 
 afterEach(() => {
-  Object.defineProperty(window, 'innerWidth', {
-    configurable: true,
-    writable: true,
-    value: originalInnerWidth,
-  });
-  if (originalResizeObserver) globalThis.ResizeObserver = originalResizeObserver;
-  useCanvasStore.setState({ highlightedEntity: null });
+  act(() => useCanvasStore.getState().highlightEntity(null));
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
-describe('EntityCanvas FK-highlight emphasis', () => {
-  it('outlines only the card whose id matches highlightedEntity', () => {
-    setViewport(1600); // wide → three columns, all cards mounted
+describe('EntityCanvas highlight ring', () => {
+  it('draws no ring until something is highlighted', () => {
     const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
-
-    // Nothing highlighted yet → no card carries an outline.
-    expect(outlineOf(container, 'organization')).toBe('none');
-    expect(outlineOf(container, 'contacts')).toBe('none');
-
-    // Highlight the organization entity (as a FK-link click would).
-    act(() => {
-      useCanvasStore.getState().highlightEntity('organization');
-    });
-
-    // The matching card gains a coloured outline; siblings stay 'none'.
-    const orgOutline = outlineOf(container, 'organization');
-    expect(orgOutline).not.toBe('none');
-    expect(orgOutline).toContain('solid');
-    expect(outlineOf(container, 'contacts')).toBe('none');
-    expect(outlineOf(container, 'endpoints')).toBe('none');
+    expect(ring(container)).toBeNull();
   });
 
-  it('clears the emphasis when the highlight is removed', () => {
-    setViewport(1600);
+  it('rings the highlighted card, matching its box and radius', () => {
     const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
+    act(() => useCanvasStore.getState().highlightEntity('organization'));
 
-    act(() => {
-      useCanvasStore.getState().highlightEntity('contacts');
-    });
-    expect(outlineOf(container, 'contacts')).not.toBe('none');
-
-    act(() => {
-      useCanvasStore.setState({ highlightedEntity: null });
-    });
-    expect(outlineOf(container, 'contacts')).toBe('none');
+    const el = ring(container)!;
+    expect(el).toHaveAttribute('aria-hidden', 'true');
+    expect(el).toHaveAttribute('data-state', 'open');
+    expect(el.style.left).toBe('16px');
+    expect(el.style.top).toBe('16px');
+    expect(el.style.width).toBe('300px');
+    expect(el.style.height).toBe('400px');
+    expect(el.style.borderRadius).toBe('16px');
+    expect(container.querySelectorAll('.fk-ring')).toHaveLength(1);
   });
-});
 
-describe('EntityCanvas card ids', () => {
-  it('renders each card id exactly once, whatever the window width', () => {
-    setViewport(900);
+  it('rings the target row when the highlight names one', () => {
     const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
-    for (const id of ['organization', 'contacts', 'endpoints', 'memberships', 'certificates']) {
-      expect(container.querySelectorAll(`#card-${id}`)).toHaveLength(1);
-    }
+    act(() => useCanvasStore.getState().highlightEntity('endpoints', 'fhir.ukm.de'));
+
+    const el = ring(container)!;
+    expect(el.style.left).toBe('352px');
+    expect(el.style.top).toBe('80px');
+    expect(el.style.width).toBe('260px');
+    expect(el.style.borderRadius).toBe('10px');
+  });
+
+  it('falls back to the card when the named row is not rendered', () => {
+    const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
+    act(() => useCanvasStore.getState().highlightEntity('endpoints', 'gone.ukm.de'));
+
+    const el = ring(container)!;
+    expect(el.style.left).toBe('332px');
+    expect(el.style.height).toBe('200px');
+  });
+
+  it('leaves the target element itself untouched', () => {
+    const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
+    const card = container.querySelector<HTMLElement>('#card-organization')!;
+    const before = card.outerHTML;
+    act(() => useCanvasStore.getState().highlightEntity('organization'));
+    expect(card.outerHTML).toBe(before);
+  });
+
+  it('replays the pulse when the same target is highlighted again', () => {
+    const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
+    act(() => useCanvasStore.getState().highlightEntity('organization'));
+    const first = ring(container);
+    act(() => useCanvasStore.getState().highlightEntity('organization'));
+    const second = ring(container);
+    expect(second).not.toBeNull();
+    // A fresh element restarts its entry animation.
+    expect(second).not.toBe(first);
+  });
+
+  it('follows the target when the canvas scrolls', async () => {
+    const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
+    act(() => useCanvasStore.getState().highlightEntity('organization'));
+    const canvas = container.querySelector<HTMLElement>('.entity-canvas')!;
+
+    // Scrolling by 120px moves the card up in the viewport; content
+    // coordinates (where the ring lives) stay the same.
+    rects.set('card-organization', { left: 16, top: -104, width: 300, height: 400 });
+    Object.defineProperty(canvas, 'scrollTop', { configurable: true, value: 120 });
+    fireEvent.scroll(canvas);
+    await waitFor(() => expect(ring(container)!.style.top).toBe('16px'));
+
+    // A layout change that moves the card is picked up on the next frame.
+    rects.set('card-organization', { left: 16, top: -64, width: 300, height: 400 });
+    fireEvent.scroll(canvas);
+    await waitFor(() => expect(ring(container)!.style.top).toBe('56px'));
+  });
+
+  it('fades out when the highlight clears, then unmounts', async () => {
+    const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
+    act(() => useCanvasStore.getState().highlightEntity('organization'));
+    act(() => useCanvasStore.getState().highlightEntity(null));
+
+    expect(ring(container)).toHaveAttribute('data-state', 'closed');
+    await waitFor(() => expect(ring(container)).toBeNull());
+  });
+
+  it('is static under Reduce Motion: clearing removes the ring at once', () => {
+    stubReducedMotion();
+    const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
+    act(() => useCanvasStore.getState().highlightEntity('organization'));
+    expect(ring(container)).not.toBeNull();
+    act(() => useCanvasStore.getState().highlightEntity(null));
+    expect(ring(container)).toBeNull();
   });
 });
