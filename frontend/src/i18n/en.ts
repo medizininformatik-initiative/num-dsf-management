@@ -957,6 +957,7 @@ export const en = {
   shellPinToTop: 'Pin to top',
   shellUnpin: 'Unpin',
   shellNotificationsUnread: 'Notifications, {n} unread',
+  shellCommandPalette: 'Command palette',
   shellEntityOrganization: 'Organization',
   shellEntityContact: 'Contact',
   shellEntityEndpoint: 'Endpoint',

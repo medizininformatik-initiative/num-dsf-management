@@ -1,19 +1,23 @@
 /**
  * CommandPalette.interactions.test.tsx — exercises the palette's command flow:
  * opening on Ctrl+K, filtering by typed query, ArrowDown+Enter running the
- * selected command (navigation + store mutation), Escape closing, and the
- * empty-results state. Data hooks (useInstances/useMe) are mocked; the real
- * Zustand stores (useModals, useCanvasStore) are read back to assert actions
- * fired, and a LocationProbe observes router navigation. Query input changes
- * use fireEvent.change for a single deterministic update.
+ * selected command (navigation + store mutation), Escape closing through the
+ * dialog stack (only the top-most dialog closes), the combobox/listbox
+ * semantics and the empty-results state. Data hooks (useInstances/useMe) are
+ * mocked; the real Zustand stores (useModals, useCanvasStore) are read back to
+ * assert actions fired, and a LocationProbe observes router navigation. Query
+ * input changes use fireEvent.change for a single deterministic update. The
+ * palette unmounts after its exit animation, hence waitFor on closing.
  */
+import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useI18n } from '../../../stores/i18n.store';
 import { useModals } from '../../../hooks/useModals';
 import { useCanvasStore } from '../../../stores/canvas.store';
+import { DialogShell } from '../../ui/DialogShell';
 
 vi.mock('../../../hooks/useInstance', () => ({
   useInstances: () => ({ data: [{ id: 'inst-1', label: 'Acme Test' }], isLoading: false }),
@@ -80,7 +84,7 @@ describe('CommandPalette interactions', () => {
     expect(screen.queryByText('Edit Organization')).not.toBeInTheDocument();
   });
 
-  it('runs the selected command on Enter, navigating via the router', () => {
+  it('runs the selected command on Enter, navigating via the router', async () => {
     renderPalette();
     openPalette();
     expect(screen.getByTestId('location').textContent).toBe('/app/audit');
@@ -91,8 +95,11 @@ describe('CommandPalette interactions', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
 
     expect(screen.getByTestId('location').textContent).toBe('/app');
-    // Running a command also closes the palette.
-    expect(screen.queryByPlaceholderText(/type a command/i)).not.toBeInTheDocument();
+    // Running a command also closes the palette (it unmounts after its exit).
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByPlaceholderText(/type a command/i)).not.toBeInTheDocument(),
+    );
   });
 
   it('moves the selection with ArrowDown before running it', () => {
@@ -145,14 +152,73 @@ describe('CommandPalette interactions', () => {
     expect(screen.getByTestId('location').textContent).toBe('/app');
   });
 
-  it('closes on Escape', () => {
+  it('closes on Escape through the dialog stack, not a window listener', async () => {
     renderPalette();
     openPalette();
-    expect(screen.getByPlaceholderText(/type a command/i)).toBeInTheDocument();
+    const input = screen.getByPlaceholderText(/type a command/i);
 
+    // A bare window event no longer closes it: Escape is the dialog layer's job.
     fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeInTheDocument();
 
-    expect(screen.queryByPlaceholderText(/type a command/i)).not.toBeInTheDocument();
+    fireEvent.keyDown(input, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByPlaceholderText(/type a command/i)).not.toBeInTheDocument(),
+    );
+  });
+
+  it('lets a dialog opened on top of it take Escape first', async () => {
+    function OnTop() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button onClick={() => setOpen(true)}>open on top</button>
+          <DialogShell open={open} onDismiss={() => setOpen(false)} labelledBy="on-top-title">
+            <h2 id="on-top-title">On top</h2>
+          </DialogShell>
+        </>
+      );
+    }
+    useI18n.getState().setLang('en');
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={qc}>
+          <CommandPalette />
+          <OnTop />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+    openPalette();
+    fireEvent.click(screen.getByRole('button', { name: 'open on top', hidden: true }));
+    expect(screen.getByRole('dialog', { name: 'On top' })).toBeInTheDocument();
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+
+    // Only the top-most dialog closed; the palette is still open.
+    expect(screen.queryByRole('dialog', { name: 'On top' })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeInTheDocument();
+  });
+
+  it('exposes the commands as a listbox driven by the combobox', () => {
+    renderPalette();
+    openPalette();
+    const combobox = screen.getByRole('combobox', { name: 'Command palette' });
+    const listbox = screen.getByRole('listbox', { name: 'Command palette' });
+    expect(combobox).toHaveAttribute('aria-controls', listbox.id);
+
+    const first = screen.getByRole('option', { name: 'Go to Canvas' });
+    expect(first).toHaveAttribute('aria-selected', 'true');
+    expect(combobox).toHaveAttribute('aria-activedescendant', first.id);
+
+    fireEvent.keyDown(combobox, { key: 'ArrowDown' });
+
+    const second = screen.getByRole('option', { name: 'Approval Review' });
+    expect(second).toHaveAttribute('aria-selected', 'true');
+    expect(first).toHaveAttribute('aria-selected', 'false');
+    expect(combobox).toHaveAttribute('aria-activedescendant', second.id);
   });
 
   it('shows the empty-results state for a query with no matches', () => {

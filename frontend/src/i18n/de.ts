@@ -973,6 +973,7 @@ export const de: Record<TranslationKey, string> = {
   shellPinToTop: 'Oben anheften',
   shellUnpin: 'Anheften aufheben',
   shellNotificationsUnread: 'Benachrichtigungen, {n} ungelesen',
+  shellCommandPalette: 'Befehlspalette',
   shellEntityOrganization: 'Organisation',
   shellEntityContact: 'Kontakt',
   shellEntityEndpoint: 'Endpunkt',

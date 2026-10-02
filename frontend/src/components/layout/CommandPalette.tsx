@@ -1,14 +1,23 @@
 /**
- * CommandPalette.tsx – Ctrl+K command palette for quick navigation
- * Dependencies: react-router-dom, useInstances, canvas.store, useModals, useMe
+ * CommandPalette.tsx – Ctrl+K / Cmd+K command palette for navigation, entity
+ * actions and instance switching. A modal dialog on DialogShell: glass panel,
+ * spring entrance and faster exit, stacking with other dialogs (Escape and
+ * scrim close only the top-most), focus trap and focus restore. The search
+ * field is a combobox over a listbox of commands: arrow keys move the active
+ * option (kept in view with scrollIntoViewSafe), Enter runs it.
+ * Dependencies: react-router-dom, useInstances, canvas.store, useModals,
+ * useMe, i18n.store, DialogShell, Icon, lib/motion.
  */
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useInstances } from '../../hooks/useInstance';
 import { useCanvasStore } from '../../stores/canvas.store';
 import { useModals } from '../../hooks/useModals';
 import { useMe } from '../../hooks/useMe';
 import { useI18n } from '../../stores/i18n.store';
+import { scrollIntoViewSafe } from '../../lib/motion';
+import { DialogShell } from '../ui/DialogShell';
+import { Icon } from '../ui/Icon';
 
 interface Command {
   id: string;
@@ -19,18 +28,23 @@ interface Command {
   action: () => void;
 }
 
+const ADMIN_COMMAND_IDS = ['nav-admin', 'nav-audit', 'nav-users', 'nav-promotions'];
+
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
+  const listId = useId();
   const navigate = useNavigate();
   const { data: instances = [] } = useInstances();
   const setActiveInstance = useCanvasStore((s) => s.setActiveInstance);
   const { data: me } = useMe();
   const { t } = useI18n();
 
-  // Toggle on Ctrl+K / Cmd+K
+  // Toggle on Ctrl+K / Cmd+K. Escape is left to the dialog layer, so it only
+  // closes the palette while the palette is the top-most dialog.
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -39,18 +53,14 @@ export function CommandPalette() {
         setQuery('');
         setSelectedIndex(0);
       }
-      if (e.key === 'Escape') setOpen(false);
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
-  useEffect(() => {
-    if (open && inputRef.current) inputRef.current.focus();
-  }, [open]);
-
-  const commands: Command[] = useMemo(
-    () => [
+  const commands: Command[] = useMemo(() => {
+    const close = () => setOpen(false);
+    return [
       // Navigation
       {
         id: 'nav-canvas',
@@ -60,7 +70,7 @@ export function CommandPalette() {
         category: t('cmdCategoryNavigation'),
         action: () => {
           navigate('/app');
-          setOpen(false);
+          close();
         },
       },
       {
@@ -71,7 +81,7 @@ export function CommandPalette() {
         category: t('cmdCategoryNavigation'),
         action: () => {
           navigate('/app/admin');
-          setOpen(false);
+          close();
         },
       },
       {
@@ -82,7 +92,7 @@ export function CommandPalette() {
         category: t('cmdCategoryNavigation'),
         action: () => {
           navigate('/app/audit');
-          setOpen(false);
+          close();
         },
       },
       {
@@ -93,7 +103,7 @@ export function CommandPalette() {
         category: t('cmdCategoryNavigation'),
         action: () => {
           navigate('/app/map');
-          setOpen(false);
+          close();
         },
       },
       // Actions
@@ -105,7 +115,7 @@ export function CommandPalette() {
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('org-edit');
-          setOpen(false);
+          close();
         },
       },
       {
@@ -116,7 +126,7 @@ export function CommandPalette() {
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('contact-add');
-          setOpen(false);
+          close();
         },
       },
       {
@@ -127,7 +137,7 @@ export function CommandPalette() {
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('endpoint-add');
-          setOpen(false);
+          close();
         },
       },
       {
@@ -138,7 +148,7 @@ export function CommandPalette() {
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('certificate-add');
-          setOpen(false);
+          close();
         },
       },
       {
@@ -149,7 +159,7 @@ export function CommandPalette() {
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('membership-add');
-          setOpen(false);
+          close();
         },
       },
       {
@@ -160,7 +170,7 @@ export function CommandPalette() {
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('approval');
-          setOpen(false);
+          close();
         },
       },
       {
@@ -171,11 +181,11 @@ export function CommandPalette() {
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('download');
-          setOpen(false);
+          close();
         },
       },
       // Instances
-      ...instances.map((inst: any) => ({
+      ...instances.map((inst) => ({
         id: `inst-${inst.id}`,
         label: t('cmdSwitchToInstance', { label: inst.label }),
         icon: 'swap_horiz',
@@ -184,14 +194,12 @@ export function CommandPalette() {
         action: () => {
           setActiveInstance(inst.id);
           navigate('/app');
-          setOpen(false);
+          close();
         },
       })),
-    ],
-    [instances, navigate, setActiveInstance, t],
-  );
+    ];
+  }, [instances, navigate, setActiveInstance, t]);
 
-  const ADMIN_COMMAND_IDS = ['nav-admin', 'nav-audit', 'nav-users', 'nav-promotions'];
   const visibleCommands = useMemo(() => {
     return commands.filter((c) => {
       const adminOnly = ADMIN_COMMAND_IDS.includes(c.id);
@@ -210,6 +218,17 @@ export function CommandPalette() {
     setSelectedIndex((i) => Math.min(i, Math.max(filtered.length - 1, 0)));
   }, [filtered.length]);
 
+  const optionId = (cmd: Command) => `${listId}-${cmd.id}`;
+  const active = filtered[selectedIndex];
+  const activeId = active ? optionId(active) : undefined;
+
+  // Keep the active option visible while the arrow keys move through a long list.
+  useEffect(() => {
+    if (open && activeId) {
+      scrollIntoViewSafe(document.getElementById(activeId), { block: 'nearest' });
+    }
+  }, [open, activeId]);
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -219,12 +238,11 @@ export function CommandPalette() {
       e.preventDefault();
       setSelectedIndex((i) => Math.max(i - 1, 0));
     }
-    if (e.key === 'Enter' && filtered[selectedIndex]) {
-      filtered[selectedIndex].action();
+    if (e.key === 'Enter' && active) {
+      e.preventDefault();
+      active.action();
     }
   }
-
-  if (!open) return null;
 
   // Group by category
   const groups: Record<string, Command[]> = {};
@@ -235,156 +253,94 @@ export function CommandPalette() {
   let flatIndex = 0;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 200,
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-        paddingTop: '15vh',
-      }}
-      onClick={() => setOpen(false)}
+    <DialogShell
+      open={open}
+      onDismiss={() => setOpen(false)}
+      labelledBy={titleId}
+      initialFocusRef={inputRef}
+      className="mt-[12vh] max-w-[480px] self-start overflow-hidden"
     >
-      {/* Backdrop */}
-      <div
-        className="anim-fade-in"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(2px)',
-        }}
-      />
-
-      {/* Palette */}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="anim-scale-in"
-        style={{
-          position: 'relative',
-          width: '480px',
-          maxHeight: '400px',
-          background: 'var(--bg-card)',
-          borderRadius: '16px',
-          overflow: 'hidden',
-          boxShadow: '0 16px 48px rgba(0,0,0,0.2)',
-          border: '1px solid var(--border)',
-        }}
-      >
-        {/* Search input */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '14px 18px',
-            borderBottom: '1px solid var(--border)',
+      <h2 id={titleId} className="sr-only">
+        {t('shellCommandPalette')}
+      </h2>
+      <div className="flex items-center gap-2.5 border-b border-[color:var(--border)] px-4 py-3.5">
+        <Icon name="search" size={20} className="shrink-0 text-[color:var(--text-muted)]" />
+        <input
+          ref={inputRef}
+          type="text"
+          role="combobox"
+          aria-labelledby={titleId}
+          aria-expanded={filtered.length > 0}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeId}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSelectedIndex(0);
           }}
-        >
-          <span
-            className="material-symbols-outlined"
-            style={{ fontSize: '20px', color: 'var(--text-muted)' }}
-          >
-            search
-          </span>
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSelectedIndex(0);
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder={t('cmdPlaceholder')}
-            style={{
-              flex: 1,
-              border: 'none',
-              outline: 'none',
-              fontSize: '14px',
-              color: 'var(--text-primary)',
-              background: 'transparent',
-            }}
-          />
-          <kbd
-            style={{
-              fontSize: '10px',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              border: '1px solid var(--border)',
-              color: 'var(--text-muted)',
-            }}
-          >
-            ESC
-          </kbd>
-        </div>
-
-        {/* Results */}
-        <div style={{ maxHeight: '320px', overflowY: 'auto', padding: '6px 0' }}>
-          {Object.entries(groups).map(([category, cmds]) => (
-            <div key={category}>
-              <p
-                style={{
-                  fontSize: '9px',
-                  fontWeight: 700,
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.1em',
-                  padding: '8px 18px 4px',
-                }}
-              >
-                {category}
-              </p>
-              {cmds.map((cmd) => {
-                const idx = flatIndex++;
-                return (
-                  <button
-                    key={cmd.id}
-                    onClick={cmd.action}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      width: '100%',
-                      padding: '8px 18px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      background: idx === selectedIndex ? 'var(--bg-page)' : 'transparent',
-                      transition: 'background 0.05s',
-                    }}
-                    onMouseEnter={() => setSelectedIndex(idx)}
-                  >
-                    <span
-                      className="material-symbols-outlined"
-                      style={{ fontSize: '18px', color: cmd.color }}
-                    >
-                      {cmd.icon}
-                    </span>
-                    <span style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
-                      {cmd.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-          {filtered.length === 0 && (
-            <p
-              style={{
-                padding: '20px',
-                textAlign: 'center',
-                fontSize: '12px',
-                color: 'var(--text-muted)',
-              }}
-            >
-              {t('cmdNoResults')}
-            </p>
-          )}
-        </div>
+          onKeyDown={handleKeyDown}
+          placeholder={t('cmdPlaceholder')}
+          className="min-w-0 flex-1 bg-transparent text-sm text-[color:var(--text-primary)] outline-none placeholder:text-[color:var(--text-muted)]"
+        />
+        <kbd className="shrink-0 rounded border border-[color:var(--border)] px-1.5 py-0.5 font-sans text-[11px] text-[color:var(--text-muted)]">
+          ESC
+        </kbd>
       </div>
-    </div>
+
+      {filtered.length > 0 ? (
+        <div
+          id={listId}
+          role="listbox"
+          aria-labelledby={titleId}
+          className="max-h-[320px] overflow-y-auto py-1.5"
+        >
+          {Object.entries(groups).map(([category, cmds], groupIndex) => {
+            const groupLabelId = `${listId}-group-${groupIndex}`;
+            return (
+              <div key={category} role="group" aria-labelledby={groupLabelId}>
+                <p
+                  id={groupLabelId}
+                  className="px-5 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-[color:var(--text-muted)]"
+                >
+                  {category}
+                </p>
+                {cmds.map((cmd) => {
+                  const idx = flatIndex++;
+                  const selected = idx === selectedIndex;
+                  return (
+                    <button
+                      key={cmd.id}
+                      id={optionId(cmd)}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      tabIndex={-1}
+                      onClick={cmd.action}
+                      onMouseEnter={() => setSelectedIndex(idx)}
+                      className={`flex w-full items-center gap-2.5 px-5 py-2 text-left text-[13px] text-[color:var(--text-primary)] transition-colors duration-micro ease-standard ${
+                        selected ? 'bg-slate-900/[0.06] dark:bg-white/10' : ''
+                      }`}
+                    >
+                      <Icon
+                        name={cmd.icon}
+                        size={18}
+                        className="shrink-0"
+                        style={{ color: cmd.color }}
+                      />
+                      <span>{cmd.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="px-5 py-5 text-center text-xs text-[color:var(--text-muted)]">
+          {t('cmdNoResults')}
+        </p>
+      )}
+    </DialogShell>
   );
 }
