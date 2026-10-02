@@ -288,8 +288,7 @@ export const de: Record<TranslationKey, string> = {
   orgCardActive: 'aktiv',
   orgCardInactive: 'inaktiv',
   orgCardSetup: 'Einrichten',
-  orgCardSetupHint: 'Klicke auf "Einrichten", um zu beginnen.',
-  orgCardDoubleClickHint: 'Doppelklick zum Bearbeiten',
+  orgCardSetupHint: 'Klicken Sie auf „Einrichten“, um zu beginnen.',
   orgCardSaveToast: 'Aktualisiert.',
   orgCardSaveFailedToast: 'Aktualisierung fehlgeschlagen.',
   orgCardApprovalDraft: 'Entwurf',
@@ -1055,7 +1054,7 @@ export const de: Record<TranslationKey, string> = {
 
   // Guided canvas — empty-state hints
   emptyOrganizationHint:
-    'Noch keine Organisation. Lege die Stammdaten deiner Einrichtung an (Name, FQDN-Identifier, Adresse), um zu starten.',
+    'Noch keine Organisation. Legen Sie die Stammdaten Ihrer Einrichtung an (Name, FQDN-Identifier, Adresse), um zu starten.',
   emptyContactsHint:
     'Noch keine Kontakte. Mindestens ein Kontakt ist vor dem Einreichen erforderlich.',
   emptyEndpointsHint:

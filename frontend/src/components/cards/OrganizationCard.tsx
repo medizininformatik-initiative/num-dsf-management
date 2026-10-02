@@ -1,340 +1,168 @@
-// OrganizationCard – displays org summary with inline-editable name & email
-// Dependencies: useOrganization, useContacts, useApprovalStatus, EntityCard, useModals
-
-import { useState, useRef, useEffect } from 'react';
-import { useOrganization, useUpdateOrganization } from '../../hooks/useOrganization';
+/**
+ * OrganizationCard.tsx – the organization summary on the canvas: fields as a
+ * description list, status and approval as StatusPills in the shared tones.
+ * A failed request shows EntityCard's retry state; the "Set up" empty state
+ * only appears when the API reports that no organization exists.
+ * Dependencies: useOrganization, useContacts, useApprovalStatus, useModals,
+ * EntityCard, Icon, StatusPill, i18n store.
+ */
+import { useId, type ReactNode } from 'react';
+import { useOrganization } from '../../hooks/useOrganization';
 import { useContacts } from '../../hooks/useContacts';
 import { useApprovalStatus } from '../../hooks/useApproval';
-import { EntityCard } from './EntityCard';
 import { useModals } from '../../hooks/useModals';
-import { toast } from 'sonner';
 import { useI18n } from '../../stores/i18n.store';
+import type { TranslationKey } from '../../i18n/en';
+import type { StatusTone } from '../../lib/statusColors';
+import { EntityCard } from './EntityCard';
+import { Icon } from '../ui/Icon';
+import { StatusPill } from '../ui/StatusPill';
 
 interface Props {
   instanceId: string;
 }
 
+/** The organization as GET /organization returns it (null when none exists). */
+interface OrganizationRow {
+  identifier: string;
+  name: string;
+  email: string;
+  /** MySQL BOOLEAN, so 0/1 from the API. */
+  active: boolean | number;
+  address_line?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  country_code?: string | null;
+  client_cert_thumbprint?: string | null;
+}
+
+interface ContactSummary {
+  id: string;
+  name?: string | null;
+  email: string;
+}
+
+const ACCENT = '#4d41df';
+
+/** Approval status → pill; `none` when there is no request, unknown statuses count as drafts. */
+const APPROVAL_PILL: Record<string, { tone: StatusTone; icon?: string; label: TranslationKey }> = {
+  APPROVED: { tone: 'success', icon: 'check_circle', label: 'approved' },
+  PENDING: { tone: 'warning', icon: 'schedule', label: 'pending' },
+  REJECTED: { tone: 'danger', icon: 'cancel', label: 'rejected' },
+  DRAFT: { tone: 'neutral', icon: 'edit_note', label: 'orgCardApprovalDraft' },
+  none: { tone: 'neutral', label: 'orgCardApprovalNone' },
+};
+
+function openOrganizationModal() {
+  useModals.getState().openModal('org-edit');
+}
+
 export function OrganizationCard({ instanceId }: Props) {
   const { t } = useI18n();
-  const { data: org, isLoading } = useOrganization(instanceId);
+  const orgQuery = useOrganization(instanceId);
+  const org = orgQuery.data as OrganizationRow | null | undefined;
   const { data: contacts = [] } = useContacts(instanceId);
   const { data: approval } = useApprovalStatus(instanceId);
+  const sharedWithId = useId();
 
-  const updateMut = useUpdateOrganization(instanceId);
-  const [editing, setEditing] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (editing && inputRef.current) inputRef.current.focus();
-  }, [editing]);
-
-  async function saveInline(field: string) {
-    if (!org || !editValue.trim()) {
-      setEditing(null);
-      return;
-    }
-    try {
-      await updateMut.mutateAsync({
-        identifier: org.identifier,
-        name: field === 'name' ? editValue.trim() : org.name,
-        email: field === 'email' ? editValue.trim() : org.email,
-        active: org.active,
-        addressLine: org.address_line || '',
-        postalCode: org.postal_code || '',
-        city: org.city || '',
-        countryCode: org.country_code || '',
-        clientCertThumbprint: org.client_cert_thumbprint || '',
-      });
-      toast.success(t('orgCardSaveToast'));
-    } catch {
-      toast.error(t('orgCardSaveFailedToast'));
-    }
-    setEditing(null);
-  }
-
-  const approvalStatus = (approval?.status ?? 'none') as
-    | 'APPROVED'
-    | 'PENDING'
-    | 'REJECTED'
-    | 'none';
-  const statusMap = {
-    APPROVED: { bg: '#e8f5ee', color: '#2d7a57', label: t('approved') },
-    PENDING: { bg: '#fff8e8', color: '#854f0b', label: t('pending') },
-    REJECTED: { bg: '#fff0f0', color: '#9b2335', label: t('rejected') },
-    none: { bg: 'var(--bg-page)', color: 'var(--text-muted)', label: t('orgCardApprovalNone') },
-  };
-  const statusPill = statusMap[approvalStatus] ?? {
-    bg: 'var(--bg-page)',
-    color: 'var(--text-muted)',
-    label: t('orgCardApprovalDraft'),
+  const card = {
+    id: 'organization',
+    title: t('organization'),
+    borderColor: ACCENT,
+    icon: 'corporate_fare',
   };
 
-  if (isLoading)
+  if (orgQuery.isError && !org) {
     return (
-      <EntityCard
-        id="organization"
-        title={t('organization')}
-        borderColor="#4d41df"
-        icon="corporate_fare"
-      >
-        <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{t('loading')}</div>
+      <EntityCard {...card} status="error" onRetry={() => void orgQuery.refetch()}>
+        {null}
       </EntityCard>
     );
-
-  if (!org)
+  }
+  if (org === undefined) {
     return (
-      <EntityCard
-        id="organization"
-        title={t('organization')}
-        borderColor="#4d41df"
-        icon="corporate_fare"
-        onAdd={() => useModals.getState().openModal('org-edit')}
-        addLabel="Set up"
-      >
-        <div
-          style={{
-            color: 'var(--text-muted)',
-            fontSize: '12px',
-            textAlign: 'center',
-            padding: '20px 0',
-          }}
-        >
-          {t('emptyOrganizationHint')}
-          <br />
-          {t('orgCardSetupHint')}
+      <EntityCard {...card} status="loading">
+        {null}
+      </EntityCard>
+    );
+  }
+  if (org === null) {
+    return (
+      <EntityCard {...card} onAdd={openOrganizationModal} addLabel={t('orgCardSetup')}>
+        <div className="flex flex-col items-center gap-2 px-2 py-6 text-center text-xs">
+          <span className="entity-card-icon inline-flex h-10 w-10 items-center justify-center rounded-full text-[color:var(--card-accent)]">
+            <Icon name="domain_add" size={22} />
+          </span>
+          <p className="text-[color:var(--text-secondary)]">{t('emptyOrganizationHint')}</p>
+          <p className="text-[color:var(--text-muted)]">{t('orgCardSetupHint')}</p>
         </div>
       </EntityCard>
     );
+  }
 
-  // Shared row style
-  const rowStyle: React.CSSProperties = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '4px 0',
-    borderBottom: '1px solid var(--bg-page)',
-    fontSize: '12px',
-  };
+  const approvalStatus: string = approval?.status ?? 'none';
+  const approvalPill = APPROVAL_PILL[approvalStatus] ?? APPROVAL_PILL.DRAFT;
+  const active = !!org.active;
+  const sharedWith = (contacts as ContactSummary[]).slice(0, 5);
 
   return (
-    <EntityCard
-      id="organization"
-      title={t('organization')}
-      borderColor="#4d41df"
-      icon="corporate_fare"
-      addLabel={t('edit')}
-      onAdd={() => useModals.getState().openModal('org-edit')}
-    >
-      {contacts.length > 0 && (
-        <div style={{ marginBottom: '10px' }}>
-          <div
-            style={{
-              fontSize: '10px',
-              color: 'var(--text-muted)',
-              marginBottom: '5px',
-              textTransform: 'uppercase',
-              letterSpacing: '.05em',
-            }}
+    <EntityCard {...card} onAdd={openOrganizationModal} addLabel={t('edit')}>
+      {sharedWith.length > 0 && (
+        <div className="mb-3">
+          <p
+            id={sharedWithId}
+            className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]"
           >
             {t('orgCardSharedWith')}
-          </div>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            {contacts.slice(0, 5).map((c: any) => (
-              <div
+          </p>
+          <ul aria-labelledby={sharedWithId} className="flex gap-1">
+            {sharedWith.map((c) => (
+              <li
                 key={c.id}
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '50%',
-                  background: '#ede9ff',
-                  color: 'var(--accent)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '10px',
-                  fontWeight: 600,
-                }}
                 title={c.name || c.email}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-50 text-[11px] font-semibold text-brand-700 dark:bg-brand-900/40 dark:text-brand-100"
               >
-                {(c.name || c.email)?.[0]?.toUpperCase()}
-              </div>
+                <span aria-hidden="true">{(c.name || c.email)?.[0]?.toUpperCase()}</span>
+                <span className="sr-only">{c.name || c.email}</span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
 
-      {/* Static fields: Identifier, City, Address */}
-      {[
-        { label: t('orgCardIdentifier'), value: org.identifier, mono: true },
-        { label: t('orgCardCity'), value: `${org.city || '—'} · ${org.country_code || '—'}` },
-        { label: t('orgCardAddress'), value: org.address_line || '—' },
-      ].map(({ label, value, mono }) => (
-        <div key={label} style={rowStyle}>
-          <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-          <span
-            style={{
-              color: mono ? 'var(--accent)' : 'var(--text-primary)',
-              fontFamily: mono ? "'JetBrains Mono', monospace" : 'inherit',
-              fontSize: mono ? '11px' : '12px',
-            }}
-          >
-            {value}
-          </span>
-        </div>
-      ))}
+      <dl className="mb-3 divide-y divide-[color:var(--border)] text-xs">
+        <Row label={t('orgCardIdentifier')}>
+          <span className="font-mono text-primary dark:text-brand-400">{org.identifier}</span>
+        </Row>
+        <Row label={t('orgCardCity')}>{`${org.city || '—'} · ${org.country_code || '—'}`}</Row>
+        <Row label={t('orgCardAddress')}>{org.address_line || '—'}</Row>
+        <Row label={t('orgCardName')}>
+          <span className="font-semibold">{org.name}</span>
+        </Row>
+        <Row label={t('orgCardEmail')}>{org.email}</Row>
+        <Row label={t('orgCardStatus')}>
+          <StatusPill tone={active ? 'success' : 'danger'} icon={active ? 'check_circle' : 'block'}>
+            {active ? t('orgCardActive') : t('orgCardInactive')}
+          </StatusPill>
+        </Row>
+      </dl>
 
-      {/* Inline-editable: Name */}
-      <div style={rowStyle}>
-        <span style={{ color: 'var(--text-muted)' }}>{t('orgCardName')}</span>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-end',
-            flex: 1,
-            marginLeft: '8px',
-          }}
-        >
-          {editing === 'name' ? (
-            <input
-              ref={inputRef}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={() => saveInline('name')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveInline('name');
-                if (e.key === 'Escape') setEditing(null);
-              }}
-              style={{
-                fontSize: '12px',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                border: 'none',
-                borderBottom: '2px solid #6c63ff',
-                outline: 'none',
-                background: 'transparent',
-                width: '100%',
-                padding: '2px 0',
-                textAlign: 'right',
-              }}
-            />
-          ) : (
-            <span
-              style={{ color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}
-              onDoubleClick={() => {
-                setEditing('name');
-                setEditValue(org.name || '');
-              }}
-              title={t('orgCardDoubleClickHint')}
-            >
-              {org.name}
-            </span>
-          )}
-          {editing !== 'name' && (
-            <span style={{ fontSize: '9px', color: '#d4d8e8', marginTop: '2px' }}>
-              {t('orgCardDoubleClickHint')}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Inline-editable: Email */}
-      <div style={rowStyle}>
-        <span style={{ color: 'var(--text-muted)' }}>{t('orgCardEmail')}</span>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-end',
-            flex: 1,
-            marginLeft: '8px',
-          }}
-        >
-          {editing === 'email' ? (
-            <input
-              ref={inputRef}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={() => saveInline('email')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveInline('email');
-                if (e.key === 'Escape') setEditing(null);
-              }}
-              style={{
-                fontSize: '12px',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                border: 'none',
-                borderBottom: '2px solid #6c63ff',
-                outline: 'none',
-                background: 'transparent',
-                width: '100%',
-                padding: '2px 0',
-                textAlign: 'right',
-              }}
-            />
-          ) : (
-            <span
-              style={{ color: 'var(--text-primary)', cursor: 'pointer' }}
-              onDoubleClick={() => {
-                setEditing('email');
-                setEditValue(org.email || '');
-              }}
-              title={t('orgCardDoubleClickHint')}
-            >
-              {org.email}
-            </span>
-          )}
-          {editing !== 'email' && (
-            <span style={{ fontSize: '9px', color: '#d4d8e8', marginTop: '2px' }}>
-              {t('orgCardDoubleClickHint')}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Active status pill */}
-      <div style={rowStyle}>
-        <span style={{ color: 'var(--text-muted)' }}>{t('orgCardStatus')}</span>
-        <span
-          style={{
-            background: org.active ? '#e8f5ee' : '#fff0f0',
-            color: org.active ? '#2d7a57' : '#9b2335',
-            padding: '1px 8px',
-            borderRadius: '99px',
-            fontSize: '11px',
-          }}
-        >
-          {org.active ? t('orgCardActive') : t('orgCardInactive')}
-        </span>
-      </div>
-
-      {/* Approval status pill */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '10px',
-          paddingTop: '8px',
-          borderTop: '1px solid var(--bg-page)',
-          fontSize: '12px',
-        }}
-      >
-        <span style={{ color: 'var(--text-muted)' }}>{t('orgCardApproval')}</span>
-        <span
-          style={{
-            background: statusPill.bg,
-            color: statusPill.color,
-            padding: '2px 8px',
-            borderRadius: '99px',
-            fontSize: '11px',
-          }}
-        >
-          {statusPill.label}
-        </span>
+      {/* Pinned to the bottom when the grid stretches the card. */}
+      <div className="mt-auto flex items-center justify-between gap-3 border-t border-[color:var(--border)] pt-3 text-xs">
+        <span className="text-[color:var(--text-muted)]">{t('orgCardApproval')}</span>
+        <StatusPill tone={approvalPill.tone} icon={approvalPill.icon}>
+          {t(approvalPill.label)}
+        </StatusPill>
       </div>
     </EntityCard>
+  );
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex min-h-[2.25rem] items-center justify-between gap-3 py-1.5">
+      <dt className="shrink-0 text-[color:var(--text-muted)]">{label}</dt>
+      <dd className="min-w-0 text-right text-[color:var(--text-primary)]">{children}</dd>
+    </div>
   );
 }

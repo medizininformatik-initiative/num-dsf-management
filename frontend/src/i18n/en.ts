@@ -284,7 +284,6 @@ export const en = {
   orgCardInactive: 'inactive',
   orgCardSetup: 'Set up',
   orgCardSetupHint: 'Click "Set up" to begin.',
-  orgCardDoubleClickHint: 'Double-click to edit',
   orgCardSaveToast: 'Updated.',
   orgCardSaveFailedToast: 'Failed to update.',
   orgCardApprovalDraft: 'draft',
