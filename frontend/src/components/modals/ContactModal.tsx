@@ -1,25 +1,40 @@
 /**
  * ContactModal.tsx — add/edit modal for an organization contact (types, name, email, address).
  * React Hook Form + contactSchema; create/update through useContacts behind the cross-user guard.
+ * Contact types are a labelled checkbox group with translated descriptions; unsaved input asks
+ * before the dialog is dismissed.
+ * Dependencies: Modal, FormField (FormField, FormFieldGroup, CheckboxCards), Callout, useContacts,
+ *               useCrossUserGuard, i18n store.
  */
 import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
-import { FormField, inputClass, ModalFooter } from './FormField';
+import {
+  CheckboxCards,
+  FormField,
+  FormFieldGroup,
+  inputClass,
+  ModalFooter,
+  type CheckboxCardOption,
+} from './FormField';
+import { Callout } from './Callout';
 import { contactSchema, ContactFormData } from '../../schemas/contact.schema';
 import { parseJsonArray } from '../../lib/parseJsonArray';
 import { useCreateContact, useUpdateContact, useContacts } from '../../hooks/useContacts';
 import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
 import { useI18n } from '../../stores/i18n.store';
 import { getErrorMessage } from '../../lib/getErrorMessage';
+import type { TranslationKey } from '../../i18n/en';
 
-const TYPES = [
-  { value: 'MEDIC', label: 'MEDIC', desc: 'Person responsible for the organization' },
-  { value: 'DSF_ADMIN', label: 'DSF_ADMIN', desc: 'Technical administration of the DSF' },
-  { value: 'SECURITY', label: 'SECURITY', desc: 'Contact for security issues' },
-] as const;
+type ContactType = ContactFormData['types'][number];
+
+const TYPES: readonly { value: ContactType; desc: TranslationKey }[] = [
+  { value: 'MEDIC', desc: 'formContactTypeMedicDesc' },
+  { value: 'DSF_ADMIN', desc: 'formContactTypeDsfAdminDesc' },
+  { value: 'SECURITY', desc: 'formContactTypeSecurityDesc' },
+];
 
 interface Props {
   open: boolean;
@@ -52,11 +67,16 @@ export function ContactModal({ open, onClose, instanceId, contactId, defaultValu
     handleSubmit,
     control,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
     defaultValues: { types: [], ...defaultValues },
   });
+  const typeOptions: CheckboxCardOption<ContactType>[] = TYPES.map(({ value, desc }) => ({
+    value,
+    label: value,
+    description: t(desc),
+  }));
 
   const { data: contacts = [] } = useContacts(instanceId);
 
@@ -129,45 +149,26 @@ export function ContactModal({ open, onClose, instanceId, contactId, defaultValu
       open={open}
       onClose={onClose}
       title={contactId ? t('contactModalTitleEdit') : t('contactModalTitleAdd')}
+      isDirty={isDirty}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
-          <p className="text-xs text-indigo-700">{t('contactModalPrivacyNote')}</p>
-        </div>
-        <FormField label={t('contactModalFieldTypes')} required error={errors.types?.message}>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <Callout tone="info" icon="privacy_tip">
+          {t('contactModalPrivacyNote')}
+        </Callout>
+        <FormFieldGroup label={t('contactModalFieldTypes')} required error={errors.types?.message}>
           <Controller
             name="types"
             control={control}
             render={({ field }) => (
-              <div className="space-y-2">
-                {TYPES.map(({ value, label, desc }) => (
-                  <label
-                    key={value}
-                    className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/30 cursor-pointer transition-all"
-                  >
-                    <input
-                      type="checkbox"
-                      value={value}
-                      checked={field.value?.includes(value)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          field.onChange([...(field.value || []), value]);
-                        } else {
-                          field.onChange(field.value?.filter((v: string) => v !== value));
-                        }
-                      }}
-                      className="mt-0.5 accent-primary"
-                    />
-                    <div>
-                      <span className="text-xs font-bold text-slate-700">{label}</span>
-                      <p className="text-[10px] text-slate-400">{desc}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
+              <CheckboxCards
+                options={typeOptions}
+                value={field.value ?? []}
+                onChange={field.onChange}
+                firstInputRef={field.ref}
+              />
             )}
           />
-        </FormField>
+        </FormFieldGroup>
         <FormField
           label={t('contactModalFieldName')}
           error={errors.name?.message}
@@ -195,6 +196,7 @@ export function ContactModal({ open, onClose, instanceId, contactId, defaultValu
         <FormField label={t('contactModalFieldPhone')} error={errors.phone?.message}>
           <input
             {...register('phone')}
+            type="tel"
             className={inputClass}
             placeholder={t('contactModalFieldPhonePlaceholder')}
           />

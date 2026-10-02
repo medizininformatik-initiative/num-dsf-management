@@ -1,9 +1,10 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ContactModal } from '../ContactModal';
+import { useI18n } from '../../../stores/i18n.store';
 
 // Mock useContacts so we can control the array returned on each render.
 const initialContacts = () => [
@@ -71,6 +72,36 @@ describe('ContactModal open/close', () => {
     await user.click(screen.getByRole('button', { name: /add contact/i }));
     // Zod requires at least one contact type — an inline error appears.
     expect(await screen.findByText(/at least one/i)).toBeInTheDocument();
+  });
+});
+
+describe('ContactModal types group', () => {
+  afterEach(() => {
+    act(() => useI18n.getState().setLang('en'));
+  });
+
+  it('labels the type checkboxes as one required group', async () => {
+    render(
+      <Wrapper>
+        <ContactModal open onClose={() => {}} instanceId="i1" />
+      </Wrapper>,
+    );
+    const group = screen.getByRole('group', { name: 'Types (required)' });
+    expect(within(group).getAllByRole('checkbox')).toHaveLength(3);
+    fireEvent.click(screen.getByRole('button', { name: /add contact/i }));
+    expect(await screen.findByText(/select at least one type/i)).toBeInTheDocument();
+    expect(group).toHaveAccessibleDescription(/select at least one type/i);
+  });
+
+  it('translates the type descriptions', () => {
+    useI18n.getState().setLang('de');
+    render(
+      <Wrapper>
+        <ContactModal open onClose={() => {}} instanceId="i1" />
+      </Wrapper>,
+    );
+    expect(screen.getByText('Verantwortliche Person der Organisation')).toBeInTheDocument();
+    expect(screen.getByText('Ansprechpartner für Sicherheitsfragen')).toBeInTheDocument();
   });
 });
 
