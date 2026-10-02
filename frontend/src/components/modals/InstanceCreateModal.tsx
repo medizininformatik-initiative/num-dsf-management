@@ -1,11 +1,14 @@
 /**
  * InstanceCreateModal.tsx — modal that creates a new DSF instance and selects it as active.
  * Shows onboarding steps; invalidates the instances query and updates the canvas store on success.
+ * Dependencies: Modal, ModalFooter, Callout, entities API, canvas store, i18n store.
  */
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Modal } from './Modal';
+import { ModalFooter } from './FormField';
+import { Callout } from './Callout';
 import { api } from '../../api/entities.api';
 import { useCanvasStore } from '../../stores/canvas.store';
 import { useI18n } from '../../stores/i18n.store';
@@ -39,34 +42,24 @@ export function InstanceCreateModal({ open, onClose }: Props) {
 
   return (
     <Modal open={open} onClose={onClose} title={t('instanceCreateTitle')} width="max-w-sm">
-      <div className="space-y-4">
-        <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-          <p className="text-xs text-indigo-700 leading-relaxed">{t('instanceCreateInfo')}</p>
-          <ol className="mt-2 space-y-1 text-xs text-indigo-600 list-decimal list-inside">
-            <li>{t('instanceCreateStep1')}</li>
-            <li>{t('instanceCreateStep2')}</li>
-            <li>{t('instanceCreateStep3')}</li>
-            <li>{t('instanceCreateStep4')}</li>
-            <li>{t('instanceCreateStep5')}</li>
-          </ol>
-        </div>
-        <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            {t('instanceCreateCancelBtn')}
-          </button>
-          <button
-            onClick={handleCreate}
-            disabled={loading}
-            className="px-5 py-2 text-sm font-bold text-white rounded-lg disabled:opacity-50 transition-all active:scale-[0.98]"
-            style={{ background: 'linear-gradient(135deg, #4d41df, #675df9)' }}
-          >
-            {loading ? t('instanceCreatingBtn') : t('instanceCreateBtn')}
-          </button>
-        </div>
-      </div>
+      <Callout tone="info" icon="add_circle">
+        <p>{t('instanceCreateInfo')}</p>
+        <ol className="list-inside list-decimal space-y-1 pt-1">
+          <li>{t('instanceCreateStep1')}</li>
+          <li>{t('instanceCreateStep2')}</li>
+          <li>{t('instanceCreateStep3')}</li>
+          <li>{t('instanceCreateStep4')}</li>
+          <li>{t('instanceCreateStep5')}</li>
+        </ol>
+      </Callout>
+      <ModalFooter
+        onCancel={onClose}
+        onSubmit={handleCreate}
+        loading={loading}
+        cancelLabel={t('instanceCreateCancelBtn')}
+        submitLabel={t('instanceCreateBtn')}
+        loadingLabel={t('instanceCreatingBtn')}
+      />
     </Modal>
   );
 }
