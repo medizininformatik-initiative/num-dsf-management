@@ -339,6 +339,9 @@ export const de: Record<TranslationKey, string> = {
   endpointCardIpsLabel: 'IP-Adressen',
   endpointCardFlagFhir: 'FHIR-Server',
   endpointCardFlagBpe: 'BPE (Prozess-Engine)',
+  ipDiffTitle: 'IP-Änderungen seit der letzten Freigabe',
+  ipDiffAdded: 'Hinzugefügte IP-Adressen',
+  ipDiffRemoved: 'Entfernte IP-Adressen',
   endpointCardDeleteTitle: 'Endpunkt löschen?',
   endpointCardDeleteMessage: '{name} wird aus der Allow-Liste entfernt.',
   endpointCardDeleteConsequence:

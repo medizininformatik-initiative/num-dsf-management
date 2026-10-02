@@ -6,7 +6,7 @@
  * each case can return its own history/endpoint shapes.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 
 interface HistoryRow {
@@ -54,7 +54,7 @@ describe('IpDiffBadge', () => {
 
     renderWithProviders(<IpDiffBadge instanceId="i1" />);
 
-    expect(screen.getByText('IP Changes since last approval')).toBeInTheDocument();
+    expect(screen.getByText('IP changes since the last approval')).toBeInTheDocument();
     expect(screen.getByText('+ 10.0.0.2')).toBeInTheDocument();
     // The unchanged IP must not be shown as added or removed.
     expect(screen.queryByText('+ 10.0.0.1')).not.toBeInTheDocument();
@@ -67,7 +67,7 @@ describe('IpDiffBadge', () => {
 
     renderWithProviders(<IpDiffBadge instanceId="i1" />);
 
-    expect(screen.getByText('IP Changes since last approval')).toBeInTheDocument();
+    expect(screen.getByText('IP changes since the last approval')).toBeInTheDocument();
     expect(screen.getByText('− 10.0.0.9')).toBeInTheDocument();
     expect(screen.queryByText('+ 10.0.0.9')).not.toBeInTheDocument();
   });
@@ -82,13 +82,34 @@ describe('IpDiffBadge', () => {
     expect(screen.getByText('− 10.0.0.1')).toBeInTheDocument();
   });
 
+  it('groups the changes in labelled lists with success and danger tones', () => {
+    historyMock.mockReturnValue({ data: [approvedSnapshot(['10.0.0.1'])] });
+    endpointsMock.mockReturnValue({ data: currentEndpoints(['10.0.0.2']) });
+
+    renderWithProviders(<IpDiffBadge instanceId="i1" />);
+
+    const added = screen.getByRole('list', { name: 'Added IP addresses' });
+    expect(within(added).getByRole('listitem')).toHaveClass('text-success-fg');
+    const removed = screen.getByRole('list', { name: 'Removed IP addresses' });
+    expect(within(removed).getByRole('listitem')).toHaveClass('text-danger-fg', 'line-through');
+  });
+
+  it('translates the title', () => {
+    historyMock.mockReturnValue({ data: [approvedSnapshot(['10.0.0.1'])] });
+    endpointsMock.mockReturnValue({ data: currentEndpoints(['10.0.0.2']) });
+
+    renderWithProviders(<IpDiffBadge instanceId="i1" />, { lang: 'de' });
+
+    expect(screen.getByText('IP-Änderungen seit der letzten Freigabe')).toBeInTheDocument();
+  });
+
   it('renders nothing when current IPs equal the last-approved snapshot (no diff)', () => {
     historyMock.mockReturnValue({ data: [approvedSnapshot(['10.0.0.1', '10.0.0.2'])] });
     endpointsMock.mockReturnValue({ data: currentEndpoints(['10.0.0.1', '10.0.0.2']) });
 
     const { container } = renderWithProviders(<IpDiffBadge instanceId="i1" />);
 
-    expect(screen.queryByText('IP Changes since last approval')).not.toBeInTheDocument();
+    expect(screen.queryByText('IP changes since the last approval')).not.toBeInTheDocument();
     expect(container).toBeEmptyDOMElement();
   });
 

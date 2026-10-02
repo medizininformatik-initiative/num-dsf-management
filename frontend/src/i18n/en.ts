@@ -333,6 +333,9 @@ export const en = {
   endpointCardIpsLabel: 'IP addresses',
   endpointCardFlagFhir: 'FHIR server',
   endpointCardFlagBpe: 'BPE (process engine)',
+  ipDiffTitle: 'IP changes since the last approval',
+  ipDiffAdded: 'Added IP addresses',
+  ipDiffRemoved: 'Removed IP addresses',
   endpointCardDeleteTitle: 'Delete endpoint?',
   endpointCardDeleteMessage: '{name} will be removed from the allow list.',
   endpointCardDeleteConsequence:

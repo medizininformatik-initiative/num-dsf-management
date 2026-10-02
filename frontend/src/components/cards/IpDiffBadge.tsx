@@ -1,9 +1,14 @@
 /**
- * IpDiffBadge.tsx – Shows IP changes since last approved approval request
- * Dependencies: useApprovalHistory, useEndpoints
+ * IpDiffBadge.tsx – Shows the endpoint IP changes since the last approved approval request:
+ * added IPs as success chips, removed ones as struck-through danger chips, each group a
+ * labelled list. Renders nothing without an approved request, without a change, or for an
+ * unreadable snapshot.
+ * Dependencies: useApprovalHistory, useEndpoints, i18n store, Icon.
  */
 import { useApprovalHistory } from '../../hooks/useApproval';
 import { useEndpoints } from '../../hooks/useEndpoints';
+import { useI18n } from '../../stores/i18n.store';
+import { Icon } from '../ui/Icon';
 
 interface Props {
   instanceId: string;
@@ -22,7 +27,10 @@ interface EndpointRow {
   ipAddresses?: EndpointIpRow[];
 }
 
+const CHIP = 'mono-id rounded-md border px-2 py-0.5 text-[11px]';
+
 export function IpDiffBadge({ instanceId }: Props) {
+  const { t } = useI18n();
   const { data: history = [] } = useApprovalHistory(instanceId);
   const { data: endpoints = [] } = useEndpoints(instanceId);
 
@@ -66,61 +74,36 @@ export function IpDiffBadge({ instanceId }: Props) {
   if (added.length === 0 && removed.length === 0) return null;
 
   return (
-    <div
-      style={{
-        padding: '10px 14px',
-        borderRadius: '10px',
-        marginTop: '8px',
-        border: '1px solid var(--border)',
-        background: 'var(--bg-hover)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#f5a623' }}>
-          difference
-        </span>
-        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)' }}>
-          IP Changes since last approval
+    <div className="mt-2 animate-fade-in rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] px-3.5 py-2.5">
+      <div className="mb-2 flex items-center gap-1.5">
+        <Icon name="difference" size={16} className="text-warning-fg" />
+        <span className="text-[11px] font-bold text-[color:var(--text-secondary)]">
+          {t('ipDiffTitle')}
         </span>
       </div>
       {added.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
+        <ul aria-label={t('ipDiffAdded')} className="mb-1 flex flex-wrap gap-1">
           {added.map((ip) => (
-            <span
+            <li
               key={ip}
-              style={{
-                fontSize: '10px',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                background: '#dcfce7',
-                color: '#15803d',
-                fontFamily: 'monospace',
-              }}
+              className={`${CHIP} border-success-border bg-success-surface text-success-fg`}
             >
               + {ip}
-            </span>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
       {removed.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+        <ul aria-label={t('ipDiffRemoved')} className="flex flex-wrap gap-1">
           {removed.map((ip) => (
-            <span
+            <li
               key={ip}
-              style={{
-                fontSize: '10px',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                background: '#fef2f2',
-                color: '#991b1b',
-                fontFamily: 'monospace',
-                textDecoration: 'line-through',
-              }}
+              className={`${CHIP} border-danger-border bg-danger-surface text-danger-fg line-through`}
             >
               − {ip}
-            </span>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );
