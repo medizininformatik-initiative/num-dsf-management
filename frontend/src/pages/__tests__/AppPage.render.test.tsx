@@ -81,6 +81,7 @@ vi.mock('../../components/modals/DownloadModal', () => ({ DownloadModal: () => n
 vi.mock('../../components/modals/CertRenewalModal', () => ({ CertRenewalModal: () => null }));
 
 import { AppPage } from '../AppPage';
+import { useInstances } from '../../hooks/useInstance';
 
 function resetStores() {
   act(() => {
@@ -91,9 +92,11 @@ function resetStores() {
 
 describe('AppPage render', () => {
   beforeEach(() => {
-    // AppPage's resize effect hides the right panel below 1200px; jsdom defaults
-    // to 1024, so widen the viewport to keep the three-column layout mounted.
+    // Below 1200px the right panel collapses to a rail with a drawer; jsdom
+    // defaults to 1024 (and has no matchMedia, so AppPage reads innerWidth),
+    // so widen the viewport to keep the three-column layout mounted.
     window.innerWidth = 1300;
+    vi.mocked(useInstances).mockReturnValue({ data: [], isLoading: false } as never);
     resetStores();
   });
 
@@ -127,15 +130,19 @@ describe('AppPage render', () => {
     // for the canvas route — its heading completes the six-entity overview.
     expect(screen.getByRole('heading', { name: /approval status/i })).toBeInTheDocument();
 
-    // The placeholder must NOT show when an instance is active.
-    expect(screen.queryByText('Loading instance…')).not.toBeInTheDocument();
+    // Neither placeholder shows when an instance is active.
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByText('No instance selected')).not.toBeInTheDocument();
   });
 
-  it('renders the placeholder and no entity cards when no instance is active', () => {
+  it('renders the empty state and no entity cards when there is no instance', () => {
     renderWithProviders(<AppPage />, { route: '/app' });
 
-    // The empty branch shows its placeholder in place of the EntityCanvas.
-    expect(screen.getByText('Loading instance…')).toBeInTheDocument();
+    // The instance list is loaded and empty: an explanation replaces the canvas.
+    expect(screen.getByText('No instance selected')).toBeInTheDocument();
+    expect(
+      screen.getByText('Create an instance or select one in the navigation.'),
+    ).toBeInTheDocument();
 
     // With no active instance the canvas is not mounted, so none of the entity
     // card containers exist.
@@ -146,5 +153,15 @@ describe('AppPage render', () => {
     // The right panel still mounts for the canvas route (it shows empty counts),
     // so its approval-status heading remains present.
     expect(screen.getByRole('heading', { name: /approval status/i })).toBeInTheDocument();
+  });
+
+  it('renders a translated loading skeleton while the instances load', () => {
+    vi.mocked(useInstances).mockReturnValue({ data: undefined, isLoading: true } as never);
+    renderWithProviders(<AppPage />, { route: '/app', lang: 'de' });
+
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('Instanz wird geladen…');
+    expect(status.querySelectorAll('.skeleton').length).toBeGreaterThan(0);
+    expect(document.getElementById('card-organization')).toBeNull();
   });
 });

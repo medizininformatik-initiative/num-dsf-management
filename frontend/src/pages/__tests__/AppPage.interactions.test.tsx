@@ -125,8 +125,8 @@ describe('AppPage interactions', () => {
   it('re-renders the canvas and refetches the organization when the active instance changes', () => {
     renderWithProviders(<AppPage />, { route: '/app' });
 
-    // No active instance yet → placeholder, no canvas, org fetched with null.
-    expect(screen.getByText('Loading instance…')).toBeInTheDocument();
+    // No active instance yet → empty state, no canvas, org fetched with null.
+    expect(screen.getByText('No instance selected')).toBeInTheDocument();
     expect(screen.queryByText(/canvas-for:/)).not.toBeInTheDocument();
     expect(useOrganizationMock).toHaveBeenCalledWith(null);
 
@@ -136,7 +136,7 @@ describe('AppPage interactions', () => {
 
     // Canvas now renders for the switched instance and the org refetch ran for it.
     expect(screen.getByText('canvas-for:inst-42')).toBeInTheDocument();
-    expect(screen.queryByText('Loading instance…')).not.toBeInTheDocument();
+    expect(screen.queryByText('No instance selected')).not.toBeInTheDocument();
     expect(useOrganizationMock).toHaveBeenCalledWith('inst-42');
   });
 
