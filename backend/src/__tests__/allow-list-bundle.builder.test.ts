@@ -109,6 +109,14 @@ function legacyScenario(): AllowListInput {
         ],
       ),
     ],
+    // Withdrawn from the allow list: the legacy portal deletes it everywhere.
+    removed: [
+      {
+        identifier: 'klinik-bx.example.de',
+        endpoints: ['dsf.klinik-bx.example.de'],
+        affiliations: [{ parent: MII, endpoint: 'dsf.klinik-bx.example.de' }],
+      },
+    ],
   };
 }
 
@@ -147,8 +155,9 @@ function blockSequence(bundle: { entry?: Entry[] }): string[] {
   return (bundle.entry ?? []).map((e) => {
     const url = decodeURI(e.request.url);
     const r = e.resource;
-    if (e.request.method === 'DELETE')
-      return `DELETE ${url.split('participating-organization')[1]}`;
+    if (e.request.method === 'DELETE') {
+      return `DELETE ${url.split('?')[0]} ${url.split('|').pop()}`;
+    }
     if (r?.resourceType === 'OrganizationAffiliation') {
       return `OA ${url.split('participating-organization:identifier=')[1].split('&')[0]}`;
     }
@@ -417,6 +426,104 @@ describe('buildAllowListBundle – DSF rules', () => {
     const bundle = buildAllowListBundle({ parentNames: new Map(), members: [] });
     expect('entry' in bundle).toBe(false);
     expect(dsfAllowListViolations(bundle)).toEqual([]);
+  });
+});
+
+describe('buildAllowListBundle – withdrawn organizations', () => {
+  const withdrawn = {
+    identifier: 'klinik-alt.example.de',
+    endpoints: ['dsf2.klinik-alt.example.de', 'dsf.klinik-alt.example.de'],
+    affiliations: [
+      { parent: MII, endpoint: 'dsf.klinik-alt.example.de' },
+      { parent: MII, endpoint: 'dsf.klinik-alt.example.de' },
+    ],
+  };
+
+  it('deletes the organization, then its endpoints, then its affiliations, once each', () => {
+    const bundle = buildAllowListBundle({
+      parentNames: new Map(),
+      members: [],
+      removed: [withdrawn],
+    });
+    expect(entriesOf(bundle)).toEqual([
+      {
+        request: {
+          method: 'DELETE',
+          url: 'Organization?identifier=http://dsf.dev/sid/organization-identifier|klinik-alt.example.de',
+        },
+      },
+      {
+        request: {
+          method: 'DELETE',
+          url: 'Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-alt.example.de',
+        },
+      },
+      {
+        request: {
+          method: 'DELETE',
+          url: 'Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|dsf2.klinik-alt.example.de',
+        },
+      },
+      {
+        request: {
+          method: 'DELETE',
+          url:
+            'OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-mii.example.de' +
+            '&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-alt.example.de' +
+            '&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-alt.example.de',
+        },
+      },
+    ]);
+    expect(dsfAllowListViolations(bundle)).toEqual([]);
+  });
+
+  it('never deletes the receiver itself', () => {
+    const bundle = buildAllowListBundle({
+      parentNames: new Map(),
+      members: [],
+      removed: [withdrawn],
+      receiver: {
+        organization: withdrawn.identifier,
+        endpoint: 'dsf.klinik-alt.example.de',
+        affiliations: [],
+        removedAffiliations: [],
+      },
+    });
+    expect('entry' in bundle).toBe(false);
+  });
+
+  it('never deletes what the bundle still publishes', () => {
+    // The withdrawn organization is still the parent of a member's affiliation.
+    const bundle = buildAllowListBundle({
+      parentNames: new Map(),
+      members: [
+        member(
+          'klinik-k.example.de',
+          'Klinik K',
+          1,
+          ['dsf.klinik-k.example.de'],
+          [[withdrawn.identifier, 'dsf.klinik-k.example.de', ['DIC']]],
+        ),
+      ],
+      removed: [withdrawn],
+    });
+    const urls = entriesOf(bundle).map((e) => `${e.request.method} ${e.request.url}`);
+    expect(urls).toContain(
+      'PUT Organization?identifier=http://dsf.dev/sid/organization-identifier|klinik-alt.example.de',
+    );
+    expect(urls).not.toContain(
+      'DELETE Organization?identifier=http://dsf.dev/sid/organization-identifier|klinik-alt.example.de',
+    );
+    expect(dsfAllowListViolations(bundle)).toEqual([]);
+  });
+
+  it('ignores a withdrawal for an organization that is published as a member', () => {
+    const bundle = buildAllowListBundle({
+      parentNames: new Map(),
+      members: [member(withdrawn.identifier, 'Alt', 1, ['dsf.klinik-alt.example.de'], [])],
+      removed: [withdrawn],
+    });
+    expect(entriesOf(bundle).filter((e) => e.request.method === 'DELETE')).toEqual([]);
   });
 });
 

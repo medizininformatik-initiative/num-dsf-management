@@ -19,9 +19,13 @@
  * - A receiver-scoped bundle leaves out the receiver's own Organization and
  *   Endpoint (its DSF server already holds them) and references both
  *   conditionally from the receiver's affiliations.
+ * - Organizations withdrawn from the allow list are deleted at every site:
+ *   DELETE for the Organization, its Endpoints and its affiliations, as the
+ *   legacy portal does. No DELETE is emitted for anything the same bundle
+ *   still publishes, and never for the receiver itself.
  * Ordering follows the legacy portal: parent organizations, the receiver's
- * affiliations, then every member sorted by identifier with its endpoints,
- * affiliations and affiliation deletions.
+ * affiliations, then every member or withdrawn organization sorted by
+ * identifier with its endpoints, affiliations and deletions.
  * Dependencies: crypto (randomUUID)
  */
 import { randomUUID } from 'crypto';
@@ -67,8 +71,17 @@ export interface AllowListReceiver {
   removedAffiliations: Array<{ parent: string }>;
 }
 
+/** An organization withdrawn from the allow list (deactivated, deactivation approved). */
+export interface AllowListRemoval {
+  identifier: string;
+  endpoints: string[];
+  affiliations: Array<{ parent: string; endpoint: string }>;
+}
+
 export interface AllowListInput {
   members: AllowListMember[];
+  /** Withdrawn organizations; every site deletes them. */
+  removed?: AllowListRemoval[];
   /** Display names of parent organizations; the identifier is the fallback. */
   parentNames: ReadonlyMap<string, string>;
   receiver?: AllowListReceiver;
@@ -282,9 +295,11 @@ export function buildAllowListBundle(
     receiverRemoved.forEach((url) => entries.push(deleteEntry(url)));
   }
 
-  for (const { member, endpoints, endpointFullUrls, affiliations, removed } of blocks) {
+  const memberSection = (block: (typeof blocks)[number]): AllowListEntry[] => {
+    const { member, endpoints, endpointFullUrls, affiliations, removed } = block;
+    const section: AllowListEntry[] = [];
     const memberFullUrl = memberFullUrls.get(member.identifier)!;
-    entries.push({
+    section.push({
       fullUrl: memberFullUrl,
       resource: {
         resourceType: 'Organization',
@@ -305,7 +320,7 @@ export function buildAllowListBundle(
     });
 
     for (const endpoint of endpoints) {
-      entries.push({
+      section.push({
         fullUrl: endpointFullUrls.get(endpoint.identifier),
         resource: {
           resourceType: 'Endpoint',
@@ -329,7 +344,7 @@ export function buildAllowListBundle(
     }
 
     for (const a of affiliations) {
-      entries.push(
+      section.push(
         affiliationEntry(
           urn(),
           { parent: a.parent, member: member.identifier, endpoint: a.endpoint },
@@ -342,8 +357,47 @@ export function buildAllowListBundle(
         ),
       );
     }
-    removed.forEach((url) => entries.push(deleteEntry(url)));
-  }
+    removed.forEach((url) => section.push(deleteEntry(url)));
+    return section;
+  };
+
+  // A withdrawn organization is deleted with its endpoints and affiliations,
+  // in that order, like the legacy portal.
+  const removalSection = (removal: AllowListRemoval): AllowListEntry[] => [
+    deleteEntry(organizationUrl(removal.identifier)),
+    ...unique(removal.endpoints)
+      .sort(byText)
+      .map((endpoint) => deleteEntry(endpointUrl(endpoint))),
+    ...unique(
+      removal.affiliations
+        .filter((a) => a.parent)
+        .map((a) => affiliationUrl(a.parent, removal.identifier, a.endpoint)),
+    )
+      .sort(byText)
+      .map(deleteEntry),
+  ];
+
+  const sections = [
+    ...blocks.map((b) => ({ key: b.member.identifier, entries: memberSection(b) })),
+    ...(input.removed ?? [])
+      .filter((r) => r.identifier !== receiver?.organization && !memberFullUrls.has(r.identifier))
+      .map((r) => ({ key: r.identifier, entries: removalSection(r) })),
+  ].sort((a, b) => byText(a.key, b.key));
+  sections.forEach((s) => entries.push(...s.entries));
+
+  // A DELETE must never hit what this bundle still publishes (a re-created
+  // membership, a withdrawn organization that is still a parent), and each
+  // URL is deleted once.
+  const published = new Set(
+    entries.filter((e) => e.request.method === 'PUT').map((e) => e.request.url),
+  );
+  const deleted = new Set<string>();
+  const finalEntries = entries.filter((e) => {
+    if (e.request.method === 'PUT') return true;
+    if (published.has(e.request.url) || deleted.has(e.request.url)) return false;
+    deleted.add(e.request.url);
+    return true;
+  });
 
   return {
     resourceType: 'Bundle',
@@ -351,6 +405,6 @@ export function buildAllowListBundle(
       tag: [{ system: READ_ACCESS_TAG_SYSTEM, code: 'ALL', display: 'everybody' }],
     },
     type: 'transaction',
-    ...(entries.length > 0 ? { entry: entries } : {}),
+    ...(finalEntries.length > 0 ? { entry: finalEntries } : {}),
   };
 }

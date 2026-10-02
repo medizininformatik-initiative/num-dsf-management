@@ -698,6 +698,24 @@
       }
     },
     {
+      "request": {
+        "method": "DELETE",
+        "url": "Organization?identifier=http://dsf.dev/sid/organization-identifier|klinik-bx.example.de"
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "url": "Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-bx.example.de"
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "url": "OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|verbund-mii.example.de&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|klinik-bx.example.de&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|dsf.klinik-bx.example.de"
+      }
+    },
+    {
       "fullUrl": "urn:uuid:b9914396-1541-459e-8c84-de324ce0c11b",
       "resource": {
         "resourceType": "Organization",
