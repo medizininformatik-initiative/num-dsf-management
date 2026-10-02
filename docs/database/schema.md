@@ -11,7 +11,7 @@ Auth allow-list of permitted login emails. Lock columns (005) disable a user wit
 |---|---|---|---|---|
 | id | CHAR(36) | no | UUID() | PK |
 | email | VARCHAR(255) | no | — | UNIQUE (uq_email) |
-| created_at | DATETIME | no | CURRENT_TIMESTAMP | |
+| created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 | created_by | VARCHAR(255) | yes | NULL | |
 | locked_at | TIMESTAMP | yes | NULL | |
 | locked_by | VARCHAR(255) | yes | NULL | |
@@ -31,7 +31,7 @@ Authenticated users with TOTP 2FA state.
 | totp_enabled | TINYINT(1) | no | 0 | |
 | backup_codes | JSON | yes | NULL | |
 | last_login | DATETIME | yes | NULL | |
-| created_at | DATETIME | no | CURRENT_TIMESTAMP | |
+| created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 
 FKs: none.
 
@@ -45,7 +45,7 @@ Persisted refresh tokens (hashed). Mirrors the Redis `refresh:` store.
 | user_id | CHAR(36) | no | — | idx_rt_user |
 | token_hash | VARCHAR(64) | no | — | idx_rt_hash |
 | expires_at | DATETIME | no | — | |
-| created_at | DATETIME | no | CURRENT_TIMESTAMP | |
+| created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 | revoked_at | DATETIME | yes | NULL | |
 
 FKs: `user_id` → `users.id` ON DELETE CASCADE (fk_rt_user).
@@ -59,7 +59,7 @@ DSF instances owned by a user.
 | id | CHAR(36) | no | UUID() | PK |
 | user_id | CHAR(36) | no | — | idx_inst_user |
 | label | VARCHAR(255) | no | — | |
-| created_at | DATETIME | no | CURRENT_TIMESTAMP | |
+| created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 
 FKs: `user_id` → `users.id` ON DELETE CASCADE (fk_inst_user).
 
@@ -79,7 +79,7 @@ One organization per instance. PK `identifier` is the FQDN and is immutable (tri
 | city | VARCHAR(100) | yes | NULL | |
 | country_code | CHAR(2) | yes | NULL | |
 | client_cert_thumbprint | VARCHAR(128) | yes | NULL | |
-| created_at | DATETIME | no | CURRENT_TIMESTAMP | |
+| created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 | updated_at | DATETIME | no | CURRENT_TIMESTAMP ON UPDATE | |
 
 FKs: `instance_id` → `instances.id` ON DELETE CASCADE (fk_org_inst).
@@ -102,7 +102,7 @@ Contact persons for an organization. `language` (018) drives notification locale
 | postal_code | VARCHAR(20) | yes | NULL | |
 | country_code | CHAR(2) | yes | NULL | |
 | language | CHAR(2) | no | 'en' | |
-| created_at | DATETIME | no | CURRENT_TIMESTAMP | |
+| created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 | updated_at | DATETIME | no | CURRENT_TIMESTAMP ON UPDATE | |
 
 FKs: `organization_id` → `organizations.identifier` ON DELETE CASCADE (fk_ct_org).
@@ -117,7 +117,7 @@ FHIR endpoints of an organization. PK `identifier` is the FQDN and is immutable 
 | organization_id | VARCHAR(255) | no | — | idx_ep_org |
 | name | VARCHAR(255) | yes | NULL | |
 | address | VARCHAR(500) | no | — | |
-| created_at | DATETIME | no | CURRENT_TIMESTAMP | |
+| created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 | updated_at | DATETIME | no | CURRENT_TIMESTAMP ON UPDATE | |
 
 FKs: `organization_id` → `organizations.identifier` ON DELETE CASCADE (fk_ep_org).
@@ -148,7 +148,7 @@ PEM certificates per organization. `last_notified_at` (009) throttles expiry mai
 | subject | VARCHAR(255) | yes | NULL | |
 | thumbprint | VARCHAR(64) | yes | NULL | |
 | valid_until | DATE | yes | NULL | |
-| created_at | DATETIME | no | CURRENT_TIMESTAMP | |
+| created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 | last_notified_at | TIMESTAMP | yes | NULL | |
 
 FKs: `organization_id` → `organizations.identifier` ON DELETE CASCADE (fk_cert_org).
@@ -164,7 +164,7 @@ Affiliations between an org, a parent org, and an endpoint. `deleted_at` (004) i
 | parent_organization | VARCHAR(255) | no | — | |
 | endpoint_id | VARCHAR(255) | no | — | idx_ms_ep |
 | roles | JSON | no | — | |
-| created_at | DATETIME | no | CURRENT_TIMESTAMP | |
+| created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 | updated_at | DATETIME | no | CURRENT_TIMESTAMP ON UPDATE | |
 | deleted_at | TIMESTAMP | yes | NULL | idx_memberships_deleted_at |
 
@@ -179,7 +179,7 @@ Approval workflow header. Effective status derived from `approval_signatures` (s
 | id | CHAR(36) | no | UUID() | PK |
 | instance_id | CHAR(36) | no | — | idx_ar_inst |
 | status | ENUM('DRAFT','PENDING','APPROVED','REJECTED') | no | 'DRAFT' | idx_ar_status |
-| created_at | DATETIME | no | CURRENT_TIMESTAMP | |
+| created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 | submitted_at | DATETIME | yes | NULL | |
 | resolved_at | DATETIME | yes | NULL | |
 | resolved_by | VARCHAR(255) | yes | NULL | |
