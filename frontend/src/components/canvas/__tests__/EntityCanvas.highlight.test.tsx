@@ -58,12 +58,10 @@ import { EntityCanvas } from '../EntityCanvas';
 const ok = (data: unknown) => ({ data, isLoading: false }) as never;
 const mut = () => ({ mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue(undefined) }) as never;
 
-// Read the rendered outline of an EntityCard. The canvas wraps each card in an
-// outer `<div id="card-<id>">`, and EntityCard itself also renders `id="card-<id>"`
-// — so we target the EntityCard element specifically by its shadow class, which
-// is the element carrying the FK-highlight outline.
+// Read the rendered outline of an EntityCard — the element carrying the
+// FK-highlight outline, targeted by its card class.
 function outlineOf(container: HTMLElement, id: string): string {
-  const cards = container.querySelectorAll<HTMLElement>(`#card-${id}.entity-card-shadow`);
+  const cards = container.querySelectorAll<HTMLElement>(`#card-${id}.entity-card`);
   if (cards.length !== 1) throw new Error(`expected one EntityCard for ${id}, got ${cards.length}`);
   // jsdom serialises an unset outline as '' and `outline: none` as 'none'; treat
   // both as "no emphasis" so the assertion is about the coloured outline only.

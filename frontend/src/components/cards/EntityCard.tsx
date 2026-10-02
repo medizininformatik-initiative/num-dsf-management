@@ -1,28 +1,38 @@
 /**
- * EntityCard.tsx – Shared wrapper, styled per Stitch code.html. `status`
- * swaps the body for a skeleton while loading or an error with a retry, so a
- * failed request never looks like "no data yet".
+ * EntityCard.tsx – the shared card of the entity canvas: a glass section with
+ * an accent stripe, an icon + title header, an optional header slot and an add
+ * Button named after the card ("+ Add Contacts"). `status` swaps the body for
+ * a skeleton while loading or an error with a retry Button, so a failed
+ * request never looks like "no data yet". The section (`card-<id>`) is the FK
+ * jump target: tabIndex -1 lets FkLink move focus to it.
+ * Dependencies: Button, Icon, Skeleton, canvas store, i18n store,
+ * entity-card.css.
  */
-import React from 'react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
 import { useCanvasStore } from '../../stores/canvas.store';
 import { useI18n } from '../../stores/i18n.store';
+import { Button } from '../ui/Button';
+import { Icon } from '../ui/Icon';
 import { Skeleton } from '../ui/Skeleton';
+import './entity-card.css';
 
 interface EntityCardProps {
   id: string;
   title: string;
+  /** Accent colour of the card (stripe and icon tile). */
   borderColor: string;
   icon: string;
   iconColor?: string;
-  badge?: React.ReactNode;
-  headerRight?: React.ReactNode;
+  badge?: ReactNode;
+  headerRight?: ReactNode;
   onAdd?: () => void;
+  /** Visible label of the add Button; defaults to the translated "+ Add". */
   addLabel?: string;
   /** Data state of the card body. Default 'ready' renders the children. */
   status?: 'loading' | 'error' | 'ready';
   /** Retry handler for the error state (usually the query's refetch). */
   onRetry?: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function EntityCard({
@@ -34,7 +44,7 @@ export function EntityCard({
   badge,
   headerRight,
   onAdd,
-  addLabel = '+ Add',
+  addLabel,
   status = 'ready',
   onRetry,
   children,
@@ -42,66 +52,76 @@ export function EntityCard({
   const { t } = useI18n();
   const highlightedEntity = useCanvasStore((s) => s.highlightedEntity);
   const isHighlighted = highlightedEntity === id;
+  const uid = useId();
+  const titleId = `${uid}-title`;
+  const addLabelId = `${uid}-add`;
 
   return (
-    <div
+    <section
       id={`card-${id}`}
-      className="rounded-[16px] p-6 entity-card-shadow group transition-all duration-300 hover:-translate-y-1"
-      style={{
-        background: 'var(--bg-card)',
-        borderLeft: `4px solid ${borderColor}`,
-        outline: isHighlighted ? `2px solid ${borderColor}66` : 'none',
-        outlineOffset: '2px',
-        transition: 'outline 0.3s ease, transform 0.3s ease',
-      }}
+      aria-labelledby={titleId}
+      aria-busy={status === 'loading' || undefined}
+      tabIndex={-1}
+      className="entity-card glass hover-lift flex h-full flex-col rounded-card p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+      style={
+        {
+          '--card-accent': borderColor,
+          outline: isHighlighted ? `2px solid ${borderColor}66` : undefined,
+        } as CSSProperties
+      }
     >
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className="material-symbols-outlined text-[20px]"
-              style={{ color: iconColor || borderColor }}
-            >
-              {icon}
-            </span>
-            <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>
-              {title}
-            </h3>
-            {badge}
-          </div>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className="entity-card-icon inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]"
+            style={{ color: iconColor || borderColor }}
+          >
+            <Icon name={icon} size={20} />
+          </span>
+          <h3
+            id={titleId}
+            className="truncate text-base font-bold leading-6 text-[color:var(--text-primary)]"
+          >
+            {title}
+          </h3>
+          {badge}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {headerRight}
           {onAdd && (
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={onAdd}
-              className="text-[10px] font-bold px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+              aria-labelledby={`${addLabelId} ${titleId}`}
             >
-              {addLabel}
-            </button>
+              <span id={addLabelId}>{addLabel ?? t('add')}</span>
+            </Button>
           )}
         </div>
       </div>
       {status === 'loading' && (
-        <div aria-busy="true">
-          <Skeleton lines={3} />
+        <div className="min-h-[7.5rem]">
+          <Skeleton lines={4} />
         </div>
       )}
       {status === 'error' && (
-        <div role="alert" className="flex items-center justify-between gap-3 text-xs">
-          <span style={{ color: 'var(--text-secondary)' }}>{t('cardLoadError')}</span>
+        <div className="flex min-h-[7.5rem] flex-col items-center justify-center gap-2.5 px-4 py-3 text-center">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-danger-border bg-danger-surface text-danger-fg">
+            <Icon name="cloud_off" size={22} />
+          </span>
+          <p role="alert" className="text-[13px] font-medium text-[color:var(--text-secondary)]">
+            {t('cardLoadError')}
+          </p>
           {onRetry && (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="font-bold px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-            >
+            <Button variant="secondary" size="sm" onClick={onRetry}>
+              <Icon name="refresh" size={16} />
               {t('cardRetry')}
-            </button>
+            </Button>
           )}
         </div>
       )}
       {status === 'ready' && children}
-    </div>
+    </section>
   );
 }
