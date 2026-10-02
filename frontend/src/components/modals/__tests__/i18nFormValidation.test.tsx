@@ -5,7 +5,7 @@
  * translated strings, never the raw key codes.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 import { useI18n } from '../../../stores/i18n.store';
@@ -18,7 +18,7 @@ import { OrganizationModal } from '../OrganizationModal';
 
 describe('translated form-validation messages', () => {
   afterEach(() => {
-    useI18n.getState().setLang('en');
+    act(() => useI18n.getState().setLang('en'));
   });
 
   it('resolves schema error codes to English text, not the raw code', async () => {
