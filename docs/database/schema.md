@@ -315,6 +315,24 @@ Blacklisted CA Subject DNs checked against a cert's issuer at upload (016).
 
 FKs: none.
 
+## ca_whitelist
+
+CAs the DSF accepts in production, seeded at init with the DSF 2.1.1 defaults (022). `CLIENT` rows issue DSF client certificates and mark uploaded certificates as DSF-issued; `SERVER` rows are the roots a DSF BPE trusts for TLS servers. Blacklisting a listed CA is refused.
+
+| Column | Type | Nullable | Default | Key |
+|---|---|---|---|---|
+| id | CHAR(36) | no | UUID() | PK |
+| subject_dn | VARCHAR(500) | no | — | UNIQUE with kind (uq_caw_subject_kind) |
+| fingerprint | CHAR(64) | yes | NULL | idx_caw_fingerprint |
+| kind | VARCHAR(16) | no | — | `CLIENT` or `SERVER` |
+| not_after | DATE | yes | NULL | |
+| source | VARCHAR(32) | no | 'manual' | `dsf-2.1.1` for the seeded rows |
+| reason | TEXT | yes | NULL | |
+| added_by | VARCHAR(255) | no | — | |
+| added_at | DATETIME | no | CURRENT_TIMESTAMP | |
+
+FKs: none.
+
 ## known_cas
 
 Cached Mozilla trust-store snapshot for the admin CA picker (016).

@@ -24,3 +24,4 @@ All migrations are idempotent (existence-guarded) except 013–018, which run un
 | 017 | 017_bundle_versions.sql | Create bundle_versions table for FHIR bundle snapshots | FK to approval_requests (ON DELETE SET NULL) |
 | 018 | 018_contacts_language.sql | Add contacts.language for per-contact notification locale | — |
 | 019 | 019_marketplace_v2.sql | Marketplace v2: add DSF metadata, trust-signal, and slug columns to marketplace_entries; create marketplace_releases table for release history (shipped in v0.1.2) | — |
+| 022 | 022_ca_whitelist.sql | Create ca_whitelist and seed it with the CAs DSF 2.1.1 accepts (client certificate CAs and server roots) | — |
