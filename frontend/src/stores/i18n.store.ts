@@ -16,6 +16,15 @@ type Lang = 'de' | 'en';
 
 const translations = { en, de };
 
+// <html lang> drives screen-reader pronunciation and hyphenation, so it has to
+// follow the language toggle (index.html only carries the default).
+function applyDocumentLang(lang: Lang) {
+  document.documentElement.lang = lang;
+}
+
+const initialLang: Lang = (localStorage.getItem('dsf-lang') as Lang) || 'en';
+applyDocumentLang(initialLang);
+
 interface I18nState {
   lang: Lang;
   setLang: (lang: Lang) => void;
@@ -23,9 +32,10 @@ interface I18nState {
 }
 
 export const useI18n = create<I18nState>((set, get) => ({
-  lang: (localStorage.getItem('dsf-lang') as Lang) || 'en',
+  lang: initialLang,
   setLang: (lang) => {
     localStorage.setItem('dsf-lang', lang);
+    applyDocumentLang(lang);
     set({ lang });
   },
   t: (key, params) => {

@@ -28,6 +28,13 @@ describe('useI18n', () => {
     expect(useI18n.getState().t('relAgoMinutes', { n: 5 })).toBe('vor 5m');
   });
 
+  it('sets the document language so screen readers follow the toggle', () => {
+    useI18n.getState().setLang('de');
+    expect(document.documentElement.lang).toBe('de');
+    useI18n.getState().setLang('en');
+    expect(document.documentElement.lang).toBe('en');
+  });
+
   it('persists the chosen language to localStorage', () => {
     useI18n.getState().setLang('de');
     expect(localStorage.getItem('dsf-lang')).toBe('de');
