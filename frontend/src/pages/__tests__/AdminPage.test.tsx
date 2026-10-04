@@ -104,9 +104,9 @@ describe('AdminPage', () => {
     setQuery({ error: { response: { status: 403 } } });
     renderWithProviders(<AdminPage />);
 
-    expect(
-      screen.getByText('Access denied. You do not have admin privileges.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Access denied. You do not have admin privileges.',
+    );
     // Header still renders, but no empty/loading state while an error is shown.
     expect(screen.getByRole('heading', { name: 'Approval Review' })).toBeInTheDocument();
     expect(screen.queryByText('No pending requests')).not.toBeInTheDocument();
@@ -129,7 +129,10 @@ describe('AdminPage', () => {
     setQuery({ isLoading: true });
     renderWithProviders(<AdminPage />);
 
-    expect(screen.getByText('Loading pending requests…')).toBeInTheDocument();
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('Loading pending requests…');
+    // The Tailwind spinner keeps turning under Reduce Motion, unlike the old inline keyframes.
+    expect(status.querySelector('.animate-spin')).not.toBeNull();
     expect(screen.queryByTestId('request-card')).not.toBeInTheDocument();
     expect(screen.queryByText('No pending requests')).not.toBeInTheDocument();
   });
