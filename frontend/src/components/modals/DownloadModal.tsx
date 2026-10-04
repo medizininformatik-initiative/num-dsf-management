@@ -1,49 +1,25 @@
 /**
- * DownloadModal.tsx — allow-list downloads with verification help.
- * Primary option: the endpoint bundle, exactly what the site's DSF process
- * downloads for the selected endpoint (signed). Secondary: the network-wide
- * bundle (signed too) and the IP-address Excel list. Everything stays behind
- * the disclaimer acknowledgment. After a bundle download the dialog shows the
- * content hash (X-Content-Hash, compared with the SHA-256 of the received
- * bytes), the signature (X-Bundle-Signature, collapsed) and the time, each
- * with a copy button; a three-step guide ends with the Task input for the DSF
- * process downloadAllowList.
- * Dependencies: Modal, Button, Icon, StatusPill, BundlePreview, useEndpoints,
- * entities.api, lib/dateUtils, lib/fingerprint, i18n store, sonner.
+ * DownloadModal.tsx — download dialog of the allow list. Leads with the link DSF
+ * itself uses (the current allow list of the selected endpoint, fetched with the
+ * site's client certificate), lists the published versions with their DSF
+ * history link and a signed GUI download, and keeps the network-wide bundle,
+ * the IP address list and the content preview under a disclosure. Downloads
+ * stay gated behind the verification disclaimer; a finished versioned download
+ * shows its hash and signature for comparison.
+ * Dependencies: Modal, useEndpoints, useBundleHistory, entities API, DownloadVersionList, BundlePreview.
  */
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
-import { selectClass } from './FormField';
-import { BundlePreview } from './BundlePreview';
 import { useEndpoints } from '../../hooks/useEndpoints';
+import { useBundleHistory } from '../../hooks/useBundleHistory';
 import { api, downloadFullAllowListBundle } from '../../api/entities.api';
-import { formatDateTime } from '../../lib/dateUtils';
-import { fingerprintGroups } from '../../lib/fingerprint';
-import { useI18n } from '../../stores/i18n.store';
+import { BundlePreview } from './BundlePreview';
+import { DownloadVersionList } from './DownloadVersionList';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
-import { StatusPill } from '../ui/StatusPill';
-
-/** Task input of dsf-process-allow-list's downloadAllowList (system|code). */
-const TASK_INPUT = 'http://dsf.dev/fhir/CodeSystem/allow-list|allow_list';
-const PROCESS_URL = 'https://github.com/datasharingframework/dsf-process-allow-list';
-
-type BundleKind = 'endpoint' | 'full';
-
-interface DownloadResult {
-  fileName: string;
-  contentHash: string | null;
-  signature: string | null;
-  /** SHA-256 of the bytes received; null when the browser cannot compute it. */
-  localHash: string | null;
-  at: string;
-}
-
-interface EndpointOption {
-  identifier: string;
-  name?: string | null;
-}
+import { Skeleton } from '../ui/Skeleton';
+import { useI18n } from '../../stores/i18n.store';
 
 interface Props {
   open: boolean;
@@ -51,434 +27,315 @@ interface Props {
   instanceId: string;
 }
 
-function saveBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob);
+interface Verification {
+  version: number;
+  hash: string;
+  signature: string;
+}
+
+const TASK_INPUT = 'http://dsf.dev/fhir/CodeSystem/allow-list|allow_list';
+
+function saveBlob(data: BlobPart, type: string, filename: string) {
+  const url = URL.createObjectURL(new Blob([data], { type }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = fileName;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
 
-/** A response header from axios (AxiosHeaders or a plain object). */
-function headerValue(headers: unknown, name: string): string | null {
-  if (!headers || typeof headers !== 'object') return null;
-  const h = headers as { get?: (n: string) => unknown } & Record<string, unknown>;
-  const value = typeof h.get === 'function' ? h.get(name) : h[name];
-  return typeof value === 'string' && value ? value : null;
-}
-
-/** Hex SHA-256 of a blob, or null without WebCrypto (e.g. outside a secure context). */
-async function sha256Hex(blob: Blob): Promise<string | null> {
-  try {
-    const subtle = globalThis.crypto?.subtle;
-    if (!subtle || typeof blob.arrayBuffer !== 'function') return null;
-    const digest = await subtle.digest('SHA-256', await blob.arrayBuffer());
-    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
-  } catch {
-    return null;
-  }
-}
-
-/** Icon button that copies `value` and confirms with a short check mark. */
-function CopyButton({ value, label }: { value: string; label: string }) {
-  const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
-  useEffect(() => () => clearTimeout(timer.current), []);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      clearTimeout(timer.current);
-      timer.current = setTimeout(() => setCopied(false), 1500);
-      toast.success(t('downloadCopiedToast', { label }));
-    } catch {
-      toast.error(t('downloadCopyFailed'));
-    }
-  }
-
-  const name = t('downloadCopyValue', { label });
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={copy}
-      aria-label={name}
-      title={name}
-      className="flex-shrink-0 px-1.5"
-    >
-      <Icon
-        key={copied ? 'done' : 'copy'}
-        name={copied ? 'check' : 'content_copy'}
-        size={16}
-        className={copied ? 'animate-popover-in text-success-fg' : ''}
-      />
-    </Button>
-  );
-}
-
-/** Monospace value with its copy button. */
-function CopyField({ value, label, display }: { value: string; label: string; display?: string }) {
-  return (
-    <div className="flex items-start gap-1 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] py-1 pl-2.5 pr-1">
-      <code className="min-w-0 flex-1 break-all py-1 font-mono text-[11px] leading-relaxed text-[color:var(--text-primary)]">
-        {display ?? value}
-      </code>
-      <CopyButton value={value} label={label} />
-    </div>
-  );
-}
-
-function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
-  return (
-    <li className="flex gap-3">
-      <span
-        aria-hidden="true"
-        className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white"
-      >
-        {n}
-      </span>
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <p className="text-xs font-bold text-[color:var(--text-primary)]">{title}</p>
-        {children}
-      </div>
-    </li>
-  );
-}
-
-const card =
-  'space-y-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-4';
-const helpText = 'text-xs leading-relaxed text-[color:var(--text-secondary)]';
-const fieldLabel = 'text-[11px] font-semibold text-[color:var(--text-secondary)]';
-
 export function DownloadModal({ open, onClose, instanceId }: Props) {
-  const { t, lang } = useI18n();
-  const selectId = useId();
-  const ackHintId = useId();
-  const { data: endpointData } = useEndpoints(instanceId);
-  const endpoints: EndpointOption[] = Array.isArray(endpointData) ? endpointData : [];
-  const [picked, setPicked] = useState('');
-  const [busy, setBusy] = useState<BundleKind | 'ip' | null>(null);
-  const [result, setResult] = useState<DownloadResult | null>(null);
-  // Acknowledgment gate: federated allow-list bundles are recommendations, not
-  // automatically trusted artefacts. Sites verify content, signature and
-  // provenance before deploying (the guide below shows how).
+  const { t } = useI18n();
+  const { data: endpoints = [] } = useEndpoints(instanceId);
+  const [selectedEndpoint, setSelectedEndpoint] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [busyVersion, setBusyVersion] = useState<number | null>(null);
+  const [verification, setVerification] = useState<Verification | null>(null);
+  // Acknowledgment gate: federated AllowList bundles are recommendations, not
+  // automatically-trusted artefacts. Sites must verify content+signature+
+  // provenance before deploying. Block downloads until the operator confirms.
   const [acknowledged, setAcknowledged] = useState(false);
 
-  // Default to the first endpoint; fall back when the picked one disappears.
-  const endpointId = endpoints.some((e) => e.identifier === picked)
-    ? picked
-    : (endpoints[0]?.identifier ?? '');
-  const endpointFile = (id: string) => `allowlist-bundle-${id}.json`;
-  const bundleReference = endpointId
-    ? `${window.location.origin}/fhir/Bundle/${encodeURIComponent(endpointId)}`
+  const history = useBundleHistory(instanceId, selectedEndpoint);
+  const bundleBase = selectedEndpoint
+    ? `${window.location.origin}/fhir/Bundle/${encodeURIComponent(selectedEndpoint)}`
     : '';
-  const commandFile =
-    result?.fileName ?? (endpointId ? endpointFile(endpointId) : 'allow-list-bundle.json');
+  const networkUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'}/download/full-bundle`;
 
-  async function downloadBundle(kind: BundleKind) {
-    setBusy(kind);
+  function copy(text: string) {
+    void navigator.clipboard?.writeText(text);
+    toast.success(t('dlCopied'));
+  }
+
+  async function downloadVersion(version: number) {
+    setBusyVersion(version);
     try {
-      const res =
-        kind === 'endpoint'
-          ? await api(instanceId).downloadBundle(endpointId)
-          : await downloadFullAllowListBundle();
-      const fileName =
-        kind === 'endpoint' ? endpointFile(endpointId) : 'dsf-allow-list-bundle.json';
-      const blob =
-        res.data instanceof Blob
-          ? res.data
-          : new Blob([res.data], { type: 'application/fhir+json' });
-      saveBlob(blob, fileName);
-      setResult({
-        fileName,
-        contentHash: headerValue(res.headers, 'x-content-hash'),
-        signature: headerValue(res.headers, 'x-bundle-signature'),
-        localHash: await sha256Hex(blob),
-        at: new Date().toISOString(),
+      const res = await api(instanceId).downloadBundle(selectedEndpoint, version);
+      saveBlob(res.data, 'application/fhir+json', `dsf-allow-list-v${version}.json`);
+      const h = res.headers ?? {};
+      setVerification({
+        version: Number(h['x-bundle-version'] ?? version),
+        hash: String(h['x-content-hash'] ?? ''),
+        signature: String(h['x-bundle-signature'] ?? ''),
       });
       toast.success(t('bundleDownloaded'));
     } catch {
       toast.error(t('bundleDownloadFailed'));
     } finally {
-      setBusy(null);
+      setBusyVersion(null);
+    }
+  }
+
+  async function downloadNetworkBundle() {
+    setBusy(true);
+    try {
+      const res = await downloadFullAllowListBundle();
+      saveBlob(res.data, 'application/fhir+json', 'dsf-allow-list-bundle.json');
+      toast.success(t('bundleDownloaded'));
+    } catch {
+      toast.error(t('bundleDownloadFailed'));
+    } finally {
+      setBusy(false);
     }
   }
 
   async function downloadIpList() {
-    setBusy('ip');
+    setBusy(true);
     try {
       const res = await api(instanceId).downloadIpList();
-      const blob = new Blob([res.data], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-      saveBlob(blob, `dsf-ip-address-list-${new Date().toISOString().split('T')[0]}.xlsx`);
+      saveBlob(
+        res.data,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        `dsf-ip-address-list-${new Date().toISOString().split('T')[0]}.xlsx`,
+      );
       toast.success(t('downloadIpSuccess'));
     } catch {
       toast.error(t('downloadIpFailed'));
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
-  const hashCheck =
-    result?.contentHash && result.localHash
-      ? result.localHash === result.contentHash.toLowerCase()
-        ? 'match'
-        : 'mismatch'
-      : 'unchecked';
-  const [stepBefore, stepAfter = ''] = t('downloadGuideStep3Body').split('{link}');
-  const ackHint = acknowledged ? undefined : ackHintId;
+  const sectionTitle = 'text-sm font-bold text-[color:var(--text-primary)]';
+  const sectionHelp = 'mt-1 text-xs leading-relaxed text-[color:var(--text-muted)]';
 
   return (
-    <Modal open={open} onClose={onClose} width="max-w-2xl" title={t('downloadModalTitle')}>
-      <div className="space-y-5">
-        <div
-          className="rounded-xl border border-warning-border bg-warning-surface p-3"
-          data-testid="bundle-disclaimer"
-        >
-          <p className="mb-1 text-xs font-semibold text-[color:var(--text-primary)]">
+    <Modal open={open} onClose={onClose} title={t('downloadModalTitle')} width="max-w-2xl">
+      <div className="space-y-4">
+        <div className="glass-thin rounded-2xl p-4" data-testid="bundle-disclaimer">
+          <p className="text-xs font-semibold text-[color:var(--text-primary)]">
             {t('bundleDisclaimerHeading')}
           </p>
-          <p className="mb-2 text-xs leading-relaxed text-[color:var(--text-secondary)]">
+          <p className="mb-2 mt-1 text-xs leading-relaxed text-[color:var(--text-muted)]">
             {t('bundleDisclaimerBody')}
           </p>
-          <label className="flex cursor-pointer items-start gap-2 text-xs text-[color:var(--text-primary)]">
+          <label className="flex cursor-pointer items-start gap-2 text-xs text-[color:var(--text-secondary)]">
             <input
               type="checkbox"
               checked={acknowledged}
               onChange={(e) => setAcknowledged(e.target.checked)}
-              className="mt-0.5 accent-[color:var(--primary)]"
+              className="mt-0.5"
               data-testid="disclaimer-checkbox"
             />
             <span>{t('bundleDisclaimerAcknowledge')}</span>
           </label>
-          {!acknowledged && (
-            <p id={ackHintId} className="mt-2 text-[11px] text-warning-fg">
-              {t('downloadAckHint')}
-            </p>
-          )}
         </div>
 
-        {/* Primary: the endpoint bundle the site's DSF downloads */}
-        <section className={card} aria-labelledby={`${selectId}-title`}>
-          <div>
-            <h3
-              id={`${selectId}-title`}
-              className="text-sm font-bold text-[color:var(--text-primary)]"
-            >
-              {t('downloadEndpointBundleTitle')}
-            </h3>
-            <p className={`mt-1 ${helpText}`}>{t('downloadEndpointBundleHelp')}</p>
-          </div>
-          {endpoints.length === 0 ? (
-            <p className="text-xs font-medium text-warning-fg">{t('downloadNoEndpoints')}</p>
-          ) : (
-            <div className="space-y-1.5">
-              <label htmlFor={selectId} className={`block ${fieldLabel}`}>
-                {t('downloadModalSelectEndpoint')}
-              </label>
-              <select
-                id={selectId}
-                value={endpointId}
-                onChange={(e) => setPicked(e.target.value)}
-                className={selectClass}
+        <div>
+          <label
+            htmlFor="download-endpoint"
+            className="mb-1.5 block text-xs font-semibold text-[color:var(--text-secondary)]"
+          >
+            {t('downloadModalSelectEndpoint')}
+          </label>
+          <select
+            id="download-endpoint"
+            value={selectedEndpoint}
+            onChange={(e) => {
+              setSelectedEndpoint(e.target.value);
+              setVerification(null);
+            }}
+            className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-sm text-[color:var(--text-primary)]"
+          >
+            <option value="">{t('downloadModalSelectEndpointPlaceholder')}</option>
+            {endpoints.map((ep: { identifier: string; name?: string }) => (
+              <option key={ep.identifier} value={ep.identifier}>
+                {ep.name || ep.identifier}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <section className="glass-thin rounded-2xl p-4" aria-labelledby="dl-dsf-link">
+          <h3 id="dl-dsf-link" className={sectionTitle}>
+            {t('dlDsfLinkTitle')}
+          </h3>
+          <p className={sectionHelp}>{t('dlDsfLinkHelp')}</p>
+          {bundleBase ? (
+            <div className="mt-3 flex items-start gap-2">
+              <code
+                className="min-w-0 flex-1 break-all rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-3 font-mono text-xs text-[color:var(--text-primary)]"
+                data-testid="dsf-link"
               >
-                {endpoints.map((ep) => (
-                  <option key={ep.identifier} value={ep.identifier}>
-                    {ep.name ? `${ep.name} (${ep.identifier})` : ep.identifier}
-                  </option>
-                ))}
-              </select>
+                {bundleBase}
+              </code>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => copy(bundleBase)}
+                aria-label={t('dlCopyLink')}
+                data-testid="copy-dsf-link"
+              >
+                <Icon name="content_copy" size={16} />
+                {t('dlCopyLink')}
+              </Button>
             </div>
-          )}
-          <Button
-            className="w-full"
-            disabled={busy !== null || !acknowledged || !endpointId}
-            onClick={() => downloadBundle('endpoint')}
-            aria-describedby={ackHint}
-            data-testid="download-bundle-btn"
-          >
-            <Icon name="download" size={16} />
-            {busy === 'endpoint' ? t('downloadModalDownloading') : t('downloadModalDownloadBundle')}
-          </Button>
-        </section>
-
-        {/* Secondary: the network-wide bundle */}
-        <section className={card} aria-labelledby={`${selectId}-full`}>
-          <div>
-            <h3
-              id={`${selectId}-full`}
-              className="text-xs font-bold text-[color:var(--text-primary)]"
-            >
-              {t('downloadFullBundleTitle')}
-            </h3>
-            <p className={`mt-1 ${helpText}`}>{t('downloadFullBundleHelp')}</p>
-          </div>
-          <Button
-            variant="secondary"
-            className="w-full"
-            disabled={busy !== null || !acknowledged}
-            onClick={() => downloadBundle('full')}
-            aria-describedby={ackHint}
-            data-testid="download-full-bundle-btn"
-          >
-            <Icon name="public" size={16} />
-            {busy === 'full' ? t('downloadModalDownloading') : t('downloadFullBundleBtn')}
-          </Button>
-        </section>
-
-        {result && (
-          <section
-            key={result.at}
-            data-testid="download-result"
-            className="animate-list-item-in space-y-3 rounded-xl border border-info-border bg-info-surface p-4"
-          >
-            <p className="flex items-center gap-1.5 break-all text-xs font-bold text-[color:var(--text-primary)]">
-              <Icon name="task_alt" size={16} className="text-info-fg" />
-              {t('downloadResultTitle', { file: result.fileName })}
+          ) : (
+            <p className="mt-3 text-xs italic text-[color:var(--text-muted)]">
+              {t('dlDsfLinkPick')}
             </p>
-            {!result.contentHash && !result.signature && (
-              <p role="alert" className="text-xs font-medium text-warning-fg">
-                {t('downloadResultNoHeaders')}
+          )}
+          <code className="mt-2 block break-all font-mono text-[11px] text-[color:var(--text-muted)]">
+            {TASK_INPUT}
+          </code>
+        </section>
+
+        {selectedEndpoint && (
+          <section className="glass-thin rounded-2xl p-4" aria-labelledby="dl-history">
+            <h3 id="dl-history" className={`${sectionTitle} mb-3`}>
+              {t('dlHistoryTitle')}
+            </h3>
+            {history.isLoading ? (
+              <Skeleton lines={3} />
+            ) : history.isError ? (
+              <p role="alert" className="text-xs text-danger-fg">
+                {t('dlHistoryLoadFailed')}
               </p>
+            ) : (history.data?.length ?? 0) === 0 ? (
+              <p className="text-xs italic text-[color:var(--text-muted)]">{t('dlHistoryEmpty')}</p>
+            ) : (
+              <DownloadVersionList
+                versions={history.data ?? []}
+                historyUrl={(v) => `${bundleBase}/_history/${v}`}
+                onCopy={copy}
+                onDownload={downloadVersion}
+                downloadDisabled={!acknowledged}
+                busyVersion={busyVersion}
+              />
             )}
-            {result.contentHash && (
-              <div className="space-y-1">
-                <p className={fieldLabel}>{t('downloadResultHash')}</p>
-                <CopyField
-                  value={result.contentHash}
-                  display={fingerprintGroups(result.contentHash).join(' ')}
-                  label={t('downloadResultHash')}
-                />
-                {hashCheck === 'match' && (
-                  <StatusPill
-                    tone="success"
-                    icon="verified"
-                    className="whitespace-normal"
-                    data-testid="hash-check"
-                  >
-                    {t('downloadResultHashMatch')}
-                  </StatusPill>
-                )}
-                {hashCheck === 'mismatch' && (
-                  <p role="alert" data-testid="hash-check">
-                    <StatusPill tone="danger" icon="gpp_bad" className="whitespace-normal">
-                      {t('downloadResultHashMismatch')}
-                    </StatusPill>
-                  </p>
-                )}
-                {hashCheck === 'unchecked' && (
-                  <p className="text-[11px] text-[color:var(--text-secondary)]">
-                    {t('downloadResultHashUnchecked')}
-                  </p>
-                )}
-              </div>
-            )}
-            {result.signature && (
-              <div className="flex items-start gap-1">
-                <details className="group min-w-0 flex-1">
-                  <summary className="flex cursor-pointer list-none items-center gap-1 rounded py-1 text-[11px] font-semibold text-[color:var(--text-secondary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
-                    <Icon
-                      name="chevron_right"
-                      size={16}
-                      className="transition-transform duration-short ease-standard group-open:rotate-90"
-                    />
-                    {t('downloadResultSignature')}
-                  </summary>
-                  <code className="mt-1 block max-h-32 overflow-auto break-all rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] p-2 font-mono text-[11px] leading-relaxed text-[color:var(--text-primary)]">
-                    {result.signature}
-                  </code>
-                </details>
-                <CopyButton value={result.signature} label={t('downloadResultSignature')} />
-              </div>
-            )}
-            <div className="flex items-center gap-1">
-              <p className="min-w-0 flex-1 text-xs text-[color:var(--text-primary)]">
-                <span className={fieldLabel}>{t('downloadResultTime')}</span>{' '}
-                <time dateTime={result.at}>{formatDateTime(result.at, lang)}</time>
-              </p>
-              <CopyButton value={result.at} label={t('downloadResultTime')} />
-            </div>
           </section>
         )}
 
-        {/* How to verify and import */}
-        <section aria-labelledby={`${selectId}-guide`} className="space-y-3">
-          <h3
-            id={`${selectId}-guide`}
-            className="text-sm font-bold text-[color:var(--text-primary)]"
+        {verification && (
+          <section
+            className="glass-thin rounded-2xl p-4"
+            aria-labelledby="dl-verify"
+            data-testid="verify-panel"
           >
-            {t('downloadGuideTitle')}
-          </h3>
-          <ol className="space-y-4">
-            <Step n={1} title={t('downloadGuideStep1Title')}>
-              <p className={helpText}>{t('downloadGuideStep1Body')}</p>
-            </Step>
-            <Step n={2} title={t('downloadGuideStep2Title')}>
-              <p className={helpText}>{t('downloadGuideStep2Body')}</p>
-              <p className={fieldLabel}>{t('downloadGuideStep2Commands')}</p>
-              <CopyField value={`sha256sum ${commandFile}`} label="sha256sum" />
-              <CopyField
-                value={`Get-FileHash ${commandFile} -Algorithm SHA256`}
-                label="Get-FileHash"
-              />
-            </Step>
-            <Step n={3} title={t('downloadGuideStep3Title')}>
-              <p className={helpText}>
-                {stepBefore}
-                <a
-                  href={PROCESS_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-0.5 font-semibold text-primary underline-offset-2 hover:underline dark:text-brand-400"
-                >
-                  {t('downloadGuideProcessLink')}
-                  <Icon name="open_in_new" size={12} />
-                </a>
-                {stepAfter}
-              </p>
-              <p className={fieldLabel}>{t('downloadGuideTaskInput')}</p>
-              <CopyField value={TASK_INPUT} label={t('downloadGuideTaskInput')} />
-              <p className={fieldLabel}>{t('downloadGuideReference')}</p>
-              {bundleReference ? (
-                <CopyField value={bundleReference} label={t('downloadGuideReference')} />
-              ) : (
-                <p className="text-xs text-warning-fg">{t('downloadGuideSelectEndpoint')}</p>
-              )}
-              <p className="flex gap-1.5 text-[11px] leading-relaxed text-[color:var(--text-secondary)]">
-                <Icon name="info" size={14} className="mt-px flex-shrink-0 text-info-fg" />
-                <span>{t('downloadGuideIdentifiers')}</span>
-              </p>
-            </Step>
-          </ol>
-        </section>
-
-        <section className={card}>
-          <div>
-            <h3 className="text-xs font-bold text-[color:var(--text-primary)]">
-              {t('downloadModalIpTitle')}
+            <h3 id="dl-verify" className={sectionTitle}>
+              {t('dlVerifyTitle')}
             </h3>
-            <p className={`mt-1 ${helpText}`}>{t('downloadModalIpDesc')}</p>
+            <p className={sectionHelp}>{t('dlVerifyIntro')}</p>
+            {verification.hash || verification.signature ? (
+              <dl className="mt-3 space-y-2 text-xs">
+                <div>
+                  <dt className="font-semibold text-[color:var(--text-secondary)]">
+                    {t('dlVerifyVersion')}
+                  </dt>
+                  <dd className="font-mono text-[color:var(--text-primary)]">
+                    v{verification.version}
+                  </dd>
+                </div>
+                {verification.hash && (
+                  <div>
+                    <dt className="font-semibold text-[color:var(--text-secondary)]">
+                      {t('dlVerifyHash')}
+                    </dt>
+                    <dd className="break-all font-mono text-[color:var(--text-primary)]">
+                      {verification.hash}
+                    </dd>
+                  </div>
+                )}
+                {verification.signature && (
+                  <div>
+                    <dt className="font-semibold text-[color:var(--text-secondary)]">
+                      {t('dlVerifySignature')}
+                    </dt>
+                    <dd className="break-all font-mono text-[color:var(--text-primary)]">
+                      {verification.signature}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            ) : (
+              <p className="mt-3 text-xs text-warning-fg">{t('dlVerifyNone')}</p>
+            )}
+            <p className={sectionHelp}>{t('dlVerifyHelp', { n: verification.version })}</p>
+          </section>
+        )}
+
+        <details className="glass-thin rounded-2xl p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-[color:var(--text-secondary)]">
+            {t('dlAdvanced')}
+          </summary>
+          <div className="mt-4 space-y-4">
+            <div className="space-y-2">
+              <h3 className={sectionTitle}>{t('downloadFullBundleTitle')}</h3>
+              <p className={sectionHelp}>{t('downloadFullBundleHelp')}</p>
+              <div className="flex items-start gap-2">
+                <code className="min-w-0 flex-1 break-all rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-3 font-mono text-[11px] text-[color:var(--text-primary)]">
+                  {networkUrl}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => copy(networkUrl)}
+                  aria-label={t('downloadModalCopyUrl')}
+                  className="press-effect inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+                >
+                  <Icon name="content_copy" size={18} />
+                </button>
+              </div>
+              <Button
+                variant="secondary"
+                disabled={busy || !acknowledged}
+                onClick={downloadNetworkBundle}
+                data-testid="download-bundle-btn"
+                className="w-full"
+              >
+                {busy ? t('downloadModalDownloading') : t('downloadModalDownloadBundle')}
+              </Button>
+            </div>
+            <div className="space-y-2">
+              <h3 className={sectionTitle}>{t('downloadModalIpTitle')}</h3>
+              <p className={sectionHelp}>{t('downloadModalIpDesc')}</p>
+              <Button
+                variant="secondary"
+                onClick={downloadIpList}
+                disabled={busy || !acknowledged}
+                data-testid="download-ip-btn"
+                className="w-full"
+              >
+                {busy ? t('downloadModalDownloading') : t('downloadModalDownloadIp')}
+              </Button>
+            </div>
+            <BundlePreview instanceId={instanceId} />
           </div>
-          <Button
-            variant="secondary"
-            className="w-full"
-            onClick={downloadIpList}
-            disabled={busy !== null || !acknowledged}
-            aria-describedby={ackHint}
-            data-testid="download-ip-btn"
+        </details>
+
+        <p className="text-xs text-[color:var(--text-muted)]">
+          {t('downloadModalPluginTip').split('DSF Allow List Plugin')[0]}
+          <a
+            href="https://github.com/datasharingframework/dsf-process-allow-list/releases"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-[color:var(--accent)] underline"
           >
-            <Icon name="table_view" size={16} />
-            {busy === 'ip' ? t('downloadModalDownloading') : t('downloadModalDownloadIp')}
-          </Button>
-        </section>
+            DSF Allow List Plugin
+          </a>
+          {t('downloadModalPluginTip').split('DSF Allow List Plugin')[1]}
+        </p>
 
-        <BundlePreview instanceId={instanceId} />
-
-        <div className="flex justify-end border-t border-[color:var(--border)] pt-4">
+        <div className="flex justify-end border-t border-[color:var(--border)] pt-3">
           <Button variant="secondary" onClick={onClose}>
             {t('downloadModalClose')}
           </Button>

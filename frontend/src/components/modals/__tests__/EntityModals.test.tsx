@@ -20,13 +20,10 @@ const certCreate = vi.hoisted(() => vi.fn());
 const endpointCreate = vi.hoisted(() => vi.fn());
 const endpointUpdate = vi.hoisted(() => vi.fn());
 const downloadBundle = vi.hoisted(() => vi.fn());
-const downloadEndpointBundle = vi.hoisted(() => vi.fn());
 const downloadIp = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../hooks/useCertificates', () => ({
   useCreateCertificate: () => ({ mutateAsync: certCreate, isPending: false }),
-  // The upload preview stays pending; it never blocks these submits.
-  usePreviewCertificate: () => ({ mutate: vi.fn(), isPending: true, isError: false }),
 }));
 
 const endpointsFixture = [
@@ -46,7 +43,10 @@ vi.mock('../../../hooks/useEndpoints', () => ({
 // BundlePreview pulls in unrelated API state for these tests.
 vi.mock('../BundlePreview', () => ({ BundlePreview: () => null }));
 vi.mock('../../../api/entities.api', () => ({
-  api: () => ({ downloadIpList: downloadIp, downloadBundle: downloadEndpointBundle }),
+  api: () => ({
+    downloadIpList: downloadIp,
+    getBundleHistory: vi.fn().mockResolvedValue({ data: { data: [] } }),
+  }),
   downloadFullAllowListBundle: downloadBundle,
 }));
 
@@ -67,7 +67,6 @@ beforeEach(() => {
   endpointCreate.mockReset().mockResolvedValue(undefined);
   endpointUpdate.mockReset().mockResolvedValue(undefined);
   downloadBundle.mockReset().mockResolvedValue({ data: '{}' });
-  downloadEndpointBundle.mockReset().mockResolvedValue({ data: '{}' });
   downloadIp.mockReset().mockResolvedValue({ data: new Uint8Array([1, 2, 3]) });
 });
 
@@ -128,8 +127,6 @@ describe('EndpointModal', () => {
     fireEvent.change(screen.getByPlaceholderText(/dsf-fhir\.hospital\.de\/fhir/i), {
       target: { value: 'https://dsf-fhir.hospital.de/fhir' },
     });
-    // New endpoints start without IP rows.
-    fireEvent.click(screen.getByRole('button', { name: /add ip address/i }));
     fireEvent.change(screen.getByPlaceholderText(/128\.176\.232\.132/), {
       target: { value: '128.176.232.132' },
     });
@@ -173,7 +170,7 @@ describe('DownloadModal', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('keeps downloads gated until the disclaimer is acknowledged, then downloads the endpoint bundle', async () => {
+  it('keeps downloads gated until the disclaimer is acknowledged, then triggers the bundle download', async () => {
     const user = userEvent.setup();
     renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
 
@@ -186,8 +183,6 @@ describe('DownloadModal', () => {
     expect(bundleBtn).toBeEnabled();
 
     await user.click(bundleBtn);
-    // The only endpoint is preselected; the network-wide bundle is a separate button.
-    await waitFor(() => expect(downloadEndpointBundle).toHaveBeenCalledWith('ep1'));
-    expect(downloadBundle).not.toHaveBeenCalled();
+    await waitFor(() => expect(downloadBundle).toHaveBeenCalledTimes(1));
   });
 });
