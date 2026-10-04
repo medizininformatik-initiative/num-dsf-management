@@ -138,7 +138,7 @@ export const de: Record<TranslationKey, string> = {
   adminFourEyesTitle: '4-Augen-Prinzip',
   adminFourEyesBody:
     'Zwei Admins von verschiedenen Standorten müssen genehmigen, bevor ein Antrag abgeschlossen wird. Nach der ersten Genehmigung hat ein zweiter Admin 7 Tage Zeit zum Ablehnen; bleibt eine Ablehnung aus, wird der Antrag automatisch genehmigt.',
-  adminAccessDenied: 'Zugriff verweigert. Du hast keine Admin-Rechte.',
+  adminAccessDenied: 'Zugriff verweigert. Sie haben keine Admin-Rechte.',
   adminLoadFailed:
     'Ausstehende Anträge konnten nicht geladen werden. Bitte später erneut versuchen.',
   adminLoadingRequests: 'Ausstehende Anträge werden geladen…',
@@ -154,7 +154,7 @@ export const de: Record<TranslationKey, string> = {
   adminRejectingBtn: 'Wird abgelehnt…',
   adminConfirmRejectBtn: 'Ablehnung bestätigen',
   adminRejectionReasonLabel: 'Ablehnungsgrund (erforderlich)',
-  adminRejectionReasonPlaceholder: 'Begründe, warum dieser Antrag abgelehnt wird…',
+  adminRejectionReasonPlaceholder: 'Begründen Sie, warum dieser Antrag abgelehnt wird…',
   adminTotpPlaceholder: '6-stelliger Authentifizierungscode',
   adminTotpRequired: 'Erforderlich zum Genehmigen/Ablehnen',
   adminHideDetails: 'Details ausblenden',
@@ -163,11 +163,11 @@ export const de: Record<TranslationKey, string> = {
   adminToastApproveFailed: 'Antrag konnte nicht genehmigt werden.',
   adminToastRejectSuccess: 'Antrag abgelehnt.',
   adminToastRejectFailed: 'Antrag konnte nicht abgelehnt werden.',
-  adminToastTotpRequired: 'Bitte gib deinen 6-stelligen Authentifizierungscode ein.',
-  adminToastReasonRequired: 'Bitte gib einen Ablehnungsgrund an.',
+  adminToastTotpRequired: 'Bitte geben Sie Ihren 6-stelligen Authentifizierungscode ein.',
+  adminToastReasonRequired: 'Bitte geben Sie einen Ablehnungsgrund an.',
   adminAlreadyApproved2: 'Bereits von 2 Admins genehmigt',
-  adminAlreadyDecided: 'Du hast diesen Antrag bereits bearbeitet',
-  adminSameSiteApproval: 'Ein anderer Admin von deinem Standort hat bereits genehmigt',
+  adminAlreadyDecided: 'Sie haben diesen Antrag bereits bearbeitet',
+  adminSameSiteApproval: 'Ein anderer Admin Ihres Standorts hat bereits genehmigt',
   adminSnapshotNoOrg: 'Keine Organisationsdaten',
   adminSnapshotNoEndpoints: 'Keine Endpunkte',
   adminSnapshotNoCerts: 'Keine Zertifikate',
@@ -210,16 +210,16 @@ export const de: Record<TranslationKey, string> = {
   next: 'Nächste',
 
   // LoginPage
-  loginSubtitle: 'Gib deine E-Mail ein, um einen Einmalcode zu erhalten.',
+  loginSubtitle: 'Geben Sie Ihre E-Mail-Adresse ein, um einen Einmalcode zu erhalten.',
   loginEmailLabel: 'E-Mail-Adresse',
-  loginEmailPlaceholder: 'du@krankenhaus.de',
+  loginEmailPlaceholder: 'name@krankenhaus.de',
   loginSendingBtn: 'Code wird gesendet…',
   loginSendBtn: 'Code senden →',
-  loginCertHint: 'Oder, falls dein Browser ein Client-Zertifikat hat:',
+  loginCertHint: 'Oder, falls Ihr Browser ein registriertes Client-Zertifikat hat:',
   loginCertBtn: 'Mit Client-Zertifikat anmelden',
   loginCertSigningIn: 'Wird angemeldet…',
   loginCertFailed: 'Anmeldung mit Client-Zertifikat fehlgeschlagen.',
-  loginOtpRequestFailed: 'Server nicht erreichbar. Bitte versuche es erneut.',
+  loginOtpRequestFailed: 'Server nicht erreichbar. Bitte versuchen Sie es erneut.',
 
   // OtpPage
   otpTitle: 'Code eingeben',
@@ -234,8 +234,8 @@ export const de: Record<TranslationKey, string> = {
 
   // TotpPage
   totpTitle: 'Zwei-Faktor-Authentifizierung',
-  totpSubtitleApp: 'Gib den 6-stelligen Code aus deiner Authenticator-App ein.',
-  totpSubtitleBackup: 'Gib einen deiner Backup-Codes ein.',
+  totpSubtitleApp: 'Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein.',
+  totpSubtitleBackup: 'Geben Sie einen Ihrer Backup-Codes ein.',
   totpLabelApp: 'Authenticator-Code',
   totpLabelBackup: 'Backup-Code',
   totpVerifying: 'Wird geprüft…',
@@ -248,15 +248,15 @@ export const de: Record<TranslationKey, string> = {
   // TotpSetupPage
   totpSetupTitle: 'Zwei-Faktor-Authentifizierung einrichten',
   totpSetupSubtitle:
-    'Scanne den QR-Code mit deiner Authenticator-App (Google Authenticator, Authy, etc.)',
+    'Scannen Sie den QR-Code mit Ihrer Authenticator-App (Google Authenticator, Authy usw.).',
   totpSetupLoadingQr: 'QR-Code wird geladen…',
   totpSetupQrAlt: 'TOTP QR-Code',
-  totpSetupQrHint: 'Gib nach dem Scannen den 6-stelligen Code aus deiner App ein.',
+  totpSetupQrHint: 'Geben Sie nach dem Scannen den 6-stelligen Code aus Ihrer App ein.',
   totpSetupScannedBtn: 'QR-Code gescannt →',
   totpSetupSessionExpired: 'Sitzung abgelaufen. Bitte erneut anmelden.',
   totpConfirmTitle: 'Authenticator bestätigen',
   totpConfirmSubtitle:
-    'Gib den 6-stelligen Code aus deiner Authenticator-App ein, um die Einrichtung abzuschließen.',
+    'Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein, um die Einrichtung abzuschließen.',
   totpConfirmLabel: 'Authenticator-Code',
   totpConfirmVerifying: 'Wird geprüft…',
   totpConfirmCompleteBtn: 'Einrichtung abschließen →',
@@ -264,7 +264,7 @@ export const de: Record<TranslationKey, string> = {
   totpConfirmBackToQr: '← Zurück zum QR-Code',
   totpBackupTitle: 'Backup-Codes speichern',
   totpBackupSubtitle:
-    'Bewahre diese Codes sicher auf. Jeder Code kann nur einmal verwendet werden, falls du Zugang zu deiner Authenticator-App verlierst.',
+    'Bewahren Sie diese Codes sicher auf. Jeder Code kann einmal verwendet werden, falls Sie den Zugang zu Ihrer Authenticator-App verlieren.',
   totpBackupWarning:
     'Diese Codes werden nicht erneut angezeigt. Kopieren Sie sie jetzt oder laden Sie sie herunter.',
   totpBackupContinueBtn: 'Weiter →',
@@ -1107,7 +1107,7 @@ export const de: Record<TranslationKey, string> = {
   adminOnboardingNavLabel: 'Onboarding',
   adminOnboardingTitle: 'Massen-Onboarding-Import',
   adminOnboardingIntro:
-    'Lade eine CSV- oder JSON-Datei mit den Spalten organizationIdentifier, organizationName, contactEmail und clientCertFingerprint hoch (optional zusätzlich city und countryCode). Der Fingerabdruck ist der SHA-512-Fingerabdruck des Client-Zertifikats.',
+    'Laden Sie eine CSV- oder JSON-Datei mit den Spalten organizationIdentifier, organizationName, contactEmail und clientCertFingerprint hoch (optional zusätzlich city und countryCode). Der Fingerabdruck ist der SHA-512-Fingerabdruck des Client-Zertifikats.',
   adminOnboardingFileLabel: 'Datei',
   adminOnboardingNoFileChosen: 'Keine Datei ausgewählt',
   adminOnboardingImportBtn: 'Importieren',
@@ -1248,14 +1248,14 @@ export const de: Record<TranslationKey, string> = {
   certStatusTitle: 'Zertifikats-Anmeldung',
   certStatusChecking: 'Zertifikat wird geprüft…',
   certStatusNoCert:
-    'Es wurde kein Client-Zertifikat präsentiert. Installiere dein Zertifikat im Browser und lade die Seite neu.',
+    'Es wurde kein Client-Zertifikat vorgelegt. Installieren Sie Ihr Zertifikat im Browser und laden Sie die Seite neu.',
   certStatusNotRegistered:
-    'Dein Zertifikat ist nicht in der Allow-List. Bitte den IMI-Betreiber, es für deine Organisation zu registrieren.',
+    'Ihr Zertifikat ist nicht in der Allow-List. Bitten Sie den IMI-Betreiber, es für Ihre Organisation zu registrieren.',
   certStatusNoInstance:
-    'Diesem Zertifikat ist kein Arbeitsbereich zugeordnet. Kontaktiere den IMI-Betreiber.',
-  certStatusLocked: 'Dieses Konto ist gesperrt. Kontaktiere den IMI-Betreiber.',
+    'Diesem Zertifikat ist kein Arbeitsbereich zugeordnet. Wenden Sie sich an den IMI-Betreiber.',
+  certStatusLocked: 'Dieses Konto ist gesperrt. Wenden Sie sich an den IMI-Betreiber.',
   certStatusGeneric:
-    'Die Anmeldung mit deinem Zertifikat ist fehlgeschlagen. Kontaktiere den IMI-Betreiber.',
+    'Die Anmeldung mit Ihrem Zertifikat ist fehlgeschlagen. Wenden Sie sich an den IMI-Betreiber.',
   certStatusRetry: 'Erneut versuchen',
 
   // Entity canvas — FK links and organization card
