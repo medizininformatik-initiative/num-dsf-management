@@ -79,6 +79,15 @@ export function parseCertificate(pem: string): {
   }
 }
 
+/** DSF SHA-512 thumbprint of a stored PEM; empty for corrupted at-rest data. */
+function thumbprintOf(pem: string): string {
+  try {
+    return sha512FingerprintFromPem(pem);
+  } catch {
+    return '';
+  }
+}
+
 /** Issuer DN of a stored PEM; empty for corrupted at-rest data. */
 function issuerOf(pem: string): string {
   try {
@@ -103,7 +112,9 @@ async function toApiCertificates<T extends { pem: string }>(
   const trusted = await whitelistedIssuers(issuers.filter(Boolean));
   return rows.map(({ pem, ...rest }, i) => ({
     ...rest,
-    thumbprintSha512: sha512FingerprintFromPem(pem),
+    // One unreadable row must not take the whole list down; the allow-list
+    // bundle still refuses it (CERTIFICATE_PEM_INVALID).
+    thumbprintSha512: thumbprintOf(pem),
     issuerDn: issuers[i],
     issuerTrusted: trusted.has(issuers[i]),
   }));
