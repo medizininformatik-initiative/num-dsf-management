@@ -69,7 +69,12 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization'],
     // Bundle downloads carry their verification data in headers; without this
     // a frontend on another origin (Vite dev server) cannot read them.
-    exposedHeaders: ['X-Bundle-Signature', 'X-Content-Hash', 'Content-Disposition'],
+    exposedHeaders: [
+      'X-Bundle-Signature',
+      'X-Content-Hash',
+      'X-Bundle-Version',
+      'Content-Disposition',
+    ],
   }),
 );
 

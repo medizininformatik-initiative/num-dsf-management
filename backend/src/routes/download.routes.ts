@@ -1,17 +1,21 @@
 /**
  * download.routes.ts – FHIR-Bundle and IP-list export endpoints
- * Dependencies: auth/instance/admin middleware, fhir.service, excel.service,
- *               bundle-signing.service, audit.service, sanitizeError
+ * Dependencies: auth/instance/admin middleware, bundle-versions.service,
+ *               excel.service, bundle-signing.service, audit.service, sanitizeError
  *
- * /bundle             — tenant export, signed with kid + content hash
- * /full-bundle        — network-wide bundle (authenticated download)
+ * /bundle             — tenant export of the current version (or `?version=`),
+ *                       signed with kid + content hash, X-Bundle-Version
+ * /full-bundle        — network-wide bundle of the current version (authenticated download)
  * /ip-address-list    — admin Excel export of all allow-listed IPs
  */
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireInstanceOwnership } from '../middleware/instance.middleware';
 import { requireImiAdmin } from '../middleware/admin.middleware';
-import { generateBundle, generateFullBundle } from '../services/fhir.service';
+import {
+  getPublishedFullBundle,
+  getPublishedReceiverBundle,
+} from '../services/bundle-versions.service';
 import { generateIpAddressListExcel } from '../services/excel.service';
 import { signBundle } from '../services/bundle-signing.service';
 import { writeAuditLog } from '../services/audit.service';
@@ -21,10 +25,11 @@ export const downloadRouter = Router({ mergeParams: true });
 
 downloadRouter.get('/full-bundle', requireAuth, async (req, res) => {
   try {
-    const bundle = await generateFullBundle();
-    // Signed like the endpoint bundle, so the download dialog can show the
-    // hash and signature a site needs to verify what it imports.
-    const { json, signature, contentHash } = signBundle(bundle);
+    // The current version, signed like the endpoint bundle, so the download
+    // dialog can show the hash and signature a site needs to verify what it
+    // imports. Live state only before the first stored version.
+    const { json, signature, contentHash, versionNumber } = await getPublishedFullBundle();
+    if (versionNumber) res.setHeader('X-Bundle-Version', String(versionNumber));
     res.setHeader('Content-Type', 'application/fhir+json');
     res.setHeader('Content-Disposition', 'attachment; filename="dsf-allow-list-bundle.json"');
     res.setHeader('X-Bundle-Signature', signature);
@@ -58,9 +63,20 @@ downloadRouter.get('/bundle', requireAuth, requireInstanceOwnership, async (req,
       .status(400)
       .json({ error: { code: 'MISSING_ENDPOINT', message: 'endpointId required' } });
   }
+  const versionParam = req.query.version;
+  if (versionParam !== undefined && !/^[1-9]\d{0,9}$/.test(String(versionParam))) {
+    return res
+      .status(400)
+      .json({ error: { code: 'INVALID_VERSION', message: 'version must be a positive integer' } });
+  }
   try {
-    const bundle = await generateBundle(req.instance!.id, endpointId);
+    const { bundle, version } = await getPublishedReceiverBundle(
+      req.instance!.id,
+      endpointId,
+      versionParam === undefined ? undefined : Number(versionParam),
+    );
     const { json, signature, contentHash } = signBundle(bundle);
+    if (version) res.setHeader('X-Bundle-Version', String(version.number));
     res.setHeader('Content-Type', 'application/fhir+json');
     res.setHeader(
       'Content-Disposition',

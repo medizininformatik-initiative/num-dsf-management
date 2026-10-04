@@ -8,8 +8,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.middleware';
+import { requireInstanceOwnership } from '../middleware/instance.middleware';
 import { asyncHandler } from '../lib/asyncHandler';
 import * as svc from '../services/instances.service';
+import { resolveReceiver } from '../services/fhir.service';
+import { listReceiverHistory } from '../services/bundle-versions.service';
 
 const labelSchema = z.object({
   label: z.string().trim().min(1, 'label required').max(255, 'label too long'),
@@ -40,6 +43,28 @@ instancesRouter.get(
     if (!instance)
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Instance not found' } });
     res.json({ data: instance });
+  }),
+);
+
+// Versions of the published allow list a site can download for one of its
+// endpoints (newest first); the endpoint must belong to the instance.
+instancesRouter.get(
+  '/:id/bundle-history',
+  requireInstanceOwnership,
+  asyncHandler(async (req, res) => {
+    const endpointId = typeof req.query.endpointId === 'string' ? req.query.endpointId : '';
+    if (!endpointId) {
+      return res
+        .status(400)
+        .json({ error: { code: 'MISSING_ENDPOINT', message: 'endpointId required' } });
+    }
+    try {
+      await resolveReceiver(req.instance!.id, endpointId);
+    } catch {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Endpoint not found' } });
+    }
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit), 10) || 50, 1), 200);
+    res.json({ data: await listReceiverHistory({ limit }) });
   }),
 );
 

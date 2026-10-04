@@ -5,7 +5,9 @@
  * referenced in its start Task with the site's DSF client certificate:
  *   GET {base}/Bundle/{id}   Accept: application/fhir+json
  * so the reference https://<host>/fhir/Bundle/<endpoint-identifier> yields
- * the allow list scoped to that endpoint of the caller's organization.
+ * the allow list scoped to that endpoint of the caller's organization. That is
+ * always the CURRENT bundle version (Bundle.meta.versionId, ETag, Last-Modified);
+ * _history lists all versions and _history/{vid} reads an old one.
  *
  * Authentication is mTLS only (no JWT). The certificate is resolved to an
  * organization by, in order: the SHA-512 login fingerprint, the legacy
@@ -16,7 +18,12 @@
  */
 import { Router, Request, Response } from 'express';
 import { db } from '../db/connection';
-import { generateBundle, generateFullBundle } from '../services/fhir.service';
+import { resolveReceiver } from '../services/fhir.service';
+import {
+  getPublishedFullBundle,
+  getPublishedReceiverBundle,
+  listReceiverHistory,
+} from '../services/bundle-versions.service';
 import { writeAuditLog } from '../services/audit.service';
 import { extractClientCert, type ClientCertInfo } from '../lib/clientCert';
 
@@ -93,41 +100,121 @@ async function authenticate(req: Request, res: Response): Promise<ResolvedOrg | 
   return resolved;
 }
 
-// GET /fhir/Bundle/:endpointId — allow list for one endpoint of the caller's organization
+const NOT_FOUND_ERRORS = new Set([
+  'ENDPOINT_NOT_FOUND',
+  'ORGANIZATION_NOT_FOUND',
+  'VERSION_NOT_FOUND',
+]);
+
+function handleError(res: Response, err: unknown) {
+  const message = err instanceof Error ? err.message : 'unknown';
+  if (NOT_FOUND_ERRORS.has(message)) return sendOutcome(res, 404, 'not-found', message);
+  return sendOutcome(res, 500, 'exception', 'Internal server error');
+}
+
+/** Version headers; a conditional GET with a matching ETag answers 304. */
+function setVersionHeaders(res: Response, version: { number: number; createdAt: Date } | null) {
+  if (!version) return;
+  res.setHeader('ETag', `W/"${version.number}"`);
+  res.setHeader('Last-Modified', version.createdAt.toUTCString());
+}
+
+/** Non-blocking audit; the caller is a certificate, not a user, so only a
+ * masked identifier prefix is recorded and never the certificate itself. */
+function auditRead(req: Request, resolved: ResolvedOrg, extra: Record<string, unknown> = {}) {
+  const cert = extractClientCert(req)!;
+  writeAuditLog({
+    instanceId: resolved.org.instance_id,
+    resourceType: 'CERTIFICATE',
+    resourceId: req.params.endpointId,
+    operation: 'CREATE',
+    diffJson: {
+      authMethod: 'client_cert',
+      match: resolved.match,
+      idPrefix: (cert.fingerprint ?? cert.thumbprint).slice(0, 16),
+      ...extra,
+    },
+    ipAddress: req.ip || 'unknown',
+  }).catch(() => {});
+}
+
+// Scoped to the caller's own instance: the endpoint is only found among the
+// organization's endpoints, so a certificate of org A cannot read a bundle
+// addressed to org B's endpoint (404).
+
+// GET /fhir/Bundle/:endpointId — the CURRENT allow list for one endpoint of the
+// caller's organization: the receiver view of the latest bundle version.
 fhirRouter.get('/Bundle/:endpointId', async (req: Request, res: Response) => {
   try {
     const resolved = await authenticate(req, res);
     if (!resolved) return;
-    const { org, match } = resolved;
-
-    // Scoped to the caller's own instance: generateBundle only finds the
-    // endpoint among the organization's endpoints, so a certificate of org A
-    // cannot read a bundle addressed to org B's endpoint (404).
-    const bundle = await generateBundle(org.instance_id, req.params.endpointId);
-
-    // Non-blocking audit; the caller is a certificate, not a user, so only a
-    // masked identifier prefix is recorded and never the certificate itself.
-    const cert = extractClientCert(req)!;
-    writeAuditLog({
-      instanceId: org.instance_id,
-      resourceType: 'CERTIFICATE',
-      resourceId: req.params.endpointId,
-      operation: 'CREATE',
-      diffJson: {
-        authMethod: 'client_cert',
-        match,
-        idPrefix: (cert.fingerprint ?? cert.thumbprint).slice(0, 16),
-      },
-      ipAddress: req.ip || 'unknown',
-    }).catch(() => {});
-
+    const { bundle, version } = await getPublishedReceiverBundle(
+      resolved.org.instance_id,
+      req.params.endpointId,
+    );
+    auditRead(req, resolved, version ? { version: version.number } : {});
+    setVersionHeaders(res, version);
     return res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'unknown';
-    if (message === 'ENDPOINT_NOT_FOUND' || message === 'ORGANIZATION_NOT_FOUND') {
-      return sendOutcome(res, 404, 'not-found', message);
+    return handleError(res, err);
+  }
+});
+
+// GET /fhir/Bundle/:endpointId/_history — FHIR history Bundle, newest first,
+// one entry per version without the resource; read a version via _history/{vid}.
+fhirRouter.get('/Bundle/:endpointId/_history', async (req: Request, res: Response) => {
+  try {
+    const resolved = await authenticate(req, res);
+    if (!resolved) return;
+    const endpointId = req.params.endpointId;
+    await resolveReceiver(resolved.org.instance_id, endpointId);
+    const count = Math.min(Math.max(parseInt(String(req.query._count), 10) || 50, 1), 200);
+    const entries = await listReceiverHistory({ limit: count });
+    const host = req.get('x-forwarded-host') || req.get('host');
+    const base = `${req.protocol}://${host}/fhir`;
+    const relative = `Bundle/${encodeURIComponent(endpointId)}`;
+    const bundle = {
+      resourceType: 'Bundle',
+      type: 'history',
+      ...(entries.length > 0
+        ? {
+            entry: entries.map((e) => ({
+              fullUrl: `${base}/${relative}/_history/${e.versionNumber}`,
+              request: { method: 'GET', url: `${relative}/_history/${e.versionNumber}` },
+              response: {
+                status: '200',
+                etag: `W/"${e.versionNumber}"`,
+                lastModified: e.createdAt.toISOString(),
+              },
+            })),
+          }
+        : {}),
+    };
+    auditRead(req, resolved, { history: true });
+    return res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
+  } catch (err: unknown) {
+    return handleError(res, err);
+  }
+});
+
+// GET /fhir/Bundle/:endpointId/_history/:vid — receiver view of one old version.
+fhirRouter.get('/Bundle/:endpointId/_history/:vid', async (req: Request, res: Response) => {
+  try {
+    const resolved = await authenticate(req, res);
+    if (!resolved) return;
+    if (!/^[1-9]\d{0,9}$/.test(req.params.vid)) {
+      return sendOutcome(res, 404, 'not-found', 'VERSION_NOT_FOUND');
     }
-    return sendOutcome(res, 500, 'exception', 'Internal server error');
+    const { bundle, version } = await getPublishedReceiverBundle(
+      resolved.org.instance_id,
+      req.params.endpointId,
+      Number(req.params.vid),
+    );
+    auditRead(req, resolved, { version: version?.number });
+    setVersionHeaders(res, version);
+    return res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
+  } catch (err: unknown) {
+    return handleError(res, err);
   }
 });
 
@@ -136,8 +223,8 @@ fhirRouter.get('/Bundle', async (req: Request, res: Response) => {
   try {
     const resolved = await authenticate(req, res);
     if (!resolved) return;
-    const bundle = await generateFullBundle();
-    return res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
+    const { json } = await getPublishedFullBundle();
+    return res.status(200).type(FHIR_JSON).send(json);
   } catch {
     return sendOutcome(res, 500, 'exception', 'Internal server error');
   }
