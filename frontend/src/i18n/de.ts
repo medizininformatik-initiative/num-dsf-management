@@ -1217,6 +1217,17 @@ export const de: Record<TranslationKey, string> = {
   ariaToggleTheme: 'Design umschalten',
   ariaToggleLanguage: 'Sprache umschalten',
 
+  // Glass polish: status page, map list, info hint
+  infoHintLabel: 'Weitere Informationen',
+  approvalStatusApproved: 'Freigegeben',
+  approvalStatusPending: 'In Prüfung',
+  approvalStatusRejected: 'Abgelehnt',
+  mapOrgListTitle: 'Organisationen',
+  mapOrgListCount: '{n} gesamt · {v} Gruppen',
+  mapOrgNoVerbund: '— Keine Gruppe —',
+  mapOrgListEmpty: 'Keine Organisation entspricht dem aktuellen Filter.',
+  mapOrgInactive: 'inaktiv',
+
   // DSF Resources page
   dsfResourcesNavLabel: 'DSF-Ressourcen',
   dsfResourcesTitle: 'DSF-Ressourcen',

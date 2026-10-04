@@ -9,9 +9,9 @@ vi.mock('../../../hooks/useMe', () => ({
 import { MapHeader } from '../../map/MapHeader';
 
 describe('MapHeader', () => {
-  it('renders the Network Map title and the admin role badge', () => {
+  it('renders the Network Map title and the admin role badge (no emoji)', () => {
     renderWithProviders(<MapHeader />);
     expect(screen.getByRole('heading', { name: /network map/i })).toBeInTheDocument();
-    expect(screen.getByText(/🛡 Admin/)).toBeInTheDocument();
+    expect(screen.getByText('Admin')).toBeInTheDocument();
   });
 });

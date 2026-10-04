@@ -5,116 +5,63 @@
  * Dependencies: ../stores/i18n.store, ../lib/dsfResources
  */
 import { useI18n } from '../stores/i18n.store';
+import { Icon } from '../components/ui/Icon';
 import { DSF_RESOURCES } from '../lib/dsfResources';
 
 export function DsfResourcesPage() {
   const { t } = useI18n();
 
   return (
-    <div
-      style={{
-        flex: 1,
-        padding: '32px',
-        overflowY: 'auto',
-        fontFamily: 'Inter, system-ui, sans-serif',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: '28px', color: 'var(--primary)' }}
-        >
-          menu_book
-        </span>
+    <div className="flex-1 overflow-y-auto p-8 font-sans">
+      <div className="mb-2 flex items-center gap-3">
+        <Icon name="menu_book" size={28} className="text-[color:var(--primary)]" />
         <div>
-          <h1
-            style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}
-          >
+          <h1 className="m-0 text-[22px] font-bold text-[color:var(--text-primary)]">
             {t('dsfResourcesTitle')}
           </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+          <p className="mt-0.5 text-[13px] text-[color:var(--text-secondary)]">
             {t('dsfResourcesSubtitle')}
           </p>
         </div>
       </div>
 
-      <div style={{ height: '1px', background: 'var(--border)', margin: '20px 0 24px' }} />
+      <div className="my-5 h-px bg-[color:var(--border)]" />
 
-      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 24px' }}>
+      <p className="mb-6 text-[13px] text-[color:var(--text-secondary)]">
         {t('dsfResourcesIntro')}
       </p>
 
       {DSF_RESOURCES.map((cat) => (
-        <section key={cat.headingKey} style={{ marginBottom: '28px' }}>
-          <h2
-            style={{
-              fontSize: '16px',
-              fontWeight: 700,
-              color: 'var(--text-primary)',
-              margin: '0 0 12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-          >
+        <section key={cat.headingKey} className="mb-7">
+          <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-[color:var(--text-primary)]">
             <span
-              style={{
-                width: '4px',
-                height: '18px',
-                background: 'var(--primary)',
-                borderRadius: '2px',
-              }}
+              aria-hidden="true"
+              className="h-[18px] w-1 rounded-sm bg-[color:var(--primary)]"
             />
             {t(cat.headingKey)}
           </h2>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-              gap: '10px',
-            }}
-          >
+          <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))]">
             {cat.links.map((link) => (
               <a
                 key={link.url}
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  textDecoration: 'none',
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '10px',
-                  padding: '12px 14px',
-                }}
+                className="glass-thin hover-lift press-effect flex items-center gap-3 rounded-xl px-3.5 py-3 no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      color: 'var(--text-primary)',
-                    }}
-                  >
+                <div className="min-w-0 flex-1">
+                  <p className="m-0 text-[13px] font-semibold text-[color:var(--text-primary)]">
                     {link.title}
                   </p>
-                  <p
-                    style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}
-                  >
+                  <p className="mt-0.5 text-[12px] text-[color:var(--text-secondary)]">
                     {t(link.descKey)}
                   </p>
                 </div>
-                <span
-                  className="material-symbols-outlined"
-                  aria-hidden="true"
-                  style={{ fontSize: '18px', color: 'var(--text-muted)', flexShrink: 0 }}
-                >
-                  open_in_new
-                </span>
+                <Icon
+                  name="open_in_new"
+                  size={18}
+                  className="shrink-0 text-[color:var(--text-muted)]"
+                />
               </a>
             ))}
           </div>

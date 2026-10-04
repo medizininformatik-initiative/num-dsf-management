@@ -10,15 +10,12 @@ import { useI18n } from '../stores/i18n.store';
 export function LegalPage() {
   const { t } = useI18n();
   return (
-    <div className="max-w-3xl mx-auto p-8">
-      <h1 className="text-2xl font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>
+    <div className="mx-auto max-w-3xl p-8">
+      <h1 className="mb-6 text-2xl font-semibold text-[color:var(--text-primary)]">
         {t('legalPageTitle')}
       </h1>
-      <section
-        className="space-y-4 text-sm leading-relaxed"
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+      <section className="glass-thin space-y-4 rounded-2xl p-6 text-sm leading-relaxed text-[color:var(--text-secondary)]">
+        <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">
           {t('bundleDisclaimerHeading')}
         </h2>
         <p>{t('bundleDisclaimerBody')}</p>

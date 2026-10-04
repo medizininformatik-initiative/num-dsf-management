@@ -11,20 +11,7 @@ import { useI18n } from '../../stores/i18n.store';
 export function AppFooter({ children }: { children?: ReactNode }) {
   const { t } = useI18n();
   return (
-    <footer
-      style={{
-        flexShrink: 0,
-        padding: '8px 24px',
-        borderTop: '1px solid var(--border)',
-        background: 'var(--bg-card)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        flexWrap: 'wrap',
-        fontSize: '11px',
-        color: 'var(--text-muted)',
-      }}
-    >
+    <footer className="glass-chrome flex shrink-0 flex-wrap items-center gap-3 border-b-0 border-t px-6 py-2 text-[11px] text-[color:var(--text-secondary)]">
       <a
         href="https://www.medizin.uni-muenster.de/imi/das-institut.html"
         target="_blank"
@@ -41,8 +28,13 @@ export function AppFooter({ children }: { children?: ReactNode }) {
         />
       </a>
       <span>{t('footerAffiliation')}</span>
-      <span style={{ color: 'var(--border)' }}>·</span>
-      <Link to="/app/legal" style={{ color: 'var(--text-muted)', textDecoration: 'underline' }}>
+      <span aria-hidden="true" className="text-[color:var(--text-muted)]">
+        ·
+      </span>
+      <Link
+        to="/app/legal"
+        className="rounded-sm text-[color:var(--text-secondary)] underline transition-colors duration-short ease-standard hover:text-[color:var(--primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+      >
         {t('bundleDisclaimerLinkLabel')}
       </Link>
       {/* Negative block margins let a compact button sit in the padding, so

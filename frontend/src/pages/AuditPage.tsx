@@ -8,20 +8,44 @@ import { Navigate } from 'react-router-dom';
 import { useCrossInstanceAudit } from '../hooks/useAudit';
 import { useMe } from '../hooks/useMe';
 import { useI18n } from '../stores/i18n.store';
+import type { TranslationKey } from '../i18n/en';
+import { Button } from '../components/ui/Button';
+import { Icon } from '../components/ui/Icon';
+import { StatusPill } from '../components/ui/StatusPill';
+import { formatDateTime } from '../lib/dateUtils';
+import type { StatusTone } from '../lib/statusColors';
 
-const STATUS_COLORS: Record<string, string> = {
-  CREATE: 'bg-emerald-100 text-emerald-700',
-  UPDATE: 'bg-blue-100 text-blue-700',
-  DELETE: 'bg-red-100 text-red-700',
-  APPROVE: 'bg-teal-100 text-teal-700',
-  REJECT: 'bg-orange-100 text-orange-700',
-  LOGIN: 'bg-indigo-100 text-indigo-700',
-  LOGOUT: 'bg-slate-100 text-slate-600',
-  DEFAULT: 'bg-slate-100 text-slate-500',
+const OPERATION: Record<string, { tone: StatusTone; label: TranslationKey }> = {
+  CREATE: { tone: 'success', label: 'shellOpCreate' },
+  UPDATE: { tone: 'info', label: 'shellOpUpdate' },
+  DELETE: { tone: 'danger', label: 'shellOpDelete' },
+  APPROVE: { tone: 'success', label: 'shellOpApprove' },
+  REJECT: { tone: 'warning', label: 'shellOpReject' },
+  LOGIN: { tone: 'info', label: 'shellOpLogin' },
+  LOGOUT: { tone: 'neutral', label: 'shellOpLogout' },
+  OTP_REQUEST: { tone: 'neutral', label: 'shellOpOtpRequest' },
+  OTP_VERIFY: { tone: 'info', label: 'shellOpOtpVerify' },
+  TOTP_SETUP: { tone: 'info', label: 'shellOpTotpSetup' },
+  TOTP_VERIFY: { tone: 'info', label: 'shellOpTotpVerify' },
+  FAILED_LOGIN: { tone: 'danger', label: 'shellOpFailedLogin' },
 };
 
+const RESOURCE: Record<string, TranslationKey> = {
+  ORGANIZATION: 'shellEntityOrganization',
+  CONTACT: 'shellEntityContact',
+  ENDPOINT: 'shellEntityEndpoint',
+  CERTIFICATE: 'shellEntityCertificate',
+  MEMBERSHIP: 'shellEntityMembership',
+  AUTH: 'shellEntityAuth',
+  APPROVAL: 'shellEntityApproval',
+  MARKETPLACE: 'shellEntityMarketplace',
+};
+
+const TH = 'px-3 py-2.5 text-left text-[12px] font-bold text-[color:var(--text-secondary)]';
+const TD = 'px-3 py-2.5 text-[color:var(--text-primary)]';
+
 export function AuditPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { data: me } = useMe();
   const [page, setPage] = useState(1);
   const limit = 50;
@@ -42,208 +66,103 @@ export function AuditPage() {
   if (me && !me.isAdmin) return <Navigate to="/app" replace />;
 
   return (
-    <div
-      style={{
-        flex: 1,
-        padding: '32px',
-        overflowY: 'auto',
-        fontFamily: 'Inter, system-ui, sans-serif',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: '28px', color: 'var(--primary)' }}
-          aria-hidden="true"
-        >
-          history
-        </span>
+    <div className="flex-1 overflow-y-auto p-8 font-sans">
+      <div className="mb-2 flex items-center gap-3">
+        <Icon name="history" size={28} className="text-[color:var(--primary)]" />
         <div>
-          <h1
-            style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}
-          >
+          <h1 className="m-0 text-xl font-bold text-[color:var(--text-primary)]">
             {t('auditLog')}
           </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+          <p className="mt-0.5 text-[13px] text-[color:var(--text-secondary)]">
             {isAdmin ? t('auditScopeAdmin') : t('auditScopeOwner')}
           </p>
         </div>
       </div>
 
-      <div style={{ height: '1px', background: 'var(--border)', margin: '20px 0 24px' }} />
+      <div className="my-5 h-px bg-[color:var(--border)]" />
 
-      {isLoading && <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>{t('loading')}</p>}
-      {error && <p style={{ color: '#ef4444', fontSize: '14px' }}>{t('auditLoadFailed')}</p>}
+      {isLoading && <p className="text-sm text-[color:var(--text-muted)]">{t('loading')}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-danger-fg">
+          {t('auditLoadFailed')}
+        </p>
+      )}
 
       {!isLoading && !error && rows.length === 0 && (
-        <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>{t('auditEmpty')}</p>
+        <p className="text-sm text-[color:var(--text-muted)]">{t('auditEmpty')}</p>
       )}
 
       {rows.length > 0 && (
-        <div
-          style={{
-            overflowX: 'auto',
-            border: '1px solid var(--border)',
-            borderRadius: '12px',
-            background: 'var(--bg-card)',
-          }}
-        >
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+        <div className="glass-thin overflow-x-auto rounded-2xl">
+          <table className="w-full border-collapse text-[12px]">
             <thead>
-              <tr style={{ background: 'var(--bg-page)' }}>
-                <th
-                  style={{
-                    textAlign: 'left',
-                    padding: '10px 12px',
-                    color: 'var(--text-secondary)',
-                    fontWeight: 700,
-                  }}
-                >
-                  {t('auditColTimestamp')}
-                </th>
-                <th
-                  style={{
-                    textAlign: 'left',
-                    padding: '10px 12px',
-                    color: 'var(--text-secondary)',
-                    fontWeight: 700,
-                  }}
-                >
-                  {t('auditColInstance')}
-                </th>
-                <th
-                  style={{
-                    textAlign: 'left',
-                    padding: '10px 12px',
-                    color: 'var(--text-secondary)',
-                    fontWeight: 700,
-                  }}
-                >
-                  {t('auditColUser')}
-                </th>
-                <th
-                  style={{
-                    textAlign: 'left',
-                    padding: '10px 12px',
-                    color: 'var(--text-secondary)',
-                    fontWeight: 700,
-                  }}
-                >
-                  {t('auditColResource')}
-                </th>
-                <th
-                  style={{
-                    textAlign: 'left',
-                    padding: '10px 12px',
-                    color: 'var(--text-secondary)',
-                    fontWeight: 700,
-                  }}
-                >
-                  {t('auditColOperation')}
-                </th>
-                <th
-                  style={{
-                    textAlign: 'left',
-                    padding: '10px 12px',
-                    color: 'var(--text-secondary)',
-                    fontWeight: 700,
-                  }}
-                >
-                  {t('auditColIp')}
-                </th>
+              <tr className="bg-[color:var(--bg-hover)]">
+                <th className={TH}>{t('auditColTimestamp')}</th>
+                <th className={TH}>{t('auditColInstance')}</th>
+                <th className={TH}>{t('auditColUser')}</th>
+                <th className={TH}>{t('auditColResource')}</th>
+                <th className={TH}>{t('auditColOperation')}</th>
+                <th className={TH}>{t('auditColIp')}</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td
-                    style={{
-                      padding: '10px 12px',
-                      color: 'var(--text-primary)',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {new Date(r.timestamp).toLocaleString()}
-                  </td>
-                  <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>
-                    {r.organization_name ??
-                      r.instance_label ??
-                      (r.instance_id ? r.instance_id.slice(0, 8) : '—')}
-                    {r.organization_identifier && (
-                      <div
-                        style={{
-                          fontFamily: 'monospace',
-                          color: 'var(--text-muted)',
-                          fontSize: '10px',
-                        }}
-                      >
-                        {r.organization_identifier}
-                      </div>
-                    )}
-                  </td>
-                  <td
-                    style={{
-                      padding: '10px 12px',
-                      color: 'var(--text-primary)',
-                      fontFamily: 'monospace',
-                    }}
-                  >
-                    {r.user_email ?? '—'}
-                  </td>
-                  <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>
-                    {r.resource_type}
-                  </td>
-                  <td style={{ padding: '10px 12px' }}>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${STATUS_COLORS[r.operation] ?? STATUS_COLORS.DEFAULT}`}
-                    >
-                      {r.operation}
-                    </span>
-                  </td>
-                  <td
-                    style={{
-                      padding: '10px 12px',
-                      color: 'var(--text-muted)',
-                      fontFamily: 'monospace',
-                    }}
-                  >
-                    {r.ip_address ?? '—'}
-                  </td>
-                </tr>
-              ))}
+              {rows.map((r) => {
+                const op = OPERATION[r.operation];
+                const resourceKey = RESOURCE[r.resource_type];
+                return (
+                  <tr key={r.id} className="border-t border-[color:var(--border)]">
+                    <td className={`${TD} whitespace-nowrap`}>
+                      {formatDateTime(r.timestamp, lang)}
+                    </td>
+                    <td className={TD}>
+                      {r.organization_name ??
+                        r.instance_label ??
+                        (r.instance_id ? r.instance_id.slice(0, 8) : '—')}
+                      {r.organization_identifier && (
+                        <div className="font-mono text-[11px] text-[color:var(--text-muted)]">
+                          {r.organization_identifier}
+                        </div>
+                      )}
+                    </td>
+                    <td className={`${TD} font-mono`}>{r.user_email ?? '—'}</td>
+                    <td className={TD}>{resourceKey ? t(resourceKey) : r.resource_type}</td>
+                    <td className="px-3 py-2.5">
+                      <StatusPill tone={op?.tone ?? 'neutral'} className="capitalize">
+                        {op ? t(op.label) : r.operation}
+                      </StatusPill>
+                    </td>
+                    <td className={`${TD} font-mono text-[color:var(--text-muted)]`}>
+                      {r.ip_address ?? '—'}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
       {totalPages > 1 && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            marginTop: '16px',
-            justifyContent: 'flex-end',
-            fontSize: '12px',
-          }}
-        >
-          <button
+        <div className="mt-4 flex items-center justify-end gap-3 text-[12px]">
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setPage(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg disabled:opacity-40 hover:border-primary text-slate-600 transition-colors"
           >
             {t('prev')}
-          </button>
-          <span style={{ color: 'var(--text-muted)' }}>
+          </Button>
+          <span className="text-[color:var(--text-secondary)]">
             {t('paginationShowing', { page, total: totalPages })}
           </span>
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setPage(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
-            className="px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg disabled:opacity-40 hover:border-primary text-slate-600 transition-colors"
           >
             {t('next')}
-          </button>
+          </Button>
         </div>
       )}
     </div>

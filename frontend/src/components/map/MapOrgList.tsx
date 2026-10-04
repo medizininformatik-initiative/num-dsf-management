@@ -4,20 +4,16 @@
  * org identifier, the same value the GeoMap pins emit.
  */
 import { useMemo, useState } from 'react';
+import { useScrollEdges } from '../../hooks/useScrollEdges';
 import type { MapOrganization } from '../../api/network.api';
+import { useI18n } from '../../stores/i18n.store';
+import { STATUS_COLOR } from '../../lib/statusColors';
 
 interface Props {
   organizations: MapOrganization[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
 }
-
-const STATUS_DOT: Record<MapOrganization['cert_status'], string> = {
-  VALID: '#22c55e',
-  EXPIRING: '#f5a623',
-  EXPIRED: '#ef4444',
-  NONE: '#94a3b8',
-};
 
 function verbundColor(parent: string): string {
   const p = parent.toLowerCase();
@@ -61,7 +57,9 @@ function groupByParent(orgs: MapOrganization[]): Group[] {
 }
 
 export function MapOrgList({ organizations, selectedId, onSelect }: Props) {
+  const { t } = useI18n();
   const groups = useMemo(() => groupByParent(organizations), [organizations]);
+  const scrollEdgesRef = useScrollEdges<HTMLElement>();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   function toggle(parent: string) {
@@ -75,11 +73,11 @@ export function MapOrgList({ organizations, selectedId, onSelect }: Props) {
 
   return (
     <aside
+      ref={scrollEdgesRef}
+      className="glass-thin scroll-edges rounded-none border-y-0 border-l-0"
       style={{
         width: '260px',
         flexShrink: 0,
-        borderRight: '1px solid var(--border)',
-        background: 'var(--bg-card)',
         overflowY: 'auto',
         fontFamily: 'Inter, system-ui, sans-serif',
       }}
@@ -95,15 +93,15 @@ export function MapOrgList({ organizations, selectedId, onSelect }: Props) {
             letterSpacing: '0.04em',
           }}
         >
-          Organizations
+          {t('mapOrgListTitle')}
         </p>
         <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
-          {organizations.length} total · {groups.length} verbund{groups.length === 1 ? '' : 'e'}
+          {t('mapOrgListCount', { n: organizations.length, v: groups.length })}
         </p>
       </div>
       {groups.map((g) => {
         const isCollapsed = collapsed.has(g.parent);
-        const labelText = g.parent === '__none__' ? '— No verbund —' : g.parent;
+        const labelText = g.parent === '__none__' ? t('mapOrgNoVerbund') : g.parent;
         return (
           <div key={g.parent}>
             <button
@@ -115,7 +113,7 @@ export function MapOrgList({ organizations, selectedId, onSelect }: Props) {
                 gap: '8px',
                 padding: '8px 16px',
                 border: 'none',
-                background: 'var(--bg-page)',
+                background: 'color-mix(in srgb, var(--bg-hover) 70%, transparent)',
                 cursor: 'pointer',
                 textAlign: 'left',
                 fontFamily: 'inherit',
@@ -135,7 +133,7 @@ export function MapOrgList({ organizations, selectedId, onSelect }: Props) {
               >
                 {labelText}
               </span>
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                 {g.members.length}
               </span>
               <span
@@ -160,11 +158,13 @@ export function MapOrgList({ organizations, selectedId, onSelect }: Props) {
                       gap: '8px',
                       padding: '6px 16px 6px 28px',
                       border: 'none',
-                      background: isSel ? '#fde3ef' : 'var(--bg-card)',
+                      background: isSel
+                        ? 'color-mix(in srgb, var(--primary) 14%, transparent)'
+                        : 'transparent',
                       cursor: 'pointer',
                       textAlign: 'left',
                       fontFamily: 'inherit',
-                      borderLeft: isSel ? '3px solid #b01e66' : '3px solid transparent',
+                      borderLeft: isSel ? '3px solid var(--primary)' : '3px solid transparent',
                     }}
                   >
                     <span
@@ -172,7 +172,7 @@ export function MapOrgList({ organizations, selectedId, onSelect }: Props) {
                         width: '6px',
                         height: '6px',
                         borderRadius: '50%',
-                        background: STATUS_DOT[m.cert_status],
+                        background: STATUS_COLOR[m.cert_status],
                         flexShrink: 0,
                       }}
                     />
@@ -192,12 +192,12 @@ export function MapOrgList({ organizations, selectedId, onSelect }: Props) {
                     {!m.active && (
                       <span
                         style={{
-                          fontSize: '9px',
+                          fontSize: '11px',
                           color: 'var(--text-muted)',
                           textTransform: 'uppercase',
                         }}
                       >
-                        off
+                        {t('mapOrgInactive')}
                       </span>
                     )}
                   </button>
@@ -216,7 +216,7 @@ export function MapOrgList({ organizations, selectedId, onSelect }: Props) {
             margin: 0,
           }}
         >
-          No organizations match the current filter.
+          {t('mapOrgListEmpty')}
         </p>
       )}
     </aside>

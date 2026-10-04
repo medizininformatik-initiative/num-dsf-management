@@ -85,10 +85,12 @@ describe('AuditPage', () => {
     expect(screen.getAllByRole('row')).toHaveLength(3);
 
     // Cell content from both rows is rendered.
-    expect(screen.getByText('CONTACT')).toBeInTheDocument();
-    expect(screen.getByText('CERTIFICATE')).toBeInTheDocument();
-    expect(screen.getByText('UPDATE')).toBeInTheDocument();
-    expect(screen.getByText('DELETE')).toBeInTheDocument();
+    // Enum values are shown translated, never raw.
+    expect(screen.getByText('Contact')).toBeInTheDocument();
+    expect(screen.getByText('Certificate')).toBeInTheDocument();
+    expect(screen.getByText('updated')).toBeInTheDocument();
+    expect(screen.getByText('deleted')).toBeInTheDocument();
+    expect(screen.queryByText('UPDATE')).toBeNull();
     expect(screen.getByText('alice@imi.example.de')).toBeInTheDocument();
     expect(screen.getByText('bob@imi.example.de')).toBeInTheDocument();
     expect(screen.getByText('10.0.0.2')).toBeInTheDocument();

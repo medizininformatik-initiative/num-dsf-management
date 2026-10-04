@@ -69,9 +69,8 @@ export function MapFilters({
         flexDirection: 'column',
         gap: '10px',
         padding: '4px 28px 12px',
-        borderBottom: '1px solid var(--border)',
-        background: 'var(--bg-card)',
       }}
+      className="glass-chrome"
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         {/* search input — unchanged */}
@@ -152,7 +151,7 @@ export function MapFilters({
                   borderRadius: '999px',
                   border: `1px solid ${on ? STATUS_COLOR[s] : 'var(--border)'}`,
                   background: on ? STATUS_COLOR[s] + '22' : 'transparent',
-                  color: on ? STATUS_COLOR[s] : 'var(--text-secondary)',
+                  color: 'var(--text-primary)',
                   fontSize: '11px',
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -192,7 +191,9 @@ export function MapFilters({
             padding: '4px 10px',
             borderRadius: '999px',
             border: `1px solid ${showAllEdges ? 'var(--primary)' : 'var(--border)'}`,
-            background: showAllEdges ? '#b01e6622' : 'transparent',
+            background: showAllEdges
+              ? 'color-mix(in srgb, var(--primary) 14%, transparent)'
+              : 'transparent',
             color: showAllEdges ? 'var(--primary)' : 'var(--text-secondary)',
             fontSize: '11px',
             fontWeight: 600,

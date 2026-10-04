@@ -1192,6 +1192,17 @@ export const en = {
   ariaToggleTheme: 'Toggle theme',
   ariaToggleLanguage: 'Toggle language',
 
+  // Glass polish: status page, map list, info hint
+  infoHintLabel: 'More information',
+  approvalStatusApproved: 'Approved',
+  approvalStatusPending: 'Pending',
+  approvalStatusRejected: 'Rejected',
+  mapOrgListTitle: 'Organizations',
+  mapOrgListCount: '{n} total · {v} groups',
+  mapOrgNoVerbund: '— No group —',
+  mapOrgListEmpty: 'No organizations match the current filter.',
+  mapOrgInactive: 'inactive',
+
   // DSF Resources page
   dsfResourcesNavLabel: 'DSF Resources',
   dsfResourcesTitle: 'DSF Resources',

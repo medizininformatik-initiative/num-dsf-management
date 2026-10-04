@@ -12,45 +12,46 @@ import { useMemberships } from '../hooks/useMemberships';
 import { useApprovalStatus, useApprovalHistory } from '../hooks/useApproval';
 import { daysUntil } from '../lib/dateUtils';
 import { useI18n } from '../stores/i18n.store';
+import { Icon } from '../components/ui/Icon';
+import { StatusPill } from '../components/ui/StatusPill';
+import type { StatusTone } from '../lib/statusColors';
+
+const CARD = 'glass-thin rounded-2xl p-4';
+
+const STATUS_TONE: Record<string, StatusTone> = {
+  APPROVED: 'success',
+  PENDING: 'warning',
+  REJECTED: 'danger',
+  DRAFT: 'neutral',
+};
+const STATUS_LABEL = {
+  APPROVED: 'approvalStatusApproved',
+  PENDING: 'approvalStatusPending',
+  REJECTED: 'approvalStatusRejected',
+  DRAFT: 'approvalStateDraft',
+} as const;
 
 function StatCard({
   icon,
-  color,
   label,
   value,
   detail,
 }: {
   icon: string;
-  color: string;
   label: string;
   value: string | number;
   detail?: string;
 }) {
   return (
-    <div
-      style={{
-        padding: '16px',
-        background: 'var(--bg-card)',
-        borderRadius: '12px',
-        border: '1px solid var(--border)',
-        flex: 1,
-        minWidth: '140px',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '20px', color }}>
-          {icon}
-        </span>
-        <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
+    <div className={`${CARD} min-w-[140px] flex-1`}>
+      <div className="mb-2 flex items-center gap-2">
+        <Icon name={icon} size={20} className="text-[color:var(--primary)]" />
+        <span className="text-[12px] font-semibold text-[color:var(--text-secondary)]">
           {label}
         </span>
       </div>
-      <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-        {value}
-      </p>
-      {detail && (
-        <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '4px 0 0' }}>{detail}</p>
-      )}
+      <p className="m-0 text-2xl font-bold text-[color:var(--text-primary)]">{value}</p>
+      {detail && <p className="mt-1 text-[11px] text-[color:var(--text-muted)]">{detail}</p>}
     </div>
   );
 }
@@ -81,95 +82,45 @@ export function StatusPage() {
   const nextExpiry =
     certs.length > 0 ? Math.min(...certs.map((c: CertRow) => daysUntil(c.valid_until))) : null;
 
-  const statusColor =
-    approval?.status === 'APPROVED'
-      ? '#22c55e'
-      : approval?.status === 'PENDING'
-        ? '#f5a623'
-        : approval?.status === 'REJECTED'
-          ? '#ef4444'
-          : 'var(--text-muted)';
+  const tone = (status?: string): StatusTone => STATUS_TONE[status ?? ''] ?? 'neutral';
+  const label = (status?: string) => {
+    const key = STATUS_LABEL[(status ?? '') as keyof typeof STATUS_LABEL];
+    return key ? t(key) : (status ?? t('statusNoRequest'));
+  };
+  const expiryTone: StatusTone = nextExpiry !== null && nextExpiry < 30 ? 'danger' : 'warning';
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto">
-      <div style={{ marginBottom: '24px' }}>
-        <h1
-          style={{
-            fontSize: '20px',
-            fontWeight: 700,
-            color: 'var(--text-primary)',
-            margin: '0 0 4px',
-          }}
-        >
+    <div className="flex-1 overflow-y-auto p-8 font-sans">
+      <div className="mb-6">
+        <h1 className="mb-1 text-xl font-bold text-[color:var(--text-primary)]">
           {org?.name || t('instanceOverview')}
         </h1>
-        <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
+        <p className="m-0 text-[12px] text-[color:var(--text-muted)]">
           {org?.identifier || t('noOrgConfigured')}
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
-        <StatCard
-          icon="contact_phone"
-          color="#9b59b6"
-          label={t('contacts')}
-          value={contacts.length}
-        />
-        <StatCard icon="hub" color="#3ecfb2" label={t('endpoints')} value={endpoints.length} />
+      <div className="mb-6 flex flex-wrap gap-3">
+        <StatCard icon="contact_phone" label={t('contacts')} value={contacts.length} />
+        <StatCard icon="hub" label={t('endpoints')} value={endpoints.length} />
         <StatCard
           icon="verified_user"
-          color="#f5a623"
           label={t('certificates')}
           value={certs.length}
           detail={nextExpiry !== null ? `${t('nextExpiry')}: ${nextExpiry}d` : undefined}
         />
-        <StatCard
-          icon="groups"
-          color="#4a90d9"
-          label={t('memberships')}
-          value={memberships.length}
-        />
+        <StatCard icon="groups" label={t('memberships')} value={memberships.length} />
       </div>
 
-      {/* Approval Status */}
-      <div
-        style={{
-          padding: '20px',
-          background: 'var(--bg-card)',
-          borderRadius: '12px',
-          border: '1px solid var(--border)',
-          marginBottom: '16px',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '12px',
-          }}
-        >
-          <h2
-            style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}
-          >
+      <div className={`${CARD} mb-4 p-5`}>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="m-0 text-sm font-bold text-[color:var(--text-primary)]">
             {t('approvalStatus')}
           </h2>
-          <span
-            style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              padding: '3px 10px',
-              borderRadius: '99px',
-              background: `${statusColor}18`,
-              color: statusColor,
-            }}
-          >
-            {approval?.status || t('statusNoRequest')}
-          </span>
+          <StatusPill tone={tone(approval?.status)}>{label(approval?.status)}</StatusPill>
         </div>
         {lastApproved && (
-          <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
+          <p className="m-0 text-[12px] text-[color:var(--text-muted)]">
             {t('lastApproved')}:{' '}
             {new Date(lastApproved.resolved_at || lastApproved.submitted_at).toLocaleDateString(
               'de-DE',
@@ -178,118 +129,48 @@ export function StatusPage() {
         )}
       </div>
 
-      {/* Certificate Expiry Warning */}
       {nextExpiry !== null && nextExpiry < 90 && (
         <div
-          style={{
-            padding: '16px',
-            borderRadius: '12px',
-            marginBottom: '16px',
-            background: nextExpiry < 30 ? '#fef2f2' : '#fef9e7',
-            border: `1px solid ${nextExpiry < 30 ? '#fecaca' : '#fde68a'}`,
-          }}
+          role="status"
+          className={`mb-4 flex items-center gap-3 rounded-2xl border p-4 ${
+            expiryTone === 'danger'
+              ? 'border-danger-border bg-danger-surface text-danger-fg'
+              : 'border-warning-border bg-warning-surface text-warning-fg'
+          }`}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span
-              className="material-symbols-outlined"
-              style={{ fontSize: '20px', color: nextExpiry < 30 ? '#ef4444' : '#f5a623' }}
-            >
-              warning
-            </span>
-            <div>
-              <p
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  color: nextExpiry < 30 ? '#991b1b' : '#92400e',
-                  margin: 0,
-                }}
-              >
-                {t('certExpiresIn')} {nextExpiry} {t('statusDaysSuffix')}
-              </p>
-              <p
-                style={{
-                  fontSize: '11px',
-                  color: nextExpiry < 30 ? '#991b1b' : '#92400e',
-                  margin: '2px 0 0',
-                }}
-              >
-                {t('renewButtonHint')}
-              </p>
-            </div>
+          <Icon name="warning" size={20} />
+          <div>
+            <p className="m-0 text-[13px] font-bold">
+              {t('certExpiresIn')} {nextExpiry} {t('statusDaysSuffix')}
+            </p>
+            <p className="mt-0.5 text-[12px]">{t('renewButtonHint')}</p>
           </div>
         </div>
       )}
 
-      {/* Approval History */}
-      <div
-        style={{
-          padding: '20px',
-          background: 'var(--bg-card)',
-          borderRadius: '12px',
-          border: '1px solid var(--border)',
-        }}
-      >
-        <h2
-          style={{
-            fontSize: '14px',
-            fontWeight: 700,
-            color: 'var(--text-primary)',
-            margin: '0 0 12px',
-          }}
-        >
+      <div className={`${CARD} p-5`}>
+        <h2 className="mb-3 text-sm font-bold text-[color:var(--text-primary)]">
           {t('approvalHistory')}
         </h2>
         {history.length === 0 ? (
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{t('noApprovalRequests')}</p>
+          <p className="text-[12px] text-[color:var(--text-muted)]">{t('noApprovalRequests')}</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {history.slice(0, 10).map((req: ApprovalHistoryRow, i: number) => {
-              const color =
-                req.status === 'APPROVED'
-                  ? '#22c55e'
-                  : req.status === 'PENDING'
-                    ? '#f5a623'
-                    : '#ef4444';
-              return (
-                <div
-                  key={req.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '8px',
-                    borderRadius: '8px',
-                    background: 'var(--bg-hover)',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: color,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      color: 'var(--text-primary)',
-                      flex: 1,
-                    }}
-                  >
-                    {t('approvalCardRequestNum', { n: history.length - i })}
-                  </span>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                    {new Date(req.submitted_at || req.created_at).toLocaleDateString('de-DE')}
-                  </span>
-                  <span style={{ fontSize: '10px', fontWeight: 700, color }}>{req.status}</span>
-                </div>
-              );
-            })}
-          </div>
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {history.slice(0, 10).map((req: ApprovalHistoryRow, i: number) => (
+              <li
+                key={req.id}
+                className="flex items-center gap-3 rounded-lg bg-[color:var(--bg-hover)] p-2"
+              >
+                <span className="flex-1 text-[12px] font-semibold text-[color:var(--text-primary)]">
+                  {t('approvalCardRequestNum', { n: history.length - i })}
+                </span>
+                <span className="text-[11px] text-[color:var(--text-muted)]">
+                  {new Date(req.submitted_at || req.created_at).toLocaleDateString('de-DE')}
+                </span>
+                <StatusPill tone={tone(req.status)}>{label(req.status)}</StatusPill>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </div>

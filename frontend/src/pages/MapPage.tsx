@@ -127,9 +127,9 @@ export function MapPage() {
             flex: 1,
             position: 'relative',
             minHeight: 0,
-            background: '#f8fafc',
+            background: 'var(--bg-page)',
             marginRight: isPanelOpen ? '380px' : '0',
-            transition: 'margin-right 0.25s ease',
+            transition: 'margin-right var(--duration-medium) var(--ease-spring)',
           }}
         >
           {isLoading && (
@@ -155,7 +155,7 @@ export function MapPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#ef4444',
+                color: 'var(--tone-danger-fg)',
                 fontSize: '14px',
               }}
             >
@@ -200,10 +200,9 @@ function InternationalStrip({
   const countries = [...new Set(intl.map((o) => o.country_code ?? '?'))].sort().join(', ');
   return (
     <div
+      className="glass-chrome border-b-0 border-t"
       style={{
         padding: '8px 28px',
-        borderTop: '1px solid var(--border)',
-        background: 'var(--bg-card)',
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
@@ -221,11 +220,11 @@ function InternationalStrip({
             key={o.identifier}
             onClick={() => onSelect(o.identifier)}
             style={{
-              padding: '3px 8px',
-              borderRadius: '6px',
+              padding: '4px 10px',
+              borderRadius: '8px',
               border: '1px solid var(--border)',
-              background: 'var(--bg-page)',
-              fontSize: '10px',
+              background: 'var(--bg-card)',
+              fontSize: '11px',
               color: 'var(--text-secondary)',
               cursor: 'pointer',
               fontFamily: 'inherit',
