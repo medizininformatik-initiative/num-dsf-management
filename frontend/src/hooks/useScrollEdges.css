@@ -1,0 +1,51 @@
+/* Scroll edge fades (see useScrollEdges.ts). Add the `scroll-edges` class to
+   the scroll container; the hook toggles data-edge-top / data-edge-bottom.
+   The fade only exists at an edge with more content behind it, so a container
+   that does not scroll gets no mask at all. */
+@property --edge-top {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --edge-bottom {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+.scroll-edges {
+  transition:
+    --edge-top var(--duration-short, 200ms) var(--ease-standard, ease),
+    --edge-bottom var(--duration-short, 200ms) var(--ease-standard, ease);
+}
+.scroll-edges[data-edge-top] {
+  --edge-top: 20px;
+}
+.scroll-edges[data-edge-bottom] {
+  --edge-bottom: 20px;
+}
+.scroll-edges[data-edge-top],
+.scroll-edges[data-edge-bottom] {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--edge-top),
+    #000 calc(100% - var(--edge-bottom)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--edge-top),
+    #000 calc(100% - var(--edge-bottom)),
+    transparent 100%
+  );
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .scroll-edges[data-edge-top],
+  .scroll-edges[data-edge-bottom] {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}

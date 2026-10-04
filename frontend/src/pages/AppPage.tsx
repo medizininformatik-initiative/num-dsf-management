@@ -27,6 +27,7 @@ import { useInstances } from '../hooks/useInstance';
 import { useModals } from '../hooks/useModals';
 import { useOrganization } from '../hooks/useOrganization';
 import { usePresence } from '../hooks/usePresence';
+import { useScrollEdges } from '../hooks/useScrollEdges';
 import { MOTION_MS } from '../lib/motion';
 import { Sidebar, type SidebarGroup } from '../components/layout/Sidebar';
 import { TopBar } from '../components/layout/TopBar';
@@ -125,6 +126,7 @@ export function AppPage() {
   const isCanvasRoute = !!useMatch('/app');
   const isMapRoute = !!useMatch('/app/map');
   const { pathname } = useLocation();
+  const scrollEdgesRef = useScrollEdges();
   const { data: instances, isLoading: instancesLoading } = useInstances();
 
   const { open, editId, openModal, closeModal } = useModals();
@@ -269,7 +271,10 @@ export function AppPage() {
                 <InstancePlaceholder loading={instancesLoading || (instances?.length ?? 0) > 0} />
               )
             ) : (
-              <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+              <div
+                ref={scrollEdgesRef}
+                className="scroll-edges flex min-h-0 flex-1 flex-col overflow-auto"
+              >
                 <Outlet />
               </div>
             )}
