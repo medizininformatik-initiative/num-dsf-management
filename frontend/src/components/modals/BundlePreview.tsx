@@ -11,6 +11,7 @@ import { useCertificates } from '../../hooks/useCertificates';
 import { useMemberships } from '../../hooks/useMemberships';
 import { useI18n } from '../../stores/i18n.store';
 import { parseJsonArray } from '../../lib/parseJsonArray';
+import { formatDate } from '../../lib/dateUtils';
 import { Icon } from '../ui/Icon';
 import { TONE_CLASS, type StatusTone } from '../../lib/statusColors';
 
@@ -47,7 +48,7 @@ function Row({
 }
 
 export function BundlePreview({ instanceId }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const { data: org } = useOrganization(instanceId);
   const { data: endpoints = [] } = useEndpoints(instanceId);
@@ -75,7 +76,7 @@ export function BundlePreview({ instanceId }: Props) {
 
       {expanded && (
         <div className="mt-2 overflow-hidden rounded-xl border border-[color:var(--border)]">
-          <Row icon="corporate_fare" tone="info" kind="Organization">
+          <Row icon="corporate_fare" tone="info" kind={t('bundlePreviewOrganization')}>
             <p className={primary}>{org.name}</p>
             <p className={`${muted} font-mono`}>{org.identifier}</p>
           </Row>
@@ -87,7 +88,7 @@ export function BundlePreview({ instanceId }: Props) {
               address?: string;
               ipAddresses?: Array<{ ip: string; isFhir?: boolean; isBpe?: boolean }>;
             }) => (
-              <Row key={ep.identifier} icon="hub" tone="success" kind="Endpoint">
+              <Row key={ep.identifier} icon="hub" tone="success" kind={t('bundlePreviewEndpoint')}>
                 <p className={primary}>{ep.name || ep.identifier}</p>
                 <p className={`${muted} break-all`}>{ep.address}</p>
                 <div className="mt-1 flex flex-wrap gap-1">
@@ -97,8 +98,8 @@ export function BundlePreview({ instanceId }: Props) {
                       className="pill bg-neutral-surface border-neutral-border text-neutral-fg"
                     >
                       {ip.ip}
-                      {ip.isFhir ? ' F' : ''}
-                      {ip.isBpe ? ' B' : ''}
+                      {ip.isFhir ? ` · ${t('bundlePreviewIpFhir')}` : ''}
+                      {ip.isBpe ? ` · ${t('bundlePreviewIpBpe')}` : ''}
                     </span>
                   ))}
                 </div>
@@ -107,16 +108,23 @@ export function BundlePreview({ instanceId }: Props) {
           )}
 
           {certs.map((cert: { id: string; subject?: string; valid_until?: string }) => (
-            <Row key={cert.id} icon="verified_user" tone="warning" kind="Certificate">
+            <Row
+              key={cert.id}
+              icon="verified_user"
+              tone="warning"
+              kind={t('bundlePreviewCertificate')}
+            >
               <p className={primary}>{cert.subject}</p>
               <p className={muted}>
-                {t('bundlePreviewValidUntil', { date: cert.valid_until ?? '' })}
+                {t('bundlePreviewValidUntil', {
+                  date: cert.valid_until ? formatDate(cert.valid_until, lang) : '',
+                })}
               </p>
             </Row>
           ))}
 
           {memberships.map((ms: { id: string; parent_organization: string; roles: unknown }) => (
-            <Row key={ms.id} icon="groups" tone="neutral" kind="Affiliation">
+            <Row key={ms.id} icon="groups" tone="neutral" kind={t('bundlePreviewAffiliation')}>
               <p className={primary}>{ms.parent_organization}</p>
               <p className={`${muted} flex flex-wrap gap-2 font-semibold`}>
                 {parseJsonArray(ms.roles).map((r) => (
