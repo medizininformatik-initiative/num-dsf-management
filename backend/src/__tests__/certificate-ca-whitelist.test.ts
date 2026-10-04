@@ -6,9 +6,11 @@
  * The "DSF-issued" leaf comes from an in-test CA that merely carries the
  * subject DN of a whitelisted CA: the portal matches issuers by name (the DSF
  * proxies verify the chain), which is exactly what this test pins.
- * Dependencies: node-forge, certificate.service, helpers/allowListSites
+ * Dependencies: node-forge, uuid, db/connection, certificate.service, helpers/allowListSites
  */
 import forge from 'node-forge';
+import { v4 as uuidv4 } from 'uuid';
+import { db } from '../db/connection';
 import { createCertificate, getCertificates } from '../services/certificate.service';
 import { makeCertPem, removeSites, seedSite, type Site } from './helpers/allowListSites';
 
@@ -78,6 +80,22 @@ describe('certificates and the CA whitelist', () => {
     );
     const listed = await getCertificates(site.instanceId);
     expect(listed.map((c) => c.issuerTrusted).sort()).toEqual([false, true]);
+  });
+
+  it('still lists a certificate whose stored PEM cannot be read', async () => {
+    const id = uuidv4();
+    await db('certificates').insert({
+      id,
+      organization_id: site.orgId,
+      pem: '-----BEGIN CERTIFICATE-----\nbroken\n-----END CERTIFICATE-----',
+      subject: 'broken',
+      thumbprint: 'AB'.repeat(32),
+      valid_until: new Date('2030-01-01'),
+      created_at: new Date(),
+    });
+    const broken = (await getCertificates(site.instanceId)).find((c) => c.id === id);
+    expect(broken).toMatchObject({ thumbprintSha512: '', issuerDn: '', issuerTrusted: false });
+    await db('certificates').where({ id }).del();
   });
 
   it('refuses other issuers when CA_WHITELIST_ENFORCE=true', async () => {
