@@ -3,7 +3,14 @@
  * Dependencies: express-rate-limit, rate-limit-redis, ioredis
  *
  * Auth routes: 5 req / 15 min per IP
- * API routes: 100 req / 1 min per user
+ * API routes: 100 req / 1 min per user (RATE_LIMIT_API_MAX)
+ *
+ * Sizing: one canvas page load makes about 12 API requests (me, instances,
+ * instance, organization, contacts, endpoints, certificates, memberships,
+ * approval status + history, expiring certs) and an instance switch about 9;
+ * polling is at most 2-3 requests/min and only while the tab is visible. Normal
+ * use stays far below 100/min, so the default is kept. nginx's per-IP limit is
+ * only a coarse safety net above this per-user control.
  */
 import rateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
