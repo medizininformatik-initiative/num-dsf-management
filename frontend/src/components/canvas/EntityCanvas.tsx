@@ -9,7 +9,7 @@
  * Dependencies: OnboardingWizard, HighlightRing, RelationOverlay, the entity
  * cards, entity-canvas.css.
  */
-import { useRef, type ComponentType, type CSSProperties } from 'react';
+import { useCallback, useRef, type ComponentType, type CSSProperties } from 'react';
 import { OnboardingWizard } from './OnboardingWizard';
 import { HighlightRing } from './HighlightRing';
 import { RelationOverlay } from './RelationOverlay';
@@ -18,6 +18,7 @@ import { ContactsCard } from '../cards/ContactsCard';
 import { EndpointsCard } from '../cards/EndpointsCard';
 import { CertificatesCard } from '../cards/CertificatesCard';
 import { MembershipsCard } from '../cards/MembershipsCard';
+import { useScrollEdges } from '../../hooks/useScrollEdges';
 import './entity-canvas.css';
 
 interface EntityCanvasProps {
@@ -34,10 +35,22 @@ const CARDS: ReadonlyArray<{ id: string; Card: ComponentType<{ instanceId: strin
 ];
 
 export function EntityCanvas({ instanceId }: EntityCanvasProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const edgesRef = useScrollEdges();
+  // The overlays need the element itself, the edge fades a callback ref.
+  const setContainer = useCallback(
+    (el: HTMLDivElement | null) => {
+      containerRef.current = el;
+      edgesRef(el);
+    },
+    [edgesRef],
+  );
 
   return (
-    <div ref={containerRef} className="entity-canvas relative min-h-0 flex-1 overflow-y-auto p-4">
+    <div
+      ref={setContainer}
+      className="scroll-edges entity-canvas relative min-h-0 flex-1 overflow-y-auto p-4"
+    >
       <OnboardingWizard instanceId={instanceId} />
       <div className="entity-canvas-grid">
         {CARDS.map(({ id, Card }, index) => (

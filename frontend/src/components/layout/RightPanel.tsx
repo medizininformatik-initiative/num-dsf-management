@@ -28,6 +28,7 @@ import type { TranslationKey } from '../../i18n/en';
 import { ApprovalStatePill, ApprovalStatusBanner } from './ApprovalStatusBanner';
 import { ExpiryTimeline } from './ExpiryTimeline';
 import { ReadinessChecklist } from './ReadinessChecklist';
+import { useScrollEdges } from '../../hooks/useScrollEdges';
 
 const sectionHeading =
   'mb-2 text-[11px] font-bold uppercase tracking-widest text-[color:var(--text-muted)]';
@@ -53,6 +54,7 @@ export function RightPanel({
 }) {
   const { t, lang } = useI18n();
   const headingId = useId();
+  const edgesRef = useScrollEdges<HTMLElement>();
   const { data: approvalData } = useApprovalStatus(instanceId);
   const { data: historyData } = useApprovalHistory(instanceId);
   const approval: ApprovalStatus | null | undefined = approvalData;
@@ -71,8 +73,9 @@ export function RightPanel({
 
   return (
     <aside
+      ref={edgesRef}
       aria-labelledby={headingId}
-      className={`glass-chrome flex h-full w-full flex-col gap-6 overflow-y-auto overscroll-contain border-b-0 border-l p-5 ${className}`}
+      className={`scroll-edges glass-chrome flex h-full w-full flex-col gap-6 overflow-y-auto overscroll-contain border-b-0 border-l p-5 ${className}`}
     >
       <div>
         <h2
