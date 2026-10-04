@@ -1,12 +1,15 @@
 /**
  * fhir.service.ts – Loads the allow-list data and builds the DSF bundles.
- * - generateBundle: receiver-scoped bundle for one endpoint, i.e. what the
- *   DSF allow-list process of that site downloads from /fhir/Bundle/{endpoint}.
- * - generateFullBundle: network-wide bundle (GUI download, version snapshots).
+ * - loadAllowListInput: the live network state, the one input every bundle
+ *   and every stored bundle version is built from.
+ * - renderReceiverBundle / renderFullBundle: pure views of such an input.
+ * - generateBundle: receiver-scoped bundle for one endpoint built from the
+ *   live state (fallback before the first stored version exists).
+ * - generateFullBundle: network-wide bundle from the live state.
  * The bundle shape itself lives in lib/allowListBundle. Contact data,
  * including the organization e-mail, is never loaded here (GDPR, F-BND-04).
- * Dependencies: db/connection, lib/allowListBundle, lib/certFingerprint,
- *               lib/jsonColumn, lib/logger
+ * Dependencies: db/connection, lib/allowListBundle, lib/allowListInput,
+ *               lib/certFingerprint, lib/jsonColumn, lib/logger
  */
 import { db } from '../db/connection';
 import type { CertRow } from '../types/rows';
@@ -18,9 +21,9 @@ import {
   isPublishable,
   type AllowListBundle,
   type AllowListMember,
-  type AllowListReceiver,
   type AllowListRemoval,
 } from '../lib/allowListBundle';
+import { fullViewInput, receiverViewInput, type StoredAllowListInput } from '../lib/allowListInput';
 
 // Display names of the parent organizations offered in the membership form,
 // as the legacy allow-list portal publishes them. A parent that is registered
@@ -91,7 +94,7 @@ async function loadApprovedOrganizations(): Promise<OrgSummary[]> {
  * deactivation approved. Every site deletes them with their endpoints and
  * affiliations; a pending deactivation changes nothing yet.
  */
-async function loadRemovedOrganizations(): Promise<AllowListRemoval[]> {
+export async function loadRemovedOrganizations(): Promise<AllowListRemoval[]> {
   const orgs: OrgSummary[] = await db('organizations')
     .where({ active: false })
     .whereRaw(LATEST_REQUEST_APPROVED)
@@ -123,7 +126,7 @@ async function loadRemovedOrganizations(): Promise<AllowListRemoval[]> {
 }
 
 /** Batch-load endpoints, certificates and memberships of the given organizations. */
-async function loadMembers(orgs: OrgSummary[]): Promise<AllowListMember[]> {
+export async function loadMembers(orgs: OrgSummary[]): Promise<AllowListMember[]> {
   if (orgs.length === 0) return [];
   const ids = orgs.map((o) => o.identifier);
   const [endpoints, certs, memberships] = await Promise.all([
@@ -182,7 +185,7 @@ async function loadMembers(orgs: OrgSummary[]): Promise<AllowListMember[]> {
 }
 
 /** Display names for parents: stored organization name, known name, else the identifier. */
-async function loadParentNames(parentIds: string[]): Promise<Map<string, string>> {
+export async function loadParentNames(parentIds: string[]): Promise<Map<string, string>> {
   const names = new Map<string, string>();
   for (const id of parentIds) {
     if (KNOWN_PARENT_NAMES[id]) names.set(id, KNOWN_PARENT_NAMES[id]);
@@ -206,72 +209,90 @@ function logUnpublishable(members: AllowListMember[]): void {
   }
 }
 
-async function build(members: AllowListMember[], receiver?: AllowListReceiver) {
+/**
+ * The live network state: every approved organization (including the
+ * receiver of a later view), the withdrawn organizations and the parent
+ * display names. Stored with each bundle version.
+ */
+export async function loadAllowListInput(): Promise<StoredAllowListInput> {
+  const approved = await loadApprovedOrganizations();
+  const members = await loadMembers(approved);
   logUnpublishable(members);
   const parentIds = Array.from(
-    new Set([
-      ...members.flatMap((m) => m.affiliations.map((a) => a.parent)),
-      ...(receiver?.affiliations.map((a) => a.parent) ?? []),
-    ]),
+    new Set(members.flatMap((m) => m.affiliations.map((a) => a.parent))),
   ).filter(Boolean);
   const [parentNames, removed] = await Promise.all([
     loadParentNames(parentIds),
     loadRemovedOrganizations(),
   ]);
-  return buildAllowListBundle({ members, removed, parentNames, receiver });
+  return { members, removed, parentNames: Object.fromEntries(parentNames) };
+}
+
+/** Network-wide allow list rendered from a stored or live input. */
+export function renderFullBundle(input: StoredAllowListInput): AllowListBundle {
+  return buildAllowListBundle(fullViewInput(input));
+}
+
+export interface BundleVersionMeta {
+  number: number;
+  createdAt: Date;
 }
 
 /**
- * Receiver-scoped allow list for one endpoint of an instance's organization:
- * every other approved organization with endpoints, thumbprints and
- * affiliations, plus the receiver's own affiliations for this endpoint
- * (only once the receiver itself is approved). The receiver's own
- * Organization and Endpoint are left out; its DSF server already holds them.
+ * Receiver view of an input: every other approved organization with
+ * endpoints, thumbprints and affiliations, plus the receiver's own
+ * affiliations for this endpoint (only once the receiver itself is approved).
+ * The receiver's own Organization and Endpoint are left out; its DSF server
+ * already holds them. With `version`, Bundle.meta carries versionId and
+ * lastUpdated so the DSF client can tell versions apart.
+ */
+export function renderReceiverBundle(
+  input: StoredAllowListInput,
+  organization: string,
+  endpoint: string,
+  version?: BundleVersionMeta,
+): AllowListBundle {
+  const bundle = buildAllowListBundle(receiverViewInput(input, organization, endpoint));
+  if (!version) return bundle;
+  return {
+    ...bundle,
+    meta: {
+      versionId: String(version.number),
+      lastUpdated: version.createdAt.toISOString(),
+      tag: bundle.meta.tag,
+    },
+  };
+}
+
+/**
+ * Resolve the endpoint among the endpoints of an instance's organization.
+ * Ownership rule shared by every receiver read: an endpoint of another
+ * organization is not found.
  * @throws ORGANIZATION_NOT_FOUND / ENDPOINT_NOT_FOUND
  */
-export async function generateBundle(
+export async function resolveReceiver(
   instanceId: string,
   endpointId: string,
-): Promise<AllowListBundle> {
+): Promise<{ organization: string; endpoint: string }> {
   const org = await db('organizations').where({ instance_id: instanceId }).first();
   if (!org) throw new Error('ORGANIZATION_NOT_FOUND');
   const endpoint = await db('endpoints')
     .where({ identifier: endpointId, organization_id: org.identifier })
     .first();
   if (!endpoint) throw new Error('ENDPOINT_NOT_FOUND');
-
-  const approved = await loadApprovedOrganizations();
-  const members = await loadMembers(approved.filter((o) => o.identifier !== org.identifier));
-
-  const receiver: AllowListReceiver = {
-    organization: org.identifier,
-    endpoint: endpoint.identifier,
-    affiliations: [],
-    removedAffiliations: [],
-  };
-  if (approved.some((o) => o.identifier === org.identifier)) {
-    const rows: MembershipWithDeletion[] = await db('memberships')
-      .where({ organization_id: org.identifier, endpoint_id: endpoint.identifier })
-      .select('organization_id', 'parent_organization', 'endpoint_id', 'roles', 'deleted_at');
-    receiver.affiliations = rows
-      .filter((m) => !m.deleted_at)
-      .map((m) => ({ parent: m.parent_organization, roles: readRoles(m.roles) }));
-    receiver.removedAffiliations = rows
-      .filter((m) => m.deleted_at)
-      .map((m) => ({ parent: m.parent_organization }));
-  }
-
-  return build(members, receiver);
+  return { organization: org.identifier, endpoint: endpoint.identifier };
 }
 
-/**
- * Network-wide allow list: every approved organization with its endpoints,
- * SHA-512 thumbprints and affiliations, the parent organizations they point
- * at, DELETE entries for soft-deleted memberships, and DELETE entries for
- * organizations withdrawn from the allow list (with their endpoints and
- * affiliations), as the legacy portal publishes them.
- */
+/** Receiver view of the live state (fallback before a stored version exists). */
+export async function generateBundle(
+  instanceId: string,
+  endpointId: string,
+): Promise<AllowListBundle> {
+  const { organization, endpoint } = await resolveReceiver(instanceId, endpointId);
+  return renderReceiverBundle(await loadAllowListInput(), organization, endpoint);
+}
+
+/** Network-wide allow list of the live state. */
 export async function generateFullBundle(): Promise<AllowListBundle> {
-  const approved = await loadApprovedOrganizations();
-  return build(await loadMembers(approved));
+  return renderFullBundle(await loadAllowListInput());
 }

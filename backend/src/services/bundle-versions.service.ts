@@ -11,11 +11,27 @@
  * buckets are returned as raw FHIR entries so the admin UI can render
  * them inline.
  *
- * Storage: every snapshot stores the full JSON. ~50 KB / approval.
+ * Storage: every snapshot stores the signed full JSON plus the builder input
+ * it was rendered from (input_json, migration 024). The input makes every
+ * receiver view of every version reproducible, which backs the published
+ * allow list (current version + history, read by the DSF process) and the
+ * restore of an old version. ~50-100 KB / version.
  */
 import { db } from '../db/connection';
 import { v4 as uuidv4 } from 'uuid';
-import { generateFullBundle } from './fhir.service';
+import {
+  generateBundle,
+  loadAllowListInput,
+  renderFullBundle,
+  renderReceiverBundle,
+  resolveReceiver,
+} from './fhir.service';
+import {
+  parseAllowListInput,
+  serializeAllowListInput,
+  type StoredAllowListInput,
+} from '../lib/allowListInput';
+import type { AllowListBundle } from '../lib/allowListBundle';
 import { signBundle } from './bundle-signing.service';
 import { writeAuditLog } from './audit.service';
 
@@ -32,6 +48,7 @@ export interface BundleVersionRow {
   signature: string;
   bundle_json: string;
   notes: string | null;
+  input_json: string | null;
 }
 
 interface SnapshotArgs {
@@ -39,6 +56,9 @@ interface SnapshotArgs {
   triggeredByEmail: string;
   approvalRequestId?: string;
   notes?: string;
+  /** Network state to store instead of the live one (restore). */
+  input?: StoredAllowListInput;
+  restoredFromVersion?: number;
 }
 
 export interface SnapshotResult {
@@ -48,8 +68,9 @@ export interface SnapshotResult {
 }
 
 export async function createSnapshot(args: SnapshotArgs): Promise<SnapshotResult> {
-  const bundle = await generateFullBundle();
-  const { signature, contentHash } = signBundle(bundle);
+  const input = args.input ?? (await loadAllowListInput());
+  const bundle = renderFullBundle(input);
+  const { signature, contentHash, json } = signBundle(bundle);
   const id = uuidv4();
   await db('bundle_versions').insert({
     id,
@@ -58,7 +79,8 @@ export async function createSnapshot(args: SnapshotArgs): Promise<SnapshotResult
     approval_request_id: args.approvalRequestId ?? null,
     content_hash: contentHash,
     signature,
-    bundle_json: JSON.stringify(bundle),
+    bundle_json: json,
+    input_json: serializeAllowListInput(input),
     notes: args.notes ?? null,
   });
   const row = await db<BundleVersionRow>('bundle_versions').where({ id }).first();
@@ -72,29 +94,185 @@ export async function createSnapshot(args: SnapshotArgs): Promise<SnapshotResult
       versionNumber: row!.version_number,
       triggeredBy: args.triggeredBy,
       approvalRequestId: args.approvalRequestId ?? null,
+      ...(args.restoredFromVersion ? { restoredFromVersion: args.restoredFromVersion } : {}),
     },
   });
   return { id, versionNumber: row!.version_number, contentHash };
 }
 
+type VersionListRow = Pick<
+  BundleVersionRow,
+  | 'id'
+  | 'version_number'
+  | 'created_at'
+  | 'triggered_by'
+  | 'triggered_by_email'
+  | 'content_hash'
+  | 'notes'
+  | 'approval_request_id'
+> & { has_input: number | boolean };
+
+/**
+ * Versions newest first. `restorable` marks versions that stored their input;
+ * `isCurrent` marks the version the allow list is published from, which is the
+ * latest one while it carries an input.
+ */
 export async function listVersions(opts: { page: number; limit: number }) {
   const { page, limit } = opts;
-  const rows = await db<BundleVersionRow>('bundle_versions')
-    .select(
-      'id',
-      'version_number',
-      'created_at',
-      'triggered_by',
-      'triggered_by_email',
-      'content_hash',
-      'notes',
-      'approval_request_id',
-    )
-    .orderBy('version_number', 'desc')
-    .limit(limit)
-    .offset((page - 1) * limit);
+  const [raw, latest] = await Promise.all([
+    db('bundle_versions')
+      .select(
+        'id',
+        'version_number',
+        'created_at',
+        'triggered_by',
+        'triggered_by_email',
+        'content_hash',
+        'notes',
+        'approval_request_id',
+        db.raw('(input_json IS NOT NULL) AS has_input'),
+      )
+      .orderBy('version_number', 'desc')
+      .limit(limit)
+      .offset((page - 1) * limit) as Promise<VersionListRow[]>,
+    currentVersionNumber(),
+  ]);
+  const rows = raw.map(({ has_input, ...row }) => ({
+    ...row,
+    restorable: Boolean(has_input),
+    isCurrent: row.version_number === latest,
+  }));
   const [{ total }] = await db('bundle_versions').count<[{ total: number }]>({ total: '*' });
   return { rows, total: Number(total) };
+}
+
+/** Version the allow list is published from; null before the first stored input. */
+export async function currentVersionNumber(): Promise<number | null> {
+  const row = await db('bundle_versions')
+    .select('version_number', db.raw('(input_json IS NOT NULL) AS has_input'))
+    .orderBy('version_number', 'desc')
+    .first();
+  return row && row.has_input ? row.version_number : null;
+}
+
+export interface PublishedReceiverBundle {
+  bundle: AllowListBundle;
+  /** Null when the bundle was built from the live state (no stored input yet). */
+  version: { number: number; createdAt: Date } | null;
+}
+
+/**
+ * Receiver view of the published allow list. Without `versionNumber` that is
+ * the latest version's stored input, falling back to the live state while no
+ * version stored an input (before the first approval after migration 024).
+ * @throws ORGANIZATION_NOT_FOUND / ENDPOINT_NOT_FOUND / VERSION_NOT_FOUND
+ */
+export async function getPublishedReceiverBundle(
+  instanceId: string,
+  endpointId: string,
+  versionNumber?: number,
+): Promise<PublishedReceiverBundle> {
+  const { organization, endpoint } = await resolveReceiver(instanceId, endpointId);
+  const query = db('bundle_versions').select('version_number', 'created_at', 'input_json');
+  const row = await (versionNumber === undefined
+    ? query.orderBy('version_number', 'desc').first()
+    : query.where({ version_number: versionNumber }).first());
+  if (versionNumber !== undefined && (!row || !row.input_json)) {
+    throw new Error('VERSION_NOT_FOUND');
+  }
+  if (!row || !row.input_json) {
+    return { bundle: await generateBundle(instanceId, endpointId), version: null };
+  }
+  const version = { number: row.version_number as number, createdAt: row.created_at as Date };
+  const input = parseAllowListInput(row.input_json);
+  return { bundle: renderReceiverBundle(input, organization, endpoint, version), version };
+}
+
+export interface ReceiverHistoryEntry {
+  versionNumber: number;
+  createdAt: Date;
+  triggeredBy: TriggeredBy;
+  notes: string | null;
+  isCurrent: boolean;
+}
+
+/** Versions a receiver can read (those with a stored input), newest first. */
+export async function listReceiverHistory(opts: {
+  limit: number;
+  offset?: number;
+}): Promise<ReceiverHistoryEntry[]> {
+  const [rows, current] = await Promise.all([
+    db('bundle_versions')
+      .whereNotNull('input_json')
+      .select('version_number', 'created_at', 'triggered_by', 'notes')
+      .orderBy('version_number', 'desc')
+      .limit(opts.limit)
+      .offset(opts.offset ?? 0),
+    currentVersionNumber(),
+  ]);
+  return rows.map((r) => ({
+    versionNumber: r.version_number as number,
+    createdAt: r.created_at as Date,
+    triggeredBy: r.triggered_by as TriggeredBy,
+    notes: (r.notes as string | null) ?? null,
+    isCurrent: r.version_number === current,
+  }));
+}
+
+/** Signed network-wide bundle of the current version, or of the live state as fallback. */
+export async function getPublishedFullBundle(): Promise<{
+  json: string;
+  signature: string;
+  contentHash: string;
+  versionNumber: number | null;
+}> {
+  const row = await db<BundleVersionRow>('bundle_versions')
+    .select('version_number', 'bundle_json', 'signature', 'content_hash', 'input_json')
+    .orderBy('version_number', 'desc')
+    .first();
+  if (row && row.input_json) {
+    return {
+      json: row.bundle_json,
+      signature: row.signature,
+      contentHash: row.content_hash,
+      versionNumber: row.version_number,
+    };
+  }
+  const signed = signBundle(renderFullBundle(await loadAllowListInput()));
+  return {
+    json: signed.json,
+    signature: signed.signature,
+    contentHash: signed.contentHash,
+    versionNumber: null,
+  };
+}
+
+/**
+ * Publish an old version again: a NEW version (triggered_by RESTORE) with the
+ * stored input of the source, re-rendered and re-signed. The restored list is
+ * the current one until the next approval snapshots the live state.
+ * @throws NOT_FOUND / VERSION_NOT_RESTORABLE / INPUT_CORRUPT
+ */
+export async function restoreVersion(
+  id: string,
+  reason: string,
+  adminEmail: string,
+): Promise<SnapshotResult & { restoredFromVersion: number }> {
+  const source = await db<BundleVersionRow>('bundle_versions')
+    .select('version_number', 'input_json')
+    .where({ id })
+    .first();
+  if (!source) throw new Error('NOT_FOUND');
+  if (!source.input_json) throw new Error('VERSION_NOT_RESTORABLE');
+  const input = parseAllowListInput(source.input_json);
+  const snapshot = await createSnapshot({
+    triggeredBy: 'RESTORE',
+    triggeredByEmail: adminEmail,
+    notes: `Restored from v${source.version_number}: ${reason}`,
+    input,
+    restoredFromVersion: source.version_number,
+  });
+  return { ...snapshot, restoredFromVersion: source.version_number };
 }
 
 export async function getVersion(id: string) {
@@ -108,7 +286,9 @@ export async function getVersion(id: string) {
   } catch {
     throw new Error('BUNDLE_CORRUPT');
   }
-  return { ...row, bundle };
+  // The stored input is internal (restore, receiver views); keep it out of the API.
+  const { input_json: _input, ...rest } = row;
+  return { ...rest, restorable: _input !== null, bundle };
 }
 
 interface FhirEntry {

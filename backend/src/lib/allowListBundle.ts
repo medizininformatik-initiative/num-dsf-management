@@ -102,7 +102,12 @@ export interface AllowListEntry {
 // validators flagged the allow-list value; DSF ignores it in transactions.
 export interface AllowListBundle {
   resourceType: 'Bundle';
-  meta: { tag: Array<{ system: string; code: string; display: string }> };
+  meta: {
+    /** Version of the published allow list; only on versioned reads. */
+    versionId?: string;
+    lastUpdated?: string;
+    tag: Array<{ system: string; code: string; display: string }>;
+  };
   type: 'transaction';
   /** Absent when there is nothing to publish (FHIR JSON forbids empty arrays). */
   entry?: AllowListEntry[];
