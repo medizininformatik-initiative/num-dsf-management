@@ -1,263 +1,316 @@
 /**
- * MarketplacePage.tsx – Process Marketplace: card-grid listing with status
- * filter chips, client-side search, and the admin toolbar (Add/Edit/Delete).
- * Dependencies: useMarketplace, useDeleteMarketplaceEntry, useMe, i18n.store,
- *               MarketplaceCard, MarketplaceAddModal, MarketplaceEditStatusModal, sonner
+ * MarketplacePage.tsx – Process Marketplace browse page, App-Store style:
+ * header with search ("/" focuses it) and filter chips/pickers, a recommended
+ * row, and a responsive grid of glass cards with skeleton, empty and error
+ * states. Filters live in the URL (so Back from a detail page restores them)
+ * and the scroll position is restored on Back. Admins get Add/Edit/Remove.
+ * Dependencies: useMarketplace, useMe, i18n.store, marketplace components,
+ *               MarketplaceAddModal, MarketplaceEditStatusModal, ui primitives
  */
-import { useMemo, useState } from 'react';
-import { toast } from 'sonner';
-import { useMarketplace, useDeleteMarketplaceEntry } from '../hooks/useMarketplace';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useNavigationType, useSearchParams } from 'react-router-dom';
+import { useMarketplace } from '../hooks/useMarketplace';
 import { useMe } from '../hooks/useMe';
 import { useI18n } from '../stores/i18n.store';
-import { getErrorMessageForStepUp } from '../lib/getErrorMessage';
-import { needsTotpStepUp } from '../lib/authMode';
 import { MarketplaceCard } from '../components/marketplace/MarketplaceCard';
+import { MarketplaceFilterBar } from '../components/marketplace/MarketplaceFilterBar';
+import { MarketplaceDeleteDialog } from '../components/marketplace/MarketplaceDeleteDialog';
 import { MarketplaceAddModal } from '../components/modals/MarketplaceAddModal';
 import { MarketplaceEditStatusModal } from '../components/modals/MarketplaceEditStatusModal';
+import { Button } from '../components/ui/Button';
+import { Icon } from '../components/ui/Icon';
+import {
+  DEFAULT_FILTERS,
+  distinctDsfVersions,
+  distinctTopics,
+  featuredOf,
+  filterAndSort,
+  type BrowseFilters,
+  type SortKey,
+  type StatusFilter,
+  type TrustFilter,
+} from '../components/marketplace/marketplaceUtils';
 import type { MarketplaceEntry } from '../api/marketplace.api';
 
-type Filter = 'ALL' | 'APPROVED' | 'EXPERIMENTAL' | 'DEPRECATED';
+const SEARCH_DEBOUNCE_MS = 200;
+const STATUSES: StatusFilter[] = ['ALL', 'APPROVED', 'EXPERIMENTAL', 'DEPRECATED'];
+const TRUSTS: TrustFilter[] = ['ALL', 'verified', 'community', 'caution'];
+const SORTS: SortKey[] = ['relevance', 'updated', 'popular'];
 
-function matchesQuery(entry: MarketplaceEntry, q: string): boolean {
-  const haystack = [entry.name, entry.description ?? '', ...entry.topics, ...entry.requiredRoles]
-    .join(' ')
-    .toLowerCase();
-  return haystack.includes(q);
+// Survives the unmount caused by opening a detail page, so Back can restore it.
+let savedScrollTop = 0;
+
+function pick<T extends string>(value: string | null, allowed: T[], fallback: T): T {
+  return allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+function isTypingTarget(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName);
+}
+
+function CardSkeletons() {
+  const { t } = useI18n();
+  return (
+    <div
+      aria-busy="true"
+      className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-4"
+    >
+      <span className="sr-only">{t('loading')}</span>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div
+          key={i}
+          aria-hidden="true"
+          className="glass flex h-[208px] flex-col gap-3 rounded-[20px] p-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="skeleton h-12 w-12 rounded-[14px]" />
+            <div className="flex-1 space-y-2">
+              <div className="skeleton h-3.5 w-2/3 rounded-full" />
+              <div className="skeleton h-3 w-1/3 rounded-full" />
+            </div>
+          </div>
+          <div className="skeleton h-3 w-full rounded-full" />
+          <div className="skeleton h-3 w-4/5 rounded-full" />
+          <div className="skeleton mt-auto h-6 w-1/2 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function MarketplacePage() {
   const { t } = useI18n();
   const { data: me } = useMe();
-  const { data: entries = [], isLoading } = useMarketplace();
-  const deleteMut = useDeleteMarketplaceEntry();
+  const { data: entries = [], isLoading, isError, refetch } = useMarketplace();
+  const navType = useNavigationType();
+  const [params, setParams] = useSearchParams();
 
-  const [filter, setFilter] = useState<Filter>('ALL');
-  const [search, setSearch] = useState('');
+  const filters: BrowseFilters = {
+    q: params.get('q') ?? '',
+    status: pick(params.get('status'), STATUSES, 'ALL'),
+    topic: params.get('topic') ?? '',
+    dsf: params.get('dsf') ?? '',
+    trust: pick(params.get('trust'), TRUSTS, 'ALL'),
+    sort: pick(params.get('sort'), SORTS, 'relevance'),
+  };
+
+  const [searchInput, setSearchInput] = useState(filters.q);
   const [addOpen, setAddOpen] = useState(false);
   const [editEntry, setEditEntry] = useState<MarketplaceEntry | null>(null);
-
-  // Delete confirm state
   const [deleteTarget, setDeleteTarget] = useState<MarketplaceEntry | null>(null);
-  const [deleteTotpCode, setDeleteTotpCode] = useState('');
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const restoredRef = useRef(false);
 
   const isAdmin = !!me?.isAdmin;
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return entries.filter((e) => {
-      if (filter !== 'ALL' && e.status !== filter) return false;
-      if (q && !matchesQuery(e, q)) return false;
-      return true;
-    });
-  }, [entries, filter, search]);
-
-  const FILTERS: { key: Filter; label: string }[] = [
-    { key: 'ALL', label: t('marketplaceFilterAll') },
-    { key: 'APPROVED', label: t('marketplaceStatusApproved') },
-    { key: 'EXPERIMENTAL', label: t('marketplaceStatusExperimental') },
-    { key: 'DEPRECATED', label: t('marketplaceStatusDeprecated') },
-  ];
-
-  async function handleDelete() {
-    if (!deleteTarget) return;
-    if (needsTotpStepUp() && deleteTotpCode.length !== 6) {
-      toast.error(t('totpRequired'));
-      return;
-    }
-    try {
-      const body = needsTotpStepUp() ? { totpCode: deleteTotpCode } : {};
-      await deleteMut.mutateAsync({ id: deleteTarget.id, body });
-      toast.success(t('marketplaceDelete'));
-      setDeleteTarget(null);
-      setDeleteTotpCode('');
-    } catch (err: unknown) {
-      const msg = getErrorMessageForStepUp(
-        err,
-        t('genericActionFailed'),
-        t('certStepUpFailedToast'),
+  const updateFilters = useCallback(
+    (patch: Partial<BrowseFilters>) => {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [k, v] of Object.entries(patch)) {
+            const def = DEFAULT_FILTERS[k as keyof BrowseFilters];
+            if (v === def || v === '') next.delete(k);
+            else next.set(k, String(v));
+          }
+          return next;
+        },
+        { replace: true },
       );
-      toast.error(msg);
+    },
+    [setParams],
+  );
+
+  // Debounce the search box into the URL.
+  useEffect(() => {
+    if (searchInput === filters.q) return;
+    const id = window.setTimeout(() => updateFilters({ q: searchInput }), SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(id);
+  }, [searchInput, filters.q, updateFilters]);
+
+  // "/" jumps to the search field, like most store-style apps.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
+      e.preventDefault();
+      searchRef.current?.focus();
     }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Back from a detail page: put the scroll position back once content exists.
+  useLayoutEffect(() => {
+    if (restoredRef.current || entries.length === 0 || !scrollRef.current) return;
+    restoredRef.current = true;
+    if (navType === 'POP') scrollRef.current.scrollTop = savedScrollTop;
+    else savedScrollTop = 0;
+  }, [entries.length, navType]);
+
+  const topics = useMemo(() => distinctTopics(entries), [entries]);
+  const dsfVersions = useMemo(() => distinctDsfVersions(entries), [entries]);
+  const filtered = useMemo(
+    () => filterAndSort(entries, filters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [entries, params],
+  );
+  const isFiltered =
+    filters.q !== '' ||
+    filters.status !== 'ALL' ||
+    filters.topic !== '' ||
+    filters.dsf !== '' ||
+    filters.trust !== 'ALL';
+  const featured = useMemo(
+    () => (!isFiltered && entries.length >= 4 ? featuredOf(entries) : []),
+    [entries, isFiltered],
+  );
+
+  function clearFilters() {
+    setSearchInput('');
+    setParams({}, { replace: true });
   }
+
+  function renderCard(entry: MarketplaceEntry, i: number) {
+    return (
+      <div
+        key={entry.id}
+        className="animate-list-item-in flex min-w-0 flex-col gap-2"
+        style={{ '--stagger-index': i } as React.CSSProperties}
+      >
+        <div className="min-h-0 flex-1">
+          <MarketplaceCard entry={entry} />
+        </div>
+        {isAdmin && (
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setEditEntry(entry)}>
+              {t('marketplaceEdit')}
+            </Button>
+            <Button size="sm" variant="destructive" onClick={() => setDeleteTarget(entry)}>
+              {t('marketplaceDelete')}
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const countLabel =
+    filtered.length === 1
+      ? t('marketplaceResultsOne')
+      : t('marketplaceResults', { n: filtered.length });
 
   return (
     <div
-      style={{
-        flex: 1,
-        padding: '32px',
-        overflowY: 'auto',
-        fontFamily: 'Inter, system-ui, sans-serif',
+      ref={scrollRef}
+      onScroll={(e) => {
+        savedScrollTop = e.currentTarget.scrollTop;
       }}
+      className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8"
     >
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: '28px', color: 'var(--primary)' }}
-        >
-          hub
-        </span>
-        <div>
-          <h1
-            style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}
+      <div className="mx-auto flex max-w-6xl animate-scale-in flex-col gap-6">
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="m-0 text-[28px] font-bold leading-tight tracking-tight text-[color:var(--text-primary)]">
+              {t('marketplaceTitle')}
+            </h1>
+            <p className="m-0 mt-1 text-sm text-[color:var(--text-secondary)]">
+              {t('marketplaceSubtitle')}
+            </p>
+          </div>
+          {isAdmin && (
+            <Button onClick={() => setAddOpen(true)}>
+              <Icon name="add" size={18} />
+              {t('marketplaceAdd')}
+            </Button>
+          )}
+        </header>
+
+        <MarketplaceFilterBar
+          searchValue={searchInput}
+          onSearchChange={setSearchInput}
+          searchRef={searchRef}
+          filters={filters}
+          onChange={updateFilters}
+          topics={topics}
+          dsfVersions={dsfVersions}
+        />
+
+        {isLoading && <CardSkeletons />}
+
+        {isError && !isLoading && (
+          <div
+            role="alert"
+            className="glass flex flex-col items-center gap-3 rounded-[20px] p-10 text-center"
           >
-            {t('marketplaceTitle')}
-          </h1>
-        </div>
-      </div>
+            <Icon name="cloud_off" size={36} className="text-[color:var(--text-muted)]" />
+            <p className="m-0 text-sm text-[color:var(--text-secondary)]">
+              {t('marketplaceLoadFailed')}
+            </p>
+            <Button variant="secondary" onClick={() => refetch()}>
+              {t('marketplaceRetry')}
+            </Button>
+          </div>
+        )}
 
-      <div style={{ height: '1px', background: 'var(--border)', margin: '20px 0 20px' }} />
+        {!isLoading && !isError && (
+          <>
+            <p
+              role="status"
+              aria-live="polite"
+              className="m-0 text-[13px] font-medium text-[color:var(--text-secondary)]"
+            >
+              {countLabel}
+            </p>
 
-      {/* Search */}
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder={t('marketplaceSearchPlaceholder')}
-        aria-label={t('marketplaceSearchPlaceholder')}
-        style={{
-          width: '100%',
-          maxWidth: '420px',
-          padding: '8px 14px',
-          borderRadius: '10px',
-          border: '1px solid var(--border)',
-          background: 'var(--bg-card)',
-          color: 'var(--text-primary)',
-          fontSize: '13px',
-          marginBottom: '16px',
-        }}
-      />
+            {featured.length > 0 && (
+              <section aria-labelledby="mp-featured" className="flex flex-col gap-3">
+                <h2
+                  id="mp-featured"
+                  className="m-0 flex items-center gap-1.5 text-[17px] font-bold text-[color:var(--text-primary)]"
+                >
+                  <Icon name="auto_awesome" size={20} className="text-[color:var(--primary)]" />
+                  {t('marketplaceFeatured')}
+                </h2>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-4">
+                  {featured.map((e, i) => renderCard(e, i))}
+                </div>
+              </section>
+            )}
 
-      {/* Filter chips + admin toolbar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          marginBottom: '20px',
-          flexWrap: 'wrap',
-        }}
-      >
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            style={{
-              padding: '5px 14px',
-              borderRadius: '20px',
-              border: '1px solid',
-              borderColor: filter === f.key ? 'var(--primary)' : 'var(--border)',
-              background: filter === f.key ? 'var(--primary)' : 'var(--bg-card)',
-              color: filter === f.key ? '#fff' : 'var(--text-primary)',
-              fontSize: '12px',
-              fontWeight: filter === f.key ? 700 : 400,
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-          >
-            {f.label}
-          </button>
-        ))}
-
-        {isAdmin && (
-          <button
-            onClick={() => setAddOpen(true)}
-            style={{
-              marginLeft: 'auto',
-              padding: '7px 16px',
-              borderRadius: '10px',
-              border: 'none',
-              background: 'var(--primary)',
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-              add
-            </span>
-            {t('marketplaceAdd')}
-          </button>
+            {filtered.length === 0 ? (
+              <div className="glass flex flex-col items-center gap-3 rounded-[20px] p-12 text-center">
+                <Icon name="deployed_code" size={40} className="text-[color:var(--text-muted)]" />
+                <p className="m-0 text-sm text-[color:var(--text-secondary)]">
+                  {entries.length === 0 ? t('marketplaceEmpty') : t('marketplaceNoResults')}
+                </p>
+                {isFiltered && (
+                  <Button variant="secondary" onClick={clearFilters}>
+                    {t('marketplaceClearFilters')}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <section aria-labelledby="mp-all" className="flex flex-col gap-3">
+                {featured.length > 0 && (
+                  <h2
+                    id="mp-all"
+                    className="m-0 text-[17px] font-bold text-[color:var(--text-primary)]"
+                  >
+                    {t('marketplaceAllProcesses')}
+                  </h2>
+                )}
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-4">
+                  {filtered.map((e, i) => renderCard(e, i))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </div>
 
-      {/* Grid */}
-      {isLoading && <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{t('loading')}</p>}
-
-      {!isLoading && filtered.length === 0 && (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: '64px 32px',
-            color: 'var(--text-muted)',
-            fontSize: '14px',
-          }}
-        >
-          <span
-            className="material-symbols-outlined"
-            style={{ fontSize: '40px', display: 'block', marginBottom: '12px', opacity: 0.4 }}
-          >
-            deployed_code
-          </span>
-          {t('marketplaceEmpty')}
-        </div>
-      )}
-
-      {!isLoading && filtered.length > 0 && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-            gap: '16px',
-          }}
-        >
-          {filtered.map((entry) => (
-            <div key={entry.id} style={{ position: 'relative' }}>
-              <MarketplaceCard entry={entry} />
-              {isAdmin && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: '10px',
-                    right: '10px',
-                    display: 'flex',
-                    gap: '6px',
-                  }}
-                >
-                  <button
-                    aria-label={t('marketplaceEdit')}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setEditEntry(entry);
-                    }}
-                    style={adminBtn('var(--text-primary)')}
-                  >
-                    {t('marketplaceEdit')}
-                  </button>
-                  <button
-                    aria-label={t('marketplaceDelete')}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDeleteTarget(entry);
-                      setDeleteTotpCode('');
-                    }}
-                    style={adminBtn('#b91c1c')}
-                  >
-                    {t('marketplaceDelete')}
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Modals */}
       <MarketplaceAddModal open={addOpen} onClose={() => setAddOpen(false)} />
 
       {editEntry && (
@@ -271,128 +324,7 @@ export function MarketplacePage() {
         />
       )}
 
-      {/* Delete confirm */}
-      {deleteTarget && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => {
-            setDeleteTarget(null);
-            setDeleteTotpCode('');
-          }}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 1000,
-            background: 'rgba(15,23,42,0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'var(--bg-card)',
-              borderRadius: '16px',
-              padding: '24px',
-              maxWidth: '420px',
-              width: '90%',
-            }}
-          >
-            <h2
-              style={{
-                margin: '0 0 4px',
-                fontSize: '16px',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-              }}
-            >
-              {t('marketplaceConfirmDelete')}
-            </h2>
-            <p
-              style={{
-                margin: '0 0 16px',
-                fontSize: '12px',
-                color: 'var(--text-muted)',
-                fontFamily: 'monospace',
-              }}
-            >
-              {deleteTarget.name || deleteTarget.gitUrl}
-            </p>
-            {needsTotpStepUp() && (
-              <input
-                value={deleteTotpCode}
-                onChange={(e) => setDeleteTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-                maxLength={6}
-                style={{
-                  width: '180px',
-                  display: 'block',
-                  padding: '8px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border)',
-                  fontFamily: 'monospace',
-                  letterSpacing: '4px',
-                  textAlign: 'center',
-                  fontSize: '14px',
-                  background: 'var(--bg-page)',
-                  color: 'var(--text-primary)',
-                  marginBottom: '16px',
-                }}
-              />
-            )}
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => {
-                  setDeleteTarget(null);
-                  setDeleteTotpCode('');
-                }}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border)',
-                  background: 'transparent',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                }}
-              >
-                {t('cancel')}
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleteMut.isPending}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  background: '#b91c1c',
-                  color: '#fff',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  opacity: deleteMut.isPending ? 0.6 : 1,
-                }}
-              >
-                {t('marketplaceDelete')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <MarketplaceDeleteDialog entry={deleteTarget} onClose={() => setDeleteTarget(null)} />
     </div>
   );
-}
-
-function adminBtn(color: string): React.CSSProperties {
-  return {
-    padding: '3px 9px',
-    border: '1px solid var(--border)',
-    background: 'var(--bg-card)',
-    borderRadius: '6px',
-    fontSize: '11px',
-    cursor: 'pointer',
-    color,
-  };
 }
