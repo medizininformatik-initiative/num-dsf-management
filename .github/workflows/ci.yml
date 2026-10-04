@@ -43,7 +43,9 @@ jobs:
           #    when the dev server is bound to the network via --host. Production serves the
           #    static `vite build` output through nginx and never starts the dev server. The
           #    only fix is vite 5 -> 8 (semver-major, cascading vitest 1 -> 4); Dependabot owns it.
-          npx better-npm-audit audit --level high -x GHSA-5xrq-8626-4rwp,GHSA-fx2h-pf6j-xcff
+          #  - GHSA-vfj7-8cjw-p6xm: braces stack exhaustion on hostile glob patterns, no
+          #    patched release (<= 3.0.3); only the build tools tailwindcss and chokidar use it.
+          npx better-npm-audit audit --level high -x GHSA-5xrq-8626-4rwp,GHSA-fx2h-pf6j-xcff,GHSA-vfj7-8cjw-p6xm
 
   backend-lint:
     name: Backend Lint
