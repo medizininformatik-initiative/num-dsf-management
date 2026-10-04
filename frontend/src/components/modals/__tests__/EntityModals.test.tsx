@@ -24,6 +24,13 @@ const downloadIp = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../hooks/useCertificates', () => ({
   useCreateCertificate: () => ({ mutateAsync: certCreate, isPending: false }),
+  usePreviewCertificate: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    reset: vi.fn(),
+    isPending: false,
+    data: undefined,
+  }),
 }));
 
 const endpointsFixture = [
@@ -34,6 +41,10 @@ const endpointsFixture = [
     ipAddresses: [],
   },
 ];
+// The IP address list is only offered to IMI admins.
+vi.mock('../../../hooks/useMe', () => ({
+  useMe: () => ({ data: { email: 'admin@example.de', isAdmin: true } }),
+}));
 vi.mock('../../../hooks/useEndpoints', () => ({
   useEndpoints: () => ({ data: endpointsFixture, isLoading: false }),
   useCreateEndpoint: () => ({ mutateAsync: endpointCreate, isPending: false }),
@@ -127,6 +138,7 @@ describe('EndpointModal', () => {
     fireEvent.change(screen.getByPlaceholderText(/dsf-fhir\.hospital\.de\/fhir/i), {
       target: { value: 'https://dsf-fhir.hospital.de/fhir' },
     });
+    fireEvent.click(screen.getByRole('button', { name: /add ip address/i }));
     fireEvent.change(screen.getByPlaceholderText(/128\.176\.232\.132/), {
       target: { value: '128.176.232.132' },
     });

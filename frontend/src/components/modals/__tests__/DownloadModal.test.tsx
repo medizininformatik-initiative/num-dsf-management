@@ -1,18 +1,25 @@
 /**
- * DownloadModal.test.tsx — the link DSF uses, the version history list with
- * DSF history links, versioned signed download with its verification panel,
- * and the acknowledgement gate.
+ * DownloadModal.test.tsx — the link DSF uses, the version history with DSF
+ * history links, signed versioned downloads with local hash verification
+ * (match, mismatch, unavailable), the three-step guide, the admin-only IP list
+ * and the acknowledgement gate. API, sonner and browser download plumbing are stubbed.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 
 const downloadBundle = vi.hoisted(() => vi.fn());
+const downloadIpList = vi.hoisted(() => vi.fn());
 const getBundleHistory = vi.hoisted(() => vi.fn());
+const downloadFull = vi.hoisted(() => vi.fn());
+const me = vi.hoisted(() => ({ isAdmin: false }));
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 
 vi.mock('sonner', () => ({ toast }));
+vi.mock('../../../hooks/useMe', () => ({
+  useMe: () => ({ data: { email: 'a@example.de', isAdmin: me.isAdmin } }),
+}));
 vi.mock('../../../hooks/useEndpoints', () => ({
   useEndpoints: () => ({
     data: [{ identifier: 'dsf.klinik.example.de', name: 'Klinik FHIR' }],
@@ -21,8 +28,8 @@ vi.mock('../../../hooks/useEndpoints', () => ({
 }));
 vi.mock('../BundlePreview', () => ({ BundlePreview: () => null }));
 vi.mock('../../../api/entities.api', () => ({
-  api: () => ({ downloadBundle, getBundleHistory, downloadIpList: vi.fn() }),
-  downloadFullAllowListBundle: vi.fn(),
+  api: () => ({ downloadBundle, getBundleHistory, downloadIpList }),
+  downloadFullAllowListBundle: downloadFull,
 }));
 
 import { DownloadModal } from '../DownloadModal';
@@ -51,28 +58,51 @@ const HISTORY = [
   },
 ];
 const BASE = `${window.location.origin}/fhir/Bundle/dsf.klinik.example.de`;
+const HASH = 'ab'.repeat(32);
+const JWT = 'eyJhbGciOiJSUzI1NiJ9.eyJjb250ZW50SGFzaCI6ImFiIn0.c2ln';
+
+/** A bundle response whose body hashes (through the stubbed digest) to the stub. */
+function bundleResponse(headers: Record<string, string>) {
+  const blob = new Blob(['{"resourceType":"Bundle"}'], { type: 'application/fhir+json' });
+  Object.defineProperty(blob, 'arrayBuffer', { value: async () => new ArrayBuffer(8) });
+  return { data: blob, headers };
+}
+
+function stubDigest(hex: string) {
+  const bytes = new Uint8Array(hex.match(/../g)!.map((b) => parseInt(b, 16)));
+  vi.stubGlobal('crypto', { subtle: { digest: vi.fn(async () => bytes.buffer) } });
+}
 
 async function openWithEndpoint() {
   const user = userEvent.setup();
   vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
   renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
-  await user.selectOptions(screen.getByLabelText('Selected Endpoint'), 'dsf.klinik.example.de');
+  await user.selectOptions(screen.getByLabelText('Endpoint'), 'dsf.klinik.example.de');
   return user;
+}
+
+async function downloadVersion3() {
+  const user = await openWithEndpoint();
+  await user.click(screen.getByTestId('disclaimer-checkbox'));
+  await user.click(await screen.findByTestId('download-version-3'));
+  return screen.findByTestId('verify-panel');
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  me.isAdmin = false;
   getBundleHistory.mockResolvedValue({ data: { data: HISTORY } });
-  downloadBundle.mockResolvedValue({
-    data: '{}',
-    headers: {
-      'x-bundle-version': '3',
-      'x-content-hash': 'deadbeef',
-      'x-bundle-signature': 'c2lnbmF0dXJl',
-    },
-  });
+  downloadBundle.mockResolvedValue(
+    bundleResponse({ 'x-content-hash': HASH, 'x-bundle-signature': JWT }),
+  );
   URL.createObjectURL = vi.fn(() => 'blob:x');
   URL.revokeObjectURL = vi.fn();
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('DownloadModal – DSF link and history', () => {
@@ -83,10 +113,12 @@ describe('DownloadModal – DSF link and history', () => {
     expect(getBundleHistory).not.toHaveBeenCalled();
   });
 
-  it('leads with the current allow-list URL of the endpoint, copyable, with the Task input', async () => {
+  it('leads with the current allow-list URL of the endpoint, copyable, plus the Task input in the guide', async () => {
     const user = await openWithEndpoint();
     expect(screen.getByTestId('dsf-link')).toHaveTextContent(BASE);
-    expect(screen.getAllByText(/allow-list\|allow_list/).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText('http://dsf.dev/fhir/CodeSystem/allow-list|allow_list'),
+    ).toBeInTheDocument();
     await user.click(screen.getByTestId('copy-dsf-link'));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(BASE);
     expect(toast.success).toHaveBeenCalledWith('Copied.');
@@ -112,7 +144,7 @@ describe('DownloadModal – DSF link and history', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(`${BASE}/_history/3`);
   });
 
-  it('shows the empty and error states of the history', async () => {
+  it('shows the empty state of the history', async () => {
     getBundleHistory.mockResolvedValueOnce({ data: { data: [] } });
     await openWithEndpoint();
     expect(await screen.findByText(/No version has been published/)).toBeInTheDocument();
@@ -123,33 +155,70 @@ describe('DownloadModal – DSF link and history', () => {
     await openWithEndpoint();
     expect(await screen.findByRole('alert')).toHaveTextContent('could not be loaded');
   });
+
+  it('reports a failing copy', async () => {
+    const user = await openWithEndpoint();
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
+    await user.click(screen.getByTestId('copy-dsf-link'));
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+  });
 });
 
-describe('DownloadModal – versioned download', () => {
+describe('DownloadModal – versioned download and verification', () => {
   it('keeps version downloads disabled until the disclaimer is acknowledged', async () => {
     await openWithEndpoint();
-    expect(await screen.findByTestId('download-version-3')).toBeDisabled();
+    const button = await screen.findByTestId('download-version-3');
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription('Confirm the notice above to enable the downloads.');
   });
 
-  it('downloads the chosen version and shows hash, signature and version for verification', async () => {
-    const user = await openWithEndpoint();
-    await user.click(screen.getByTestId('disclaimer-checkbox'));
-    await user.click(await screen.findByTestId('download-version-3'));
-    await waitFor(() => expect(downloadBundle).toHaveBeenCalledWith('dsf.klinik.example.de', 3));
-    const panel = await screen.findByTestId('verify-panel');
-    expect(panel).toHaveTextContent('deadbeef');
-    expect(panel).toHaveTextContent('c2lnbmF0dXJl');
-    expect(panel).toHaveTextContent('v3');
-    expect(panel).toHaveTextContent('sha256sum dsf-allow-list-v3.json');
+  it('downloads the chosen version, shows hash and signature and confirms a matching hash', async () => {
+    stubDigest(HASH);
+    const panel = await downloadVersion3();
+    expect(downloadBundle).toHaveBeenCalledWith('dsf.klinik.example.de', 3);
+    expect(panel).toHaveTextContent('dsf-allow-list-v3.json');
+    // Grouped for reading, copied raw.
+    expect(within(panel).getByText(/^abab abab/)).toBeInTheDocument();
+    expect(within(panel).getByTestId('hash-check')).toHaveTextContent(
+      'The downloaded file matches this hash.',
+    );
+    expect(within(panel).getByText(JWT)).toBeInTheDocument();
     expect(toast.success).toHaveBeenCalledWith('Bundle downloaded.');
+    // Step 2 commands now name the downloaded file.
+    expect(screen.getByText('sha256sum dsf-allow-list-v3.json')).toBeInTheDocument();
+    expect(
+      screen.getByText('Get-FileHash dsf-allow-list-v3.json -Algorithm SHA256'),
+    ).toBeInTheDocument();
+  });
+
+  it('warns when the received bytes do not match the content hash', async () => {
+    stubDigest('cd'.repeat(32));
+    const panel = await downloadVersion3();
+    expect(within(panel).getByRole('alert')).toHaveTextContent(
+      'The downloaded file does not match this hash. Do not import it.',
+    );
+  });
+
+  it('asks for a manual check when the browser cannot hash the file', async () => {
+    vi.stubGlobal('crypto', {});
+    const panel = await downloadVersion3();
+    expect(
+      within(panel).getByText('Compare the hash of the file yourself (step 2).'),
+    ).toBeInTheDocument();
   });
 
   it('warns when the server sent neither hash nor signature', async () => {
-    downloadBundle.mockResolvedValueOnce({ data: '{}', headers: {} });
+    downloadBundle.mockResolvedValueOnce(bundleResponse({}));
+    const panel = await downloadVersion3();
+    expect(within(panel).getByRole('alert')).toHaveTextContent(
+      'The server sent no hash or signature',
+    );
+  });
+
+  it('copies the commands of the guide', async () => {
     const user = await openWithEndpoint();
-    await user.click(screen.getByTestId('disclaimer-checkbox'));
-    await user.click(await screen.findByTestId('download-version-1'));
-    expect(await screen.findByText(/did not send a hash or signature/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Copy sha256sum' }));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('sha256sum dsf-allow-list.json');
   });
 
   it('toasts an error when the download fails', async () => {
@@ -160,9 +229,52 @@ describe('DownloadModal – versioned download', () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to download the bundle.'));
     expect(screen.queryByTestId('verify-panel')).toBeNull();
   });
+
+  it('verifies the network-wide bundle the same way', async () => {
+    stubDigest(HASH);
+    downloadFull.mockResolvedValue(
+      bundleResponse({ 'x-content-hash': HASH, 'x-bundle-signature': JWT }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    await user.click(screen.getByTestId('disclaimer-checkbox'));
+    await user.click(screen.getByTestId('download-bundle-btn'));
+    const panel = await screen.findByTestId('verify-panel');
+    expect(downloadFull).toHaveBeenCalledTimes(1);
+    expect(panel).toHaveTextContent('dsf-allow-list-bundle.json');
+    expect(within(panel).getByTestId('hash-check')).toHaveTextContent('matches');
+  });
 });
 
-describe('DownloadModal – shell', () => {
+describe('DownloadModal – guide, IP list and gate', () => {
+  it('puts the process link inside the translated step 3 sentence', () => {
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    const link = screen.getByRole('link', { name: 'dsf-process-allow-list' });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://github.com/datasharingframework/dsf-process-allow-list',
+    );
+    expect(link.parentElement).toHaveTextContent(/^Start the DSF process downloadAllowList \(/);
+    expect(link.parentElement).toHaveTextContent(/registered in the portal\.$/);
+  });
+
+  it('hides the IP address list from non-admins', () => {
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    expect(screen.queryByTestId('download-ip-btn')).toBeNull();
+  });
+
+  it('offers the IP address list to admins, behind the gate', async () => {
+    me.isAdmin = true;
+    downloadIpList.mockResolvedValue({ data: new Blob(['x']) });
+    const user = userEvent.setup();
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    expect(screen.getByTestId('download-ip-btn')).toBeDisabled();
+    await user.click(screen.getByTestId('disclaimer-checkbox'));
+    await user.click(screen.getByTestId('download-ip-btn'));
+    await waitFor(() => expect(downloadIpList).toHaveBeenCalledTimes(1));
+    expect(toast.success).toHaveBeenCalledWith('IP address list downloaded.');
+  });
+
   it('renders nothing when closed', () => {
     const { container } = renderWithProviders(
       <DownloadModal open={false} onClose={() => {}} instanceId="i1" />,
@@ -170,9 +282,19 @@ describe('DownloadModal – shell', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('renders the title and keeps the network bundle gated when open', () => {
-    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+  it('shows the disclaimer and keeps every download disabled until it is acknowledged', async () => {
+    me.isAdmin = true;
+    const user = await openWithEndpoint();
     expect(screen.getByRole('heading', { name: /download allow list/i })).toBeInTheDocument();
-    expect(screen.getByTestId('download-bundle-btn')).toBeDisabled();
+    expect(screen.getByTestId('bundle-disclaimer')).toBeInTheDocument();
+    const gated = () => [
+      screen.getByTestId('download-bundle-btn'),
+      screen.getByTestId('download-ip-btn'),
+      screen.getByTestId('download-version-3'),
+    ];
+    await screen.findByTestId('download-version-3');
+    for (const b of gated()) expect(b).toBeDisabled();
+    await user.click(screen.getByTestId('disclaimer-checkbox'));
+    for (const b of gated()) expect(b).toBeEnabled();
   });
 });
