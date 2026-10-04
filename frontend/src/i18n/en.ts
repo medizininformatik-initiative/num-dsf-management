@@ -1059,6 +1059,8 @@ export const en = {
   totpBackupFileCreated: 'Created: {date}',
   totpBackupFileNote: 'Each code can be used once. Keep this file in a safe place.',
   authRestoringSession: 'Restoring session…',
+  adminOnboardingStatusOk: 'OK',
+  adminOnboardingStatusFailed: 'Failed',
   // ─── Bundle Versions (federation hardening 2026-05-18) ────────────────────
   download: 'Download',
   bundleVersionsTitle: 'Bundle versions',

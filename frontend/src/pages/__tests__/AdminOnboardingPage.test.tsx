@@ -5,7 +5,7 @@
  * mocked success result renders the summary line and per-row results.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../test/renderWithProviders';
 import type { OnboardingImportResult } from '../../api/onboarding.api';
@@ -73,6 +73,11 @@ describe('AdminOnboardingPage', () => {
     expect(await screen.findByText('1 created, 2 updated, 1 failed')).toBeInTheDocument();
     expect(screen.getByText('ukm.de')).toBeInTheDocument();
     expect(screen.getByText('bad.de')).toBeInTheDocument();
+    // Translated status pills instead of unlabeled English icons.
+    const okRow = screen.getByText('ukm.de').closest('tr') as HTMLTableRowElement;
+    const badRow = screen.getByText('bad.de').closest('tr') as HTMLTableRowElement;
+    expect(within(okRow).getByText('OK')).toBeInTheDocument();
+    expect(within(badRow).getAllByText('Failed')).toHaveLength(2);
     expect(screen.getByText('invalid fingerprint')).toBeInTheDocument();
     expect(screen.getByText(/missing organizationIdentifier/)).toBeInTheDocument();
   });

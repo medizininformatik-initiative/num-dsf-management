@@ -1083,6 +1083,8 @@ export const de: Record<TranslationKey, string> = {
   totpBackupFileCreated: 'Erstellt: {date}',
   totpBackupFileNote: 'Jeder Code ist nur einmal gültig. Bewahren Sie diese Datei sicher auf.',
   authRestoringSession: 'Sitzung wird wiederhergestellt…',
+  adminOnboardingStatusOk: 'OK',
+  adminOnboardingStatusFailed: 'Fehlgeschlagen',
   // ─── Bundle-Versionen (Föderationshärtung 2026-05-18) ────────────────────
   download: 'Herunterladen',
   bundleVersionsTitle: 'Bundle-Versionen',
