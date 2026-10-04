@@ -861,7 +861,7 @@ export const de: Record<TranslationKey, string> = {
   adminHelpApprovalLi1:
     'Sie können dieselbe Anfrage nicht sowohl genehmigen als auch ablehnen — Ihre erste Entscheidung ist endgültig.',
   adminHelpApprovalLi2:
-    'Zwei Genehmigungen aus derselben E-Mail-Domain schließen die Anfrage nicht ab. Das System zeigt einen Tooltip, der erklärt, warum die Schaltfläche deaktiviert ist.',
+    'Zwei Genehmigungen aus derselben E-Mail-Domain schließen die Anfrage nicht ab. Ein Hinweis neben den Schaltflächen erklärt, warum „Genehmigen“ deaktiviert ist.',
   adminHelpApprovalLi3: 'Eine einzelne Ablehnung schließt die Anfrage sofort ab.',
   adminHelpCrossUserTitle: 'Instanzen anderer Nutzer bearbeiten',
   adminHelpCrossUserP1:

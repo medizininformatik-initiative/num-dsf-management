@@ -846,7 +846,7 @@ export const en = {
   adminHelpApprovalLi1:
     'You cannot approve and reject the same request — the first decision is final for you.',
   adminHelpApprovalLi2:
-    'Two approvals from the same email domain do not finalize. The system displays a tooltip explaining why the button is disabled.',
+    'Two approvals from the same email domain do not finalize. A note next to the buttons explains why Approve is disabled.',
   adminHelpApprovalLi3: 'A single rejection finalizes the request immediately.',
   adminHelpCrossUserTitle: 'Editing instances you do not own',
   adminHelpCrossUserP1:
