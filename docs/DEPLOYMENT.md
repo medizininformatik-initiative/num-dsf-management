@@ -485,6 +485,26 @@ The response is the allow list for that endpoint:
 
 The portal's GUI download `GET /api/v1/instances/:id/download/bundle?endpointId=...` (signed) returns the same list.
 
+#### Current link, history and restore
+
+The link above always points at the **current** allow list. The allow list is versioned: every approval (four-eyes, silent consent, or an approved withdrawal) stores a new bundle version together with the network state it was built from. The current list is the receiver view of the latest version. Edits made after an approval (a new certificate, a changed endpoint) do not appear in it until the next version exists.
+
+The current read carries `Bundle.meta.versionId` (the version number) and `Bundle.meta.lastUpdated`, plus the headers `ETag: W/"<version>"` and `Last-Modified`. A conditional read with `If-None-Match` answers `304` while the version is unchanged. Before the first approval after the upgrade that introduced versions (migration 024), the portal falls back to the live state.
+
+Older versions stay readable with the same client certificate and the same endpoint ownership rule (a certificate of one organization cannot read another organization's endpoint):
+
+| Request | Result |
+|---------|--------|
+| `GET /fhir/Bundle/<endpoint>` | Current version, receiver view. |
+| `GET /fhir/Bundle/<endpoint>/_history` | FHIR `Bundle` of type `history`, newest first, one entry per version without the resource (`fullUrl`, `request`, `response.etag`, `response.lastModified`). `?_count=` limits the list (default 50, maximum 200). |
+| `GET /fhir/Bundle/<endpoint>/_history/<version>` | The receiver view of that version, `meta.versionId` set. `404` for an unknown version or a version created before migration 024. |
+
+To apply an old list on a site, set the Task input `allow_list` to the `_history/<version>` URL. The BPE reads it like the current link.
+
+Site users see the same versions in the GUI (`GET /api/v1/instances/:id/bundle-history?endpointId=...`) and download one with `.../download/bundle?endpointId=...&version=<n>`. The response carries `X-Bundle-Version`.
+
+**Restore.** An IMI admin can publish an old version again (`POST /api/v1/admin/bundle-versions/:id/restore` with a reason, behind the step-up: TOTP code, or the re-presented client certificate in certificate mode). Restore does not rewrite history. It creates a new version (`triggered_by` `RESTORE`, note `Restored from v<N>: <reason>`) with the stored input of the old one, re-rendered and re-signed. That new version is the current list from then on. The live data in the portal is unchanged, so the next approval creates a version from the live state again and replaces the restored list. Versions created before migration 024 have no stored input and cannot be restored (`409 VERSION_NOT_RESTORABLE`).
+
 Requirements on the site:
 - **Identifiers.** The organization identifier and the endpoint identifier in the portal must equal the DSF FHIR server's `DEV_DSF_FHIR_SERVER_ORGANIZATION_IDENTIFIER_VALUE` and the host of `DEV_DSF_FHIR_SERVER_BASE_URL`. DSF derives the endpoint identifier from that host. If they differ, the conditional references of the site's own affiliations do not resolve and the whole transaction fails.
 - **Client certificate.** The BPE's client certificate must be registered for the organization, either as the login certificate (SHA-512 fingerprint) or in the organization's certificate list. An unregistered certificate gets `403`, no certificate gets `401`. Both errors are FHIR OperationOutcomes, so the BPE logs the reason.
@@ -505,7 +525,7 @@ curl --cert dsf-client.crt --key dsf-client.key -H 'Accept: application/fhir+jso
 
 ### Network-wide bundle
 
-`GET /fhir/Bundle` (mTLS, any registered certificate) and `GET /api/v1/download/full-bundle` (GUI) return all approved organizations, without the receiver view.
+`GET /fhir/Bundle` (mTLS, any registered certificate) and `GET /api/v1/download/full-bundle` (GUI) return all approved organizations of the current version, without the receiver view.
 
 ### End-to-end test with the real DSF software
 

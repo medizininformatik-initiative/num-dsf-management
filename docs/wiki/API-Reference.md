@@ -208,8 +208,9 @@ Mounted at `/api/v1/admin/bundle-versions`. All `requireAdmin`.
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /api/v1/admin/bundle-versions | requireAdmin | Paginated bundle history (`?page=&limit=`); includes `meta` pagination. |
-| GET | /api/v1/admin/bundle-versions/:id | requireAdmin | Single version + parsed bundle. |
+| GET | /api/v1/admin/bundle-versions | requireAdmin | Paginated bundle history (`?page=&limit=`); includes `meta` pagination. Rows carry `isCurrent` (the version the allow list is published from) and `restorable` (has a stored input). |
+| GET | /api/v1/admin/bundle-versions/:id | requireAdmin | Single version + parsed bundle (+ `restorable`). |
+| POST | /api/v1/admin/bundle-versions/:id/restore | requireAdmin + step-up | Publish an old version again as a new version (`triggered_by` RESTORE). Body `{ reason (3-500), totpCode? }` → `{ id, versionNumber, contentHash, restoredFromVersion }` (201). 404 unknown id, 409 `VERSION_NOT_RESTORABLE` (version without stored input), 400 invalid reason. |
 | GET | /api/v1/admin/bundle-versions/:id/download | requireAdmin | Raw bundle JSON as attachment (signature + content-hash headers). |
 | GET | /api/v1/admin/bundle-versions/:idA/diff/:idB | requireAdmin | Diff between two versions. |
 
@@ -275,7 +276,8 @@ Mounted at `/api/v1/instances/:instanceId/download` and `/api/v1/download`.
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | GET | /api/v1/instances/:instanceId/download/full-bundle | requireAuth | Network-wide FHIR bundle (audited). Returns `application/fhir+json` attachment. |
-| GET | /api/v1/instances/:instanceId/download/bundle | requireOwner | Per-endpoint signed bundle. Query `?endpointId=` (required). Signature + content-hash headers. |
+| GET | /api/v1/instances/:instanceId/download/bundle | requireOwner | Per-endpoint signed bundle of the current version. Query `?endpointId=` (required), `&version=<n>` (optional, an older version; 404 if unknown). Signature, content-hash and `X-Bundle-Version` headers. |
+| GET | /api/v1/instances/:id/bundle-history | requireOwner | Versions a site can download for one endpoint. Query `?endpointId=` (required, must belong to the instance), `&limit=`. → `{ data: [{ versionNumber, createdAt, triggeredBy, notes, isCurrent }] }`, newest first. |
 | GET | /api/v1/instances/:instanceId/download/ip-address-list | requireAdmin | Excel (`.xlsx`) export of all allow-listed IPs. |
 | GET | /api/v1/download/ip-address-list | requireAdmin | Same export without instance scope. |
 | GET | /api/v1/download/full-bundle | requireAuth | Network-wide bundle without instance scope. |
@@ -291,10 +293,12 @@ Mounted at `/fhir`. Machine-to-machine; authenticated by client-certificate thum
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /fhir/Bundle/:endpointId | mTLS | Fetch the signed bundle for one endpoint owned by the calling cert's org. |
-| GET | /fhir/Bundle | mTLS | Search by client cert; returns the network-wide bundle. |
+| GET | /fhir/Bundle/:endpointId | mTLS | The current allow list for one endpoint owned by the calling cert's org: receiver view of the latest bundle version. `Bundle.meta.versionId` / `lastUpdated`, `ETag: W/"<version>"`, `Last-Modified`; 304 on a matching `If-None-Match`. Falls back to the live state while no version has a stored input. |
+| GET | /fhir/Bundle/:endpointId/_history | mTLS | FHIR `Bundle` of type `history`, newest first, one entry per version (`fullUrl`, `request`, `response.etag`, `response.lastModified`, no resource). `?_count=` (default 50, max 200). |
+| GET | /fhir/Bundle/:endpointId/_history/:vid | mTLS | Receiver view of one version. 404 for an unknown version or one without stored input. |
+| GET | /fhir/Bundle | mTLS | Network-wide bundle of the current version. |
 
-Missing cert → 401; cert not registered → 403; unknown endpoint/org → 404.
+Missing cert → 401; cert not registered → 403; unknown endpoint/org/version → 404 (an endpoint of another organization counts as unknown).
 
 ---
 
