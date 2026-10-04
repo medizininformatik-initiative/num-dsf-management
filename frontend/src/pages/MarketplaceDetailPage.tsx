@@ -1,353 +1,238 @@
 /**
  * MarketplaceDetailPage.tsx – per-process detail at /app/marketplace/:slug.
- * Two-panel layout: a DSF-metadata panel and a lifecycle/trust panel. Admins
- * get an "Edit metadata" button opening the extended status/metadata modal.
- * Dependencies: react-router-dom, useMarketplaceEntry, useMe, i18n.store,
- *               MarketplaceEditStatusModal
+ * A sticky glass bar (Back, and name + GitHub action once scrolled), a hero
+ * with tile, name, publisher, trust and the primary actions, an advisory
+ * banner, and a segmented control over Overview / Releases / Compatibility /
+ * Links. Back returns to the browse page with its filters and scroll position.
+ * Admins get "Edit metadata". Dependencies: react-router-dom,
+ * useMarketplaceEntry, useMe, i18n.store, marketplace components, ui primitives
  */
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMarketplaceEntry } from '../hooks/useMarketplace';
 import { useMe } from '../hooks/useMe';
 import { useI18n } from '../stores/i18n.store';
 import { MarketplaceEditStatusModal } from '../components/modals/MarketplaceEditStatusModal';
-import type { MarketplaceDetail } from '../api/marketplace.api';
+import { MarketplaceTile } from '../components/marketplace/MarketplaceCard';
+import {
+  DetailPanel,
+  DetailTabList,
+  type DetailTab,
+} from '../components/marketplace/MarketplaceDetailTabs';
+import {
+  STATUS_TONE,
+  TRUST_TONE,
+  displayName,
+  publisherOf,
+  safeHttpUrl,
+  statusLabelKey,
+  trustLevel,
+} from '../components/marketplace/marketplaceUtils';
+import { Button } from '../components/ui/Button';
+import { Icon } from '../components/ui/Icon';
+import { StatusPill } from '../components/ui/StatusPill';
 
-const ACCENT = 'var(--primary)';
+const ADVISORY_CLASS = {
+  INFO: 'bg-info-surface border-info-border text-info-fg',
+  WARNING: 'bg-warning-surface border-warning-border text-warning-fg',
+  CRITICAL: 'bg-danger-surface border-danger-border text-danger-fg',
+} as const;
 
-const STATUS_PILL: Record<MarketplaceDetail['status'], { bg: string; fg: string }> = {
-  APPROVED: { bg: '#dfffe7', fg: '#106a3b' },
-  EXPERIMENTAL: { bg: '#fff4d6', fg: '#8a5b00' },
-  DEPRECATED: { bg: '#e9ecef', fg: '#495057' },
-};
-
-const ADVISORY_COLOR: Record<NonNullable<MarketplaceDetail['advisorySeverity']>, string> = {
-  INFO: '#1d4ed8',
-  WARNING: '#b45309',
-  CRITICAL: '#b91c1c',
-};
-
-const panelStyle: React.CSSProperties = {
-  background: 'var(--bg-card)',
-  border: '1px solid var(--border)',
-  borderRadius: '12px',
-  padding: '20px',
-};
-
-const panelTitleStyle: React.CSSProperties = {
-  fontSize: '13px',
-  fontWeight: 700,
-  color: 'var(--text-primary)',
-  margin: '0 0 14px',
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em',
-};
+const LINK_BTN = 'btn btn-md press-effect no-underline';
+const SCROLLED_AT = 120;
 
 export function MarketplaceDetailPage() {
   const { t } = useI18n();
   const { slug = '' } = useParams();
   const { data: entry, isLoading } = useMarketplaceEntry(slug);
   const { data: me } = useMe();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [editOpen, setEditOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [tab, setTab] = useState<DetailTab>('overview');
 
   const isAdmin = !!me?.isAdmin;
 
+  // history entry 0 ("default" key) means the page was opened directly.
+  function goBack() {
+    if (location.key !== 'default') navigate(-1);
+    else navigate('/app/marketplace');
+  }
+
+  const backButton = (
+    <Button variant="ghost" size="sm" onClick={goBack} className="-ml-2 shrink-0">
+      <Icon name="chevron_left" size={20} />
+      {t('marketplaceBack')}
+    </Button>
+  );
+
   if (isLoading) {
     return (
-      <div style={{ flex: 1, padding: '32px' }}>
-        <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{t('loading')}</p>
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8" aria-busy="true">
+        <div className="mx-auto max-w-5xl space-y-4">
+          <span className="sr-only">{t('loading')}</span>
+          {backButton}
+          <div aria-hidden="true" className="glass h-40 rounded-[24px] p-6">
+            <div className="flex items-center gap-4">
+              <div className="skeleton h-[72px] w-[72px] rounded-[20px]" />
+              <div className="flex-1 space-y-2">
+                <div className="skeleton h-5 w-1/2 rounded-full" />
+                <div className="skeleton h-3 w-1/4 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!entry) {
     return (
-      <div
-        style={{
-          flex: 1,
-          padding: '64px 32px',
-          textAlign: 'center',
-          color: 'var(--text-muted)',
-          fontSize: '14px',
-        }}
-      >
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: '40px', display: 'block', marginBottom: '12px', opacity: 0.4 }}
-        >
-          search_off
-        </span>
-        {t('marketplaceNotFound')}
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
+        <div className="mx-auto max-w-5xl space-y-6">
+          {backButton}
+          <div className="glass flex flex-col items-center gap-3 rounded-[20px] p-12 text-center">
+            <Icon name="search_off" size={40} className="text-[color:var(--text-muted)]" />
+            <p className="m-0 text-sm text-[color:var(--text-secondary)]">
+              {t('marketplaceNotFound')}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
-  const pill = STATUS_PILL[entry.status];
+  const publisher = publisherOf(entry.gitUrl);
+  const trust = trustLevel(entry);
+  const artifact = safeHttpUrl(entry.artifactUrl);
 
   return (
     <div
-      style={{
-        flex: 1,
-        padding: '32px',
-        overflowY: 'auto',
-        fontFamily: 'Inter, system-ui, sans-serif',
-      }}
+      onScroll={(e) => setScrolled(e.currentTarget.scrollTop > SCROLLED_AT)}
+      className="flex-1 overflow-y-auto"
     >
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '28px', color: ACCENT }}>
-          deployed_code
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <h1
-              style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}
-            >
-              {entry.name || entry.gitUrl}
-            </h1>
-            {entry.verified && (
-              <span
-                className="material-symbols-outlined"
-                aria-label={t('marketplaceVerified')}
-                title={t('marketplaceVerified')}
-                style={{ fontSize: '20px', color: ACCENT }}
-              >
-                verified
-              </span>
-            )}
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                padding: '3px 10px',
-                borderRadius: '20px',
-                background: pill.bg,
-                color: pill.fg,
-              }}
-            >
-              {entry.status}
+      <div className="glass-chrome sticky top-0 z-20 px-4 py-2 sm:px-8">
+        <div className="mx-auto flex max-w-5xl items-center gap-3">
+          {backButton}
+          <div
+            aria-hidden="true"
+            className={`flex min-w-0 flex-1 items-center gap-2 transition-opacity duration-short ease-standard ${scrolled ? 'opacity-100' : 'opacity-0'}`}
+          >
+            <MarketplaceTile entry={entry} size={28} />
+            <span className="truncate text-sm font-semibold text-[color:var(--text-primary)]">
+              {displayName(entry)}
             </span>
           </div>
-          {entry.description && (
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '6px 0 0' }}>
-              {entry.description}
-            </p>
-          )}
-          <div style={{ display: 'flex', gap: '14px', marginTop: '10px', flexWrap: 'wrap' }}>
+          {scrolled && (
             <a
               href={entry.gitUrl}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ fontSize: '12px', color: ACCENT, textDecoration: 'none', fontWeight: 600 }}
+              tabIndex={-1}
+              aria-hidden="true"
+              className={`${LINK_BTN} btn-primary btn-sm ml-auto`}
             >
-              ↗ GitHub
+              {t('marketplaceViewOnGithub')}
             </a>
-            {entry.homepage && /^https?:\/\//i.test(entry.homepage) && (
-              <a
-                href={entry.homepage}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: '12px', color: 'var(--accent)', textDecoration: 'none' }}
-              >
-                ↗ {t('marketplaceDocs')}
-              </a>
-            )}
-          </div>
+          )}
         </div>
-        {isAdmin && (
-          <button
-            onClick={() => setEditOpen(true)}
-            style={{
-              padding: '7px 16px',
-              borderRadius: '10px',
-              border: 'none',
-              background: ACCENT,
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              flexShrink: 0,
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-              edit
-            </span>
-            {t('marketplaceEditMeta')}
-          </button>
-        )}
       </div>
 
-      <div style={{ height: '1px', background: 'var(--border)', margin: '20px 0' }} />
+      <div className="px-4 pb-10 pt-4 sm:px-8">
+        <div className="mx-auto flex max-w-5xl animate-scale-in flex-col gap-5">
+          <section className="glass flex flex-col gap-5 rounded-[24px] p-5 sm:p-7">
+            <div className="flex flex-wrap items-start gap-4">
+              <MarketplaceTile entry={entry} size={72} />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="m-0 text-[26px] font-bold leading-tight tracking-tight text-[color:var(--text-primary)]">
+                    {displayName(entry)}
+                  </h1>
+                  {entry.verified && (
+                    <Icon
+                      name="verified"
+                      size={24}
+                      filled
+                      label={t('marketplaceVerified')}
+                      className="text-[color:var(--primary)]"
+                    />
+                  )}
+                </div>
+                {publisher && (
+                  <p className="m-0 mt-0.5 text-sm text-[color:var(--text-secondary)]">
+                    {t('marketplaceBy', { publisher })}
+                  </p>
+                )}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <StatusPill tone={STATUS_TONE[entry.status]}>
+                    {t(statusLabelKey(entry.status))}
+                  </StatusPill>
+                  {trust === 'caution' && (
+                    <StatusPill tone={TRUST_TONE.caution} icon="shield">
+                      {t('marketplaceTrustCaution')}
+                    </StatusPill>
+                  )}
+                  {entry.dsfVersionMin && (
+                    <StatusPill tone="neutral">
+                      {t('marketplaceDsfVersion')} ≥ {entry.dsfVersionMin}
+                    </StatusPill>
+                  )}
+                  {entry.latestReleaseTag && (
+                    <StatusPill tone="info" icon="sell">
+                      {entry.latestReleaseTag}
+                    </StatusPill>
+                  )}
+                </div>
+              </div>
+            </div>
 
-      {/* Two-panel layout */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '20px',
-          alignItems: 'start',
-        }}
-      >
-        {/* DSF-metadata panel */}
-        <section style={panelStyle}>
-          <h2 style={panelTitleStyle}>{t('marketplaceDsfMetadata')}</h2>
-
-          <Field label={t('marketplaceProcessId')}>
-            {entry.processIdentifiers.length > 0 ? (
-              <ChipList items={entry.processIdentifiers} mono />
-            ) : (
-              <Dash />
-            )}
-          </Field>
-
-          <Field label={t('marketplaceDsfVersion')}>
-            {entry.dsfVersionMin ? <span>≥ {entry.dsfVersionMin}</span> : <Dash />}
-          </Field>
-
-          <Field label={t('marketplaceRequiredRoles')}>
-            {entry.requiredRoles.length > 0 ? (
-              <ChipList items={entry.requiredRoles} accent />
-            ) : (
-              <Dash />
-            )}
-          </Field>
-
-          <Field label={t('marketplaceMessageNames')}>
-            {entry.messageNames.length > 0 ? (
-              <ChipList items={entry.messageNames} mono />
-            ) : (
-              <Dash />
-            )}
-          </Field>
-
-          <Field label={t('marketplaceArtifact')}>
-            {entry.artifactUrl ? (
+            <div className="flex flex-wrap items-center gap-2">
               <a
-                href={entry.artifactUrl}
+                href={entry.gitUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ fontSize: '12px', color: ACCENT, wordBreak: 'break-all' }}
+                className={`${LINK_BTN} btn-primary`}
               >
-                {entry.artifactUrl}
+                <Icon name="code" size={18} />
+                {t('marketplaceViewOnGithub')}
               </a>
-            ) : (
-              <Dash />
-            )}
-          </Field>
-
-          <Field label={t('marketplaceMetaSource')}>
-            <span
-              style={{
-                fontSize: '10px',
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: '6px',
-                background: '#eef0f4',
-                color: '#5d6470',
-              }}
-            >
-              {entry.metadataSource}
-            </span>
-          </Field>
-        </section>
-
-        {/* Lifecycle/trust panel */}
-        <section style={panelStyle}>
-          <h2 style={panelTitleStyle}>{t('marketplaceLifecycleTrust')}</h2>
+              {artifact && (
+                <a
+                  href={artifact}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${LINK_BTN} btn-secondary`}
+                >
+                  <Icon name="download" size={18} />
+                  {t('marketplaceDownloadArtifact')}
+                </a>
+              )}
+              {isAdmin && (
+                <Button variant="secondary" onClick={() => setEditOpen(true)}>
+                  <Icon name="edit" size={18} />
+                  {t('marketplaceEditMeta')}
+                </Button>
+              )}
+            </div>
+          </section>
 
           {entry.advisorySeverity && (
             <div
-              style={{
-                background: ADVISORY_COLOR[entry.advisorySeverity],
-                color: '#fff',
-                borderRadius: '8px',
-                padding: '10px 12px',
-                marginBottom: '14px',
-              }}
+              role="note"
+              className={`rounded-[18px] border p-4 ${ADVISORY_CLASS[entry.advisorySeverity]}`}
             >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
-                  warning
-                </span>
+              <div className="flex items-center gap-2 text-sm font-bold">
+                <Icon name="warning" size={20} />
                 {t('marketplaceAdvisory')} · {entry.advisorySeverity}
               </div>
-              {entry.advisoryText && (
-                <p style={{ margin: '6px 0 0', fontSize: '12px' }}>{entry.advisoryText}</p>
-              )}
+              {entry.advisoryText && <p className="m-0 mt-1.5 text-[13px]">{entry.advisoryText}</p>}
             </div>
           )}
 
-          {/* Trust badges */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
-            {entry.licenseOk && (
-              <Badge bg="#dfffe7" fg="#106a3b">
-                {t('marketplaceLicenseOk')}
-                {entry.license ? ` · ${entry.license}` : ''}
-              </Badge>
-            )}
-            {entry.stale && (
-              <Badge bg="#fde7e7" fg="#a01919">
-                {t('marketplaceStale')}
-              </Badge>
-            )}
-          </div>
-
-          <Field label={t('marketplaceVersionHistory')}>
-            {entry.releases.length > 0 ? (
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                {entry.releases.map((r) => (
-                  <li
-                    key={r.tag}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: '8px',
-                      fontSize: '12px',
-                      padding: '4px 0',
-                      borderBottom: '1px solid var(--border)',
-                    }}
-                  >
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{r.tag}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      {r.publishedAt ? r.publishedAt.slice(0, 10) : ''}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <Dash />
-            )}
-          </Field>
-
-          {/* Repo stats */}
-          <div
-            style={{
-              fontSize: '11px',
-              color: 'var(--text-muted)',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '10px',
-              marginTop: '4px',
-            }}
-          >
-            <span>★ {entry.stars}</span>
-            <span>⑂ {entry.forks}</span>
-            <span>ⓘ {entry.openIssues}</span>
-            {entry.language && <span>{entry.language}</span>}
-            {entry.lastCommitAt && <span>{entry.lastCommitAt.slice(0, 10)}</span>}
-          </div>
-        </section>
+          <DetailTabList value={tab} onChange={setTab} />
+          <DetailPanel tab={tab} entry={entry} />
+        </div>
       </div>
 
       {isAdmin && (
@@ -362,68 +247,4 @@ export function MarketplaceDetailPage() {
       )}
     </div>
   );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: '14px' }}>
-      <div
-        style={{
-          fontSize: '10px',
-          fontWeight: 700,
-          color: 'var(--text-muted)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-          marginBottom: '5px',
-        }}
-      >
-        {label}
-      </div>
-      <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{children}</div>
-    </div>
-  );
-}
-
-function ChipList({ items, mono, accent }: { items: string[]; mono?: boolean; accent?: boolean }) {
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-      {items.map((it) => (
-        <span
-          key={it}
-          style={{
-            fontSize: '11px',
-            fontWeight: accent ? 600 : 400,
-            background: accent ? '#fbe3ef' : '#eef0f4',
-            color: accent ? ACCENT : '#5d6470',
-            padding: '2px 7px',
-            borderRadius: '8px',
-            fontFamily: mono ? 'monospace' : undefined,
-          }}
-        >
-          {it}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function Badge({ bg, fg, children }: { bg: string; fg: string; children: React.ReactNode }) {
-  return (
-    <span
-      style={{
-        fontSize: '10px',
-        fontWeight: 700,
-        padding: '3px 9px',
-        borderRadius: '6px',
-        background: bg,
-        color: fg,
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function Dash() {
-  return <span style={{ color: 'var(--text-muted)' }}>—</span>;
 }
