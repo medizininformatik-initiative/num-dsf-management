@@ -7,12 +7,15 @@
  *   GET    /admin/bundle-versions               — paginated list
  *   GET    /admin/bundle-versions/:id           — single version + parsed bundle
  *   GET    /admin/bundle-versions/:id/download  — raw bundle JSON (Content-Disposition attachment)
+ *   POST   /admin/bundle-versions/:id/restore   — publish an old version again (step-up)
  *   GET    /admin/bundle-versions/:idA/diff/:idB
  */
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireImiAdmin } from '../middleware/admin.middleware';
+import { requireFreshTotp } from '../middleware/totp.middleware';
+import { stepUpTotpRateLimit } from '../middleware/rateLimit.middleware';
 import { asyncHandler } from '../lib/asyncHandler';
 import * as svc from '../services/bundle-versions.service';
 
@@ -21,8 +24,16 @@ const listSchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });
 
+const restoreSchema = z.object({
+  reason: z.string().trim().min(3).max(500),
+  totpCode: z.string().length(6).optional(),
+});
+
 export const adminBundleVersionsRouter = Router();
 adminBundleVersionsRouter.use(requireAuth, requireImiAdmin);
+
+// Step-up rate limiter for the guarded write (skipped under jest).
+const stepUp = process.env.NODE_ENV === 'test' ? [] : [stepUpTotpRateLimit];
 
 adminBundleVersionsRouter.get(
   '/',
@@ -61,6 +72,41 @@ adminBundleVersionsRouter.get(
     res.setHeader('X-Bundle-Signature', v.signature);
     res.setHeader('X-Content-Hash', v.content_hash);
     res.send(v.bundle_json);
+  }),
+);
+
+// Publish an old version again as a NEW version. Step-up like every admin write.
+adminBundleVersionsRouter.post(
+  '/:id/restore',
+  ...stepUp,
+  requireFreshTotp,
+  asyncHandler(async (req, res) => {
+    const parsed = restoreSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: { code: 'VALIDATION', message: parsed.error.errors[0]?.message || 'Invalid input' },
+      });
+    }
+    try {
+      const result = await svc.restoreVersion(req.params.id, parsed.data.reason, req.user!.email);
+      res.status(201).json({ data: result });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '';
+      if (message === 'NOT_FOUND') {
+        return res
+          .status(404)
+          .json({ error: { code: 'NOT_FOUND', message: 'Bundle version not found.' } });
+      }
+      if (message === 'VERSION_NOT_RESTORABLE') {
+        return res.status(409).json({
+          error: {
+            code: 'VERSION_NOT_RESTORABLE',
+            message: 'This version was created before restore support and cannot be restored.',
+          },
+        });
+      }
+      throw err;
+    }
   }),
 );
 
