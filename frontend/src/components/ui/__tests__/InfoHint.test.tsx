@@ -14,4 +14,14 @@ describe('InfoHint', () => {
     fireEvent.keyDown(btn, { key: 'Escape' });
     expect(screen.queryByRole('tooltip')).toBeNull();
   });
+
+  it('closes only the hint on Escape (default prevented) and has a translated default label', () => {
+    render(<InfoHint text="Explanation" />);
+    const btn = screen.getByRole('button', { name: 'More information' });
+    fireEvent.click(btn);
+    expect(fireEvent.keyDown(btn, { key: 'Escape' })).toBe(false);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    // With the hint closed, Escape is left alone so a surrounding modal can close.
+    expect(fireEvent.keyDown(btn, { key: 'Escape' })).toBe(true);
+  });
 });
