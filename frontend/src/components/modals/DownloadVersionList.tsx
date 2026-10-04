@@ -27,6 +27,8 @@ interface Props {
   onDownload: (version: number) => void;
   downloadDisabled: boolean;
   busyVersion: number | null;
+  /** Id of the element explaining why downloads are disabled. */
+  describedBy?: string;
 }
 
 export function DownloadVersionList({
@@ -36,6 +38,7 @@ export function DownloadVersionList({
   onDownload,
   downloadDisabled,
   busyVersion,
+  describedBy,
 }: Props) {
   const { t, lang } = useI18n();
   return (
@@ -87,6 +90,7 @@ export function DownloadVersionList({
               disabled={downloadDisabled || busyVersion !== null}
               onClick={() => onDownload(v.versionNumber)}
               aria-label={t('dlDownloadVersionAria', { n: v.versionNumber })}
+              aria-describedby={describedBy}
               data-testid={`download-version-${v.versionNumber}`}
             >
               <Icon name="download" size={16} />

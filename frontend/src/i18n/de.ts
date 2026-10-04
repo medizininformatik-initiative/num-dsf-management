@@ -801,17 +801,7 @@ export const de: Record<TranslationKey, string> = {
   expiryTimelineDaysLeft: 'Noch {n} Tage',
   onboardingStepSubmitted: 'Eingereicht',
   onboardingStepsLabel: 'Einrichtungsschritte',
-  downloadEndpointBundleTitle: 'Endpoint-Bundle (empfohlen)',
-  downloadEndpointBundleHelp:
-    'Genau das, was Ihr DSF für diesen Endpoint herunterlädt: alle genehmigten Teilnehmer und Ihre eigenen Mitgliedschaften, vom Portal signiert.',
-  downloadNoEndpoints:
-    'Legen Sie zuerst einen Endpoint an – das Endpoint-Bundle wird je Endpoint erstellt.',
-  downloadFullBundleBtn: 'Netzwerkweites Bundle herunterladen',
   downloadAckHint: 'Bestätigen Sie den Hinweis oben, um die Downloads freizugeben.',
-  downloadResultTitle: '{file} heruntergeladen',
-  downloadResultHash: 'Inhalts-Hash (SHA-256)',
-  downloadResultSignature: 'Signatur (JWT, RS256)',
-  downloadResultTime: 'Heruntergeladen am',
   downloadResultHashMatch: 'Die heruntergeladene Datei entspricht diesem Hash.',
   downloadResultHashMismatch:
     'Die heruntergeladene Datei entspricht nicht diesem Hash. Importieren Sie sie nicht.',
@@ -819,7 +809,6 @@ export const de: Record<TranslationKey, string> = {
   downloadResultNoHeaders:
     'Der Server hat zu diesem Download keinen Hash und keine Signatur gesendet.',
   downloadCopyValue: '{label} kopieren',
-  downloadCopiedToast: '{label} in die Zwischenablage kopiert.',
   downloadCopyFailed: 'Kopieren fehlgeschlagen. Markieren und kopieren Sie den Text manuell.',
   downloadGuideTitle: 'In Ihrem DSF installieren',
   downloadGuideStep1Title: 'Herunterladen oder vom DSF abrufen lassen',
@@ -834,8 +823,6 @@ export const de: Record<TranslationKey, string> = {
     'Starten Sie den DSF-Prozess downloadAllowList ({link}) auf Ihrem DSF mit dem unten genannten Task-Input. Ihr DSF ruft das Bundle mit dem DSF-Client-Zertifikat Ihres Standorts ab, das im Portal registriert sein muss.',
   downloadGuideProcessLink: 'dsf-process-allow-list',
   downloadGuideTaskInput: 'Task-Input',
-  downloadGuideReference: 'Wert (Bundle-Referenz)',
-  downloadGuideSelectEndpoint: 'Wählen Sie einen Endpoint, um seine Bundle-Referenz zu sehen.',
   downloadGuideIdentifiers:
     'Ihr Organisations-Identifier und der Endpoint-Identifier müssen mit der Konfiguration Ihres DSF-Servers übereinstimmen (DEV_DSF_FHIR_SERVER_ORGANIZATION_IDENTIFIER_VALUE und der Host von DEV_DSF_FHIR_SERVER_BASE_URL).',
   bundlePreviewOrganization: 'Organisation',
@@ -1195,14 +1182,9 @@ export const de: Record<TranslationKey, string> = {
   dlVerifyTitle: 'Download prüfen',
   dlVerifyIntro:
     'Vergleichen Sie diese Werte mit Ihrer eigenen Prüfung, bevor Sie die Datei einsetzen.',
-  dlVerifyVersion: 'Version',
   dlVerifyHash: 'SHA-256 der Datei',
   dlVerifySignature: 'Signatur',
-  dlVerifyHelp:
-    'Berechnen Sie den Hash selbst, zum Beispiel mit "sha256sum dsf-allow-list-v{n}.json" (Linux, macOS) oder "Get-FileHash -Algorithm SHA256 dsf-allow-list-v{n}.json" (Windows), und vergleichen Sie ihn mit dem Wert oben.',
-  dlVerifyNone: 'Der Server hat weder Hash noch Signatur gesendet.',
   dlAdvanced: 'Weitere Möglichkeiten',
-  dlNetworkTitle: 'Netzwerkweite Liste',
 
   // ─── Onboarding-Import (Massen-Upload CSV/JSON) ───────────────────────────
   adminOnboardingNavLabel: 'Onboarding',
