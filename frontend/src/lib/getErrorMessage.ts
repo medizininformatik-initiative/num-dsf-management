@@ -53,3 +53,18 @@ export function getErrorMessage(err: unknown, fallback: string): string {
 
   return baseMessage;
 }
+
+/**
+ * Seconds until a rate-limited (429) request may be retried, from the
+ * `Retry-After` header (nginx, express-rate-limit) or `RateLimit-Reset`
+ * (express-rate-limit standard headers). Undefined when neither is usable.
+ */
+export function getRetryAfterSeconds(err: unknown): number | undefined {
+  const headers = (err as { response?: { headers?: Record<string, unknown> } })?.response?.headers;
+  if (!headers) return undefined;
+  for (const name of ['retry-after', 'ratelimit-reset']) {
+    const seconds = Number(headers[name]);
+    if (Number.isFinite(seconds) && seconds > 0) return Math.ceil(seconds);
+  }
+  return undefined;
+}

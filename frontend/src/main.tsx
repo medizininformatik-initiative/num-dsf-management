@@ -11,7 +11,7 @@ import { ToastProvider } from './components/ToastProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthBootstrap } from './components/AuthBootstrap';
 import { ConfirmProvider } from './components/ui/ConfirmDialog';
-import { getErrorMessage } from './lib/getErrorMessage';
+import { getErrorMessage, getRetryAfterSeconds } from './lib/getErrorMessage';
 import { reauthRedirect } from './lib/authMode';
 import { useI18n } from './stores/i18n.store';
 import './index.css';
@@ -87,7 +87,12 @@ axios.interceptors.response.use(
       const { toast } = await import('sonner');
       const t = useI18n.getState().t;
       if (status === 429) {
-        toast.error(t('rateLimited'));
+        // One deduplicated toast (fixed id) however many requests 429 at once.
+        // A 429 never touches the session: it is not an auth failure.
+        const seconds = getRetryAfterSeconds(error);
+        toast.error(seconds ? t('rateLimitedRetry', { seconds }) : t('rateLimited'), {
+          id: 'rate-limited',
+        });
         error._handled = true;
       } else if (status >= 500) {
         toast.error(t('serverError'));
@@ -106,7 +111,8 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: (failureCount, error: any) => {
-        if ([401, 403, 404].includes(error?.response?.status)) return false;
+        // 429: retrying immediately only deepens the throttle.
+        if ([401, 403, 404, 429].includes(error?.response?.status)) return false;
         return failureCount < 2;
       },
       staleTime: 30_000,

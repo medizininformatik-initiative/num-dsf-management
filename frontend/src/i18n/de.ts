@@ -124,6 +124,10 @@ export const de: Record<TranslationKey, string> = {
   networkError: 'Netzwerkfehler. Prüfe deine Verbindung.',
   sessionExpiring: 'Deine Sitzung läuft in 2 Minuten ab (Inaktivität).',
   sessionExpired: 'Sitzung wegen Inaktivität abgelaufen.',
+  // Reliability: rate limit and dev login
+  rateLimitedRetry: 'Zu viele Anfragen. Bitte versuchen Sie es in {seconds} Sekunden erneut.',
+  devLoginFailed:
+    'Dev-Anmeldung fehlgeschlagen. Prüfen Sie, ob das Backend mit aktiviertem DEV_AUTO_LOGIN läuft, und laden Sie die Seite neu.',
   // Dashboard
   dashboard: 'Übersicht',
 

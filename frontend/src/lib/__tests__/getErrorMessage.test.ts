@@ -4,7 +4,7 @@
  * fallback is used for every non-matching shape.
  */
 import { describe, it, expect } from 'vitest';
-import { getErrorMessage } from '../getErrorMessage';
+import { getRetryAfterSeconds, getErrorMessage } from '../getErrorMessage';
 
 describe('getErrorMessage', () => {
   it('returns the API error message when present', () => {
@@ -66,5 +66,19 @@ describe('getErrorMessage', () => {
   it('falls back to the envelope message on an empty details array', () => {
     const err = { response: { data: { error: { message: 'Invalid input', details: [] } } } };
     expect(getErrorMessage(err, 'fallback')).toBe('Invalid input');
+  });
+});
+
+describe('getRetryAfterSeconds', () => {
+  it('reads Retry-After, then RateLimit-Reset, rounding up', () => {
+    expect(getRetryAfterSeconds({ response: { headers: { 'retry-after': '30' } } })).toBe(30);
+    expect(getRetryAfterSeconds({ response: { headers: { 'ratelimit-reset': '4.2' } } })).toBe(5);
+  });
+  it('is undefined without a usable header', () => {
+    expect(getRetryAfterSeconds({ response: { headers: {} } })).toBeUndefined();
+    expect(
+      getRetryAfterSeconds({ response: { headers: { 'retry-after': 'soon' } } }),
+    ).toBeUndefined();
+    expect(getRetryAfterSeconds(new Error('x'))).toBeUndefined();
   });
 });

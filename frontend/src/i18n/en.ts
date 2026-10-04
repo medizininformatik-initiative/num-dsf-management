@@ -121,6 +121,10 @@ export const en = {
   networkError: 'Network error. Check your connection.',
   sessionExpiring: 'Your session will expire in 2 minutes due to inactivity.',
   sessionExpired: 'Session expired due to inactivity.',
+  // Reliability: rate limit and dev login
+  rateLimitedRetry: 'Too many requests. Please try again in {seconds} seconds.',
+  devLoginFailed:
+    'Dev login failed. Check that the backend is running with DEV_AUTO_LOGIN enabled, then reload.',
   // Dashboard
   dashboard: 'Dashboard',
 
