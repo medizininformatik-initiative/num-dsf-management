@@ -103,6 +103,26 @@ describe('deriveReadiness', () => {
   });
 });
 
+describe('deriveReadiness — withdrawal', () => {
+  it('lets a deactivated organization submit without the publishing steps', () => {
+    const r = deriveReadiness({ organization: { active: 0 }, contacts: [], certificates: [] });
+    expect(r.withdrawal).toBe(true);
+    expect(r.ready).toBe(false);
+    expect(r.canSubmit).toBe(true);
+  });
+
+  it('still blocks a second request while one is pending', () => {
+    const r = deriveReadiness({ organization: { active: false }, approval: { status: 'PENDING' } });
+    expect(r.withdrawal).toBe(true);
+    expect(r.canSubmit).toBe(false);
+  });
+
+  it('is not a withdrawal without an organization or for an active one', () => {
+    expect(deriveReadiness({}).withdrawal).toBe(false);
+    expect(deriveReadiness(complete()).withdrawal).toBe(false);
+  });
+});
+
 describe('readiness helpers', () => {
   it('hasMedicContact and hasValidCertificate tolerate missing input', () => {
     expect(hasMedicContact()).toBe(false);

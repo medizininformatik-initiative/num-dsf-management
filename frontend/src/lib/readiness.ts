@@ -12,6 +12,11 @@
  * It counts as submitted only while the latest request is PENDING or APPROVED;
  * a REJECTED or DRAFT request has to be sent again.
  *
+ * A deactivated organization is the exception: its request withdraws it from
+ * the allow list (once approved, every other site deletes it), so the
+ * publishing steps do not apply and it may always submit unless a request is
+ * pending.
+ *
  * Backend: submitApproval (backend/src/services/approval.service.ts) refuses a
  * second PENDING request (APPROVAL_ALREADY_PENDING) and an instance without an
  * organization (ORGANIZATION_NOT_FOUND). Both are covered here (`pending`
@@ -48,7 +53,9 @@ export interface Readiness {
   submitted: boolean;
   /** The latest request is PENDING, so the backend refuses another submit. */
   pending: boolean;
-  /** Ready and nothing pending: a request may be submitted. */
+  /** The organization is deactivated: a request withdraws it from the allow list. */
+  withdrawal: boolean;
+  /** Ready (or withdrawing) and nothing pending: a request may be submitted. */
   canSubmit: boolean;
 }
 
@@ -105,13 +112,15 @@ export function deriveReadiness(input: ReadinessInput): Readiness {
   const status = input.approval?.status;
   const pending = status === 'PENDING';
   const ready = openCount === 0;
+  const withdrawal = !!input.organization && !input.organization.active;
   return {
     items,
     ready,
     openCount,
     submitted: pending || status === 'APPROVED',
     pending,
-    canSubmit: ready && !pending,
+    withdrawal,
+    canSubmit: (ready || withdrawal) && !pending,
   };
 }
 
