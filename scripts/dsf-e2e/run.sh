@@ -139,6 +139,10 @@ new Function("db", "return (async () => {" + process.env.JS + "})()")(db)
   .catch((e) => { console.error(e.message); process.exit(1); });'
 }
 
+publish_version() { # publish_version <notes>: new bundle version, as an approval would create
+  "${DEV[@]}" exec -T backend node -r ts-node/register/transpile-only     src/scripts/snapshot-bundle.ts "dsf-e2e: $1"
+}
+
 seed_portal() {
   log "Seeding the receiver and two peers into the dev portal (production hackathon seed)"
   RECEIVER_PEM="$CERTS/org-client.crt" PEER1_PEM="$CERTS/$PEER1.crt" PEER2_PEM="$CERTS/$PEER2.crt" \
@@ -166,6 +170,7 @@ process.stdout.write(JSON.stringify({ parentOrganization: process.argv[1], users
     const n = await db('approval_requests').whereIn('instance_id', ids)
       .update({ status: 'APPROVED', resolved_at: new Date() });
     return 'approved requests: ' + n;"
+  publish_version initial-approval
 }
 
 unseed_portal() {
@@ -176,6 +181,7 @@ unseed_portal() {
       .map((o) => o.instance_id);
     await db('instances').whereIn('id', inst).del();
     await db('users').whereIn('email', emails).del();
+    await db('bundle_versions').where({ triggered_by_email: 'SYSTEM:dsf-e2e' }).del();
     await db('email_whitelist').whereIn('email', emails).del();
     return 'portal sites removed';" || true
 }
@@ -304,10 +310,12 @@ scenario apache-again "https://allowlist.portal-e2e.example.de/fhir/Bundle/$RECE
 verify_peers 1
 
 portal_js "await db('memberships').where({ organization_id: '$PEER2' }).update({ deleted_at: new Date() });"
+publish_version leave-hub
 scenario leave-hub "https://allowlist.portal-e2e.example.de/fhir/Bundle/$RECEIVER_EP" completed
 verify_peers 0
 
 portal_js "await db('organizations').where({ identifier: '$PEER1' }).update({ active: false });"
+publish_version withdraw
 scenario withdraw "https://allowlist.portal-e2e.example.de/fhir/Bundle/$RECEIVER_EP" completed
 check "$PEER1 organization deleted" "$(total "Organization?identifier=$ORG_SID%7C$PEER1")" 0
 check "$PEER1 endpoints deleted" "$(total "Endpoint?identifier=$EP_SID%7Cfhir.$PEER1")" 0
