@@ -16,6 +16,7 @@ import { app } from '../../app';
 import { db } from '../../db/connection';
 import { getTestToken } from '../helpers/auth';
 import { signGrant } from '../../lib/adminGrants';
+import { createSnapshot } from '../../services/bundle-versions.service';
 import { v4 as uuidv4 } from 'uuid';
 
 // Real self-signed cert PEM (in-process, like certFingerprint.test.ts). The
@@ -56,6 +57,7 @@ describe('Download routes', () => {
 
   let token: string;
   let adminToken: string;
+  let snapshotId = '';
 
   beforeAll(async () => {
     // ── Non-admin owner + instance + org graph ──────────────────────────────
@@ -159,9 +161,13 @@ describe('Download routes', () => {
 
     token = getTestToken(email, userId);
     adminToken = getTestToken(adminEmail, adminId);
+
+    // The download serves the latest bundle version; an approval creates one.
+    snapshotId = (await createSnapshot({ triggeredBy: 'MANUAL', triggeredByEmail: adminEmail })).id;
   });
 
   afterAll(async () => {
+    await db('bundle_versions').where({ id: snapshotId }).del();
     await db('admin_grants').where({ email: adminEmail }).del();
     await db('approval_requests').where({ instance_id: instanceId }).del();
     await db('memberships').where({ organization_id: orgId }).del();

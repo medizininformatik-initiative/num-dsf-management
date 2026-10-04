@@ -220,11 +220,17 @@ describe('Hackathon replay: participants change the allow list', () => {
       },
     );
     expect(deactivated.status).toBe(200);
-    // Until the deactivation is approved nothing is deleted.
+    // Until the deactivation is approved the published version is unchanged:
+    // the organization and its endpoints are not deleted.
     const pendingId = await submit(leaver);
     const before = (await allowListOf(a)).entry ?? [];
     expect(
-      before.filter((e) => e.request.method === 'DELETE' && e.request.url.includes(org(leaver))),
+      before.filter(
+        (e) =>
+          e.request.method === 'DELETE' &&
+          e.request.url.includes(org(leaver)) &&
+          !e.request.url.startsWith('OrganizationAffiliation'),
+      ),
     ).toEqual([]);
 
     expect(await approveByTwo(pendingId, a, b)).toBe('APPROVED');

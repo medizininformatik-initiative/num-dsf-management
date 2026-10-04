@@ -23,6 +23,7 @@ import request from 'supertest';
 import { app } from '../../app';
 import { db } from '../../db/connection';
 import { sha512FingerprintFromPem } from '../../lib/certFingerprint';
+import { createSnapshot } from '../../services/bundle-versions.service';
 import { makeCertPem, mtlsHeaders } from '../helpers/allowListSites';
 import { dsfAllowListViolations } from '../helpers/dsfAllowListChecks';
 import {
@@ -186,6 +187,13 @@ describe('Hackathon replay: three sites, four-eyes approval, DSF allow-list down
     });
     expect(upload.status).toBe(201);
 
+    // The allow list is published per version: the new certificate reaches the
+    // other sites with the next version (an approval; here a manual snapshot).
+    const snapshot = await createSnapshot({
+      triggeredBy: 'MANUAL',
+      triggeredByEmail: s.user.email,
+    });
+
     const bundle = await download(s, bpePem);
     expect(organizationsIn(bundle)).toEqual(expect.arrayContaining([org(sites[0]), org(sites[2])]));
 
@@ -199,6 +207,7 @@ describe('Hackathon replay: three sites, four-eyes approval, DSF allow-list down
         .map((x) => x.valueString)
         .sort(),
     ).toEqual([s.user.fingerprintSha512, sha512FingerprintFromPem(bpePem)].sort());
+    await db('bundle_versions').where({ id: snapshot.id }).del();
   });
 
   it('8. failure modes answer with FHIR OperationOutcomes the DSF client can read', async () => {

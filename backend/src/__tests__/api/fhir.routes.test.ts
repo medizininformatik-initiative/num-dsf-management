@@ -43,6 +43,7 @@ import { app } from '../../app';
 import { db } from '../../db/connection';
 import { sha512FingerprintFromPem } from '../../lib/certFingerprint';
 import { parseCertificate } from '../../services/certificate.service';
+import { createSnapshot } from '../../services/bundle-versions.service';
 import { ECC_P256_CERT_PEM } from '../fixtures/eccCertificate';
 import { mtlsHeaders, removeSites, seedSite, type Site } from '../helpers/allowListSites';
 import { dsfAllowListViolations } from '../helpers/dsfAllowListChecks';
@@ -125,6 +126,8 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
 
   // An approved peer the caller must see in its allow list.
   let peer: Site;
+  let snapshotId = '';
+  let ecSnapshotId = '';
 
   beforeAll(async () => {
     peer = await seedSite({
@@ -223,9 +226,12 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
       resolved_by: 'admin@example.de',
       snapshot_json: JSON.stringify({}),
     });
+    // The route publishes the latest bundle version; an approval creates one.
+    snapshotId = (await createSnapshot({ triggeredBy: 'MANUAL', triggeredByEmail: email })).id;
   });
 
   afterAll(async () => {
+    await db('bundle_versions').whereIn('id', [snapshotId, ecSnapshotId].filter(Boolean)).del();
     await removeSites([peer]);
     try {
       await db('audit_logs').where({ instance_id: instanceId }).del();
@@ -362,7 +368,8 @@ describe('GET /fhir routes (mTLS client-cert auth)', () => {
         .set(mtlsHeaders(eccPem));
       expect(res.status).toBe(200);
 
-      // The caller now trusts the peer's EC certificate as well.
+      // The caller trusts the peer's EC certificate with the next version.
+      ecSnapshotId = (await createSnapshot({ triggeredBy: 'MANUAL', triggeredByEmail: email })).id;
       const own = await request(app)
         .get(`/fhir/Bundle/${endpointId}`)
         .set('x-client-verify', 'SUCCESS')
