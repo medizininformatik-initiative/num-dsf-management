@@ -6,7 +6,7 @@
  * chips narrow the grid, and the empty state appears when nothing matches.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../../test/renderWithProviders';
 import type { MarketplaceEntry } from '../../api/marketplace.api';
 
@@ -92,7 +92,7 @@ describe('MarketplacePage', () => {
     expect(screen.getByText('Feasibility Process')).toBeInTheDocument();
   });
 
-  it('filters the grid by the search query (name and topic)', () => {
+  it('filters the grid by the search query (name and topic)', async () => {
     useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
     mockDeleteMutation();
     useMarketplace.mockReturnValue({
@@ -113,16 +113,19 @@ describe('MarketplacePage', () => {
     const search = screen.getByPlaceholderText('Search processes…');
     fireEvent.change(search, { target: { value: 'feasibility' } });
 
-    expect(screen.queryByText('Data Transfer Process')).not.toBeInTheDocument();
+    // The search is debounced into the URL, so the grid narrows a moment later.
+    await waitFor(() =>
+      expect(screen.queryByText('Data Transfer Process')).not.toBeInTheDocument(),
+    );
     expect(screen.getByText('Feasibility Process')).toBeInTheDocument();
 
     // A topic-only match still surfaces the right card.
     fireEvent.change(search, { target: { value: 'fhir' } });
-    expect(screen.getByText('Data Transfer Process')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Data Transfer Process')).toBeInTheDocument());
     expect(screen.queryByText('Feasibility Process')).not.toBeInTheDocument();
   });
 
-  it('shows the empty state when no entry matches the search', () => {
+  it('shows the no-results state when no entry matches the search', async () => {
     useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
     mockDeleteMutation();
     useMarketplace.mockReturnValue({
@@ -136,7 +139,7 @@ describe('MarketplacePage', () => {
       target: { value: 'no-such-process' },
     });
 
-    expect(screen.getByText('No processes registered yet.')).toBeInTheDocument();
+    expect(await screen.findByText('No processes match your filters.')).toBeInTheDocument();
     expect(screen.queryByText('Data Transfer Process')).not.toBeInTheDocument();
   });
 
@@ -150,7 +153,7 @@ describe('MarketplacePage', () => {
     expect(screen.getByText('No processes registered yet.')).toBeInTheDocument();
   });
 
-  it('narrows the grid to a single status when a filter chip is clicked', () => {
+  it('narrows the grid to a single status when a filter chip is clicked', async () => {
     useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
     mockDeleteMutation();
     useMarketplace.mockReturnValue({
@@ -168,8 +171,129 @@ describe('MarketplacePage', () => {
     expect(screen.getByText('Experimental Process')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Experimental' }));
+    await waitFor(() => expect(screen.queryByText('Approved Process')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Approved Process')).not.toBeInTheDocument());
 
     expect(screen.queryByText('Approved Process')).not.toBeInTheDocument();
     expect(screen.getByText('Experimental Process')).toBeInTheDocument();
+  });
+
+  it('shows skeleton placeholders while loading', () => {
+    useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
+    mockDeleteMutation();
+    useMarketplace.mockReturnValue({ data: undefined, isLoading: true });
+
+    const { container } = renderWithProviders(<MarketplacePage />);
+
+    expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(0);
+    expect(screen.getByText('Loading…')).toBeInTheDocument();
+  });
+
+  it('shows an error state with a retry action', () => {
+    useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
+    mockDeleteMutation();
+    const refetch = vi.fn();
+    useMarketplace.mockReturnValue({ data: undefined, isLoading: false, isError: true, refetch });
+
+    renderWithProviders(<MarketplacePage />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('could not be loaded');
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('announces the result count politely', () => {
+    useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
+    mockDeleteMutation();
+    useMarketplace.mockReturnValue({
+      data: [entry({ id: 'e1' }), entry({ id: 'e2', slug: 'b', name: 'Other' })],
+      isLoading: false,
+    });
+
+    renderWithProviders(<MarketplacePage />);
+
+    const status = screen.getByRole('status');
+    expect(status).toHaveAttribute('aria-live', 'polite');
+    expect(status).toHaveTextContent('2 processes');
+  });
+
+  it('focuses the search field when "/" is pressed', () => {
+    useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
+    mockDeleteMutation();
+    useMarketplace.mockReturnValue({ data: [entry()], isLoading: false });
+
+    renderWithProviders(<MarketplacePage />);
+
+    fireEvent.keyDown(document.body, { key: '/' });
+    expect(screen.getByPlaceholderText('Search processes…')).toHaveFocus();
+  });
+
+  it('restores filters from the URL (Back from a detail page)', () => {
+    useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
+    mockDeleteMutation();
+    useMarketplace.mockReturnValue({
+      data: [
+        entry({ id: 'e1', slug: 'a', name: 'Approved Process', status: 'APPROVED' }),
+        entry({ id: 'e2', slug: 'b', name: 'Experimental Process', status: 'EXPERIMENTAL' }),
+      ],
+      isLoading: false,
+    });
+
+    renderWithProviders(<MarketplacePage />, { route: '/app/marketplace?status=EXPERIMENTAL' });
+
+    expect(screen.queryByText('Approved Process')).not.toBeInTheDocument();
+    expect(screen.getByText('Experimental Process')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Experimental' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('sorts by popularity when selected', () => {
+    useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
+    mockDeleteMutation();
+    useMarketplace.mockReturnValue({
+      data: [
+        entry({ id: 'e1', slug: 'a', name: 'Quiet Process', stars: 1 }),
+        entry({ id: 'e2', slug: 'b', name: 'Famous Process', stars: 99 }),
+      ],
+      isLoading: false,
+    });
+
+    renderWithProviders(<MarketplacePage />, { route: '/app/marketplace?sort=popular' });
+
+    const links = screen.getAllByRole('link');
+    expect(links[0]).toHaveAttribute('href', '/app/marketplace/b');
+  });
+
+  it('shows a recommended row only for verified, healthy entries when unfiltered', () => {
+    useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
+    mockDeleteMutation();
+    useMarketplace.mockReturnValue({
+      data: [
+        entry({ id: 'e1', slug: 'a', name: 'Star Process', verified: true, stars: 50 }),
+        entry({ id: 'e2', slug: 'b', name: 'B' }),
+        entry({ id: 'e3', slug: 'c', name: 'C' }),
+        entry({ id: 'e4', slug: 'd', name: 'D' }),
+      ],
+      isLoading: false,
+    });
+
+    renderWithProviders(<MarketplacePage />);
+
+    expect(screen.getByRole('heading', { name: 'Recommended' })).toBeInTheDocument();
+  });
+
+  it('offers Add/Edit/Remove to admins only', () => {
+    useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: true } });
+    mockDeleteMutation();
+    useMarketplace.mockReturnValue({ data: [entry()], isLoading: false });
+
+    renderWithProviders(<MarketplacePage />);
+
+    expect(screen.getByRole('button', { name: 'Add process' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit status' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('Remove this process');
   });
 });

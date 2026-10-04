@@ -5,7 +5,7 @@
  * state when the entry is null.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { renderWithProviders } from '../../test/renderWithProviders';
 import type { MarketplaceDetail } from '../../api/marketplace.api';
 
@@ -68,7 +68,7 @@ function detail(over: Partial<MarketplaceDetail> = {}): MarketplaceDetail {
 }
 
 describe('MarketplaceDetailPage', () => {
-  it('renders the header, DSF metadata, and lifecycle panels', () => {
+  it('renders the header, compatibility and releases tabs', () => {
     useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
     useMarketplaceEntry.mockReturnValue({ data: detail(), isLoading: false });
 
@@ -76,13 +76,16 @@ describe('MarketplaceDetailPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Data Transfer Process' })).toBeInTheDocument();
     // DSF-metadata panel
+    fireEvent.click(screen.getByRole('tab', { name: 'Compatibility' }));
     expect(screen.getByText('dsf.dataTransfer')).toBeInTheDocument();
     expect(screen.getByText('startDataTransfer')).toBeInTheDocument();
     expect(screen.getByText('DIC')).toBeInTheDocument();
     expect(screen.getByText('MANIFEST')).toBeInTheDocument();
-    // Lifecycle/trust panel — version history
-    expect(screen.getByText('v1.2.0')).toBeInTheDocument();
+    // Releases timeline
+    fireEvent.click(screen.getByRole('tab', { name: 'Releases' }));
+    expect(screen.getAllByText('v1.2.0').length).toBeGreaterThan(0);
     expect(screen.getByText('v1.1.0')).toBeInTheDocument();
+    expect(screen.getByText('Latest')).toBeInTheDocument();
   });
 
   it('shows an advisory banner when a severity is present', () => {
@@ -120,6 +123,7 @@ describe('MarketplaceDetailPage', () => {
     });
 
     const { container } = renderWithProviders(<MarketplaceDetailPage />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Links' }));
     // No anchor at all should carry a javascript: scheme.
     expect(container.querySelector('a[href^="javascript:"]')).toBeNull();
     // And the docs link must not be emitted for an unsafe homepage.
@@ -134,6 +138,44 @@ describe('MarketplaceDetailPage', () => {
     });
 
     const { container } = renderWithProviders(<MarketplaceDetailPage />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Links' }));
     expect(container.querySelector('a[href="https://docs.example.org"]')).not.toBeNull();
+  });
+
+  it('offers View on GitHub and the plugin download as primary actions', () => {
+    useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
+    useMarketplaceEntry.mockReturnValue({ data: detail(), isLoading: false });
+
+    renderWithProviders(<MarketplaceDetailPage />);
+    expect(screen.getByRole('link', { name: /view on github/i })).toHaveAttribute(
+      'href',
+      'https://github.com/owner/repo',
+    );
+    expect(screen.getByRole('link', { name: /download plugin/i })).toBeInTheDocument();
+  });
+
+  it('does not link a non-http artifact URL', () => {
+    useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
+    useMarketplaceEntry.mockReturnValue({
+      data: detail({ artifactUrl: 'javascript:alert(1)' }),
+      isLoading: false,
+    });
+
+    const { container } = renderWithProviders(<MarketplaceDetailPage />);
+    expect(screen.queryByRole('link', { name: /download plugin/i })).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Compatibility' }));
+    expect(container.querySelector('a[href^="javascript:"]')).toBeNull();
+  });
+
+  it('switches tabs with the arrow keys', () => {
+    useMe.mockReturnValue({ data: { email: 'a@b.de', isAdmin: false } });
+    useMarketplaceEntry.mockReturnValue({ data: detail(), isLoading: false });
+
+    renderWithProviders(<MarketplaceDetailPage />);
+    const overview = screen.getByRole('tab', { name: 'Overview' });
+    expect(overview).toHaveAttribute('aria-selected', 'true');
+    fireEvent.keyDown(overview, { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: 'Releases' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel')).toBeInTheDocument();
   });
 });

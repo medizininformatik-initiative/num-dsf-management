@@ -48,7 +48,7 @@ describe('MarketplaceCard', () => {
   it('renders the process name and status pill', () => {
     renderWithProviders(<MarketplaceCard entry={makeEntry()} />);
     expect(screen.getByText('Data Transfer Process')).toBeInTheDocument();
-    expect(screen.getByText('APPROVED')).toBeInTheDocument();
+    expect(screen.getByText('Approved')).toBeInTheDocument();
   });
 
   it('links to the detail page by slug', () => {
@@ -66,6 +66,18 @@ describe('MarketplaceCard', () => {
   it('shows a verified mark when verified', () => {
     renderWithProviders(<MarketplaceCard entry={makeEntry({ verified: true })} />);
     expect(screen.getByLabelText(/verified/i)).toBeInTheDocument();
+  });
+
+  it('shows the publisher, latest release and primary action', () => {
+    renderWithProviders(<MarketplaceCard entry={makeEntry()} />);
+    expect(screen.getByText('by owner')).toBeInTheDocument();
+    expect(screen.getByText('v1.2.0')).toBeInTheDocument();
+    expect(screen.getByText('View details')).toBeInTheDocument();
+  });
+
+  it('flags entries that need attention', () => {
+    renderWithProviders(<MarketplaceCard entry={makeEntry({ stale: true })} />);
+    expect(screen.getByText('Needs attention')).toBeInTheDocument();
   });
 
   it('shows an advisory ribbon when a severity is set', () => {
