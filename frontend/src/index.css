@@ -744,14 +744,6 @@ body {
   select {
     display: none !important;
   }
-  /* The sidebar and right-panel offsets are inline styles, which browsers
-     serialize in kebab-case. */
-  [style*='margin-left: 220px'] {
-    margin-left: 0 !important;
-  }
-  [style*='margin-right: 280px'] {
-    margin-right: 0 !important;
-  }
   body {
     background: white !important;
     color: black !important;
