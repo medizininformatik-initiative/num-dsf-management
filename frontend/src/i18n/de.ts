@@ -692,6 +692,10 @@ export const de: Record<TranslationKey, string> = {
   approvalWaitingLabel: 'Wartet auf Genehmigung',
   approvalPendingBlocked:
     'Ein Antrag wird bereits geprüft. Sie können erneut einreichen, sobald das IMI entschieden hat.',
+  approvalWithdrawalTitle: 'Austritt aus der Allow-Liste',
+  approvalWithdrawalNote:
+    'Ihre Organisation ist deaktiviert. Sobald dieser Antrag genehmigt ist, entfernen alle anderen Einrichtungen sie samt Endpunkten und Mitgliedschaften aus ihrer Allow-Liste.',
+  approvalWithdrawalSubmit: 'Austritt beantragen',
   approvalStateDraft: 'Entwurf',
   approvalBannerNone:
     'Noch kein Antrag. Vervollständigen Sie die Checkliste und senden Sie Ihre Daten dann zur Genehmigung an das IMI.',

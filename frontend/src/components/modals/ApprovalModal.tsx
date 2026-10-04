@@ -199,68 +199,80 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
           </p>
         )}
 
+        {readiness.withdrawal && (
+          <div className="rounded-xl border border-warning-border bg-warning-surface p-3 text-xs">
+            <p className="mb-1 flex items-center gap-2 font-bold text-warning-fg">
+              <Icon name="logout" size={16} />
+              {t('approvalWithdrawalTitle')}
+            </p>
+            <p className="text-[color:var(--text-primary)]">{t('approvalWithdrawalNote')}</p>
+          </div>
+        )}
+
         {/* Readiness checklist — the same rule as the wizard and the right panel */}
-        <div
-          className={`rounded-xl border p-3 ${
-            readiness.ready
-              ? 'border-success-border bg-success-surface'
-              : 'border-danger-border bg-danger-surface'
-          }`}
-        >
-          <p
-            className={`mb-2 text-[11px] font-bold uppercase tracking-wide ${
-              readiness.ready ? 'text-success-fg' : 'text-danger-fg'
+        {!readiness.withdrawal && (
+          <div
+            className={`rounded-xl border p-3 ${
+              readiness.ready
+                ? 'border-success-border bg-success-surface'
+                : 'border-danger-border bg-danger-surface'
             }`}
           >
-            {readiness.ready ? t('approvalModalAllPassed') : t('approvalModalSomeFailed')}
-          </p>
-          <ul className="space-y-1">
-            {readiness.items.map((item) => {
-              const label = t(READINESS_LABEL[item.key]);
-              if (item.done) {
+            <p
+              className={`mb-2 text-[11px] font-bold uppercase tracking-wide ${
+                readiness.ready ? 'text-success-fg' : 'text-danger-fg'
+              }`}
+            >
+              {readiness.ready ? t('approvalModalAllPassed') : t('approvalModalSomeFailed')}
+            </p>
+            <ul className="space-y-1">
+              {readiness.items.map((item) => {
+                const label = t(READINESS_LABEL[item.key]);
+                if (item.done) {
+                  return (
+                    <li
+                      key={item.key}
+                      className="flex items-center gap-2 px-1 py-0.5 text-xs text-[color:var(--text-primary)]"
+                    >
+                      <Icon
+                        name="check_circle"
+                        size={16}
+                        filled
+                        label={t('readinessItemDone')}
+                        className="text-success-fg"
+                      />
+                      <Icon
+                        name={READINESS_ICON[item.key]}
+                        size={14}
+                        className="text-[color:var(--text-muted)]"
+                      />
+                      <span>{label}</span>
+                    </li>
+                  );
+                }
                 return (
-                  <li
-                    key={item.key}
-                    className="flex items-center gap-2 px-1 py-0.5 text-xs text-[color:var(--text-primary)]"
-                  >
-                    <Icon
-                      name="check_circle"
-                      size={16}
-                      filled
-                      label={t('readinessItemDone')}
-                      className="text-success-fg"
-                    />
-                    <Icon
-                      name={READINESS_ICON[item.key]}
-                      size={14}
-                      className="text-[color:var(--text-muted)]"
-                    />
-                    <span>{label}</span>
+                  <li key={item.key}>
+                    <button
+                      type="button"
+                      onClick={() => jumpTo(item.key)}
+                      className="press-effect flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-xs font-medium text-danger-fg hover:bg-[color:var(--bg-card)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+                    >
+                      <Icon name="cancel" size={16} label={t('readinessItemMissing')} />
+                      <Icon name={READINESS_ICON[item.key]} size={14} />
+                      <span className="flex-1">{label}</span>
+                      <Icon name="arrow_forward" size={14} />
+                    </button>
                   </li>
                 );
-              }
-              return (
-                <li key={item.key}>
-                  <button
-                    type="button"
-                    onClick={() => jumpTo(item.key)}
-                    className="press-effect flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-xs font-medium text-danger-fg hover:bg-[color:var(--bg-card)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
-                  >
-                    <Icon name="cancel" size={16} label={t('readinessItemMissing')} />
-                    <Icon name={READINESS_ICON[item.key]} size={14} />
-                    <span className="flex-1">{label}</span>
-                    <Icon name="arrow_forward" size={14} />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {!readiness.ready && (
-            <p className="mt-2 text-[11px] text-[color:var(--text-secondary)]">
-              {t('approvalModalOpenItemsHint')}
-            </p>
-          )}
-        </div>
+              })}
+            </ul>
+            {!readiness.ready && (
+              <p className="mt-2 text-[11px] text-[color:var(--text-secondary)]">
+                {t('approvalModalOpenItemsHint')}
+              </p>
+            )}
+          </div>
+        )}
 
         {org && (
           <Section title={t('organization')}>
@@ -364,6 +376,11 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
             </>
           ) : isPending ? (
             t('modalSavingBtn')
+          ) : readiness.withdrawal ? (
+            <>
+              <Icon name="logout" size={16} />
+              {t('approvalWithdrawalSubmit')}
+            </>
           ) : (
             <>
               <Icon name="send" size={16} />

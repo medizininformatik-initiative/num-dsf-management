@@ -682,6 +682,10 @@ export const en = {
   approvalWaitingLabel: 'Waiting for approval',
   approvalPendingBlocked:
     'A request is already being reviewed. You can submit again once IMI has decided.',
+  approvalWithdrawalTitle: 'Withdrawal from the allow list',
+  approvalWithdrawalNote:
+    'Your organization is deactivated. Once this request is approved, every other site removes it from its allow list, together with its endpoints and memberships.',
+  approvalWithdrawalSubmit: 'Request withdrawal',
   approvalStateDraft: 'Draft',
   approvalBannerNone:
     'No request yet. Complete the checklist, then send your data to IMI for approval.',

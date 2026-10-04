@@ -197,14 +197,31 @@ describe('ApprovalModal — shared readiness rule', () => {
     expect(submitButton()).toBeDisabled();
   });
 
-  it('does not accept an inactive organization', () => {
+  it('lets a deactivated organization request its withdrawal', async () => {
+    // Withdrawing needs none of the publishing steps: no contacts or certificates.
     seedPassingData();
     data.org = { ...data.org, active: 0 };
+    data.contacts = [];
+    data.certs = [];
+    mutateAsync.mockResolvedValueOnce(undefined);
     renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
 
-    expect(screen.getByRole('button', { name: /Missing Active organization/ })).toBeInTheDocument();
+    expect(screen.getByText(t('approvalWithdrawalTitle'))).toBeInTheDocument();
     expect(screen.getByText(t('approvalModalInactive'))).toBeInTheDocument();
-    expect(submitButton()).toBeDisabled();
+    expect(screen.queryByText(t('approvalModalSomeFailed'))).not.toBeInTheDocument();
+    const submit = screen.getByRole('button', { name: t('approvalWithdrawalSubmit') });
+    expect(submit).toBeEnabled();
+    fireEvent.click(submit);
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1), { timeout: 4000 });
+  });
+
+  it('blocks a second withdrawal request while one is pending', () => {
+    seedPassingData();
+    data.org = { ...data.org, active: 0 };
+    data.approval = { id: 'r1', status: 'PENDING', created_at: '2026-10-01T10:00:00Z' };
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+
+    expect(screen.getByRole('button', { name: t('approvalWaitingLabel') })).toBeDisabled();
   });
 
   it('closes and jumps to the card of an open item', () => {
