@@ -12,12 +12,97 @@
 import { useEffect, useState, ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
+import { getRetryAfterSeconds } from '../lib/getErrorMessage';
 import { useI18n } from '../stores/i18n.store';
 import { useAuthStore } from '../stores/auth.store';
 import { isCertMode, reauthRedirect } from '../lib/authMode';
 import { CertStatusPage } from '../pages/CertStatusPage';
+
+type DevRole = 'admin' | 'member' | 'site';
+
+/** Case-insensitive, whitespace-tolerant ?devRole= parsing. */
+export function normalizeDevRole(raw: string | null): DevRole | null {
+  const v = raw?.trim().toLowerCase();
+  return v === 'admin' || v === 'member' || v === 'site' ? v : null;
+}
+
+let devRoleLoginFlight: Promise<void> | null = null;
+
+const DEV_LOGIN_RETRY_MS = 600;
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+type RefreshResult = Awaited<ReturnType<typeof authApi.refresh>>;
+let refreshFlight: Promise<RefreshResult> | null = null;
+
+/**
+ * POST /auth/refresh, shared by concurrent callers (StrictMode double effect;
+ * the backend rotates the cookie, so parallel refreshes invalidate each other)
+ * and retried once on a 429/5xx so a throttle does not look like
+ * "no session" and dump the user on the login page.
+ */
+function refreshWithRetry(): Promise<RefreshResult> {
+  refreshFlight ??= (async () => {
+    try {
+      return await authApi.refresh();
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === undefined || (status < 500 && status !== 429)) throw err;
+      const wait = Math.min(getRetryAfterSeconds(err) ?? 1, 3) * 1000;
+      await sleep(wait);
+      return authApi.refresh();
+    }
+  })().finally(() => {
+    refreshFlight = null;
+  });
+  return refreshFlight;
+}
+
+async function devLoginAs(role: DevRole | undefined, queryClient: QueryClient) {
+  const dev = await authApi.devLogin(role);
+  const accessToken = dev.data.data.accessToken;
+  const decoded: any = jwtDecode(accessToken);
+  useAuthStore.getState().setTokens(accessToken, {
+    id: decoded.sub,
+    email: decoded.email,
+  });
+  // Drop any cache from a prior session (esp. ['me']) so role/admin status
+  // refetches with the new token instead of returning stale isAdmin=false.
+  queryClient.clear();
+  // Seed ['me'] with the new token BEFORE the app mounts, so the Administration
+  // entry never depends on a query racing the login.
+  try {
+    const me = await authApi.getMe();
+    queryClient.setQueryData(['me'], me.data.data);
+  } catch {
+    /* useMe will fetch it itself */
+  }
+}
+
+/** Deterministic ?devRole= login: clear, log in (one retry), drop the param. */
+async function runDevRoleLogin(role: DevRole, queryClient: QueryClient) {
+  useAuthStore.getState().clearAuth();
+  queryClient.clear();
+  try {
+    try {
+      await devLoginAs(role, queryClient);
+    } catch {
+      // Transient failure (429 from the nginx auth zone, backend restarting).
+      await sleep(DEV_LOGIN_RETRY_MS);
+      await devLoginAs(role, queryClient);
+    }
+    // Strip the param so a reload does not re-trigger (and re-clear) the login.
+    const url = new URL(window.location.href);
+    url.searchParams.delete('devRole');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  } catch {
+    toast.error(useI18n.getState().t('devLoginFailed'), { id: 'dev-login-failed' });
+  }
+}
 
 export function AuthBootstrap({ children }: { children: ReactNode }) {
   const { t } = useI18n();
@@ -28,37 +113,21 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Dev-only URL shortcut: ?devRole=admin|member forces a fresh dev-login.
-    // Overrides any existing session so you can switch roles by URL.
+    // Dev-only URL shortcut: ?devRole=admin|member|site (any case) forces a
+    // fresh dev-login. Overrides any existing session so you can switch roles
+    // by URL.
     const devRole = import.meta.env.DEV
-      ? (new URLSearchParams(window.location.search).get('devRole') as
-          | 'admin'
-          | 'member'
-          | 'site'
-          | null)
+      ? normalizeDevRole(new URLSearchParams(window.location.search).get('devRole'))
       : null;
 
-    async function devLoginAs(role: 'admin' | 'member' | 'site' | undefined) {
-      const dev = await authApi.devLogin(role);
-      const accessToken = dev.data.data.accessToken;
-      const decoded: any = jwtDecode(accessToken);
-      useAuthStore.getState().setTokens(accessToken, {
-        id: decoded.sub,
-        email: decoded.email,
-      });
-      // Drop any cache from a prior session (esp. ['me']) so role/admin status
-      // refetches with the new token instead of returning stale isAdmin=false.
-      queryClient.clear();
-    }
-
     if (devRole) {
-      useAuthStore.getState().clearAuth();
-      queryClient.clear();
-      devLoginAs(devRole)
-        .catch(() => {
-          /* dev-login disabled — fall through to login page */
-        })
-        .finally(() => setReady(true));
+      // Single-flight: React StrictMode runs this effect twice; both runs must
+      // share ONE login, otherwise the second response lands after children
+      // mounted and queryClient.clear() wipes their in-flight ['me'] query.
+      devRoleLoginFlight ??= runDevRoleLogin(devRole, queryClient).finally(() => {
+        devRoleLoginFlight = null;
+      });
+      devRoleLoginFlight.finally(() => setReady(true));
       return;
     }
 
@@ -71,8 +140,7 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
     // On failure in a Vite dev build, try DEV_AUTO_LOGIN as a last-resort
     // shortcut. The backend refuses unless NODE_ENV !== 'production' AND
     // DEV_AUTO_LOGIN === 'true', so this is a no-op in production.
-    authApi
-      .refresh()
+    refreshWithRetry()
       .then((res) => {
         const accessToken = res.data.data.accessToken;
         const decoded: any = jwtDecode(accessToken);
@@ -102,7 +170,7 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
         }
         if (!import.meta.env.DEV) return;
         try {
-          await devLoginAs(undefined);
+          await devLoginAs(undefined, queryClient);
         } catch {
           /* dev-login disabled — fall through to login page */
         }

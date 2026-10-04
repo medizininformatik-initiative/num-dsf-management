@@ -210,7 +210,9 @@ if (isDevEnv() && process.env.DEV_AUTO_LOGIN === 'true') {
     '/dev-login',
     ...devEntryLimiter,
     asyncHandler(async (req: Request, res: Response) => {
-      const inputRole = req.body?.role;
+      // Case-insensitive so ?devRole=Member cannot silently fall back to admin.
+      const rawRole = req.body?.role;
+      const inputRole = typeof rawRole === 'string' ? rawRole.trim().toLowerCase() : rawRole;
       const role: 'admin' | 'member' | 'site' =
         inputRole === 'member' ? 'member' : inputRole === 'site' ? 'site' : 'admin';
       const envKey =
