@@ -362,5 +362,6 @@ Full FHIR bundle snapshots persisted on each approval (017). Signed with RS256 o
 | signature | TEXT | no | — | |
 | bundle_json | LONGTEXT | no | — | |
 | notes | TEXT | yes | NULL | |
+| input_json | LONGTEXT | yes | NULL | Network state the bundle was built from (members, withdrawn organizations, parent names; no contact data), added in 024. NULL on older versions, which are not restorable and not readable per receiver. |
 
 FKs: `approval_request_id` → `approval_requests.id` ON DELETE SET NULL (fk_bv_approval).
