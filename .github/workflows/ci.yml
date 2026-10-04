@@ -28,7 +28,10 @@ jobs:
           #    on address values of hundreds of KB. Only outbound mail is sent, to
           #    whitelisted or zod-validated addresses of at most 255 characters. The fix is
           #    nodemailer 9 -> 10 (semver-major); Dependabot owns it.
-          npx better-npm-audit audit --level high -x GHSA-86w9-cpqp-85rv,GHSA-v53p-9fqp-m79j,GHSA-prgh-xp8r-p3m5
+          #  - GHSA-vfj7-8cjw-p6xm: braces stack exhaustion on hostile glob patterns. No
+          #    patched release exists (<= 3.0.3), and braces is only pulled in by the dev
+          #    tools jest and ts-node-dev, which never see untrusted patterns.
+          npx better-npm-audit audit --level high -x GHSA-86w9-cpqp-85rv,GHSA-v53p-9fqp-m79j,GHSA-prgh-xp8r-p3m5,GHSA-vfj7-8cjw-p6xm
       - name: Frontend audit
         working-directory: frontend
         run: |
