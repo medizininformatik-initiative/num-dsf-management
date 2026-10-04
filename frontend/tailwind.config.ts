@@ -133,8 +133,8 @@ export default {
         input: '10px',
       },
       boxShadow: {
-        card: '0 2px 8px rgba(176,30,102,0.07)',
-        'card-hover': '0 4px 16px rgba(176,30,102,0.13)',
+        'card-elevated': '0 2px 8px rgba(176,30,102,0.07)',
+        'card-elevated-hover': '0 4px 16px rgba(176,30,102,0.13)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

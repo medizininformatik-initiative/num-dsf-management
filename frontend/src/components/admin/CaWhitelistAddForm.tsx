@@ -148,7 +148,7 @@ export function CaWhitelistAddForm({ knownCas }: { knownCas: KnownCaRow[] }) {
               {KINDS.map((k) => (
                 <label
                   key={k}
-                  className="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium text-[color:var(--text-secondary)] transition-colors duration-short ease-standard has-[:checked]:bg-[color:var(--bg-card)] has-[:checked]:text-[color:var(--text-primary)] has-[:checked]:shadow-card has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[color:var(--focus-ring)]"
+                  className="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium text-[color:var(--text-secondary)] transition-colors duration-short ease-standard has-[:checked]:bg-[color:var(--bg-card)] has-[:checked]:text-[color:var(--text-primary)] has-[:checked]:shadow-card-elevated has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[color:var(--focus-ring)]"
                 >
                   <input
                     type="radio"

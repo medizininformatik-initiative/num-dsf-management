@@ -160,7 +160,7 @@ function CaTabs({
             onClick={() => onSelect(id)}
             className={`press-effect inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] ${
               selected
-                ? 'bg-[color:var(--bg-card)] text-[color:var(--text-primary)] shadow-card'
+                ? 'bg-[color:var(--bg-card)] text-[color:var(--text-primary)] shadow-card-elevated'
                 : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
             }`}
           >
@@ -226,7 +226,7 @@ function WhitelistFilters({
             onClick={() => onKindChange(k)}
             className={`press-effect rounded-lg px-3 py-1.5 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] ${
               kind === k
-                ? 'bg-[color:var(--bg-card)] text-[color:var(--text-primary)] shadow-card'
+                ? 'bg-[color:var(--bg-card)] text-[color:var(--text-primary)] shadow-card-elevated'
                 : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
             }`}
           >

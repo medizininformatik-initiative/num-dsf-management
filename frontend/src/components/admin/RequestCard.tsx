@@ -152,7 +152,7 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
   return (
     <article
       aria-labelledby={titleId}
-      className="flex flex-col gap-4 rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] px-5 py-5 shadow-card sm:px-6"
+      className="flex flex-col gap-4 rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] px-5 py-5 shadow-card-elevated sm:px-6"
     >
       {/* Card header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
