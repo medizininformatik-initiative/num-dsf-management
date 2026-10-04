@@ -1,162 +1,194 @@
 /**
- * AdminBundleVersionsPage.tsx – Admin bundle-version history with download
- * + diff. Two version pickers (A / B, toggle buttons); the diff card appears
- * once both are selected. Dates follow the app language; rows enter staggered.
- * Dependencies: bundleVersions.api, i18n store, lib/dateUtils, AdminPageHeader,
- * Button, StatusPill, Icon, Skeleton, TanStack Query.
+ * AdminBundleVersionsPage.tsx – allow-list history for admins: a timeline of
+ * every published version (newest first, current marked) and an intuitive diff
+ * of the selected version against its predecessor (or any other version),
+ * plus restore of older versions behind a reason and the admin step-up.
+ * Dependencies: bundleVersionsApi, bundleHistory/* components, i18n store.
  */
-import { useState, type CSSProperties } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { bundleVersionsApi, type BundleVersionListRow } from '../api/bundleVersions.api';
 import { useI18n } from '../stores/i18n.store';
-import { formatDateTime } from '../lib/dateUtils';
-import { AdminPageHeader } from '../components/admin/AdminPageHeader';
-import { Button } from '../components/ui/Button';
-import { StatusPill } from '../components/ui/StatusPill';
-import { Icon } from '../components/ui/Icon';
 import { Skeleton } from '../components/ui/Skeleton';
+import { Button } from '../components/ui/Button';
+import { BundleTimeline } from '../components/admin/bundleHistory/BundleTimeline';
+import { BundleDiffView } from '../components/admin/bundleHistory/BundleDiffView';
+import { RestoreDialog } from '../components/admin/bundleHistory/RestoreDialog';
+import { mapBundleDiff } from '../components/admin/bundleHistory/diffModel';
+import { getErrorCode, getErrorMessageForStepUp } from '../lib/getErrorMessage';
 
 export function AdminBundleVersionsPage() {
-  const { t, lang } = useI18n();
-  const [selA, setSelA] = useState<string | null>(null);
-  const [selB, setSelB] = useState<string | null>(null);
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const [toId, setToId] = useState<string | null>(null);
+  const [fromId, setFromId] = useState<string | null>(null);
+  const [restoreRow, setRestoreRow] = useState<BundleVersionListRow | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
 
   const list = useQuery({
     queryKey: ['bundle-versions'],
     queryFn: () => bundleVersionsApi.list().then((r) => r.data),
   });
 
+  // Newest first, whatever order the server used.
+  const versions = useMemo(
+    () => [...(list.data?.data ?? [])].sort((a, b) => b.version_number - a.version_number),
+    [list.data],
+  );
+  const to = versions.find((v) => v.id === toId) ?? versions[0] ?? null;
+  const toIndex = to ? versions.indexOf(to) : -1;
+  const from =
+    versions.find((v) => v.id === fromId && v.id !== to?.id) ?? versions[toIndex + 1] ?? null;
+  // The diff API reads "A to B"; A must be the older version.
+  const [older, newer] =
+    to && from && from.version_number > to.version_number ? [to, from] : [from, to];
+
   const diff = useQuery({
-    queryKey: ['bundle-versions-diff', selA, selB],
-    queryFn: () => bundleVersionsApi.diff(selA!, selB!).then((r) => r.data.data),
-    enabled: !!selA && !!selB && selA !== selB,
+    queryKey: ['bundle-versions-diff', older?.id, newer?.id],
+    queryFn: () => bundleVersionsApi.diff(older!.id, newer!.id).then((r) => r.data.data),
+    enabled: !!older && !!newer,
+  });
+  const model = useMemo(() => (diff.data ? mapBundleDiff(diff.data) : null), [diff.data]);
+
+  const restore = useMutation({
+    mutationFn: (input: { id: string; reason: string; totpCode?: string }) =>
+      bundleVersionsApi.restore(input.id, { reason: input.reason, totpCode: input.totpCode }),
+    onSuccess: (res, vars) => {
+      const created = res.data.data;
+      const source = versions.find((v) => v.id === vars.id);
+      toast.success(
+        t('historyRestoreSuccess', {
+          n: source?.version_number ?? '',
+          m: created.version_number,
+        }),
+      );
+      setRestoreRow(null);
+      setToId(null);
+      setFromId(null);
+      void qc.invalidateQueries({ queryKey: ['bundle-versions'] });
+    },
+    onError: (err) => {
+      if (getErrorCode(err) === 'VERSION_NOT_RESTORABLE') {
+        toast.error(t('historyRestoreNotRestorable'));
+        setRestoreRow(null);
+        void qc.invalidateQueries({ queryKey: ['bundle-versions'] });
+        return;
+      }
+      setRestoreError(
+        getErrorMessageForStepUp(err, t('historyRestoreFailed'), t('certStepUpFailedToast')),
+      );
+    },
   });
 
-  const rows = list.data?.data ?? [];
+  function startRestore(row: BundleVersionListRow) {
+    setRestoreError(null);
+    restore.reset();
+    setRestoreRow(row);
+  }
 
   return (
-    <div className="flex-1 overflow-y-auto" data-testid="admin-bundle-versions">
-      <AdminPageHeader
-        icon="history"
-        title={t('bundleVersionsTitle')}
-        subtitle={t('bundleVersionsIntro')}
-      />
+    <div className="mx-auto max-w-6xl p-6 md:p-8" data-testid="admin-bundle-versions">
+      <h1 className="mb-2 text-2xl font-semibold text-[color:var(--text-primary)]">
+        {t('bundleVersionsTitle')}
+      </h1>
+      <p className="mb-6 max-w-2xl text-sm text-[color:var(--text-muted)]">{t('historyIntro')}</p>
 
-      <div className="mx-auto max-w-5xl space-y-6 px-6 py-6 sm:px-8">
-        {list.isLoading ? (
-          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">
-            <Skeleton lines={4} />
-          </div>
-        ) : rows.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-[color:var(--border)] p-4 text-sm italic text-[color:var(--text-muted)]">
-            {t('bundleVersionsEmpty')}
-          </p>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)]">
-            <table className="w-full border-collapse text-left text-[13px]">
-              <thead className="bg-[color:var(--bg-hover)]">
-                <tr className="text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-secondary)]">
-                  <th className="px-4 py-2.5">{t('bundleVersionsColVersion')}</th>
-                  <th className="px-4 py-2.5">{t('createdAt')}</th>
-                  <th className="px-4 py-2.5">{t('triggeredBy')}</th>
-                  <th className="px-4 py-2.5">{t('triggeredByEmail')}</th>
-                  <th className="px-4 py-2.5">
-                    <span className="sr-only">{t('details')}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r: BundleVersionListRow, i) => (
-                  <tr
-                    key={r.id}
-                    style={{ '--stagger-index': i } as CSSProperties}
-                    className="animate-list-item-in border-t border-[color:var(--border)]"
-                  >
-                    <td className="px-4 py-2.5 font-mono font-semibold text-[color:var(--text-primary)]">
-                      v{r.version_number}
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-[color:var(--text-secondary)]">
-                      {formatDateTime(r.created_at, lang)}
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-[color:var(--text-secondary)]">
-                      {r.triggered_by}
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-[color:var(--text-muted)]">
-                      {r.triggered_by_email}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex justify-end gap-1.5 whitespace-nowrap">
-                        <a
-                          href={bundleVersionsApi.downloadUrl(r.id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-sm btn-ghost press-effect"
-                        >
-                          <Icon name="download" size={16} />
-                          {t('download')}
-                        </a>
-                        <Button
-                          size="sm"
-                          variant={selA === r.id ? 'primary' : 'secondary'}
-                          aria-pressed={selA === r.id}
-                          onClick={() => setSelA(r.id)}
-                        >
-                          {t('diffPickA')}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={selB === r.id ? 'primary' : 'secondary'}
-                          aria-pressed={selB === r.id}
-                          onClick={() => setSelB(r.id)}
-                        >
-                          {t('diffPickB')}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {list.isLoading ? (
+        <Skeleton lines={4} />
+      ) : list.isError ? (
+        <div role="alert" className="glass-thin flex flex-wrap items-center gap-3 rounded-2xl p-4">
+          <span className="text-sm text-danger-fg">{t('historyLoadFailed')}</span>
+          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
+            {t('historyRetry')}
+          </Button>
+        </div>
+      ) : versions.length === 0 ? (
+        <p className="glass-thin rounded-2xl p-4 text-sm italic text-[color:var(--text-muted)]">
+          {t('bundleVersionsEmpty')}
+        </p>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+          <BundleTimeline
+            versions={versions}
+            selectedId={to?.id ?? null}
+            onSelect={(id) => {
+              setToId(id);
+              setFromId(null);
+            }}
+            onRestore={startRestore}
+          />
 
-        {selA && selB && selA !== selB && (
-          <section
-            className="animate-fade-in rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5"
-            data-testid="bundle-versions-diff"
-          >
-            <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-[color:var(--text-primary)]">
-              <Icon name="difference" size={20} />
-              {t('diff')}
-            </h2>
-            {diff.isLoading ? (
-              <Skeleton lines={2} />
-            ) : diff.data ? (
-              <>
-                <div className="flex flex-wrap gap-2">
-                  <StatusPill tone="success" icon="add">
-                    {t('added')}: {diff.data.added.length}
-                  </StatusPill>
-                  <StatusPill tone="danger" icon="remove">
-                    {t('removed')}: {diff.data.removed.length}
-                  </StatusPill>
-                  <StatusPill tone="warning" icon="edit">
-                    {t('changed')}: {diff.data.changed.length}
-                  </StatusPill>
+          <section aria-live="polite" data-testid="bundle-versions-diff" className="min-w-0">
+            {to && !from ? (
+              <p className="glass-thin rounded-2xl p-4 text-sm text-[color:var(--text-secondary)]">
+                {t('historyFirstVersion')}
+              </p>
+            ) : (
+              to &&
+              from &&
+              older &&
+              newer && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-base font-semibold text-[color:var(--text-primary)]">
+                      {t('historyShowing', {
+                        to: newer.version_number,
+                        from: older.version_number,
+                      })}
+                    </h2>
+                    <label className="flex items-center gap-2 text-xs font-semibold text-[color:var(--text-secondary)]">
+                      {t('historyCompareWith')}
+                      <select
+                        value={from.id}
+                        onChange={(e) => setFromId(e.target.value)}
+                        className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1 text-sm text-[color:var(--text-primary)]"
+                      >
+                        {versions
+                          .filter((v) => v.id !== to.id)
+                          .map((v) => (
+                            <option key={v.id} value={v.id}>
+                              v{v.version_number}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  </div>
+                  {diff.isLoading ? (
+                    <Skeleton lines={4} />
+                  ) : diff.isError ? (
+                    <div
+                      role="alert"
+                      className="glass-thin flex flex-wrap items-center gap-3 rounded-2xl p-4"
+                    >
+                      <span className="text-sm text-danger-fg">{t('historyDiffLoadFailed')}</span>
+                      <Button size="sm" variant="secondary" onClick={() => void diff.refetch()}>
+                        {t('historyRetry')}
+                      </Button>
+                    </div>
+                  ) : model && diff.data ? (
+                    <BundleDiffView model={model} raw={diff.data} />
+                  ) : null}
                 </div>
-                <details className="mt-4">
-                  <summary className="cursor-pointer text-xs font-medium text-[color:var(--text-secondary)]">
-                    {t('details')}
-                  </summary>
-                  <pre className="mt-2 max-h-96 overflow-auto rounded-lg bg-[color:var(--bg-hover)] p-3 font-mono text-[11px] text-[color:var(--text-primary)]">
-                    {JSON.stringify(diff.data, null, 2)}
-                  </pre>
-                </details>
-              </>
-            ) : null}
+              )
+            )}
           </section>
-        )}
-      </div>
+        </div>
+      )}
+
+      {restoreRow && (
+        <RestoreDialog
+          open
+          versionNumber={restoreRow.version_number}
+          busy={restore.isPending}
+          error={restoreError}
+          onCancel={() => setRestoreRow(null)}
+          onConfirm={({ reason, totpCode }) => {
+            setRestoreError(null);
+            restore.mutate({ id: restoreRow.id, reason, totpCode });
+          }}
+        />
+      )}
     </div>
   );
 }
