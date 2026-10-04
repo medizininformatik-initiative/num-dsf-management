@@ -7,6 +7,15 @@ import { useAuthStore } from '../stores/auth.store';
 // VITE_API_URL already includes /api/v1 (e.g. http://localhost/api/v1)
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
+/** One published version of an endpoint's allow list, from GET /bundle-history. */
+export interface BundleHistoryEntry {
+  versionNumber: number;
+  createdAt: string;
+  triggeredBy: 'APPROVAL' | 'MANUAL' | 'RESTORE';
+  notes: string | null;
+  isCurrent: boolean;
+}
+
 /** A certificate as the certificates API returns it (never the PEM). */
 export interface ApiCertificate {
   id: string;
@@ -103,10 +112,17 @@ function api(instanceId: string) {
     submitApproval: () =>
       axios.post(`${base}/approval/submit`, {}, { headers: authHeader() }),
 
-    downloadBundle: (endpointId: string) =>
-      axios.get(`${base}/download/bundle?endpointId=${encodeURIComponent(endpointId)}`, {
-        headers: authHeader(), responseType: 'blob',
-      }),
+    downloadBundle: (endpointId: string, version?: number) =>
+      axios.get(
+        `${base}/download/bundle?endpointId=${encodeURIComponent(endpointId)}` +
+          (version === undefined ? '' : `&version=${version}`),
+        { headers: authHeader(), responseType: 'blob' },
+      ),
+    getBundleHistory: (endpointId: string) =>
+      axios.get<{ data: BundleHistoryEntry[] }>(
+        `${base}/bundle-history?endpointId=${encodeURIComponent(endpointId)}`,
+        { headers: authHeader() },
+      ),
     downloadIpList: () =>
       axios.get(`${BASE}/download/ip-address-list`, {
         headers: authHeader(), responseType: 'blob',

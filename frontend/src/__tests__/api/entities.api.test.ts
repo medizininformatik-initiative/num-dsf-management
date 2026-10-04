@@ -134,6 +134,10 @@ const server = setupServer(
     await capture(request);
     return HttpResponse.json({ data: { ok: true } });
   }),
+  http.get('*/instances/:id/bundle-history', ({ request }) => {
+    void capture(request);
+    return HttpResponse.json({ data: [] });
+  }),
   // Downloads / audit
   http.get('*/instances/:id/download/bundle', ({ request }) => {
     void capture(request);
@@ -311,6 +315,20 @@ describe('entities api – approval, downloads, audit', () => {
     expect(lastRequest?.method).toBe('GET');
     expect(lastRequest?.pathname).toMatch(/\/instances\/inst-1\/download\/bundle$/);
     // axios re-decodes the query; assert the value round-trips correctly.
+    expect(lastRequest?.search.get('endpointId')).toBe('https://fhir.ukm.de/Endpoint');
+  });
+
+  it('downloadBundle() adds the version when one is given, and omits it otherwise', async () => {
+    await client().downloadBundle('ep1', 4);
+    expect(lastRequest?.search.get('version')).toBe('4');
+    await client().downloadBundle('ep1');
+    expect(lastRequest?.search.has('version')).toBe(false);
+  });
+
+  it('getBundleHistory() GETs /bundle-history for the endpoint', async () => {
+    await client().getBundleHistory('https://fhir.ukm.de/Endpoint');
+    expect(lastRequest?.method).toBe('GET');
+    expect(lastRequest?.pathname).toMatch(/\/instances\/inst-1\/bundle-history$/);
     expect(lastRequest?.search.get('endpointId')).toBe('https://fhir.ukm.de/Endpoint');
   });
 

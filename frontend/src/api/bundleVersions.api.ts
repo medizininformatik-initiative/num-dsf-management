@@ -20,6 +20,10 @@ export interface BundleVersionListRow {
   content_hash: string;
   notes: string | null;
   approval_request_id: string | null;
+  /** The version DSF currently serves; absent on older backends. */
+  isCurrent?: boolean;
+  /** Whether the version can be restored; absent on older backends. */
+  restorable?: boolean;
 }
 
 export interface BundleVersionListPage {
@@ -53,6 +57,12 @@ export const bundleVersionsApi = {
   diff: (idA: string, idB: string) =>
     axios.get<{ data: BundleVersionDiff }>(
       `${BASE}/admin/bundle-versions/${idA}/diff/${idB}`,
+      { headers: authHeader() },
+    ),
+  restore: (id: string, body: { reason: string; totpCode?: string }) =>
+    axios.post<{ data: { id: string; version_number: number } }>(
+      `${BASE}/admin/bundle-versions/${id}/restore`,
+      body,
       { headers: authHeader() },
     ),
   downloadUrl: (id: string) => `${BASE}/admin/bundle-versions/${id}/download`,
