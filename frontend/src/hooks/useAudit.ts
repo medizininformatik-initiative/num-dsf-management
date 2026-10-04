@@ -16,5 +16,6 @@ export function useCrossInstanceAudit(
     enabled,
     staleTime: 15_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }

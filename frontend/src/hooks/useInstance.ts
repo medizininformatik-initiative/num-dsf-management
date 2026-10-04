@@ -23,6 +23,7 @@ export function useInstance(instanceId: string | null) {
         .getInstance(instanceId!)
         .then((r) => r.data.data as InstanceRow),
     enabled: !!user && !!instanceId,
+    staleTime: 60_000,
   });
 }
 
@@ -38,6 +39,7 @@ export function useInstances() {
         .getInstances()
         .then((r) => r.data.data as { id: string; label: string }[]),
     enabled: !!user,
+    staleTime: 60_000,
   });
 
   useEffect(() => {

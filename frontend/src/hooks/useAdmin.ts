@@ -44,6 +44,7 @@ export function usePendingApprovals() {
     queryFn: () => adminApi.getPendingApprovals().then((r) => r.data.data),
     staleTime: 15_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }
 

@@ -63,6 +63,7 @@ export function AdminPromotionsPage() {
     queryFn: adminPromotionsApi.list,
     staleTime: 15_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 
   const [pending, setPending] = useState<{ kind: ActionKind; req: PromotionRequest } | null>(null);
