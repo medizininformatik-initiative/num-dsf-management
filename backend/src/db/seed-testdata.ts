@@ -9,6 +9,7 @@ import 'dotenv/config';
 import { db } from './connection';
 import { v4 as uuidv4 } from 'uuid';
 import { signGrant } from '../lib/adminGrants';
+import { seedCertificate } from './seedCertificates';
 
 const USER_ID = uuidv4();
 const ADMIN_EMAIL = 'admin@imi-test.example.de';
@@ -153,15 +154,6 @@ const PARENT_ORGS = ['mii-testverband.example.de', 'num-testverband.example.de']
 // IP ranges: RFC 5737 documentation ranges only
 const IP_BASES = ['192.0.2', '198.51.100', '203.0.113'];
 
-const FAKE_PEM = `-----BEGIN CERTIFICATE-----
-MIIBkTCB+wIJALRiMLAh2wLSMA0GCSqGSIb3DQEBCwUAMBExDzANBgNVBAMMBnRl
-c3RjYTAeFw0yNTAxMDEwMDAwMDBaFw0yNjAxMDEwMDAwMDBaMBExDzANBgNVBAMM
-BnRlc3RjYTBcMA0GCSqGSIb3DQEBAQUAA0sAMEgCQQC7o96HtiMR+dqpMgLzOPSx
-5IAoMpOZzFMqxA7E5JN9GK5FdJoG9brkCaJMnoYhbyXjxyoGS2YqvECRnpc1bN0z
-AgMBAAEwDQYJKoZIhvcNAQELBQADQQBY7lY1eByq0TA6M2qHTHmao+mSjHR8hEIq
-b7dUjzKHYESSYsXoPNMiPiX85ysSGrFcdPt4MfrDXJe9Zk/3RmeO
------END CERTIFICATE-----`;
-
 function futureDate(daysFromNow: number): string {
   const d = new Date();
   d.setDate(d.getDate() + daysFromNow);
@@ -179,11 +171,6 @@ function slug(name: string): string {
     .toLowerCase()
     .replace(/[äöüß]/g, (c) => ({ ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss' })[c] || c)
     .replace(/\s+/g, '-');
-}
-
-function thumbprint(index: number): string {
-  const hex = index.toString(16).padStart(2, '0');
-  return (hex + 'abcdef0123456789').repeat(4).slice(0, 64);
 }
 
 // Generate 30 organizations
@@ -394,13 +381,19 @@ async function main() {
   let certCount = 0;
   for (let i = 0; i < ORGS.length; i++) {
     if (i % 7 === 6) continue; // no certificate for this org
+    // Every third certificate is self-signed, the rest come from a DSF CA.
+    const cert = seedCertificate(
+      `dsf-fhir.${ORGS[i].identifier}`,
+      futureDate(EXPIRY_DAYS[i % EXPIRY_DAYS.length]),
+      i % 3 !== 2,
+    );
     await db('certificates').insert({
       id: uuidv4(),
       organization_id: ORGS[i].identifier,
-      pem: FAKE_PEM,
-      subject: `CN=dsf-fhir.${ORGS[i].identifier}`,
-      thumbprint: thumbprint(i),
-      valid_until: futureDate(EXPIRY_DAYS[i % EXPIRY_DAYS.length]),
+      pem: cert.pem,
+      subject: cert.subject,
+      thumbprint: cert.thumbprint,
+      valid_until: cert.validUntil,
       created_at: new Date(),
     });
     certCount++;
@@ -610,13 +603,14 @@ async function main() {
     is_fhir: true,
     is_bpe: false,
   });
+  const memberCert = seedCertificate(memberEpId, futureDate(365), true);
   await db('certificates').insert({
     id: uuidv4(),
     organization_id: MEMBER_ORG_IDENTIFIER,
-    pem: FAKE_PEM,
-    subject: `CN=${memberEpId}`,
-    thumbprint: thumbprint(99),
-    valid_until: futureDate(365),
+    pem: memberCert.pem,
+    subject: memberCert.subject,
+    thumbprint: memberCert.thumbprint,
+    valid_until: memberCert.validUntil,
     created_at: new Date(),
   });
   await db('memberships').insert({
@@ -723,13 +717,14 @@ async function main() {
     is_fhir: true,
     is_bpe: false,
   });
+  const siteCert = seedCertificate(siteEpId, futureDate(365), false);
   await db('certificates').insert({
     id: uuidv4(),
     organization_id: SITE_ORG_IDENTIFIER,
-    pem: FAKE_PEM,
-    subject: `CN=${siteEpId}`,
-    thumbprint: thumbprint(88),
-    valid_until: futureDate(365),
+    pem: siteCert.pem,
+    subject: siteCert.subject,
+    thumbprint: siteCert.thumbprint,
+    valid_until: siteCert.validUntil,
     created_at: new Date(),
   });
   await db('memberships').insert({
