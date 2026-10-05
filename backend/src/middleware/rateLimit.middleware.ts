@@ -68,6 +68,18 @@ export const stepUpTotpRateLimit = rateLimit({
   message: { error: { code: 'RATE_LIMITED', message: 'Too many attempts. Please wait.' } },
 });
 
+// Backup downloads stream a file holding the whole database (contact PII,
+// encrypted TOTP secrets); cap them per admin on top of the step-up limiter.
+export const backupDownloadRateLimit = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_BACKUP_DOWNLOAD_WINDOW_MS || '900000'),
+  max: parseInt(process.env.RATE_LIMIT_BACKUP_DOWNLOAD_MAX || '10'),
+  store: createRedisStore('backup-download'),
+  keyGenerator: (req) => `user:${(req as { user?: { id: string } }).user?.id || req.ip}`,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: 'Too many backup downloads. Please wait.' } },
+});
+
 // Bulk cert-onboarding import is a heavy, DB-writing admin action (up to
 // 1000 rows per call); a modest per-admin cap bounds a runaway or scripted
 // re-import without blocking a legitimate multi-file onboarding session.
