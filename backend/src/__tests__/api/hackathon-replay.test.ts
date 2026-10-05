@@ -14,7 +14,8 @@
  *     merged DIC + HRP affiliation each, its own affiliation referenced
  *     conditionally, in a bundle that passes the DSF acceptance rules;
  *  6. the GUI download of the same endpoint is the same allow list;
- *  7. a site's DSF BPE presents a separate DSF client certificate;
+ *  7. a site's DSF BPE presents a separate DSF client certificate, which
+ *     other sites see only after the site's resubmission is approved;
  *  8. the failure modes participants hit answer with FHIR OperationOutcomes.
  * Dependencies: supertest, app, db/connection, helpers/hackathon,
  *               helpers/allowListSites, helpers/dsfAllowListChecks
@@ -179,7 +180,7 @@ describe('Hackathon replay: three sites, four-eyes approval, DSF allow-list down
     expect(fromGui).toEqual(fromDsf);
   });
 
-  it('7. the DSF BPE may present a separate DSF certificate from the certificate list', async () => {
+  it('7. the DSF BPE may present a separate DSF certificate, published once approved', async () => {
     const s = sites[1];
     const bpePem = makeCertPem(`dsf-bpe.${org(s)}`);
     const upload = await api(s).post(`/api/v1/instances/${s.instanceId}/certificates`, {
@@ -187,8 +188,18 @@ describe('Hackathon replay: three sites, four-eyes approval, DSF allow-list down
     });
     expect(upload.status).toBe(201);
 
-    // The allow list is published per version: the new certificate reaches the
-    // other sites with the next version (an approval; here a manual snapshot).
+    // The allow list publishes only approved data: the new certificate stays
+    // out of every version until the site resubmits and the request is approved.
+    const thumbprintsSeenBy = async (viewer: Participant): Promise<string[]> => {
+      const seen = entriesOf(await download(viewer)).find(
+        (e) =>
+          e.resource?.resourceType === 'Organization' &&
+          e.resource.identifier?.[0]?.value === org(s),
+      );
+      return (seen?.resource?.extension as Array<{ valueString: string }>)
+        .map((x) => x.valueString)
+        .sort();
+    };
     const snapshot = await createSnapshot({
       triggeredBy: 'MANUAL',
       triggeredByEmail: s.user.email,
@@ -196,17 +207,17 @@ describe('Hackathon replay: three sites, four-eyes approval, DSF allow-list down
 
     const bundle = await download(s, bpePem);
     expect(organizationsIn(bundle)).toEqual(expect.arrayContaining([org(sites[0]), org(sites[2])]));
+    expect(await thumbprintsSeenBy(sites[0])).toEqual([s.user.fingerprintSha512]);
 
-    // The other sites now trust both certificates of that site.
-    const seen = entriesOf(await download(sites[0])).find(
-      (e) =>
-        e.resource?.resourceType === 'Organization' && e.resource.identifier?.[0]?.value === org(s),
+    // Resubmitted and approved by the two other sites, the next version carries
+    // both certificates of that site.
+    const submit = await api(s).post(`/api/v1/instances/${s.instanceId}/approval/submit`);
+    expect(submit.status).toBe(201);
+    const requestId = await pendingRequestId(s.instanceId);
+    expect(await approveByTwo(requestId, sites[0], sites[2])).toBe('APPROVED');
+    expect(await thumbprintsSeenBy(sites[0])).toEqual(
+      [s.user.fingerprintSha512, sha512FingerprintFromPem(bpePem)].sort(),
     );
-    expect(
-      (seen?.resource?.extension as Array<{ valueString: string }>)
-        .map((x) => x.valueString)
-        .sort(),
-    ).toEqual([s.user.fingerprintSha512, sha512FingerprintFromPem(bpePem)].sort());
     await db('bundle_versions').where({ id: snapshot.id }).del();
   });
 

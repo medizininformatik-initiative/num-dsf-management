@@ -2,7 +2,8 @@
  * approval.service.ts – Approval workflow state machine
  * Status transitions: DRAFT → PENDING (submit), PENDING → APPROVED|REJECTED (operator),
  * PENDING → WITHDRAWN (the site takes its own request back)
- * Dependencies: db/connection, audit.service, approval-reminder.service, lib/approvalState
+ * Dependencies: db/connection, audit.service, approval-reminder.service, fhir.service
+ *               (loadMembers), approved-snapshot.service (types), lib/approvalState
  */
 import { Knex } from 'knex';
 import { db } from '../db/connection';
@@ -14,6 +15,8 @@ import {
   notifyImiOnFirstApproval,
 } from './approval-reminder.service';
 import { siteOfEmail, validateApproval, deriveStatus, ApprovalSig } from '../lib/approvalState';
+import { loadMembers } from './fhir.service';
+import type { AllowListSection } from './approved-snapshot.service';
 import { errCode } from '../lib/errMessage';
 import { logger } from '../lib/logger';
 import type { OrganizationRow, EndpointRow, EndpointIpRow } from '../types/rows';
@@ -49,6 +52,10 @@ async function buildSnapshot(instanceId: string, trx: Knex | Knex.Transaction = 
     .where({ organization_id: org.identifier })
     .whereNull('deleted_at');
   const { email: _email, ...orgSafe } = org;
+  // What the allow list publishes for this site once the request is approved:
+  // thumbprints only, never the certificate PEMs.
+  const [member] = await loadMembers([{ identifier: org.identifier, name: org.name }], trx);
+  const allowList: AllowListSection = { version: 1, active: !!org.active, member };
   return {
     organization: orgSafe,
     contacts,
@@ -58,6 +65,7 @@ async function buildSnapshot(instanceId: string, trx: Knex | Knex.Transaction = 
     })),
     certificates,
     memberships,
+    allowList,
     snapshotAt: new Date().toISOString(),
   };
 }

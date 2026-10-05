@@ -1,16 +1,18 @@
 /**
  * fhir.service.ts – Loads the allow-list data and builds the DSF bundles.
- * - loadAllowListInput: the live network state, the one input every bundle
- *   and every stored bundle version is built from.
+ * - loadAllowListInput: the approved network state (per site the data of its
+ *   latest APPROVED request), the one input every bundle and every stored
+ *   bundle version is built from.
  * - renderReceiverBundle / renderFullBundle: pure views of such an input.
  * - generateBundle: receiver-scoped bundle for one endpoint built from the
- *   live state (fallback before the first stored version exists).
- * - generateFullBundle: network-wide bundle from the live state.
+ *   approved state (fallback before the first stored version exists).
+ * - generateFullBundle: network-wide bundle from the approved state.
  * The bundle shape itself lives in lib/allowListBundle. Contact data,
  * including the organization e-mail, is never loaded here (GDPR, F-BND-04).
- * Dependencies: db/connection, lib/allowListBundle, lib/allowListInput,
+ * Dependencies: db/connection, approved-snapshot.service, lib/allowListBundle, lib/allowListInput,
  *               lib/certFingerprint, lib/jsonColumn, lib/logger
  */
+import type { Knex } from 'knex';
 import { db } from '../db/connection';
 import type { CertRow } from '../types/rows';
 import { parseJsonStringArray as readRoles } from '../lib/jsonColumn';
@@ -23,6 +25,19 @@ import {
   type AllowListMember,
   type AllowListRemoval,
 } from '../lib/allowListBundle';
+import {
+  allowListSection,
+  approvedActive,
+  isSnapshotUnusable,
+  isUsableLegacySnapshot,
+  loadLatestApprovedSites,
+  snapshotCertificateIds,
+  snapshotEndpoints,
+  snapshotMemberships,
+  snapshotOrgField,
+  warnUnusableSnapshot,
+  type ApprovedSite,
+} from './approved-snapshot.service';
 import { fullViewInput, receiverViewInput, type StoredAllowListInput } from '../lib/allowListInput';
 
 // Display names of the parent organizations offered in the membership form,
@@ -72,72 +87,22 @@ function groupBy<T>(rows: T[], keyOf: (row: T) => string): Map<string, T[]> {
   return groups;
 }
 
-// The organization's LATEST approval request (by created_at) is APPROVED, so a
-// newer REJECTED/PENDING request supersedes an older approval. created_at,
-// id DESC breaks timestamp ties deterministically.
-const LATEST_REQUEST_APPROVED = `(
-      SELECT status FROM approval_requests
-      WHERE instance_id = organizations.instance_id
-      ORDER BY created_at DESC, id DESC LIMIT 1
-    ) = 'APPROVED'`;
-
-/** Organizations in the allow list: active, latest request approved. */
-async function loadApprovedOrganizations(): Promise<OrgSummary[]> {
-  return db('organizations')
-    .where({ active: true })
-    .whereRaw(LATEST_REQUEST_APPROVED)
-    .select('identifier', 'name');
-}
-
-/**
- * Organizations withdrawn from the allow list: deactivated, and that
- * deactivation approved. Every site deletes them with their endpoints and
- * affiliations; a pending deactivation changes nothing yet.
- */
-export async function loadRemovedOrganizations(): Promise<AllowListRemoval[]> {
-  const orgs: OrgSummary[] = await db('organizations')
-    .where({ active: false })
-    .whereRaw(LATEST_REQUEST_APPROVED)
-    .select('identifier', 'name');
-  if (orgs.length === 0) return [];
-  const ids = orgs.map((o) => o.identifier);
-  const [endpoints, memberships] = await Promise.all([
-    db('endpoints').whereIn('organization_id', ids).select('identifier', 'organization_id'),
-    db('memberships')
-      .whereIn('organization_id', ids)
-      .select('organization_id', 'parent_organization', 'endpoint_id'),
-  ]);
-  const endpointsByOrg = groupBy(
-    endpoints as Array<{ identifier: string; organization_id: string }>,
-    (e) => e.organization_id,
-  );
-  const membershipsByOrg = groupBy(
-    memberships as Array<Omit<MembershipWithDeletion, 'roles' | 'deleted_at'>>,
-    (m) => m.organization_id,
-  );
-  return orgs.map((org) => ({
-    identifier: org.identifier,
-    endpoints: (endpointsByOrg.get(org.identifier) ?? []).map((e) => e.identifier),
-    affiliations: (membershipsByOrg.get(org.identifier) ?? []).map((m) => ({
-      parent: m.parent_organization,
-      endpoint: m.endpoint_id,
-    })),
-  }));
-}
-
 /** Batch-load endpoints, certificates and memberships of the given organizations. */
-export async function loadMembers(orgs: OrgSummary[]): Promise<AllowListMember[]> {
+export async function loadMembers(
+  orgs: OrgSummary[],
+  conn: Knex | Knex.Transaction = db,
+): Promise<AllowListMember[]> {
   if (orgs.length === 0) return [];
   const ids = orgs.map((o) => o.identifier);
   const [endpoints, certs, memberships] = await Promise.all([
-    db('endpoints')
+    conn('endpoints')
       .whereIn('organization_id', ids)
       .select('identifier', 'organization_id', 'name', 'address'),
-    db('certificates')
+    conn('certificates')
       .whereIn('organization_id', ids)
       .select('id', 'organization_id', 'pem')
       .orderBy([{ column: 'created_at' }, { column: 'id' }]),
-    db('memberships')
+    conn('memberships')
       .whereIn('organization_id', ids)
       .select('organization_id', 'parent_organization', 'endpoint_id', 'roles', 'deleted_at'),
   ]);
@@ -209,22 +174,109 @@ function logUnpublishable(members: AllowListMember[]): void {
   }
 }
 
+/** A withdrawn organization as the DELETE entries need it. */
+function toRemoval(member: AllowListMember): AllowListRemoval {
+  return {
+    identifier: member.identifier,
+    endpoints: member.endpoints.map((e) => e.identifier),
+    affiliations: [...member.affiliations, ...member.removedAffiliations].map((a) => ({
+      parent: a.parent,
+      endpoint: a.endpoint,
+    })),
+  };
+}
+
+type CertPem = Pick<CertRow, 'id' | 'pem'>;
+
 /**
- * The live network state: every approved organization (including the
- * receiver of a later view), the withdrawn organizations and the parent
- * display names. Stored with each bundle version.
+ * Member of a legacy snapshot (submitted before the allowList section
+ * existed). Certificate rows are only ever added or removed, never edited, so
+ * the live PEM of an id listed in the snapshot is the approved one.
+ */
+function legacyMember(site: ApprovedSite, certsById: Map<string, CertPem>): AllowListMember {
+  const snapshot = site.snapshot;
+  const thumbprints = (snapshotCertificateIds(snapshot) ?? [])
+    .map((id) => certsById.get(id))
+    .filter((c): c is CertPem => c !== undefined)
+    .map(dsfThumbprint);
+  return {
+    identifier: site.orgIdentifier,
+    name: snapshotOrgField(snapshot, 'name') ?? site.orgName,
+    thumbprints,
+    endpoints: (snapshotEndpoints(snapshot) ?? []).map((e) => ({
+      identifier: e.identifier,
+      name: e.name,
+      address: e.address,
+    })),
+    affiliations: (snapshotMemberships(snapshot) ?? []).map((m) => ({
+      parent: m.parent_organization,
+      endpoint: m.endpoint_id,
+      roles: readRoles(m.roles),
+    })),
+    removedAffiliations: [],
+  };
+}
+
+/**
+ * Every site contributes the data of its LATEST APPROVED request: members of
+ * active sites, removals of sites whose deactivation was approved. A newer
+ * pending, rejected or withdrawn request and any unsubmitted live edit change
+ * nothing. A site whose approved request carries no usable snapshot falls back
+ * to its live data (and a warning).
+ */
+async function loadApprovedState(): Promise<{
+  members: AllowListMember[];
+  removed: AllowListRemoval[];
+}> {
+  const sites = await loadLatestApprovedSites();
+  const legacy = sites.filter(
+    (s) => allowListSection(s.snapshot) === null && isUsableLegacySnapshot(s.snapshot),
+  );
+  const unusable = sites.filter((s) => isSnapshotUnusable(s.snapshot));
+  const certIds = legacy.flatMap((s) => snapshotCertificateIds(s.snapshot) ?? []);
+  const [certs, liveMembers] = await Promise.all([
+    certIds.length > 0
+      ? (db('certificates').whereIn('id', certIds).select('id', 'pem') as Promise<CertPem[]>)
+      : Promise.resolve([] as CertPem[]),
+    loadMembers(unusable.map((s) => ({ identifier: s.orgIdentifier, name: s.orgName }))),
+  ]);
+  const certsById = new Map(certs.map((c) => [c.id, c]));
+  const liveByOrg = new Map(liveMembers.map((m) => [m.identifier, m]));
+
+  const members: AllowListMember[] = [];
+  const removed: AllowListRemoval[] = [];
+  for (const site of sites) {
+    const section = allowListSection(site.snapshot);
+    let active: boolean;
+    let member: AllowListMember;
+    if (section) {
+      active = section.active;
+      member = section.member;
+    } else if (isUsableLegacySnapshot(site.snapshot)) {
+      active = approvedActive(site);
+      member = legacyMember(site, certsById);
+    } else {
+      warnUnusableSnapshot(site);
+      active = site.orgActive;
+      member = liveByOrg.get(site.orgIdentifier) as AllowListMember;
+    }
+    if (active) members.push(member);
+    else removed.push(toRemoval(member));
+  }
+  return { members, removed };
+}
+
+/**
+ * The state to publish: the approved data of every site, the withdrawn
+ * organizations and the parent display names. Stored with each bundle version.
  */
 export async function loadAllowListInput(): Promise<StoredAllowListInput> {
-  const approved = await loadApprovedOrganizations();
-  const members = await loadMembers(approved);
+  const { members, removed } = await loadApprovedState();
   logUnpublishable(members);
   const parentIds = Array.from(
     new Set(members.flatMap((m) => m.affiliations.map((a) => a.parent))),
   ).filter(Boolean);
-  const [parentNames, removed] = await Promise.all([
-    loadParentNames(parentIds),
-    loadRemovedOrganizations(),
-  ]);
+  const parentNames = await loadParentNames(parentIds);
   return { members, removed, parentNames: Object.fromEntries(parentNames) };
 }
 
@@ -283,7 +335,7 @@ export async function resolveReceiver(
   return { organization: org.identifier, endpoint: endpoint.identifier };
 }
 
-/** Receiver view of the live state (fallback before a stored version exists). */
+/** Receiver view of the approved state (fallback before a stored version exists). */
 export async function generateBundle(
   instanceId: string,
   endpointId: string,
@@ -292,7 +344,7 @@ export async function generateBundle(
   return renderReceiverBundle(await loadAllowListInput(), organization, endpoint);
 }
 
-/** Network-wide allow list of the live state. */
+/** Network-wide allow list of the approved state. */
 export async function generateFullBundle(): Promise<AllowListBundle> {
   return renderFullBundle(await loadAllowListInput());
 }

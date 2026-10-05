@@ -1,8 +1,9 @@
 /**
  * approval-latest-request.test.ts – Two requests of one instance created in
- * the same second: the newer one is the latest for the approval status and
- * for the allow list (migration 023 keeps created_at in milliseconds; before,
- * both rounded to the same second and the UUID tie-break picked at random).
+ * the same second: the newer one is the latest for the approval status, while
+ * the allow list keeps publishing the approved one (migration 023 keeps
+ * created_at in milliseconds; before, both rounded to the same second and the
+ * UUID tie-break picked at random).
  * The UUIDs are chosen so that the old tie-break would pick the older request.
  * Dependencies: db/connection, approval.service, fhir.service, helpers/allowListSites
  */
@@ -49,10 +50,10 @@ describe('latest approval request within one second', () => {
     expect((await getApprovalStatus(site.instanceId))?.id).toBe(pendingId);
   });
 
-  it('keeps the organization out of the allow list while its newer request is pending', async () => {
+  it('keeps the approved organization in the allow list while its newer request is pending', async () => {
     const bundle = (await generateFullBundle()) as unknown as {
       entry?: Array<{ request: { url: string } }>;
     };
-    expect((bundle.entry ?? []).some((e) => e.request.url.includes(site.orgId))).toBe(false);
+    expect((bundle.entry ?? []).some((e) => e.request.url.includes(site.orgId))).toBe(true);
   });
 });
