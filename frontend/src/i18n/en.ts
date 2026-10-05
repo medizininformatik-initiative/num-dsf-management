@@ -747,9 +747,6 @@ export const en = {
   footerAffiliation: 'Institute of Medical Informatics, University of Münster',
 
   // Approval and download flows, readiness, right panel, top bar (UI overhaul)
-  topBarAppTitle: 'Allow List Management',
-  topBarEnvTest: 'Test environment',
-  topBarEnvProduction: 'Production environment',
   approvalWaitingLabel: 'Waiting for approval',
   approvalPendingBlocked:
     'A request is already being reviewed. You can submit again once IMI has decided.',
@@ -781,7 +778,6 @@ export const en = {
   approvalModalExpired: 'Expired {date}',
   readinessItemDone: 'Done',
   readinessItemMissing: 'Missing',
-  rightPanelSubtitle: 'Request status, readiness and history',
   expiryTimelineTitle: 'Certificate Timeline',
   expiryTimelineExpired: 'Expired',
   expiryTimelineToday: 'Expires today',
@@ -1201,12 +1197,8 @@ export const en = {
   shellCloseStatusPanel: 'Close instance status',
   shellLoadingInstance: 'Loading instance…',
   shellNoInstanceHint: 'Create an instance or select one in the navigation.',
-  shellProductName: 'DSF Allow List',
-  shellProductSubtitle: 'Management Portal',
   shellEnvTest: 'Test environment',
   shellEnvProduction: 'Production environment',
-  shellEnvShortTest: 'TEST',
-  shellEnvShortProduction: 'PROD',
   shellPinInstance: 'Pin {label}',
   shellPinToTop: 'Pin to top',
   shellUnpin: 'Unpin',

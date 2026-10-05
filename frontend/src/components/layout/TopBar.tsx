@@ -1,21 +1,20 @@
 /**
- * TopBar.tsx – Canvas top bar on the chrome glass material: history
- * navigation, the app title with the environment badge (TEST and PRODUCTION
- * differ in colour, icon and text, like the sidebar's marker), search, theme
- * and language toggles, notifications and the instance actions with one
- * primary CTA. The approval CTA follows the active instance's latest request:
- * while one is PENDING it is disabled and reads "Waiting for approval".
- * Fits a 1024 px wide bar: below xl the download action shows its icon only,
- * the title appears from 1440 px.
- * Dependencies: SearchBar, NotificationCenter, Button, Icon, lib/environment,
- * canvas.store, useApproval, theme.store, i18n.store
+ * TopBar.tsx – Canvas top bar on the chrome glass material, as tall as the
+ * sidebar header (56 px): history navigation, search, theme and language
+ * toggles, notifications and the instance actions with one primary CTA. The
+ * product name and the environment live in the sidebar header only (no
+ * duplicate title or environment badge here). The approval CTA follows the
+ * active instance's latest request: while one is PENDING it is disabled and
+ * reads "Waiting for approval". Fits a 1024 px wide bar: below xl the
+ * download action shows its icon only.
+ * Dependencies: SearchBar, NotificationCenter, Button, Icon, canvas.store,
+ * useApproval, theme.store, i18n.store
  */
 import { useNavigate } from 'react-router-dom';
 import { SearchBar } from './SearchBar';
 import { NotificationCenter } from './NotificationCenter';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
-import { DSF_ENVIRONMENT, ENV_ACCENT, IS_PRODUCTION } from '../../lib/environment';
 import { useApprovalStatus, type ApprovalStatus } from '../../hooks/useApproval';
 import { useCanvasStore } from '../../stores/canvas.store';
 import { useI18n } from '../../stores/i18n.store';
@@ -37,10 +36,9 @@ export function TopBar({
   const { data } = useApprovalStatus(showInstanceActions ? activeInstanceId : null);
   const approval: ApprovalStatus | null | undefined = data;
   const pending = approval?.status === 'PENDING';
-  const envLabel = IS_PRODUCTION ? t('topBarEnvProduction') : t('topBarEnvTest');
 
   return (
-    <div className="glass-chrome relative z-40 flex flex-shrink-0 items-center justify-between gap-3 px-4 py-2.5 xl:px-6">
+    <div className="glass-chrome relative z-40 flex h-14 flex-shrink-0 items-center justify-between gap-3 px-4 xl:px-6">
       <div className="flex min-w-0 items-center gap-1.5">
         <Button
           variant="ghost"
@@ -62,18 +60,6 @@ export function TopBar({
         >
           <Icon name="arrow_forward" size={20} />
         </Button>
-        <span className="ml-1 hidden truncate text-sm font-semibold text-[color:var(--text-primary)] min-[1440px]:inline">
-          {t('topBarAppTitle')}
-        </span>
-        <span
-          data-env={DSF_ENVIRONMENT}
-          title={envLabel}
-          className="ml-1 inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase leading-none tracking-wide text-white shadow-sm"
-          style={{ backgroundColor: ENV_ACCENT }}
-        >
-          <Icon name={IS_PRODUCTION ? 'verified_user' : 'science'} size={14} filled />
-          <span className="sr-only sm:not-sr-only">{envLabel}</span>
-        </span>
       </div>
 
       {showInstanceActions && (

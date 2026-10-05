@@ -758,9 +758,6 @@ export const de: Record<TranslationKey, string> = {
   footerAffiliation: 'Institut für Medizinische Informatik, Universität Münster',
 
   // Approval and download flows, readiness, right panel, top bar (UI overhaul)
-  topBarAppTitle: 'Allow-List-Verwaltung',
-  topBarEnvTest: 'Testumgebung',
-  topBarEnvProduction: 'Produktivumgebung',
   approvalWaitingLabel: 'Wartet auf Genehmigung',
   approvalPendingBlocked:
     'Ein Antrag wird bereits geprüft. Sie können erneut einreichen, sobald das IMI entschieden hat.',
@@ -793,7 +790,6 @@ export const de: Record<TranslationKey, string> = {
   approvalModalExpired: 'Abgelaufen am {date}',
   readinessItemDone: 'Erledigt',
   readinessItemMissing: 'Fehlt',
-  rightPanelSubtitle: 'Antragsstatus, Bereitschaft und Verlauf',
   expiryTimelineTitle: 'Zertifikats-Zeitleiste',
   expiryTimelineExpired: 'Abgelaufen',
   expiryTimelineToday: 'Läuft heute ab',
@@ -1226,12 +1222,8 @@ export const de: Record<TranslationKey, string> = {
   shellCloseStatusPanel: 'Instanzstatus schließen',
   shellLoadingInstance: 'Instanz wird geladen…',
   shellNoInstanceHint: 'Legen Sie eine Instanz an oder wählen Sie eine in der Navigation aus.',
-  shellProductName: 'DSF Allow List',
-  shellProductSubtitle: 'Verwaltungsportal',
   shellEnvTest: 'Testumgebung',
   shellEnvProduction: 'Produktionsumgebung',
-  shellEnvShortTest: 'TEST',
-  shellEnvShortProduction: 'PROD',
   shellPinInstance: '{label} anheften',
   shellPinToTop: 'Oben anheften',
   shellUnpin: 'Anheften aufheben',

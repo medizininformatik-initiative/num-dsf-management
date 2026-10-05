@@ -1,6 +1,6 @@
 /**
- * TopBar.test.tsx — navigation controls, the translated title with the
- * environment badge, and the instance actions: one primary CTA that is
+ * TopBar.test.tsx — navigation controls without a duplicate product title
+ * or environment badge (both live in the sidebar), and the instance actions: one primary CTA that is
  * disabled and relabelled "Waiting for approval" while the active instance has
  * a PENDING request. Entity and approval hooks are stubbed.
  */
@@ -32,17 +32,19 @@ describe('TopBar', () => {
   it('renders navigation controls without instance actions', () => {
     renderWithProviders(<TopBar onDownload={vi.fn()} onApproval={vi.fn()} />);
     expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
-    expect(screen.getByText(/Allow List Management/i)).toBeInTheDocument();
     // Instance-only actions hidden by default, and no approval query for them.
     expect(screen.queryByRole('button', { name: /send for approval/i })).not.toBeInTheDocument();
     expect(useApprovalStatus).toHaveBeenCalledWith(null);
   });
 
-  it('marks the environment and translates the title', () => {
-    renderWithProviders(<TopBar onDownload={vi.fn()} onApproval={vi.fn()} />, { lang: 'de' });
-    expect(screen.getByText('Allow-List-Verwaltung')).toBeInTheDocument();
-    const badge = screen.getByText('Testumgebung').closest('[data-env]');
-    expect(badge).toHaveAttribute('data-env', 'TEST');
+  it('leaves the product name and the environment to the sidebar', () => {
+    const { container } = renderWithProviders(
+      <TopBar onDownload={vi.fn()} onApproval={vi.fn()} />,
+      { lang: 'de' },
+    );
+    expect(container.querySelector('[data-env]')).toBeNull();
+    expect(screen.queryByText('Testumgebung')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Allow-List-Verwaltung|DSF Management Tool/)).not.toBeInTheDocument();
   });
 
   it('renders download and approval actions when showInstanceActions is set', () => {
