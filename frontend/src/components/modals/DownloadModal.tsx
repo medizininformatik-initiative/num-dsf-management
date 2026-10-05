@@ -4,7 +4,8 @@
  * site's client certificate), lists the published versions with their DSF
  * history link and a signed GUI download, and keeps the network-wide bundle,
  * the IP address list (IMI admins only) and the content preview under a
- * disclosure. Downloads stay behind the verification disclaimer. A finished
+ * disclosure. Downloads are always available; the verification disclaimer is a
+ * calm note with the full text behind a disclosure. A finished
  * download shows its content hash (compared with the SHA-256 the browser
  * computes of the received bytes) and signature, followed by a three-step guide
  * to verify and import it with the DSF process downloadAllowList.
@@ -132,7 +133,6 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 export function DownloadModal({ open, onClose, instanceId }: Props) {
   const { t } = useI18n();
   const uid = useId();
-  const ackHintId = `${uid}-ack`;
   const { data: endpoints = [] } = useEndpoints(instanceId);
   const { data: me } = useMe();
   const isAdmin = me?.isAdmin === true;
@@ -140,17 +140,12 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
   const [busy, setBusy] = useState(false);
   const [busyVersion, setBusyVersion] = useState<number | null>(null);
   const [verification, setVerification] = useState<Verification | null>(null);
-  // Acknowledgment gate: federated AllowList bundles are recommendations, not
-  // automatically-trusted artefacts. Sites must verify content+signature+
-  // provenance before deploying. Block downloads until the operator confirms.
-  const [acknowledged, setAcknowledged] = useState(false);
 
   const history = useBundleHistory(instanceId, selectedEndpoint);
   const bundleBase = selectedEndpoint
     ? `${window.location.origin}/fhir/Bundle/${encodeURIComponent(selectedEndpoint)}`
     : '';
   const networkUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'}/download/full-bundle`;
-  const ackHint = acknowledged ? undefined : ackHintId;
 
   async function copy(text: string) {
     try {
@@ -229,26 +224,17 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
   return (
     <Modal open={open} onClose={onClose} title={t('downloadModalTitle')} width="max-w-2xl">
       <div className="space-y-4">
-        <div className="glass-thin rounded-2xl p-4" data-testid="bundle-disclaimer">
-          <p className="text-xs font-semibold text-[color:var(--text-primary)]">
-            {t('bundleDisclaimerHeading')}
+        <div className="glass-thin rounded-2xl px-4 py-3" data-testid="bundle-disclaimer">
+          <p className="flex items-start gap-2 text-xs text-[color:var(--text-secondary)]">
+            <Icon name="info" size={16} className="mt-px shrink-0 text-info-fg" />
+            <span>{t('dlDisclaimerNote')}</span>
           </p>
-          <p className={`mb-2 mt-1 ${helpText}`}>{t('bundleDisclaimerBody')}</p>
-          <label className="flex cursor-pointer items-start gap-2 text-xs text-[color:var(--text-secondary)]">
-            <input
-              type="checkbox"
-              checked={acknowledged}
-              onChange={(e) => setAcknowledged(e.target.checked)}
-              className="mt-0.5"
-              data-testid="disclaimer-checkbox"
-            />
-            <span>{t('bundleDisclaimerAcknowledge')}</span>
-          </label>
-          {!acknowledged && (
-            <p id={ackHintId} className="mt-2 text-[11px] text-warning-fg">
-              {t('downloadAckHint')}
-            </p>
-          )}
+          <details className="mt-1.5 pl-6">
+            <summary className="cursor-pointer text-[11px] font-semibold text-[color:var(--text-secondary)]">
+              {t('dlDisclaimerMore')}
+            </summary>
+            <p className={`mt-1 ${helpText}`}>{t('bundleDisclaimerBody')}</p>
+          </details>
         </div>
 
         <div>
@@ -323,9 +309,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
                 historyUrl={(v) => `${bundleBase}/_history/${v}`}
                 onCopy={(url) => void copy(url)}
                 onDownload={downloadVersion}
-                downloadDisabled={!acknowledged}
                 busyVersion={busyVersion}
-                describedBy={ackHint}
               />
             )}
           </section>
@@ -465,9 +449,8 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
               />
               <Button
                 variant="secondary"
-                disabled={busy || !acknowledged}
+                disabled={busy}
                 onClick={downloadNetworkBundle}
-                aria-describedby={ackHint}
                 data-testid="download-bundle-btn"
                 className="w-full"
               >
@@ -481,8 +464,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
                 <Button
                   variant="secondary"
                   onClick={downloadIpList}
-                  disabled={busy || !acknowledged}
-                  aria-describedby={ackHint}
+                  disabled={busy}
                   data-testid="download-ip-btn"
                   className="w-full"
                 >
