@@ -14,7 +14,13 @@ export const db = knex({
     password: process.env.DB_PASSWORD || '',
     charset: 'utf8mb4',
   },
-  pool: { min: 2, max: 10 },
+  // Jest gives every test file its own module registry and so its own pool;
+  // idle connections of finished files must close, or a full run exhausts
+  // MySQL's max_connections. Production keeps two warm connections.
+  pool:
+    process.env.NODE_ENV === 'test'
+      ? { min: 0, max: 10, idleTimeoutMillis: 1000 }
+      : { min: 2, max: 10 },
 });
 
 export async function testDbConnection(): Promise<void> {
