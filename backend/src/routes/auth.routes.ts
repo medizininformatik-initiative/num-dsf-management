@@ -11,7 +11,8 @@
  *   POST /auth/refresh
  *   POST /auth/logout
  */
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import { isCertAuthMode } from '../lib/authMode';
 import { otpRateLimit, refreshRateLimit } from '../middleware/rateLimit.middleware';
 import { REFRESH_TOKEN_TTL_MS } from '../lib/time';
 import { logger } from '../lib/logger';
@@ -72,6 +73,22 @@ const isDevAutoLogin = isDevEnv() && process.env.DEV_AUTO_LOGIN === 'true';
 const verifyLimiter = isTest ? [] : [otpRateLimit];
 const devEntryLimiter = isTest || isDevAutoLogin ? [] : [otpRateLimit];
 const refreshLimiter = isTest ? [] : [refreshRateLimit];
+
+// Certificate-only deployment (AUTH_MODE=cert): the e-mail login family is
+// refused by the backend itself, not just hidden in the UI or blocked at the
+// proxy, so no session can ever be obtained without a client certificate.
+authRouter.use(
+  ['/request-otp', '/verify-otp', '/verify-totp', '/setup-totp', '/confirm-totp'],
+  (_req: Request, res: Response, next: NextFunction) => {
+    if (!isCertAuthMode()) return next();
+    res.status(403).json({
+      error: {
+        code: 'OTP_DISABLED',
+        message: 'E-mail login is disabled; use a client certificate.',
+      },
+    });
+  },
+);
 
 // POST /auth/request-otp
 authRouter.post('/request-otp', ...devEntryLimiter, async (req: Request, res: Response) => {
@@ -210,6 +227,10 @@ if (isDevEnv() && process.env.DEV_AUTO_LOGIN === 'true') {
     '/dev-login',
     ...devEntryLimiter,
     asyncHandler(async (req: Request, res: Response) => {
+      // Never a way in on a certificate-only deployment, even if a dev flag leaks in.
+      if (isCertAuthMode()) {
+        return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
+      }
       // Case-insensitive so ?devRole=Member cannot silently fall back to admin.
       const rawRole = req.body?.role;
       const inputRole = typeof rawRole === 'string' ? rawRole.trim().toLowerCase() : rawRole;

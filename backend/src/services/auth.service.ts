@@ -18,6 +18,7 @@ import type { AuthUser, JwtPayload, TempTokenPayload } from '../types/auth.types
 import { REFRESH_TOKEN_TTL_SEC as REFRESH_TTL_SEC } from '../lib/time';
 import { logger } from '../lib/logger';
 import { isValidSha512Fingerprint } from '../lib/certFingerprint';
+import { isCertAuthMode } from '../lib/authMode';
 
 // JWT keys loaded from Base64 env vars
 const JWT_PRIVATE_KEY = Buffer.from(process.env.JWT_PRIVATE_KEY_BASE64 || '', 'base64').toString(
@@ -323,6 +324,12 @@ export async function refreshAccessToken(
     const resolved = await resolveCertLogin(fp);
     if (resolved?.user.id === user.id) authMethod = 'cert';
   }
+  // Certificate-only deployment: a refresh cookie is worthless without the
+  // client certificate it was issued for. The token is NOT deleted here, so
+  // a thief replaying a stolen cookie cannot burn the real user's session.
+  if (isCertAuthMode() && authMethod !== 'cert') {
+    throw new Error('CERT_REQUIRED');
+  }
 
   // Rotate: delete old token and issue a new pair. createTokenPair is the
   // single mint path (signs + mints + hashes + stores), so rotation and
@@ -380,6 +387,28 @@ export async function resolveCertLogin(fingerprint: string): Promise<{
   const user = await db('users').where({ id: instance.user_id }).first();
   if (!user) return null;
   return { kind: 'org', user: { id: user.id, email: user.email }, instanceId: instance.id };
+}
+
+/**
+ * Read-only counterpart of resolveCertLogin for per-request session binding:
+ * returns the id of the user a SHA-512 fingerprint maps to (admin cert table
+ * first, then the organization login fingerprint) or null when the
+ * certificate is not (or no longer) registered. Never creates rows.
+ */
+export async function findCertUserId(fingerprint: string): Promise<string | null> {
+  const adminCert = await db('admin_cert_fingerprints').where({ fingerprint }).first();
+  if (adminCert) {
+    const user = await db('users')
+      .where({ email: String(adminCert.email).toLowerCase().trim() })
+      .first();
+    return user?.id ?? null;
+  }
+  const org = await db('organizations').where({ client_cert_fingerprint: fingerprint }).first();
+  if (!org) return null;
+  const instance = await db('instances').where({ id: org.instance_id }).first();
+  if (!instance) return null;
+  const user = await db('users').where({ id: instance.user_id }).first();
+  return user?.id ?? null;
 }
 
 // Logout: revoke refresh token
