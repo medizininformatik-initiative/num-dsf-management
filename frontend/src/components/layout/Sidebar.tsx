@@ -19,6 +19,7 @@
  */
 import { useId, useState, type CSSProperties, type ReactNode, type Ref } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/auth.store';
 import { useI18n } from '../../stores/i18n.store';
 import { useMe } from '../../hooks/useMe';
@@ -201,6 +202,7 @@ export function Sidebar({
   const { t } = useI18n();
   const user = useAuthStore((s) => s.user);
   const clearAuth = useAuthStore((s) => s.clearAuth);
+  const queryClient = useQueryClient();
   const { data: me } = useMe();
   const { pathname } = useLocation();
   const [adminOpen, setAdminOpen] = useState(initialGroup === 'admin');
@@ -258,6 +260,7 @@ export function Sidebar({
       // Logout API failure should not block client-side cleanup
     } finally {
       clearAuth();
+      queryClient.clear();
       navigate('/login', { replace: true });
     }
   }
