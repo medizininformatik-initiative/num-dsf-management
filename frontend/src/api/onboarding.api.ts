@@ -1,8 +1,9 @@
 /**
  * onboarding.api.ts – API client for the admin bulk onboarding endpoints:
  * import (CSV / JSON / XLSX file, or rows typed into the in-tool editor),
- * the same with ?dryRun=true to validate without writing, and the CSV / XLSX
- * template downloads.
+ * the same with ?dryRun=true to validate without writing, a parse-only call
+ * that turns one file into rows (so many files can be merged before a single
+ * check / import), and the CSV / XLSX template downloads.
  * Dependencies: axios, auth.store
  */
 import axios from 'axios';
@@ -52,6 +53,14 @@ export interface OnboardingImportOptions {
   dryRun?: boolean;
 }
 
+/** One validated row of a parsed file, with its 1-based data-row number in that file. */
+export type OnboardingParsedRow = OnboardingRowInput & { row: number };
+
+export interface OnboardingParseResult {
+  rows: OnboardingParsedRow[];
+  parseErrors: { row: number; issue: string }[];
+}
+
 export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 function isJsonFile(file: File): boolean {
@@ -72,36 +81,44 @@ function readAsArrayBuffer(file: File): Promise<ArrayBuffer> {
   });
 }
 
-async function post(
+async function send<T>(
+  path: 'import' | 'parse',
   body: string | ArrayBuffer,
   contentType: string,
-  opts: OnboardingImportOptions,
-): Promise<OnboardingImportResult> {
-  const res = await axios.post<{ data: OnboardingImportResult }>(
-    `${BASE}/admin/onboarding/import`,
-    body,
-    {
-      headers: { ...authHeader(), 'Content-Type': contentType },
-      params: opts.dryRun ? { dryRun: 'true' } : undefined,
-      // axios would JSON-encode a string body for application/json; send raw.
-      transformRequest: [(data: unknown) => data],
-    },
-  );
+  opts: OnboardingImportOptions = {},
+): Promise<T> {
+  const res = await axios.post<{ data: T }>(`${BASE}/admin/onboarding/${path}`, body, {
+    headers: { ...authHeader(), 'Content-Type': contentType },
+    params: opts.dryRun ? { dryRun: 'true' } : undefined,
+    // axios would JSON-encode a string body for application/json; send raw.
+    transformRequest: [(data: unknown) => data],
+  });
   return res.data.data;
 }
 
+// Body and Content-Type the backend uses to pick a parser: text as-is for
+// CSV / JSON, raw bytes for XLSX.
+async function encodeFile(file: File): Promise<[string | ArrayBuffer, string]> {
+  if (isXlsxFile(file)) return [await readAsArrayBuffer(file), XLSX_MIME];
+  return [await file.text(), isJsonFile(file) ? 'application/json' : 'text/csv'];
+}
+
 /**
- * Uploads a CSV, JSON or XLSX onboarding file with the Content-Type the
- * backend uses to pick a parser (text as-is for CSV/JSON, raw bytes for XLSX)
- * and returns the unwrapped import (or dry-run) result.
+ * Uploads a CSV, JSON or XLSX onboarding file and returns the unwrapped
+ * import (or dry-run) result.
  */
 export async function importOnboarding(
   file: File,
   opts: OnboardingImportOptions = {},
 ): Promise<OnboardingImportResult> {
-  if (isXlsxFile(file)) return post(await readAsArrayBuffer(file), XLSX_MIME, opts);
-  const text = await file.text();
-  return post(text, isJsonFile(file) ? 'application/json' : 'text/csv', opts);
+  const [body, type] = await encodeFile(file);
+  return send('import', body, type, opts);
+}
+
+/** Parses one file on the server without touching the database or writing anything. */
+export async function parseOnboardingFile(file: File): Promise<OnboardingParseResult> {
+  const [body, type] = await encodeFile(file);
+  return send('parse', body, type);
 }
 
 /** Submits rows typed into the in-tool editor (as a JSON array). */
@@ -109,7 +126,7 @@ export function importOnboardingRows(
   rows: OnboardingRowInput[],
   opts: OnboardingImportOptions = {},
 ): Promise<OnboardingImportResult> {
-  return post(JSON.stringify(rows), 'application/json', opts);
+  return send('import', JSON.stringify(rows), 'application/json', opts);
 }
 
 export type OnboardingTemplateKind = 'csv' | 'xlsx';

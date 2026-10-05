@@ -13,9 +13,18 @@ import React from 'react';
 
 const importOnboarding = vi.hoisted(() => vi.fn());
 const importOnboardingRows = vi.hoisted(() => vi.fn());
-vi.mock('../../api/onboarding.api', () => ({ importOnboarding, importOnboardingRows }));
+const parseOnboardingFile = vi.hoisted(() => vi.fn());
+vi.mock('../../api/onboarding.api', () => ({
+  importOnboarding,
+  importOnboardingRows,
+  parseOnboardingFile,
+}));
 
-import { useOnboardingDryRun, useOnboardingImport } from '../useOnboardingImport';
+import {
+  useOnboardingDryRun,
+  useOnboardingImport,
+  useOnboardingParse,
+} from '../useOnboardingImport';
 import type { OnboardingImportResult } from '../../api/onboarding.api';
 
 function makeHarness() {
@@ -113,5 +122,18 @@ describe('useOnboardingDryRun', () => {
     const { result } = renderHook(() => useOnboardingImport(), { wrapper });
     await result.current.mutateAsync([]);
     expect(importOnboardingRows).toHaveBeenCalledWith([], undefined);
+  });
+});
+
+describe('useOnboardingParse', () => {
+  it('parses a file without touching any cache', async () => {
+    const parsed = { rows: [], parseErrors: [] };
+    parseOnboardingFile.mockResolvedValue(parsed);
+    const { wrapper, invalidateSpy } = makeHarness();
+    const { result } = renderHook(() => useOnboardingParse(), { wrapper });
+    const file = new File(['x'], 'a.csv');
+    await expect(result.current.mutateAsync(file)).resolves.toBe(parsed);
+    expect(parseOnboardingFile).toHaveBeenCalledWith(file);
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 });

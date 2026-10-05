@@ -5,13 +5,16 @@
  * invalidates every cached organization and instance query by prefix rather
  * than a single instanceId. useOnboardingDryRun validates the same source
  * (a file, or rows from the in-tool editor) on the server without writing,
- * so it touches no cache.
+ * so it touches no cache. useOnboardingParse turns one uploaded file into
+ * validated rows (no database access) for the multi-file merge.
  * Dependencies: @tanstack/react-query, onboarding.api
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   importOnboarding,
   importOnboardingRows,
+  parseOnboardingFile,
+  type OnboardingParseResult,
   type OnboardingImportResult,
   type OnboardingRowInput,
 } from '../api/onboarding.api';
@@ -37,5 +40,11 @@ export function useOnboardingImport() {
 export function useOnboardingDryRun() {
   return useMutation<OnboardingImportResult, Error, OnboardingSource>({
     mutationFn: (source) => submit(source, true),
+  });
+}
+
+export function useOnboardingParse() {
+  return useMutation<OnboardingParseResult, Error, File>({
+    mutationFn: (file) => parseOnboardingFile(file),
   });
 }
