@@ -3,15 +3,14 @@
  * Checks against backend whitelist. Always gives generic feedback.
  * On success: navigate to /otp with email in router state.
  * Errors are announced (role="alert"); the client-certificate sign-in is the
- * secondary action below.
- * Dependencies: AuthLayout, authApi, auth store, i18n store, Button, Icon.
+ * secondary action below and, on success, shows the check morph before /app.
+ * Dependencies: AuthLayout, auth/useSignIn, authApi, i18n store, Button, Icon.
  */
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
 import { AuthLayout, AUTH_INPUT_CLASS } from '../components/AuthLayout';
 import { authApi } from '../api/auth.api';
-import { useAuthStore } from '../stores/auth.store';
+import { useSignIn } from '../components/auth/useSignIn';
 import { useI18n } from '../stores/i18n.store';
 import { getErrorMessage } from '../lib/getErrorMessage';
 import { Button } from '../components/ui/Button';
@@ -29,7 +28,7 @@ function FormError({ children }: { children: string }) {
 export function LoginPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const setTokens = useAuthStore((s) => s.setTokens);
+  const signIn = useSignIn();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -67,10 +66,7 @@ export function LoginPage() {
     setCertError('');
     try {
       const res = await authApi.clientCertLogin();
-      const { accessToken } = res.data.data;
-      const decoded = jwtDecode<{ sub: string; email: string }>(accessToken);
-      setTokens(accessToken, { id: decoded.sub, email: decoded.email });
-      navigate('/app', { replace: true });
+      signIn.complete(res.data.data.accessToken);
     } catch (err: unknown) {
       setCertError(getErrorMessage(err, t('loginCertFailed')));
     } finally {
@@ -79,7 +75,12 @@ export function LoginPage() {
   }
 
   return (
-    <AuthLayout title={t('signIn')} subtitle={t('loginSubtitle')}>
+    <AuthLayout
+      title={t('signIn')}
+      subtitle={t('loginSubtitle')}
+      step={0}
+      success={signIn.success ? t('authSignedIn') : undefined}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label
@@ -97,6 +98,7 @@ export function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t('loginEmailPlaceholder')}
+            aria-invalid={error ? true : undefined}
             className={AUTH_INPUT_CLASS}
           />
         </div>

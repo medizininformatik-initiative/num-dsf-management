@@ -5,11 +5,23 @@
  * Resending is possible after a countdown (a code was just sent); failures are
  * reported as they are, a rate limit (429) with its retry time, which then
  * drives the countdown. Errors are announced (role="alert").
- * Dependencies: AuthLayout, authApi (+ error helpers), i18n store, Button, Icon.
+ * Motion: the digit boxes pop in one after another; a rejected code shakes
+ * the row gently and marks the boxes invalid (the shake is skipped under
+ * Reduce Motion, the marking stays).
+ * Dependencies: AuthLayout, auth/authMotion, authApi (+ error helpers),
+ * i18n store, Button, Icon.
  */
-import { useState, useRef, useEffect, type ClipboardEvent, type KeyboardEvent } from 'react';
+import {
+  useState,
+  useRef,
+  useEffect,
+  type CSSProperties,
+  type ClipboardEvent,
+  type KeyboardEvent,
+} from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthLayout } from '../components/AuthLayout';
+import { shakeElement } from '../components/auth/authMotion';
 import {
   authApi,
   formatWait,
@@ -42,6 +54,7 @@ export function OtpPage() {
   const [resending, setResending] = useState(false);
   const [notice, setNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const groupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!email) navigate('/login', { replace: true });
@@ -107,6 +120,7 @@ export function OtpPage() {
             : t('otpInvalidCode'),
       );
       setDigits(Array(6).fill(''));
+      shakeElement(groupRef.current);
       inputRefs.current[0]?.focus();
     } finally {
       setLoading(false);
@@ -143,10 +157,11 @@ export function OtpPage() {
   }
 
   return (
-    <AuthLayout title={t('otpTitle')} subtitle={t('otpSubtitle', { email })}>
+    <AuthLayout title={t('otpTitle')} subtitle={t('otpSubtitle', { email })} step={1}>
       <div className="space-y-5">
         {/* 6 Digit-Inputs */}
         <div
+          ref={groupRef}
           className="flex justify-between gap-2"
           role="group"
           aria-label={t('otpCodeAria')}
@@ -167,10 +182,14 @@ export function OtpPage() {
               onChange={(e) => handleDigit(i, e.target.value)}
               onKeyDown={(e) => handleKeyDown(i, e)}
               disabled={loading}
-              className={`h-14 w-12 rounded-input border-[1.5px] text-center text-xl font-semibold text-[color:var(--text-primary)] transition-colors duration-short ease-standard focus:border-[color:var(--accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50 ${
+              aria-invalid={error ? true : undefined}
+              style={{ '--stagger-index': i } as CSSProperties}
+              className={`animate-auth-digit-in h-14 w-12 rounded-input border-[1.5px] text-center text-xl font-semibold text-[color:var(--text-primary)] transition-colors duration-short ease-standard focus:border-[color:var(--accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50 ${
                 d
                   ? 'border-[color:var(--accent)] bg-[color:var(--accent-surface)]'
-                  : 'border-[color:var(--border)] bg-[color:var(--bg-input)]'
+                  : error
+                    ? 'border-danger-border bg-[color:var(--bg-input)]'
+                    : 'border-[color:var(--border)] bg-[color:var(--bg-input)]'
               }`}
             />
           ))}

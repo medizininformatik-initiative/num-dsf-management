@@ -213,6 +213,11 @@ export const de: Record<TranslationKey, string> = {
   prev: 'Vorherige',
   next: 'Nächste',
 
+  // Sign-in motion redesign (success check, certificate check)
+  authSignedIn: 'Angemeldet. Das Portal wird geöffnet …',
+  totpSetupActive: 'Die Zwei-Faktor-Authentifizierung ist jetzt aktiv.',
+  certStatusCheckingHint: 'Ihr Browser übermittelt Ihr Client-Zertifikat an den Server.',
+
   // LoginPage
   loginSubtitle: 'Geben Sie Ihre E-Mail-Adresse ein, um einen Einmalcode zu erhalten.',
   loginEmailLabel: 'E-Mail-Adresse',

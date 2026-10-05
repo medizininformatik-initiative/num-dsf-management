@@ -2,14 +2,16 @@
  * TotpPage.tsx – Step 3b: TOTP code for subsequent logins
  * Accepts both 6-digit TOTP codes and 8-character backup codes.
  * Errors are announced (role="alert"); a rate limit (429) is reported with
- * its retry time instead of as a wrong code.
- * Dependencies: AuthLayout, authApi (+ error helpers), auth store, i18n store,
- * Button, Icon.
+ * its retry time instead of as a wrong code. A wrong code shakes the field
+ * gently; success shows the check morph, then redirects to /app.
+ * Dependencies: AuthLayout, auth/useSignIn, auth/authMotion, authApi (+ error
+ * helpers), i18n store, Button, Icon.
  */
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
 import { AuthLayout, AUTH_INPUT_CLASS } from '../components/AuthLayout';
+import { useSignIn } from '../components/auth/useSignIn';
+import { shakeElement } from '../components/auth/authMotion';
 import {
   authApi,
   formatWait,
@@ -17,7 +19,6 @@ import {
   isTransportError,
   retryAfterSeconds,
 } from '../api/auth.api';
-import { useAuthStore } from '../stores/auth.store';
 import { useI18n } from '../stores/i18n.store';
 import { Button } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
@@ -26,7 +27,8 @@ export function TotpPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
-  const setTokens = useAuthStore((s) => s.setTokens);
+  const signIn = useSignIn();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { tempToken } = (location.state as { tempToken?: string } | null) || {};
 
@@ -48,10 +50,7 @@ export function TotpPage() {
 
     try {
       const res = await authApi.verifyTotp(tempToken, trimmed);
-      const { accessToken } = res.data.data;
-      const decoded = jwtDecode<{ sub: string; email: string }>(accessToken);
-      setTokens(accessToken, { id: decoded.sub, email: decoded.email });
-      navigate('/app', { replace: true });
+      signIn.complete(res.data.data.accessToken);
     } catch (err: unknown) {
       const wait = retryAfterSeconds(err);
       setError(
@@ -64,6 +63,8 @@ export function TotpPage() {
             : t('totpInvalidCode'),
       );
       setCode('');
+      shakeElement(inputRef.current);
+      inputRef.current?.focus();
     } finally {
       setLoading(false);
     }
@@ -75,6 +76,8 @@ export function TotpPage() {
     <AuthLayout
       title={t('totpTitle')}
       subtitle={useBackup ? t('totpSubtitleBackup') : t('totpSubtitleApp')}
+      step={2}
+      success={signIn.success ? t('authSignedIn') : undefined}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -85,6 +88,7 @@ export function TotpPage() {
             {useBackup ? t('totpLabelBackup') : t('totpLabelApp')}
           </label>
           <input
+            ref={inputRef}
             id="totp-code"
             type="text"
             inputMode={useBackup ? 'text' : 'numeric'}
@@ -96,6 +100,7 @@ export function TotpPage() {
               setCode(useBackup ? e.target.value.toUpperCase() : e.target.value.replace(/\D/g, ''))
             }
             placeholder={useBackup ? 'XXXXXXXX' : '000000'}
+            aria-invalid={error ? true : undefined}
             className={`${AUTH_INPUT_CLASS} text-center font-mono text-2xl tracking-widest`}
           />
         </div>

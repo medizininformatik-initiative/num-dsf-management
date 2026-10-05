@@ -209,6 +209,11 @@ export const en = {
   prev: 'Previous',
   next: 'Next',
 
+  // Sign-in motion redesign (success check, certificate check)
+  authSignedIn: 'Signed in. Opening the portal…',
+  totpSetupActive: 'Two-factor authentication is now active.',
+  certStatusCheckingHint: 'Your browser is presenting your client certificate to the server.',
+
   // LoginPage
   loginSubtitle: 'Enter your email to receive a one-time code.',
   loginEmailLabel: 'Email address',

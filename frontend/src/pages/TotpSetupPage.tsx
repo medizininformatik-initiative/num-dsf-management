@@ -5,16 +5,20 @@
  * The backup codes are never shown again, so they can be copied or downloaded
  * as a .txt file, and Continue stays disabled until the user confirms they
  * stored them. Errors are announced (role="alert").
- * Dependencies: AuthLayout, authApi, auth store, i18n store, lib/environment,
- * lib/dateUtils, Button, Icon, sonner.
+ * The three steps share one card (steps 2-4 of the sign-in flow), so it slides
+ * forward/back between them; a wrong code shakes the field, and the backup
+ * step opens with the check morph confirming that 2FA is active.
+ * Dependencies: AuthLayout, auth/useSignIn, auth/authMotion, auth/AuthSuccess,
+ * authApi, i18n store, lib/environment, lib/dateUtils, Button, Icon, sonner.
  */
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
 import { toast } from 'sonner';
 import { AuthLayout, AUTH_INPUT_CLASS } from '../components/AuthLayout';
+import { useSignIn } from '../components/auth/useSignIn';
+import { shakeElement } from '../components/auth/authMotion';
+import { AuthCheck } from '../components/auth/AuthSuccess';
 import { authApi } from '../api/auth.api';
-import { useAuthStore } from '../stores/auth.store';
 import { useI18n } from '../stores/i18n.store';
 import { DSF_ENVIRONMENT } from '../lib/environment';
 import { formatDateTime } from '../lib/dateUtils';
@@ -39,7 +43,8 @@ export function TotpSetupPage() {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
-  const setTokens = useAuthStore((s) => s.setTokens);
+  const signIn = useSignIn();
+  const codeRef = useRef<HTMLInputElement>(null);
 
   const { tempToken, email } =
     (location.state as { tempToken?: string; email?: string } | null) || {};
@@ -77,12 +82,13 @@ export function TotpSetupPage() {
       const res = await authApi.confirmTotp(tempToken, code);
       const { accessToken, backupCodes: codes } = res.data.data;
       setBackupCodes(codes);
-      const decoded = jwtDecode<{ sub: string; email: string }>(accessToken);
-      setTokens(accessToken, { id: decoded.sub, email: decoded.email });
+      signIn.establish(accessToken);
       setStep('backup');
     } catch {
       setError(t('totpConfirmInvalidCode'));
       setCode('');
+      shakeElement(codeRef.current);
+      codeRef.current?.focus();
     } finally {
       setLoading(false);
     }
@@ -122,7 +128,7 @@ export function TotpSetupPage() {
   // QR code step
   if (step === 'qr')
     return (
-      <AuthLayout title={t('totpSetupTitle')} subtitle={t('totpSetupSubtitle')}>
+      <AuthLayout title={t('totpSetupTitle')} subtitle={t('totpSetupSubtitle')} step={2}>
         <div className="space-y-5">
           {loading && (
             <p role="status" className="py-8 text-center text-sm text-[color:var(--text-muted)]">
@@ -154,7 +160,7 @@ export function TotpSetupPage() {
   // TOTP confirm step
   if (step === 'confirm')
     return (
-      <AuthLayout title={t('totpConfirmTitle')} subtitle={t('totpConfirmSubtitle')}>
+      <AuthLayout title={t('totpConfirmTitle')} subtitle={t('totpConfirmSubtitle')} step={3}>
         <form onSubmit={handleConfirm} className="space-y-4">
           <div>
             <label
@@ -164,6 +170,7 @@ export function TotpSetupPage() {
               {t('totpConfirmLabel')}
             </label>
             <input
+              ref={codeRef}
               id="totp-setup-code"
               type="text"
               inputMode="numeric"
@@ -173,6 +180,7 @@ export function TotpSetupPage() {
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
               placeholder="000000"
+              aria-invalid={error ? true : undefined}
               className={`${AUTH_INPUT_CLASS} text-center font-mono text-2xl tracking-widest`}
             />
           </div>
@@ -194,8 +202,14 @@ export function TotpSetupPage() {
 
   // Backup codes step
   return (
-    <AuthLayout title={t('totpBackupTitle')} subtitle={t('totpBackupSubtitle')}>
+    <AuthLayout title={t('totpBackupTitle')} subtitle={t('totpBackupSubtitle')} step={4}>
       <div className="space-y-5">
+        <div className="flex items-center gap-3 rounded-xl border border-success-border bg-success-surface px-3 py-2.5">
+          <AuthCheck size={32} />
+          <p role="status" className="m-0 text-sm font-medium text-success-fg">
+            {t('totpSetupActive')}
+          </p>
+        </div>
         <ul
           aria-label={t('totpBackupCodesAria')}
           className="grid grid-cols-2 gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-4"
