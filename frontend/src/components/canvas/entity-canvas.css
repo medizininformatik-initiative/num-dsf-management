@@ -3,10 +3,12 @@
    they are open, closed or drawers: as many columns of at least 340px as fit,
    never wider than the canvas, at most three. The lead cell (Organization)
    spans two rows, so 1 + 2×2 cards fill three columns and 1 + 1×2 + 2 fill
-   two without holes. */
+   two without holes. Items align to the start of their grid area, so every
+   card is only as tall as its content instead of stretching to the row. */
 .entity-canvas-grid {
   --canvas-gap: 1rem;
   display: grid;
+  align-items: start;
   gap: var(--canvas-gap);
   grid-template-columns: repeat(
     auto-fit,

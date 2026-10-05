@@ -58,7 +58,7 @@ export function EntityCard({
       aria-labelledby={titleId}
       aria-busy={status === 'loading' || undefined}
       tabIndex={-1}
-      className="entity-card flex h-full flex-col rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+      className="entity-card flex flex-col rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       style={{ '--card-accent': borderColor } as CSSProperties}
     >
       <div className="mb-5 flex items-start justify-between gap-3">
