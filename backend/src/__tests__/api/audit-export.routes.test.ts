@@ -297,7 +297,8 @@ describe('Audit list filters, flags and export', () => {
       expect(capped.rows).toHaveLength(3);
       expect(capped.truncated).toBe(true);
       const full = await queryAuditForExport({ kind: 'instance', instanceId: instA }, {}, 50);
-      expect(full.rows).toHaveLength(7);
+      // The earlier exports in this suite are audited too (operation EXPORT).
+      expect(full.rows.filter((r) => r.operation !== 'EXPORT')).toHaveLength(7);
       expect(full.truncated).toBe(false);
     });
   });
