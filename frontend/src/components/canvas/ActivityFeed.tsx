@@ -43,6 +43,7 @@ const OPERATIONS: Record<string, OperationMeta> = {
   TOTP_SETUP: { icon: 'qr_code_2', className: 'text-info-fg', label: 'shellOpTotpSetup' },
   TOTP_VERIFY: { icon: 'password', className: 'text-info-fg', label: 'shellOpTotpVerify' },
   FAILED_LOGIN: { icon: 'gpp_bad', className: 'text-danger-fg', label: 'shellOpFailedLogin' },
+  WITHDRAW: { icon: 'undo', className: MUTED, label: 'shellOpWithdraw' },
 };
 const UNKNOWN_OPERATION: OperationMeta = { icon: 'info', className: MUTED };
 

@@ -54,6 +54,7 @@ const OP_KEYS: Record<string, TranslationKey> = {
   RATE_LIMITED: 'auditEv_op_RATE_LIMITED',
   EXPORT: 'auditEv_op_EXPORT',
   FAILED_LOGIN: 'auditEv_op_FAILED_LOGIN',
+  WITHDRAW: 'auditEv_op_WITHDRAW',
 };
 
 export function parseDiff(diff: unknown): Record<string, unknown> {

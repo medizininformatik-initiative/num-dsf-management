@@ -53,6 +53,7 @@ export const OPERATION: Record<string, { tone: StatusTone; label: TranslationKey
   TOTP_SETUP: { tone: 'info', label: 'shellOpTotpSetup' },
   TOTP_VERIFY: { tone: 'info', label: 'shellOpTotpVerify' },
   FAILED_LOGIN: { tone: 'danger', label: 'shellOpFailedLogin' },
+  WITHDRAW: { tone: 'neutral', label: 'shellOpWithdraw' },
   DENIED: { tone: 'danger', label: 'auditOpDenied' },
   STEP_UP_FAILED: { tone: 'danger', label: 'auditOpStepUpFailed' },
   RATE_LIMITED: { tone: 'warning', label: 'auditOpRateLimited' },

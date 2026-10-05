@@ -315,6 +315,7 @@ export const de: Record<TranslationKey, string> = {
   auditEv_op_RATE_LIMITED: 'Anfragelimit erreicht ({bucket})',
   auditEv_op_EXPORT: 'Auditprotokoll als {format} exportiert ({rows} Einträge)',
   auditEv_op_FAILED_LOGIN: 'Anmeldung fehlgeschlagen',
+  auditEv_op_WITHDRAW: 'Genehmigungsantrag zurückgezogen',
 
   // Sign-in motion redesign (success check, certificate check)
   authSignedIn: 'Angemeldet. Das Portal wird geöffnet …',
@@ -1447,6 +1448,7 @@ export const de: Record<TranslationKey, string> = {
   shellOpTotpSetup: 'Zwei-Faktor-Authentifizierung eingerichtet',
   shellOpTotpVerify: 'Zwei-Faktor-Code bestätigt',
   shellOpFailedLogin: 'Anmeldung fehlgeschlagen',
+  shellOpWithdraw: 'Antrag zurückgezogen',
 
   // CommandPalette
   cmdPlaceholder: 'Befehl eingeben…',

@@ -308,6 +308,7 @@ export const en = {
   auditEv_op_RATE_LIMITED: 'Rate limit reached ({bucket})',
   auditEv_op_EXPORT: 'Audit log exported as {format} ({rows} entries)',
   auditEv_op_FAILED_LOGIN: 'Sign-in failed',
+  auditEv_op_WITHDRAW: 'Approval request withdrawn',
 
   // Sign-in motion redesign (success check, certificate check)
   authSignedIn: 'Signed in. Opening the portal…',
@@ -1417,6 +1418,7 @@ export const en = {
   shellOpTotpSetup: 'two-factor authentication set up',
   shellOpTotpVerify: 'two-factor code confirmed',
   shellOpFailedLogin: 'sign-in failed',
+  shellOpWithdraw: 'request withdrawn',
 
   // CommandPalette
   cmdPlaceholder: 'Type a command…',
