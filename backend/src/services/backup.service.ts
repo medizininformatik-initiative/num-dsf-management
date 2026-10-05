@@ -380,9 +380,15 @@ export async function runScheduledBackupIfDue(now = new Date()): Promise<BackupR
 }
 
 export function startBackupScheduler(): void {
-  cron.schedule('* * * * *', () => {
-    runScheduledBackupIfDue().catch((err) =>
-      logger.error({ err: errMessage(err) }, '[backup] scheduler tick failed'),
-    );
-  });
+  // The tick runs every minute; due times (Europe/Berlin) are computed in
+  // lib/backupSchedule, so the cron timezone only matches the other jobs.
+  cron.schedule(
+    '* * * * *',
+    () => {
+      runScheduledBackupIfDue().catch((err) =>
+        logger.error({ err: errMessage(err) }, '[backup] scheduler tick failed'),
+      );
+    },
+    { timezone: 'UTC' },
+  );
 }

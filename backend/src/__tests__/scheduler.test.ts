@@ -1,5 +1,5 @@
 /**
- * scheduler.test.ts — verifies startScheduler registers exactly the six cron
+ * scheduler.test.ts — verifies startScheduler registers exactly the seven cron
  * jobs on the expected expressions. node-cron is mocked so nothing actually
  * runs; a typo in a cron expression (e.g. '* 6 * * *' instead of '0 6 * * *')
  * would flood admins in production, so the schedule strings are asserted.
@@ -21,9 +21,9 @@ const { startScheduler } =
 describe('startScheduler', () => {
   beforeEach(() => scheduleMock.mockClear());
 
-  it('registers six cron jobs', () => {
+  it('registers seven cron jobs', () => {
     startScheduler();
-    expect(scheduleMock).toHaveBeenCalledTimes(6);
+    expect(scheduleMock).toHaveBeenCalledTimes(7);
   });
 
   it('uses the documented schedule for each job', () => {
@@ -36,6 +36,7 @@ describe('startScheduler', () => {
       '0 8 * * *', // cert expiry check
       '0 9 * * *', // membership cleanup
       '0 10 * * *', // marketplace sync
+      '* * * * *', // backup due check
     ]);
   });
 
