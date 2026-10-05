@@ -9,7 +9,7 @@
  * public/favicon.svg is the static twin of this glyph.
  * Dependencies: brand-mark.css.
  */
-import { useId, type CSSProperties } from 'react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
 import './brand-mark.css';
 
 export const PRODUCT_NAME = 'DSF Management Tool';
@@ -91,9 +91,16 @@ interface BrandMarkProps {
   /** Extra classes for the name, e.g. the sidebar rail's label fade. */
   nameClassName?: string;
   className?: string;
+  /** A quiet second line under the name, e.g. the environment badge. */
+  children?: ReactNode;
 }
 
-export function BrandMark({ size = 28, nameClassName = '', className = '' }: BrandMarkProps) {
+export function BrandMark({
+  size = 28,
+  nameClassName = '',
+  className = '',
+  children,
+}: BrandMarkProps) {
   // useId() contains colons; keep the SVG ids to plain characters.
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const gradientId = `bm-gradient-${id}`;
@@ -151,10 +158,11 @@ export function BrandMark({ size = 28, nameClassName = '', className = '' }: Bra
           </g>
         </g>
       </svg>
-      <span
-        className={`min-w-0 truncate text-[13px] font-semibold tracking-tight text-[color:var(--text-primary)] ${nameClassName}`}
-      >
-        {PRODUCT_NAME}
+      <span className={`flex min-w-0 flex-col ${nameClassName}`}>
+        <span className="truncate text-[13px] font-semibold leading-tight tracking-tight text-[color:var(--text-primary)]">
+          {PRODUCT_NAME}
+        </span>
+        {children}
       </span>
     </span>
   );
