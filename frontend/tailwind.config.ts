@@ -53,6 +53,8 @@ const motion = {
     // content without measuring it.
     'expand-in': { from: { gridTemplateRows: '0fr', opacity: '0' } },
     'expand-out': { to: { gridTemplateRows: '0fr', opacity: '0' } },
+    // A completed step's check pops in where the step icon was.
+    'check-in': { from: { opacity: '0', transform: 'scale(0.4) rotate(-25deg)' } },
     'toast-in': { from: { opacity: '0', transform: 'translateY(12px) scale(0.96)' } },
     'toast-out': { to: { opacity: '0', transform: 'scale(0.96)' } },
     shimmer: { from: { backgroundPosition: '150% 0' }, to: { backgroundPosition: '-50% 0' } },
@@ -78,6 +80,7 @@ const motion = {
       'list-item-in var(--duration-medium) var(--ease-spring) calc(min(var(--stagger-index, 0), 12) * var(--stagger-step)) both',
     'expand-in': 'expand-in var(--duration-medium) var(--ease-spring) both',
     'expand-out': 'expand-out var(--duration-medium-exit) var(--ease-exit) both',
+    'check-in': 'check-in var(--duration-medium) var(--ease-spring-bouncy) both',
     'toast-in': 'toast-in var(--duration-medium) var(--ease-spring-bouncy) both',
     'toast-out': 'toast-out var(--duration-short-exit) var(--ease-exit) both',
     shimmer: 'shimmer calc(var(--duration-long) * 3) var(--ease-standard) infinite',
