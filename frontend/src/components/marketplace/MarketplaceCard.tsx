@@ -102,9 +102,13 @@ export function MarketplaceCard({ entry }: { entry: MarketplaceEntry }) {
         </div>
       </div>
 
-      {entry.description && (
+      {entry.description ? (
         <p className="m-0 line-clamp-2 text-[13px] leading-snug text-[color:var(--text-secondary)]">
           {entry.description}
+        </p>
+      ) : (
+        <p className="m-0 text-[13px] italic leading-snug text-[color:var(--text-muted)]">
+          {t('marketplaceNoDescription')}
         </p>
       )}
 
