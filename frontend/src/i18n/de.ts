@@ -576,6 +576,39 @@ export const de: Record<TranslationKey, string> = {
   bundleDownloaded: 'Bundle heruntergeladen.',
   bundleDownloadFailed: 'Bundle-Download fehlgeschlagen.',
 
+  // Approval: running request + withdraw; download: start the Task in your own DSF
+  approvalRunningTitle: 'Laufender Antrag',
+  approvalRunningSubtitle:
+    'Das IMI prüft diesen Antrag. Sie können ihn zurückziehen, bis eine Entscheidung gefallen ist.',
+  approvalRunningLabel: 'Antrag läuft',
+  approvalRunningHint: 'Laufenden Antrag anzeigen',
+  approvalRunningSubmitted: 'Gesendet',
+  approvalRunningSubmittedBy: 'Gesendet von',
+  approvalRunningContents: 'Inhalt des Antrags',
+  approvalRunningNoSnapshot: 'Zu diesem Antrag liegt keine Datenübersicht vor.',
+  approvalWithdrawBtn: 'Antrag zurückziehen',
+  approvalWithdrawConfirmTitle: 'Antrag zurückziehen?',
+  approvalWithdrawConfirmMessage:
+    'Das IMI beendet die Prüfung, bereits erteilte Zustimmungen zählen nicht mehr. Sie können Ihre Daten anschließend bearbeiten und erneut senden.',
+  approvalWithdrawSuccess: 'Antrag zurückgezogen.',
+  approvalWithdrawFailed: 'Der Antrag konnte nicht zurückgezogen werden.',
+  approvalWithdrawNotPending: 'Über den Antrag wurde inzwischen entschieden.',
+  approvalStateWithdrawn: 'Zurückgezogen',
+  approvalBannerWithdrawn: 'Sie haben diesen Antrag zurückgezogen.',
+  approvalBannerWithdrawnAt: 'Zurückgezogen {date}',
+  dsfTaskTitle: 'Download im eigenen DSF starten',
+  dsfTaskHelp:
+    'Der Prozess downloadAllowList liegt als Entwurf-Task auf Ihrem eigenen DSF-FHIR-Server. Öffnen Sie ihn dort, tragen Sie den Link unten ein und starten Sie ihn.',
+  dsfTaskPick: 'Wählen Sie einen Endpoint, um den Task-Link Ihres DSF-Servers zu erhalten.',
+  dsfTaskInvalidBase:
+    'Die Adresse dieses Endpoints ist keine gültige http(s)-URL, daher kann kein Task-Link erzeugt werden.',
+  dsfTaskStep1: 'Task im eigenen FHIR-Server öffnen',
+  dsfTaskOpen: 'Task im eigenen FHIR-Server öffnen',
+  dsfTaskCopy: 'Task-Link kopieren',
+  dsfTaskStep2: 'Diesen Link in das Eingabefeld „allow_list“ einfügen',
+  dsfTaskCopyAllowList: 'Allow-List-Link kopieren',
+  dsfTaskStep3: 'Prozess starten',
+
   // InstanceCreateModal
   instanceCreateTitle: 'Neue Instanz hinzufügen',
   instanceCreateInfo:
@@ -1690,7 +1723,7 @@ export const de: Record<TranslationKey, string> = {
   helpS_approval_0:
     'Änderungen wirken erst nach einer Prüfung. Sobald Ihre Daten vollständig sind, öffnen Sie die Karte „Genehmigung“ und reichen ein. Das IMI prüft den Antrag; eine zweite Person entscheidet darüber (Vier-Augen-Prinzip), sodass niemand den eigenen Antrag freigeben kann.',
   helpS_approval_1_0:
-    'Status: Entwurf, In Prüfung, Genehmigt oder Abgelehnt. Solange ein Antrag in Prüfung ist, können Sie keinen weiteren einreichen.',
+    'Status: Entwurf, In Prüfung, Genehmigt, Abgelehnt oder Zurückgezogen. Solange ein Antrag in Prüfung ist, können Sie keinen weiteren einreichen: Ein erneuter Klick auf „Zur Genehmigung senden“ zeigt den laufenden Antrag, den Sie dort zurückziehen können.',
   helpS_approval_1_1:
     'Wird ein Antrag abgelehnt, nennt die prüfende Person den Grund. Korrigieren Sie die Daten und reichen Sie erneut ein.',
   helpS_approval_1_2: 'Alle Schritte werden im Audit-Log protokolliert.',
@@ -1709,11 +1742,10 @@ export const de: Record<TranslationKey, string> = {
   helpS_dsfImport_0:
     'Das DSF importiert die Allow-List mit dem Prozess downloadAllowList aus dsf-process-allow-list:',
   helpS_dsfImport_1_0:
-    'Öffnen Sie den Download-Dialog, wählen Sie Ihren Endpunkt und kopieren Sie den Link /fhir/Bundle/<endpoint>.',
+    'Öffnen Sie den Download-Dialog, wählen Sie Ihren Endpunkt und nutzen Sie „Task im eigenen FHIR-Server öffnen“: Das öffnet den Entwurf-Task des Prozesses auf Ihrem eigenen DSF-FHIR-Server.',
   helpS_dsfImport_1_1:
-    'Prüfen Sie das Bundle optional: Vergleichen Sie seinen SHA-256 mit dem im Dialog angezeigten Content-Hash.',
-  helpS_dsfImport_1_2:
-    'Starten Sie den Prozess downloadAllowList in Ihrem DSF mit dem Task-Input allow-list|allow_list und dem Link als Wert.',
+    'Fügen Sie den daneben angezeigten Link /fhir/Bundle/<endpoint> in das Eingabefeld „allow_list“ ein. Prüfen Sie das Bundle vorher optional: Vergleichen Sie seinen SHA-256 mit dem im Dialog angezeigten Content-Hash.',
+  helpS_dsfImport_1_2: 'Starten Sie den Prozess downloadAllowList in Ihrem DSF.',
   helpS_dsfImport_2:
     'Die Allow-List ist eine Empfehlung des Netzwerks. Prüfen Sie Inhalt und Signatur, bevor Sie sie einspielen.',
   helpS_renewal_title: 'Zertifikatserneuerung und Ablaufwarnungen',

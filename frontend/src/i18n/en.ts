@@ -568,6 +568,39 @@ export const en = {
   bundleDownloaded: 'Bundle downloaded.',
   bundleDownloadFailed: 'Failed to download the bundle.',
 
+  // Approval: running request + withdraw; download: start the Task in your own DSF
+  approvalRunningTitle: 'Running request',
+  approvalRunningSubtitle:
+    'IMI is reviewing this request. You can withdraw it until a decision has been made.',
+  approvalRunningLabel: 'Request running',
+  approvalRunningHint: 'Show the running request',
+  approvalRunningSubmitted: 'Submitted',
+  approvalRunningSubmittedBy: 'Submitted by',
+  approvalRunningContents: 'Contents of the request',
+  approvalRunningNoSnapshot: 'This request carries no data summary.',
+  approvalWithdrawBtn: 'Withdraw request',
+  approvalWithdrawConfirmTitle: 'Withdraw the request?',
+  approvalWithdrawConfirmMessage:
+    'IMI stops reviewing it and approvals already given no longer count. You can edit your data and submit again afterwards.',
+  approvalWithdrawSuccess: 'Request withdrawn.',
+  approvalWithdrawFailed: 'The request could not be withdrawn.',
+  approvalWithdrawNotPending: 'The request has been decided in the meantime.',
+  approvalStateWithdrawn: 'Withdrawn',
+  approvalBannerWithdrawn: 'You withdrew this request.',
+  approvalBannerWithdrawnAt: 'Withdrawn {date}',
+  dsfTaskTitle: 'Start the download in your DSF',
+  dsfTaskHelp:
+    'The process downloadAllowList waits as a draft Task on your own DSF FHIR server. Open it there, enter the link below and start it.',
+  dsfTaskPick: 'Select an endpoint to get the Task link of your DSF server.',
+  dsfTaskInvalidBase:
+    'The address of this endpoint is not a valid http(s) URL, so no Task link can be built.',
+  dsfTaskStep1: 'Open the Task in your FHIR server',
+  dsfTaskOpen: 'Open Task in your FHIR server',
+  dsfTaskCopy: 'Copy Task link',
+  dsfTaskStep2: 'Paste this link into the input "allow_list"',
+  dsfTaskCopyAllowList: 'Copy allow-list link',
+  dsfTaskStep3: 'Start the process',
+
   // InstanceCreateModal
   instanceCreateTitle: 'Add New Instance',
   instanceCreateInfo:
@@ -1653,7 +1686,7 @@ export const en = {
   helpS_approval_0:
     'Changes only take effect after review. When your data is complete, open the Approval card and submit. IMI checks the request; a second person decides on it (four-eyes principle), so nobody can approve their own request.',
   helpS_approval_1_0:
-    'Status: Draft, Pending, Approved or Rejected. While a request is pending, you cannot submit another one.',
+    'Status: Draft, Pending, Approved, Rejected or Withdrawn. While a request is pending, you cannot submit another one: clicking "Send for approval" again shows the running request, which you can withdraw there.',
   helpS_approval_1_1:
     'If a request is rejected, the reviewer states the reason. Correct the data and submit again.',
   helpS_approval_1_2: 'All steps are recorded in the audit log.',
@@ -1672,11 +1705,10 @@ export const en = {
   helpS_dsfImport_0:
     'The DSF imports the allow list with the process downloadAllowList of dsf-process-allow-list:',
   helpS_dsfImport_1_0:
-    'Open the Download dialog, select your endpoint and copy the link /fhir/Bundle/<endpoint>.',
+    'Open the Download dialog, select your endpoint and use "Open Task in your FHIR server": it opens the draft Task of the process on your own DSF FHIR server.',
   helpS_dsfImport_1_1:
-    'Optionally verify the bundle: compare its SHA-256 with the content hash shown in the dialog.',
-  helpS_dsfImport_1_2:
-    'Start the process downloadAllowList in your DSF with the task input allow-list|allow_list and the link as value.',
+    'Paste the link /fhir/Bundle/<endpoint> shown next to it into the input "allow_list". Optionally verify the bundle first: compare its SHA-256 with the content hash shown in the dialog.',
+  helpS_dsfImport_1_2: 'Start the process downloadAllowList in your DSF.',
   helpS_dsfImport_2:
     'The allow list is a recommendation of the network. Check its content and signature before you deploy it.',
   helpS_renewal_title: 'Certificate renewal and expiry warnings',
