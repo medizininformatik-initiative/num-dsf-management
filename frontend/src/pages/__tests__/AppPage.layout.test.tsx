@@ -100,12 +100,15 @@ describe('AppPage wide layout (>= 1200 px)', () => {
     await user.click(collapse);
 
     expect(sidebarColumn().className).toContain('w-16');
+    // The width waits for the labels to leave; expanding starts at once.
+    expect(sidebarColumn().className).toContain('delay-[var(--duration-micro-exit)]');
     const expand = screen.getByRole('button', { name: 'Expand navigation' });
     expect(expand).toHaveAttribute('aria-expanded', 'false');
     expect(expand).toHaveAttribute('aria-controls', 'app-sidebar');
 
     await user.click(expand);
     expect(sidebarColumn().className).toContain('w-[220px]');
+    expect(sidebarColumn().className).not.toContain('delay-');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 

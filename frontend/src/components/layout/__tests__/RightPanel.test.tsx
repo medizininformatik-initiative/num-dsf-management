@@ -6,7 +6,7 @@
  * comments, the stats, and a root that leaves positioning to AppPage.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, within, fireEvent } from '@testing-library/react';
+import { screen, within, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 import { useModals } from '../../../hooks/useModals';
 import { formatDateTime } from '../../../lib/dateUtils';
@@ -61,6 +61,29 @@ describe('RightPanel', () => {
     const memberships = screen.getByText('Memberships').closest('div')!;
     expect(within(memberships).getByText('2')).toBeInTheDocument();
     expect(screen.getByText(/ready to submit\?/i)).toBeInTheDocument();
+  });
+
+  it('collapses and expands a section from its header', async () => {
+    renderWithProviders(<RightPanel instanceId="i1" />);
+    const header = screen.getByRole('button', { name: 'Overview' });
+    expect(header).toHaveAttribute('aria-expanded', 'true');
+    const body = document.getElementById(header.getAttribute('aria-controls') ?? '');
+    expect(body).toContainElement(screen.getByText('Memberships'));
+
+    fireEvent.click(header);
+    expect(header).toHaveAttribute('aria-expanded', 'false');
+    await waitFor(() => expect(screen.queryByText('Memberships')).not.toBeInTheDocument());
+
+    fireEvent.click(header);
+    expect(header).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Memberships')).toBeInTheDocument();
+  });
+
+  it('drops its chrome material inside a drawer', () => {
+    renderWithProviders(<RightPanel instanceId="i1" bare />);
+    expect(screen.getByRole('complementary', { name: /approval status/i })).not.toHaveClass(
+      'glass-chrome',
+    );
   });
 
   it('fills the box AppPage gives it instead of fixing its own position', () => {
