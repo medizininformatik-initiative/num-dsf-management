@@ -5,6 +5,7 @@
  * Sheets. Controlled: the page owns the rows so they survive step changes.
  * Server dry-run results come in as `serverStatus` keyed by 0-based row index
  * and are shown in the status column when the row has no client-side problem.
+ * Rows that came from an uploaded file show that file in an extra column.
  * Dependencies: onboardingColumns, Button, Icon, StatusPill, i18n store.
  */
 import { useEffect, useRef, useState, type ClipboardEvent, type CSSProperties } from 'react';
@@ -58,6 +59,8 @@ export function OnboardingEditor({
   const [removing, setRemoving] = useState<Set<string>>(() => new Set());
   const lastAdded = useRef<string | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  // Rows merged from uploaded files get a column naming their file.
+  const hasSources = rows.some((r) => r.source);
 
   // A freshly added row takes focus, so the keyboard flow continues in the grid.
   useEffect(() => {
@@ -128,6 +131,11 @@ export function OnboardingEditor({
               <th scope="col" className="w-10 px-2 py-2.5 text-center">
                 <span className="sr-only">{t('onbEditorRowNumber')}</span>#
               </th>
+              {hasSources && (
+                <th scope="col" className="min-w-[8rem] px-2 py-2.5">
+                  {t('onbColFile')}
+                </th>
+              )}
               {ONBOARDING_COLUMNS.map((c) => (
                 <th key={c.key} scope="col" className={`px-2 py-2.5 ${c.width}`}>
                   {t(c.labelKey)}
@@ -170,6 +178,20 @@ export function OnboardingEditor({
                   <td className="px-2 py-1.5 text-center text-[11px] text-[color:var(--text-muted)]">
                     {rowNo}
                   </td>
+                  {hasSources && (
+                    <td className="px-2 py-1.5">
+                      {row.source && (
+                        <span
+                          title={row.source.name}
+                          data-testid={`row-source-${rowIndex}`}
+                          className="glass-thin inline-flex max-w-[10rem] items-center gap-1 rounded-full px-2 py-0.5 text-[11px] text-[color:var(--text-secondary)]"
+                        >
+                          <Icon name="description" size={14} />
+                          <span className="truncate">{row.source.name}</span>
+                        </span>
+                      )}
+                    </td>
+                  )}
                   {ONBOARDING_COLUMNS.map((c, colIndex) => {
                     const show = isShown(c.key);
                     return (

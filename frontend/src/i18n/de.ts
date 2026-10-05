@@ -1519,17 +1519,17 @@ export const de: Record<TranslationKey, string> = {
   onbMethodEditorTitle: 'In der Tabelle erfassen',
   onbMethodEditorBody:
     'Tragen Sie Standorte in eine Tabelle ein oder fügen Sie aus Excel kopierte Zeilen ein. Fehler werden schon beim Tippen markiert.',
-  onbMethodFileTitle: 'Datei hochladen',
+  onbMethodFileTitle: 'Dateien hochladen',
   onbMethodFileBody:
-    'Laden Sie eine ausgefüllte CSV-, XLSX- oder JSON-Datei hoch. Sie wird geprüft, bevor etwas gespeichert wird.',
+    'Laden Sie die ausgefüllten CSV-, XLSX- oder JSON-Dateien eines oder mehrerer Standorte hoch. Sie werden in einer Tabelle zusammengeführt und geprüft, bevor etwas gespeichert wird.',
   onbTemplatesTitle: 'Mit einer Vorlage starten',
   onbTemplatesBody:
     'Die Vorlagen enthalten alle Spalten, eine Beispielzeile (beim Import ignoriert) und in der Excel-Datei Auswahllisten sowie ein Hilfeblatt.',
   onbTemplateXlsx: 'Excel-Vorlage (.xlsx)',
   onbTemplateCsv: 'CSV-Vorlage (.csv)',
   onbTemplateFailed: 'Die Vorlage konnte nicht heruntergeladen werden.',
-  onbUploadPrompt: 'Datei auswählen oder hierher ziehen',
-  onbUploadFormats: 'CSV, XLSX oder JSON, bis 1 MB und 1000 Zeilen',
+  onbUploadPrompt: 'Dateien auswählen oder hierher ziehen',
+  onbUploadFormats: 'CSV, XLSX oder JSON, bis zu 50 Dateien, je 1 MB, insgesamt 1000 Zeilen',
   onbColIdentifier: 'Identifier (FQDN)',
   onbColName: 'Name',
   onbColEmail: 'Kontakt-E-Mail',
@@ -1573,6 +1573,24 @@ export const de: Record<TranslationKey, string> = {
     'Noch keine Zertifikate. Lade das öffentliche Zertifikat (PEM) für mTLS hoch; ein privater Schlüssel wird abgelehnt.',
   emptyMembershipsHint:
     'Noch keine Mitgliedschaften. Eine Mitgliedschaft verbindet diese Organisation (mit einer Rolle wie DIC/HRP) mit einem übergeordneten Netzwerk.',
+
+  // Onboarding — Mehrfach-Import
+  onbUploadMore: 'Weitere Dateien hinzufügen oder hierher ziehen',
+  onbFilesLabel: 'Gewählte Dateien',
+  onbFileRows: '{count} Zeilen',
+  onbFileParsing: 'Wird gelesen…',
+  onbFileRemove: 'Datei {name} entfernen',
+  onbFileSkipped: '{count} Zeilen übersprungen',
+  onbFileErrType: 'Nicht unterstützter Dateityp. Nutzen Sie CSV, XLSX oder JSON.',
+  onbFileErrParse: 'Die Datei konnte nicht gelesen werden.',
+  onbFileErrTotal: 'Die Dateien überschreiten die Gesamtgröße von 10 MB.',
+  onbFileErrCount: 'Es können höchstens {max} Dateien auf einmal importiert werden.',
+  onbColFile: 'Datei',
+  onbConflictIdentifier: 'Gleicher Identifier wie Zeile {rows}',
+  onbConflictFingerprint: 'Gleicher Fingerabdruck wie Zeile {rows}',
+  onbConflictsNote:
+    '{count} Zeilen widersprechen sich (gleicher Identifier oder Fingerabdruck, möglicherweise in verschiedenen Dateien). Beheben Sie das vor dem Import.',
+  onbFileSummaryTitle: 'Ergebnis pro Datei',
 
   // Guided canvas — readiness
   readinessTitle: 'Bereit zum Einreichen?',

@@ -1486,17 +1486,17 @@ export const en = {
   onbMethodEditorTitle: 'Enter in the table',
   onbMethodEditorBody:
     'Type sites into a spreadsheet-like table, or paste rows copied from Excel. Mistakes are marked while you type.',
-  onbMethodFileTitle: 'Upload a file',
+  onbMethodFileTitle: 'Upload files',
   onbMethodFileBody:
-    'Upload a filled-in CSV, XLSX or JSON file. It is checked before anything is saved.',
+    'Upload the filled-in CSV, XLSX or JSON files of one or many sites. They are merged into one table and checked before anything is saved.',
   onbTemplatesTitle: 'Start from a template',
   onbTemplatesBody:
     'The templates contain all columns, an example row (ignored on import) and, in the Excel file, drop-downs and a help sheet.',
   onbTemplateXlsx: 'Excel template (.xlsx)',
   onbTemplateCsv: 'CSV template (.csv)',
   onbTemplateFailed: 'The template could not be downloaded.',
-  onbUploadPrompt: 'Choose a file or drop it here',
-  onbUploadFormats: 'CSV, XLSX or JSON, up to 1 MB and 1000 rows',
+  onbUploadPrompt: 'Choose files or drop them here',
+  onbUploadFormats: 'CSV, XLSX or JSON, up to 50 files, 1 MB each, 1000 rows in total',
   onbColIdentifier: 'Identifier (FQDN)',
   onbColName: 'Name',
   onbColEmail: 'Contact e-mail',
@@ -1539,6 +1539,24 @@ export const en = {
     'No certificates yet. Upload the public certificate (PEM) used for mTLS; a private key is rejected.',
   emptyMembershipsHint:
     'No memberships yet. A membership ties this organization (with a role like DIC/HRP) to a parent network.',
+
+  // Onboarding — multi-file import
+  onbUploadMore: 'Add more files or drop them here',
+  onbFilesLabel: 'Chosen files',
+  onbFileRows: '{count} rows',
+  onbFileParsing: 'Reading…',
+  onbFileRemove: 'Remove file {name}',
+  onbFileSkipped: '{count} rows skipped',
+  onbFileErrType: 'Unsupported file type. Use CSV, XLSX or JSON.',
+  onbFileErrParse: 'The file could not be read.',
+  onbFileErrTotal: 'The files exceed the total size limit of 10 MB.',
+  onbFileErrCount: 'At most {max} files can be imported at once.',
+  onbColFile: 'File',
+  onbConflictIdentifier: 'Same identifier as row {rows}',
+  onbConflictFingerprint: 'Same fingerprint as row {rows}',
+  onbConflictsNote:
+    '{count} rows conflict with each other (same identifier or fingerprint, possibly in different files). Resolve them before importing.',
+  onbFileSummaryTitle: 'Result per file',
 
   // Guided canvas — readiness
   readinessTitle: 'Ready to submit?',

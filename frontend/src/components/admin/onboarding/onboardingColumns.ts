@@ -97,12 +97,18 @@ export const emptyCells = (): OnboardingCells => ({
 export interface EditorRow {
   id: string;
   cells: OnboardingCells;
+  /** The uploaded file the row came from; absent for rows typed or pasted in. */
+  source?: { id: string; name: string };
 }
 
 let idCounter = 0;
-export const newEditorRow = (cells: OnboardingCells = emptyCells()): EditorRow => ({
+export const newEditorRow = (
+  cells: OnboardingCells = emptyCells(),
+  source?: EditorRow['source'],
+): EditorRow => ({
   id: `row-${Date.now().toString(36)}-${(idCounter += 1)}`,
   cells,
+  ...(source ? { source } : {}),
 });
 
 export function isBlankCells(cells: OnboardingCells): boolean {
