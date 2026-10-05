@@ -28,6 +28,7 @@ import {
   seedOrganization,
   TEST_INSTANCE_ID,
   TEST_ADMIN_EMAIL,
+  TEST_EMAIL,
 } from '../helpers/seed';
 import { getTestToken } from '../helpers/auth';
 import { v4 as uuidv4 } from 'uuid';
@@ -60,6 +61,10 @@ describe('Approval withdraw', () => {
 
   it('withdraws a pending request, audits it and allows a new submit', async () => {
     const id = await submit();
+    const running = await request(app)
+      .get(`/api/v1/instances/${TEST_INSTANCE_ID}/approval/status`)
+      .set('Authorization', `Bearer ${userToken}`);
+    expect(running.body.data.submitted_by).toBe(TEST_EMAIL);
     const res = await request(app).post(withdrawUrl).set('Authorization', `Bearer ${userToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.id).toBe(id);

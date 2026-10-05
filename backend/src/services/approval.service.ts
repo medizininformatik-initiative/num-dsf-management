@@ -166,8 +166,14 @@ export async function getApprovalStatus(instanceId: string) {
     request.status === 'PENDING' && firstApproval !== undefined
       ? new Date(firstApproval + SILENT_CONSENT_DAYS * 86400_000).toISOString()
       : null;
+  // Who submitted it: the CREATE audit entry of the request (best effort; the
+  // audit write is failure-tolerant, so it may be missing).
+  const submitted = await db('audit_logs')
+    .where({ resource_type: 'APPROVAL', resource_id: request.id, operation: 'CREATE' })
+    .first('user_email');
   return {
     ...request,
+    submitted_by: (submitted?.user_email as string | undefined) ?? null,
     fourEyes: { approvals: approvals.length, required: 2, silentConsentAt },
   };
 }
