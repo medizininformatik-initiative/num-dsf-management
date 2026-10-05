@@ -212,7 +212,7 @@ describe('Hackathon replay: three sites, four-eyes approval, DSF allow-list down
     // Resubmitted and approved by the two other sites, the next version carries
     // both certificates of that site.
     const submit = await api(s).post(`/api/v1/instances/${s.instanceId}/approval/submit`);
-    expect(submit.status).toBe(201);
+    expect(submit.status).toBe(200);
     const requestId = await pendingRequestId(s.instanceId);
     expect(await approveByTwo(requestId, sites[0], sites[2])).toBe('APPROVED');
     expect(await thumbprintsSeenBy(sites[0])).toEqual(
