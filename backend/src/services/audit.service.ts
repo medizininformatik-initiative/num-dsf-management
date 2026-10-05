@@ -17,7 +17,8 @@ type ResourceType =
   | 'MEMBERSHIP'
   | 'AUTH'
   | 'APPROVAL'
-  | 'MARKETPLACE';
+  | 'MARKETPLACE'
+  | 'AUDIT';
 type Operation =
   | 'CREATE'
   | 'UPDATE'
@@ -31,7 +32,11 @@ type Operation =
   | 'TOTP_SETUP'
   | 'TOTP_VERIFY'
   | 'FAILED_LOGIN'
-  | 'WITHDRAW';
+  | 'WITHDRAW'
+  | 'DENIED'
+  | 'STEP_UP_FAILED'
+  | 'RATE_LIMITED'
+  | 'EXPORT';
 
 interface AuditEntry {
   userEmail?: string;
