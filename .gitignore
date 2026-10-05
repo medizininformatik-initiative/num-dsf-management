@@ -259,3 +259,7 @@ graphify-out/*
 
 # DSF e2e harness: generated PKI, plugin jar and manifest
 scripts/dsf-e2e/.work/
+
+# Private side project notes, never part of this repository
+docs/pathology-ai/
+docs/pathology-ai.zip
