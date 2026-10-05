@@ -20,6 +20,8 @@ WORKDIR /app
 COPY --from=build --chown=app:app /app/dist ./dist
 COPY --from=build --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/package.json .
+# Backup volume mount point: pre-created so the named volume is writable by `app`.
+RUN mkdir /backups && chown app:app /backups && chmod 700 /backups
 USER app
 EXPOSE 3000
 CMD ["node", "dist/index.js"]
