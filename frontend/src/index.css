@@ -793,13 +793,6 @@ body {
   color: #fca5a5 !important;
 }
 
-/* IMI-logo gradient frame for the GeoMap container on /app/map.
- * Stops mirror the IMI operator logo's diagonal magenta -> blue -> green progression. */
-.geomap-frame {
-  border: 2px solid;
-  border-image: linear-gradient(to right, #b01e66 0%, #3a6fb0 50%, #65a93d 100%) 1;
-}
-
 /* ─── Reduced motion — keep this block last ───────────────────────────────
    Under prefers-reduced-motion: reduce, movement is neutralised app-wide,
    including Tailwind utilities and inline styles, while short opacity and
