@@ -694,6 +694,12 @@ Alternativ lädt die Admin-Seite die Datei herunter (Step-up, Audit-Eintrag). Ko
    ```bash
    bash scripts/restore-backup.sh dsf-allowlist-backup-20261005-023000-ab12cd34.json.gz --yes
    ```
+   Ist in MySQL das Binärlog aktiv (Standard bei MySQL 8), darf nur ein Konto mit SUPER-Recht die Trigger neu anlegen. Das Skript prüft das vorab und bricht dann ab, **bevor** etwas geändert wird. In dem Fall mit dem MySQL-root-Konto einspielen; das Passwort nicht in die Shell-History schreiben:
+   ```bash
+   read -rs RESTORE_DB_PASSWORD && export RESTORE_DB_PASSWORD RESTORE_DB_USER=root
+   bash scripts/restore-backup.sh dsf-allowlist-backup-20261005-023000-ab12cd34.json.gz --yes
+   unset RESTORE_DB_PASSWORD RESTORE_DB_USER
+   ```
    Ohne `--yes` passiert nichts (Exit-Code 2). Alles läuft in einer Transaktion mit deaktivierten Fremdschlüsselprüfungen; bei einem Fehler wird vollständig zurückgerollt. Die Trigger der betroffenen Tabellen werden kurz entfernt (damit der append-only `audit_logs` geleert werden kann: die einzige dokumentierte Ausnahme) und danach neu angelegt. Wird der Prozess dabei hart beendet, die Migrationen 013 und 015 erneut anwenden. Tabellen, die nur die Datenbank kennt (z. B. aus einer neueren Migration), bleiben unverändert.
 4. Backend neu starten (`docker compose restart backend`). Alle Sitzungen sind ungültig; alle melden sich neu an.
 

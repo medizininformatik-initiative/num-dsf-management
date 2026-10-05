@@ -13,6 +13,7 @@
  */
 import { readBackupKey } from '../lib/backupCrypto';
 import { loadBackupFile, restoreBackup } from '../services/backup-restore.service';
+import { mysqlConnectionOptions } from '../services/backup-dump.service';
 
 async function main(): Promise<number> {
   const args = process.argv.slice(2);
@@ -30,7 +31,15 @@ async function main(): Promise<number> {
     `Backup verified: created ${doc.createdAt}, app ${doc.appVersion}, schema ${doc.schemaVersion}`,
   );
 
-  const result = await restoreBackup(doc, { dryRun: true });
+  // With binary logging on, re-creating the append-only triggers needs SUPER:
+  // RESTORE_DB_USER / RESTORE_DB_PASSWORD (e.g. the MySQL root account) override
+  // the application's database account for this run only.
+  const connection = {
+    ...mysqlConnectionOptions(),
+    ...(process.env.RESTORE_DB_USER ? { user: process.env.RESTORE_DB_USER } : {}),
+    ...(process.env.RESTORE_DB_PASSWORD ? { password: process.env.RESTORE_DB_PASSWORD } : {}),
+  };
+  const result = await restoreBackup(doc, { dryRun: true, connection });
   console.log('\nTable                          rows in backup');
   for (const t of result.plan.tables) console.log(`${t.name.padEnd(30)} ${t.rows}`);
   if (result.plan.untouched.length > 0) {
@@ -46,7 +55,7 @@ async function main(): Promise<number> {
   }
 
   console.log('\nRestoring (one transaction; rolled back on any error) ...');
-  const done = await restoreBackup(doc, { log: (line) => console.log(line) });
+  const done = await restoreBackup(doc, { connection, log: (line) => console.log(line) });
   console.log('\nRestored. Row counts now in the database:');
   for (const [name, n] of Object.entries(done.counts)) console.log(`${name.padEnd(30)} ${n}`);
   console.log(
