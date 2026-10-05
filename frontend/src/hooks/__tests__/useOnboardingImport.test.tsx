@@ -12,9 +12,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 const importOnboarding = vi.hoisted(() => vi.fn());
-vi.mock('../../api/onboarding.api', () => ({ importOnboarding }));
+const importOnboardingRows = vi.hoisted(() => vi.fn());
+vi.mock('../../api/onboarding.api', () => ({ importOnboarding, importOnboardingRows }));
 
-import { useOnboardingImport } from '../useOnboardingImport';
+import { useOnboardingDryRun, useOnboardingImport } from '../useOnboardingImport';
 import type { OnboardingImportResult } from '../../api/onboarding.api';
 
 function makeHarness() {
@@ -33,6 +34,7 @@ const invalidatedKeys = (spy: { mock: { calls: unknown[][] } }) =>
 
 beforeEach(() => {
   importOnboarding.mockReset();
+  importOnboardingRows.mockReset();
 });
 
 describe('useOnboardingImport', () => {
@@ -68,5 +70,48 @@ describe('useOnboardingImport', () => {
     await expect(result.current.mutateAsync(file)).rejects.toThrow('bad file');
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('useOnboardingDryRun', () => {
+  it('validates a file or rows with dryRun and invalidates no cache', async () => {
+    const dry: OnboardingImportResult = {
+      dryRun: true,
+      summary: { created: 1, updated: 0, failed: 0 },
+      rows: [{ identifier: 'ukm.de', action: 'created', ok: true, row: 1 }],
+      parseErrors: [],
+    };
+    importOnboarding.mockResolvedValue(dry);
+    importOnboardingRows.mockResolvedValue(dry);
+    const { wrapper, invalidateSpy } = makeHarness();
+    const { result } = renderHook(() => useOnboardingDryRun(), { wrapper });
+
+    const file = new File(['x'], 'x.csv', { type: 'text/csv' });
+    await result.current.mutateAsync(file);
+    expect(importOnboarding).toHaveBeenCalledWith(file, { dryRun: true });
+
+    const rows = [
+      {
+        organizationIdentifier: 'a.example.de',
+        organizationName: 'A',
+        contactEmail: 'a@a.example.de',
+        clientCertFingerprint: 'f',
+      },
+    ];
+    await result.current.mutateAsync(rows);
+    expect(importOnboardingRows).toHaveBeenCalledWith(rows, { dryRun: true });
+    expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+
+  it('useOnboardingImport sends editor rows to the rows endpoint', async () => {
+    importOnboardingRows.mockResolvedValue({
+      summary: { created: 0, updated: 0, failed: 0 },
+      rows: [],
+      parseErrors: [],
+    });
+    const { wrapper } = makeHarness();
+    const { result } = renderHook(() => useOnboardingImport(), { wrapper });
+    await result.current.mutateAsync([]);
+    expect(importOnboardingRows).toHaveBeenCalledWith([], undefined);
   });
 });

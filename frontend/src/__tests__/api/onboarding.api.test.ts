@@ -4,10 +4,16 @@
  * right Content-Type (text/csv vs application/json, by file name/type) and
  * returns the server's response unwrapped onto data.data.
  */
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { importOnboarding, type OnboardingImportResult } from '../../api/onboarding.api';
+import {
+  importOnboarding,
+  importOnboardingRows,
+  downloadOnboardingTemplate,
+  XLSX_MIME,
+  type OnboardingImportResult,
+} from '../../api/onboarding.api';
 import { useAuthStore } from '../../stores/auth.store';
 
 // jsdom (this project's vitest test environment) does not implement
@@ -119,5 +125,71 @@ describe('importOnboarding', () => {
 
     expect(lastRequest?.contentType).toBe('text/csv');
     expect(lastRequest?.body).toBe(csv);
+  });
+});
+
+describe('dry run, rows, xlsx and templates', () => {
+  it('importOnboarding with dryRun adds ?dryRun=true', async () => {
+    let search = '';
+    server.use(
+      http.post('*/admin/onboarding/import', async ({ request }) => {
+        search = new URL(request.url).search;
+        return HttpResponse.json({ data: { ...fixture, dryRun: true } });
+      }),
+    );
+    const file = new File(['a,b\n1,2'], 'sites.csv', { type: 'text/csv' });
+    const result = await importOnboarding(file, { dryRun: true });
+    expect(search).toBe('?dryRun=true');
+    expect(result.dryRun).toBe(true);
+  });
+
+  it('sends an .xlsx file as raw bytes with the spreadsheet content type', async () => {
+    let contentType: string | null = null;
+    let size = 0;
+    server.use(
+      http.post('*/admin/onboarding/import', async ({ request }) => {
+        contentType = request.headers.get('content-type');
+        size = (await request.arrayBuffer()).byteLength;
+        return HttpResponse.json({ data: fixture });
+      }),
+    );
+    const file = new File([new Uint8Array([0x50, 0x4b, 3, 4, 9])], 'sites.xlsx');
+    await importOnboarding(file);
+    expect(contentType).toBe(XLSX_MIME);
+    expect(size).toBe(5);
+  });
+
+  it('importOnboardingRows posts the rows as a JSON array', async () => {
+    const rows = [
+      {
+        organizationIdentifier: 'a.example.de',
+        organizationName: 'A',
+        contactEmail: 'a@a.example.de',
+        clientCertFingerprint: 'f',
+      },
+    ];
+    await importOnboardingRows(rows, { dryRun: true });
+    expect(lastRequest?.contentType).toBe('application/json');
+    expect(JSON.parse(lastRequest?.body ?? '[]')).toEqual(rows);
+  });
+
+  it('downloadOnboardingTemplate fetches the template with auth and triggers a download', async () => {
+    let auth: string | null = null;
+    server.use(
+      http.get('*/admin/onboarding/template.xlsx', ({ request }) => {
+        auth = request.headers.get('authorization');
+        return new HttpResponse(new Uint8Array([1, 2, 3]), {
+          headers: { 'Content-Type': XLSX_MIME },
+        });
+      }),
+    );
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    await downloadOnboardingTemplate('xlsx');
+    expect(auth).toBe('Bearer test-token');
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:x');
+    click.mockRestore();
   });
 });
