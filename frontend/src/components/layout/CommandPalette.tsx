@@ -28,7 +28,7 @@ interface Command {
   action: () => void;
 }
 
-const ADMIN_COMMAND_IDS = ['nav-admin', 'nav-audit', 'nav-users', 'nav-promotions'];
+const ADMIN_COMMAND_IDS = ['nav-admin', 'nav-audit', 'nav-users', 'nav-promotions', 'nav-backups'];
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -92,6 +92,17 @@ export function CommandPalette() {
         category: t('cmdCategoryNavigation'),
         action: () => {
           navigate('/app/audit');
+          close();
+        },
+      },
+      {
+        id: 'nav-backups',
+        label: t('cmdBackups'),
+        icon: 'backup',
+        color: 'var(--primary)',
+        category: t('cmdCategoryNavigation'),
+        action: () => {
+          navigate('/app/admin/backups');
           close();
         },
       },
