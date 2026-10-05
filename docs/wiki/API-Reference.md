@@ -138,6 +138,7 @@ Mounted at `/api/v1/instances/:instanceId/approval`. All endpoints `requireOwner
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | POST | /api/v1/instances/:instanceId/approval/submit | requireOwner | Submit the instance for approval. |
+| POST | /api/v1/instances/:instanceId/approval/withdraw | requireOwner | Withdraw the PENDING request (status `WITHDRAWN`, audit `WITHDRAW`). `409 NOT_PENDING` when no request is pending or an admin decision won the race. Partial four-eyes approvals on it never count later. |
 | GET | /api/v1/instances/:instanceId/approval/status | requireOwner | Current approval status. |
 | GET | /api/v1/instances/:instanceId/approval/history | requireOwner | Approval-request history. |
 

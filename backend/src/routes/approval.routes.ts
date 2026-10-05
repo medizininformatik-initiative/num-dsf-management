@@ -4,6 +4,7 @@
  *
  * Endpoints (requireAuth + requireInstanceOwnership):
  *   POST /instances/:id/approval/submit
+ *   POST /instances/:id/approval/withdraw  (409 NOT_PENDING unless a request is PENDING)
  *   GET  /instances/:id/approval/status
  *   GET  /instances/:id/approval/history
  *
@@ -28,6 +29,24 @@ approvalRouter.post('/submit', requireAuth, requireInstanceOwnership, async (req
     res.json({ data: request });
   } catch (err: unknown) {
     res.status(400).json({ error: sanitizeError(err) });
+  }
+});
+
+approvalRouter.post('/withdraw', requireAuth, requireInstanceOwnership, async (req, res, next) => {
+  try {
+    const request = await svc.withdrawApproval(
+      req.instance!.id,
+      req.user!.email,
+      req.ip || 'unknown',
+    );
+    res.json({ data: request });
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'NOT_PENDING') {
+      return res
+        .status(409)
+        .json({ error: { code: 'NOT_PENDING', message: 'No pending request to withdraw.' } });
+    }
+    next(err);
   }
 });
 

@@ -32,6 +32,7 @@ export const auditQuerySchema = z.object({
       'TOTP_SETUP',
       'TOTP_VERIFY',
       'FAILED_LOGIN',
+      'WITHDRAW',
     ])
     .optional(),
 });

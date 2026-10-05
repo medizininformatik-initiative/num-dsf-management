@@ -1,6 +1,7 @@
 /**
  * approval.service.ts – Approval workflow state machine
- * Status transitions: DRAFT → PENDING (submit), PENDING → APPROVED|REJECTED (operator)
+ * Status transitions: DRAFT → PENDING (submit), PENDING → APPROVED|REJECTED (operator),
+ * PENDING → WITHDRAWN (the site takes its own request back)
  * Dependencies: db/connection, audit.service, approval-reminder.service, lib/approvalState
  */
 import { Knex } from 'knex';
@@ -106,6 +107,39 @@ export async function submitApproval(instanceId: string, userEmail: string, ipAd
     ).catch((err) => logger.error({ err }, '[ApprovalNotify] notifyImiOnSubmit failed'));
     return trx('approval_requests').where({ id }).first();
   });
+}
+
+/**
+ * Take the instance's PENDING request back. The row is locked and the status
+ * flipped in one transaction, so a concurrent admin decision either wins (the
+ * request is no longer PENDING here: NOT_PENDING) or loses cleanly (approve /
+ * reject then see REQUEST_FINALIZED). Signatures already collected stay on the
+ * row but never count again: every decision path only acts on PENDING requests.
+ * Side-effects: sets status WITHDRAWN, writes a WITHDRAW audit log.
+ * @throws NOT_PENDING if the instance has no PENDING request.
+ */
+export async function withdrawApproval(instanceId: string, userEmail: string, ipAddress: string) {
+  const requestId = await db.transaction(async (trx) => {
+    const pending = await trx('approval_requests')
+      .where({ instance_id: instanceId, status: 'PENDING' })
+      .forUpdate()
+      .first();
+    if (!pending) throw new Error('NOT_PENDING');
+    const updated = await trx('approval_requests')
+      .where({ id: pending.id, status: 'PENDING' })
+      .update({ status: 'WITHDRAWN', resolved_at: new Date(), resolved_by: userEmail });
+    if (updated !== 1) throw new Error('NOT_PENDING');
+    return pending.id as string;
+  });
+  await writeAuditLog({
+    userEmail,
+    instanceId,
+    resourceType: 'APPROVAL',
+    resourceId: requestId,
+    operation: 'WITHDRAW',
+    ipAddress,
+  });
+  return db('approval_requests').where({ id: requestId }).first();
 }
 
 /**

@@ -30,7 +30,8 @@ type Operation =
   | 'OTP_VERIFY'
   | 'TOTP_SETUP'
   | 'TOTP_VERIFY'
-  | 'FAILED_LOGIN';
+  | 'FAILED_LOGIN'
+  | 'WITHDRAW';
 
 interface AuditEntry {
   userEmail?: string;
