@@ -75,6 +75,14 @@ describe('MarketplaceCard', () => {
     expect(screen.getByText('View details')).toBeInTheDocument();
   });
 
+  it('shows the description, or a calm placeholder when it is empty', () => {
+    const { unmount } = renderWithProviders(<MarketplaceCard entry={makeEntry()} />);
+    expect(screen.getByText('Moves data between sites.')).toBeInTheDocument();
+    unmount();
+    renderWithProviders(<MarketplaceCard entry={makeEntry({ description: null })} />);
+    expect(screen.getByText('No description provided.')).toBeInTheDocument();
+  });
+
   it('flags entries that need attention', () => {
     renderWithProviders(<MarketplaceCard entry={makeEntry({ stale: true })} />);
     expect(screen.getByText('Needs attention')).toBeInTheDocument();
