@@ -135,7 +135,7 @@ export function AdminBackupsPage() {
           </Button>
         }
       />
-      <div className="mx-auto max-w-5xl space-y-6 px-6 py-6 sm:px-8">
+      <div className="space-y-6 px-6 py-6 sm:px-8">
         {latest?.status === 'FAILED' && (
           <div
             role="alert"

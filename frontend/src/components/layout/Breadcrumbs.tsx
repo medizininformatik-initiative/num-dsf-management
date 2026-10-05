@@ -22,6 +22,7 @@ const ROUTES = {
   'admin/ca-blacklist': { label: 'caBlacklistNavLabel' },
   'admin/bundle-versions': { label: 'bundleVersionsNavLabel' },
   'admin/onboarding': { label: 'adminOnboardingNavLabel' },
+  'admin/backups': { label: 'backupNavLabel' },
   map: { label: 'networkMap' },
   marketplace: { label: 'sidebarMarketplace' },
   resources: { label: 'dsfResourcesNavLabel' },
