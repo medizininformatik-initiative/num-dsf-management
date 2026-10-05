@@ -1501,6 +1501,8 @@ export const de: Record<TranslationKey, string> = {
   shellOpTotpVerify: 'Zwei-Faktor-Code bestätigt',
   shellOpFailedLogin: 'Anmeldung fehlgeschlagen',
   shellOpWithdraw: 'Antrag zurückgezogen',
+  shellOpDownload: 'heruntergeladen',
+  shellEntityBackup: 'Backup',
 
   // CommandPalette
   cmdPlaceholder: 'Befehl eingeben…',

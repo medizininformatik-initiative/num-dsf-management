@@ -38,6 +38,7 @@ export const RESOURCE: Record<string, TranslationKey> = {
   APPROVAL: 'shellEntityApproval',
   MARKETPLACE: 'shellEntityMarketplace',
   AUDIT: 'auditEntityAudit',
+  BACKUP: 'shellEntityBackup',
 };
 
 export const OPERATION: Record<string, { tone: StatusTone; label: TranslationKey }> = {
@@ -58,6 +59,7 @@ export const OPERATION: Record<string, { tone: StatusTone; label: TranslationKey
   STEP_UP_FAILED: { tone: 'danger', label: 'auditOpStepUpFailed' },
   RATE_LIMITED: { tone: 'warning', label: 'auditOpRateLimited' },
   EXPORT: { tone: 'info', label: 'auditOpExport' },
+  DOWNLOAD: { tone: 'info', label: 'shellOpDownload' },
 };
 
 export const RESOURCE_OPTIONS: Array<[string, TranslationKey]> = Object.entries(RESOURCE);

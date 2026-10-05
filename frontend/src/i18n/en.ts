@@ -1470,6 +1470,8 @@ export const en = {
   shellOpTotpVerify: 'two-factor code confirmed',
   shellOpFailedLogin: 'sign-in failed',
   shellOpWithdraw: 'request withdrawn',
+  shellOpDownload: 'downloaded',
+  shellEntityBackup: 'Backup',
 
   // CommandPalette
   cmdPlaceholder: 'Type a command…',

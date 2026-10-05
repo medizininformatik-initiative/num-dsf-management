@@ -13,6 +13,7 @@ const RESOURCES = [
   'APPROVAL',
   'MARKETPLACE',
   'AUDIT',
+  'BACKUP',
 ] as const;
 
 const OPERATIONS = [
@@ -33,6 +34,7 @@ const OPERATIONS = [
   'STEP_UP_FAILED',
   'RATE_LIMITED',
   'EXPORT',
+  'DOWNLOAD',
 ] as const;
 
 // Query-string booleans arrive as 'true' / 'false'.

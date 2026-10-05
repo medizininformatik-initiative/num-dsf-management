@@ -44,6 +44,7 @@ const OPERATIONS: Record<string, OperationMeta> = {
   TOTP_VERIFY: { icon: 'password', className: 'text-info-fg', label: 'shellOpTotpVerify' },
   FAILED_LOGIN: { icon: 'gpp_bad', className: 'text-danger-fg', label: 'shellOpFailedLogin' },
   WITHDRAW: { icon: 'undo', className: MUTED, label: 'shellOpWithdraw' },
+  DOWNLOAD: { icon: 'download', className: 'text-info-fg', label: 'shellOpDownload' },
 };
 const UNKNOWN_OPERATION: OperationMeta = { icon: 'info', className: MUTED };
 
@@ -56,6 +57,7 @@ const RESOURCES: Record<string, TranslationKey> = {
   AUTH: 'shellEntityAuth',
   APPROVAL: 'shellEntityApproval',
   MARKETPLACE: 'shellEntityMarketplace',
+  BACKUP: 'shellEntityBackup',
 };
 
 interface AuditEntry {
