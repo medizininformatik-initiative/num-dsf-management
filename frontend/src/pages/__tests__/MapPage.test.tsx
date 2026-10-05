@@ -156,7 +156,7 @@ describe('MapPage', () => {
     hook.current = { data: undefined, isLoading: false, error: new Error('x'), refetch };
     renderWithProviders(<MapPage />);
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Failed to load network map.');
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to load federation map.');
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(refetch).toHaveBeenCalledTimes(1);
   });

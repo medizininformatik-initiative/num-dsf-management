@@ -85,7 +85,7 @@ export const de: Record<TranslationKey, string> = {
   approve: 'Genehmigen',
   reject: 'Ablehnen',
   auditLog: 'Audit-Protokoll',
-  networkMap: 'Netzwerkkarte',
+  networkMap: 'Verbundkarte',
   gettingStarted: 'Erste Schritte',
   pageNotFound: 'Seite nicht gefunden',
   backToDashboard: 'Zurück zum Dashboard',
@@ -691,7 +691,7 @@ export const de: Record<TranslationKey, string> = {
   expiryDaysRemaining: '{n}T verbleibend',
 
   // Map — modern canvas (floating controls, legend, keyboard, states)
-  mapNetworkLabel: 'Netzwerkkarte Deutschland',
+  mapNetworkLabel: 'Verbundkarte Deutschland',
   mapKeyboardHint:
     'Mit den Pfeiltasten wechseln Sie zwischen Standorten, mit + und − zoomen Sie, mit 0 sehen Sie ganz Deutschland.',
   mapZoomGroup: 'Zoom',
@@ -723,7 +723,7 @@ export const de: Record<TranslationKey, string> = {
   mapRoleAdmin: 'Admin',
   mapRoleMember: 'Mitglied',
   mapLoadingNetwork: 'Netzwerk wird geladen…',
-  mapLoadFailed: 'Netzwerkkarte konnte nicht geladen werden.',
+  mapLoadFailed: 'Verbundkarte konnte nicht geladen werden.',
 
   // Map — graph
   mapCentralTitle: 'DSF ALLOW LIST',
@@ -1321,7 +1321,7 @@ export const de: Record<TranslationKey, string> = {
   cmdGoToCanvas: 'Zur Canvas',
   cmdApprovalReview: 'Genehmigungen prüfen',
   cmdAuditLog: 'Audit-Protokoll',
-  cmdNetworkMap: 'Netzwerkkarte',
+  cmdNetworkMap: 'Verbundkarte',
   cmdEditOrganization: 'Organisation bearbeiten',
   cmdAddContact: 'Kontakt hinzufügen',
   cmdAddEndpoint: 'Endpunkt hinzufügen',

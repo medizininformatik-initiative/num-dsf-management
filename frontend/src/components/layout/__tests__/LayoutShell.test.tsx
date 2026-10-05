@@ -56,7 +56,10 @@ describe('Sidebar', () => {
     // Nav links — icons are decorative (aria-hidden), so the names are the labels.
     const dashboardLink = screen.getByRole('link', { name: 'Dashboard' });
     expect(dashboardLink).toHaveAttribute('href', '/app');
-    expect(screen.getByRole('link', { name: /network map/i })).toHaveAttribute('href', '/app/map');
+    expect(screen.getByRole('link', { name: /federation map/i })).toHaveAttribute(
+      'href',
+      '/app/map',
+    );
     expect(screen.getByRole('link', { name: /status/i })).toHaveAttribute('href', '/app/status');
 
     // Instance switcher header + the two instances

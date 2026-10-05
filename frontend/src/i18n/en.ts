@@ -83,7 +83,7 @@ export const en = {
   approve: 'Approve',
   reject: 'Reject',
   auditLog: 'Audit Log',
-  networkMap: 'Network Map',
+  networkMap: 'Federation map',
   gettingStarted: 'Getting Started',
   pageNotFound: 'Page Not Found',
   backToDashboard: 'Back to Dashboard',
@@ -681,7 +681,7 @@ export const en = {
   expiryDaysRemaining: '{n}d remaining',
 
   // Map — modern canvas (floating controls, legend, keyboard, states)
-  mapNetworkLabel: 'Network map of Germany',
+  mapNetworkLabel: 'Federation map of Germany',
   mapKeyboardHint:
     'Use the arrow keys to move between sites, + and − to zoom and 0 to show all of Germany.',
   mapZoomGroup: 'Zoom',
@@ -713,7 +713,7 @@ export const en = {
   mapRoleAdmin: 'Admin',
   mapRoleMember: 'Member',
   mapLoadingNetwork: 'Loading network…',
-  mapLoadFailed: 'Failed to load network map.',
+  mapLoadFailed: 'Failed to load federation map.',
 
   // Map — graph
   mapCentralTitle: 'DSF ALLOW LIST',
@@ -1294,7 +1294,7 @@ export const en = {
   cmdGoToCanvas: 'Go to Canvas',
   cmdApprovalReview: 'Approval Review',
   cmdAuditLog: 'Audit Log',
-  cmdNetworkMap: 'Network Map',
+  cmdNetworkMap: 'Federation map',
   cmdEditOrganization: 'Edit Organization',
   cmdAddContact: 'Add Contact',
   cmdAddEndpoint: 'Add Endpoint',

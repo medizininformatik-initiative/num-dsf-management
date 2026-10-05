@@ -42,13 +42,15 @@ describe('Sidebar navigation', () => {
     const dashboard = screen.getByRole('link', { name: 'Dashboard' });
     expect(dashboard).toHaveAttribute('aria-current', 'page');
     expect(dashboard.className).toContain('accent-surface');
-    expect(screen.getByRole('link', { name: 'Network Map' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: 'Federation map' })).not.toHaveAttribute(
+      'aria-current',
+    );
     expect(screen.getByRole('link', { name: 'Status' })).not.toHaveAttribute('aria-current');
   });
 
   it('marks the map and status links as the current page on their routes', () => {
     const { unmount } = renderWithProviders(<Sidebar />, { route: '/app/map' });
-    expect(screen.getByRole('link', { name: 'Network Map' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Federation map' })).toHaveAttribute(
       'aria-current',
       'page',
     );
@@ -184,9 +186,9 @@ describe('Sidebar variants', () => {
     const expand = screen.getByRole('button', { name: 'Expand navigation' });
     expect(expand).toHaveAttribute('aria-expanded', 'false');
     // Links keep their names (and a tooltip) although the labels are faded out.
-    expect(screen.getByRole('link', { name: 'Network Map' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Federation map' })).toHaveAttribute(
       'title',
-      'Network Map',
+      'Federation map',
     );
     // No room for the instance switcher in the rail.
     expect(screen.queryByRole('button', { name: 'alpha.example.de' })).not.toBeInTheDocument();

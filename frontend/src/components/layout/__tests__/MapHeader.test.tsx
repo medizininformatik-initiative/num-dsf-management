@@ -28,11 +28,11 @@ beforeEach(() => {
 });
 
 describe('MapHeader', () => {
-  it('renders the Network Map title and the admin role badge (no emoji)', () => {
+  it('renders the Federation map title and the admin role badge (no emoji)', () => {
     state.me = { email: 'admin@imi-test.example.de', isAdmin: true };
     state.map = { organizations: [], isAdmin: true };
     renderWithProviders(<MapHeader />);
-    expect(screen.getByRole('heading', { name: /network map/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /federation map/i })).toBeInTheDocument();
     expect(screen.getByText('Admin')).toBeInTheDocument();
     expect(screen.queryByText('Member')).not.toBeInTheDocument();
   });
@@ -60,7 +60,7 @@ describe('MapHeader', () => {
 
   it('renders no role badge while the role is unknown', () => {
     renderWithProviders(<MapHeader />);
-    expect(screen.getByRole('heading', { name: /network map/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /federation map/i })).toBeInTheDocument();
     expect(screen.queryByText('Member')).not.toBeInTheDocument();
     expect(screen.queryByText('Admin')).not.toBeInTheDocument();
   });
