@@ -48,6 +48,11 @@ const motion = {
     'popover-in': { from: { opacity: '0', transform: 'scale(0.96)' } },
     'popover-out': { to: { opacity: '0', transform: 'scale(0.96)' } },
     'list-item-in': { from: { opacity: '0', transform: 'translateY(6px)' } },
+    // Disclosure content: a grid wrapper grows its single row from 0fr to 1fr
+    // (the child needs min-h-0 overflow-hidden), so the height follows the
+    // content without measuring it.
+    'expand-in': { from: { gridTemplateRows: '0fr', opacity: '0' } },
+    'expand-out': { to: { gridTemplateRows: '0fr', opacity: '0' } },
     'toast-in': { from: { opacity: '0', transform: 'translateY(12px) scale(0.96)' } },
     'toast-out': { to: { opacity: '0', transform: 'scale(0.96)' } },
     shimmer: { from: { backgroundPosition: '150% 0' }, to: { backgroundPosition: '-50% 0' } },
@@ -71,6 +76,8 @@ const motion = {
     // Stagger: set style={{ '--stagger-index': i }} on each item (capped at 12).
     'list-item-in':
       'list-item-in var(--duration-medium) var(--ease-spring) calc(min(var(--stagger-index, 0), 12) * var(--stagger-step)) both',
+    'expand-in': 'expand-in var(--duration-medium) var(--ease-spring) both',
+    'expand-out': 'expand-out var(--duration-medium-exit) var(--ease-exit) both',
     'toast-in': 'toast-in var(--duration-medium) var(--ease-spring-bouncy) both',
     'toast-out': 'toast-out var(--duration-short-exit) var(--ease-exit) both',
     shimmer: 'shimmer calc(var(--duration-long) * 3) var(--ease-standard) infinite',

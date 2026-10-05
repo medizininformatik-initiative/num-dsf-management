@@ -930,6 +930,16 @@ body {
       opacity: 1;
     }
   }
+  @keyframes expand-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes expand-out {
+    to {
+      opacity: 0;
+    }
+  }
   @keyframes toast-in {
     from {
       opacity: 0;
