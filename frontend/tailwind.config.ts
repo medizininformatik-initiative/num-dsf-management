@@ -108,18 +108,30 @@ export default {
         'on-surface': '#181c20',
         'on-surface-variant': '#464555',
         'outline-variant': '#c7c4d8',
-        primary: '#b01e66',
-        'primary-container': '#8a1750',
+        // Accent from the violet of the IMI logo gradient: filled controls with
+        // white text (5.6:1) and, with dark:text-brand-400, accent text. The
+        // theme-aware text/ring colour is var(--primary) in src/index.css.
+        primary: '#675fa8',
+        'primary-container': '#554e8f',
         secondary: '#006b5a',
         tertiary: '#805200',
         error: '#ba1a1a',
+        // Accent scale around primary (600). Light text: 700 (7.3:1 on white);
+        // dark text: 400 (5.6:1 on the dark card).
         brand: {
-          50: '#fde3ef',
-          100: '#fbc9de',
-          400: '#e06399',
-          600: '#b01e66',
-          700: '#8a1750',
-          900: '#4a0b28',
+          50: '#f1f0f9',
+          100: '#e2dff2',
+          400: '#8f87cc',
+          600: '#675fa8',
+          700: '#554e8f',
+          900: '#2a2748',
+        },
+        // IMI logo gradient stops (sampled from the logo) — brand use only.
+        imi: {
+          magenta: '#a7338f',
+          violet: '#675fa8',
+          blue: '#3287ba',
+          green: '#6dab4a',
         },
         canvas: '#f0f2f8',
         card: '#ffffff',
@@ -133,8 +145,8 @@ export default {
         input: '10px',
       },
       boxShadow: {
-        'card-elevated': '0 2px 8px rgba(176,30,102,0.07)',
-        'card-elevated-hover': '0 4px 16px rgba(176,30,102,0.13)',
+        'card-elevated': '0 2px 8px rgba(24,28,32,0.06)',
+        'card-elevated-hover': '0 4px 16px rgba(24,28,32,0.1)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
