@@ -265,8 +265,55 @@ describe('NodeDetailsPanel motion and dismissal', () => {
     expect(aside).not.toHaveAttribute('hidden');
     expect(aside).toHaveAttribute('data-state', 'open');
     expect(aside.className).toContain('glass');
-    expect(aside.className).toContain('data-[state=open]:animate-sheet-in-right');
+    expect(aside.className).toContain('map-animate-sheet-in-right');
     expect(screen.getByRole('complementary', { name: 'Alpha Klinik' })).toBe(aside);
+  });
+
+  it('docks and slides in on the requested side', () => {
+    const { container, rerender } = renderWithProviders(
+      <NodeDetailsPanel
+        org={adminOrg()}
+        cluster={null}
+        isAdmin
+        side="left"
+        onClose={vi.fn()}
+        onSelectMember={vi.fn()}
+      />,
+    );
+    const aside = container.querySelector('aside') as HTMLElement;
+    expect(aside).toHaveAttribute('data-side', 'left');
+    expect(aside.className).toContain('map-animate-sheet-in-left');
+    rerender(
+      <NodeDetailsPanel
+        org={adminOrg()}
+        cluster={null}
+        isAdmin
+        side="bottom"
+        onClose={vi.fn()}
+        onSelectMember={vi.fn()}
+      />,
+    );
+    expect(aside.className).toContain('map-animate-sheet-in-bottom');
+  });
+
+  it('links the endpoint address and the e-mail addresses', () => {
+    renderWithProviders(
+      <NodeDetailsPanel
+        org={adminOrg()}
+        cluster={null}
+        isAdmin
+        onClose={vi.fn()}
+        onSelectMember={vi.fn()}
+      />,
+    );
+    const endpoint = screen.getByRole('link', { name: /fhir\.alpha\.de/ });
+    expect(endpoint).toHaveAttribute('href', 'https://fhir.alpha.de/fhir');
+    expect(endpoint).toHaveAttribute('target', '_blank');
+    expect(endpoint).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    expect(screen.getByRole('link', { name: 'ops@alpha.de' })).toHaveAttribute(
+      'href',
+      'mailto:ops@alpha.de',
+    );
   });
 
   it('keeps its content while sliding out, then empties and hides', async () => {
@@ -278,6 +325,7 @@ describe('NodeDetailsPanel motion and dismissal', () => {
 
     const aside = container.querySelector('aside') as HTMLElement;
     expect(aside).toHaveAttribute('data-state', 'closed');
+    expect(aside.className).toContain('map-animate-sheet-out-right');
     expect(aside).toHaveAttribute('aria-hidden', 'true');
     expect(aside).toHaveTextContent('Alpha Klinik');
 

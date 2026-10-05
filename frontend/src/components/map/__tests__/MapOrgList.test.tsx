@@ -38,6 +38,45 @@ describe('MapOrgList', () => {
     expect(onSelect).toHaveBeenCalledWith('a.de');
   });
 
+  it('marks the selected row and reports row hover to the map', async () => {
+    const onHover = vi.fn();
+    renderWithProviders(
+      <MapOrgList organizations={orgs} selectedId="b.de" onSelect={vi.fn()} onHover={onHover} />,
+    );
+    expect(screen.getByText('Beta Klinik').closest('button')).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    await userEvent.hover(screen.getByText('Alpha Klinik'));
+    expect(onHover).toHaveBeenLastCalledWith('a.de');
+    await userEvent.unhover(screen.getByText('Alpha Klinik'));
+    expect(onHover).toHaveBeenLastCalledWith(null);
+  });
+
+  it('collapses a group and closes from its header button', async () => {
+    const onClose = vi.fn();
+    renderWithProviders(
+      <MapOrgList organizations={orgs} selectedId={null} onSelect={vi.fn()} onClose={onClose} />,
+    );
+    const group = screen.getByRole('button', { name: /mii-testverband\.example\.de/ });
+    expect(group).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.click(group);
+    expect(group).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Alpha Klinik')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Hide organization list' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('reopens a collapsed group when one of its organizations is selected', async () => {
+    const { rerender } = renderWithProviders(
+      <MapOrgList organizations={orgs} selectedId={null} onSelect={vi.fn()} />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: /mii-testverband\.example\.de/ }));
+    expect(screen.queryByText('Alpha Klinik')).toBeNull();
+    rerender(<MapOrgList organizations={orgs} selectedId="a.de" onSelect={vi.fn()} />);
+    expect(await screen.findByText('Alpha Klinik')).toBeInTheDocument();
+  });
+
   it('shows an empty-state message when there are no organizations', () => {
     renderWithProviders(<MapOrgList organizations={[]} selectedId={null} onSelect={vi.fn()} />);
     expect(screen.getByText(/No organizations match the current filter/i)).toBeInTheDocument();
