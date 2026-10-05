@@ -7,7 +7,7 @@
  *   GET    /admin/bundle-versions               — paginated list
  *   GET    /admin/bundle-versions/:id           — single version + parsed bundle
  *   GET    /admin/bundle-versions/:id/download  — raw bundle JSON (Content-Disposition attachment)
- *   POST   /admin/bundle-versions/:id/restore   — publish an old version again (step-up)
+ *   POST   /admin/bundle-versions/:id/restore   — request the restore of an old version (four-eyes, step-up)
  *   GET    /admin/bundle-versions/:idA/diff/:idB
  */
 import { Router } from 'express';
@@ -18,6 +18,8 @@ import { requireFreshTotp } from '../middleware/totp.middleware';
 import { stepUpTotpRateLimit } from '../middleware/rateLimit.middleware';
 import { asyncHandler } from '../lib/asyncHandler';
 import * as svc from '../services/bundle-versions.service';
+import { createRestoreRequest } from '../services/bundle-restore.service';
+import { sendRestoreError } from './admin-bundle-restores.routes';
 
 const listSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -75,7 +77,9 @@ adminBundleVersionsRouter.get(
   }),
 );
 
-// Publish an old version again as a NEW version. Step-up like every admin write.
+// Request the restore of an old version (four-eyes). A second admin of another
+// site must approve it (POST /admin/bundle-restores/:rid/approve) before anything
+// is published. Step-up like every admin write.
 adminBundleVersionsRouter.post(
   '/:id/restore',
   ...stepUp,
@@ -88,24 +92,15 @@ adminBundleVersionsRouter.post(
       });
     }
     try {
-      const result = await svc.restoreVersion(req.params.id, parsed.data.reason, req.user!.email);
-      res.status(201).json({ data: result });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '';
-      if (message === 'NOT_FOUND') {
-        return res
-          .status(404)
-          .json({ error: { code: 'NOT_FOUND', message: 'Bundle version not found.' } });
-      }
-      if (message === 'VERSION_NOT_RESTORABLE') {
-        return res.status(409).json({
-          error: {
-            code: 'VERSION_NOT_RESTORABLE',
-            message: 'This version was created before restore support and cannot be restored.',
-          },
-        });
-      }
-      throw err;
+      const data = await createRestoreRequest(
+        req.params.id,
+        parsed.data.reason,
+        req.user!.email,
+        req.ip,
+      );
+      res.status(201).json({ data });
+    } catch (err) {
+      if (!sendRestoreError(err, res)) throw err;
     }
   }),
 );
