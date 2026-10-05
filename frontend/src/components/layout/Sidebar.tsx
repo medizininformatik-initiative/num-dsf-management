@@ -339,13 +339,6 @@ export function Sidebar({
               onNavigate={onNavigate}
             />
           </li>
-          <li>
-            <NavItem
-              item={{ to: '/app/status', icon: 'dashboard', label: t('status') }}
-              rail={rail}
-              onNavigate={onNavigate}
-            />
-          </li>
           {me?.isAdmin && (
             <li className="mt-3">
               <NavSection

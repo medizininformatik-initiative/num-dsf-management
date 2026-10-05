@@ -18,7 +18,6 @@ import { AdminPromotionsPage } from './pages/AdminPromotionsPage';
 import { AdminCaBlacklistPage } from './pages/AdminCaBlacklistPage';
 import { AdminBundleVersionsPage } from './pages/AdminBundleVersionsPage';
 import { AdminOnboardingPage } from './pages/AdminOnboardingPage';
-import { StatusPage } from './pages/StatusPage';
 import { MapPage } from './pages/MapPage';
 import { MarketplacePage } from './pages/MarketplacePage';
 import { MarketplaceDetailPage } from './pages/MarketplaceDetailPage';
@@ -70,7 +69,8 @@ export const router = createBrowserRouter([
       { path: 'admin/ca-blacklist', element: <AdminCaBlacklistPage /> },
       { path: 'admin/bundle-versions', element: <AdminBundleVersionsPage /> },
       { path: 'admin/onboarding', element: <AdminOnboardingPage /> },
-      { path: 'status', element: <StatusPage /> },
+      // The instance status page was folded into the overview and the approval flow.
+      { path: 'status', element: <Navigate to="/app" replace /> },
       { path: 'map', element: <MapPage /> },
       { path: 'marketplace', element: <MarketplacePage /> },
       { path: 'marketplace/:slug', element: <MarketplaceDetailPage /> },

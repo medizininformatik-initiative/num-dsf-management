@@ -45,20 +45,16 @@ describe('Sidebar navigation', () => {
     expect(screen.getByRole('link', { name: 'Federation map' })).not.toHaveAttribute(
       'aria-current',
     );
-    expect(screen.getByRole('link', { name: 'Status' })).not.toHaveAttribute('aria-current');
+    expect(screen.queryByRole('link', { name: 'Status' })).not.toBeInTheDocument();
   });
 
-  it('marks the map and status links as the current page on their routes', () => {
-    const { unmount } = renderWithProviders(<Sidebar />, { route: '/app/map' });
+  it('marks the map link as the current page on its route', () => {
+    renderWithProviders(<Sidebar />, { route: '/app/map' });
     expect(screen.getByRole('link', { name: 'Federation map' })).toHaveAttribute(
       'aria-current',
       'page',
     );
     expect(screen.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute('aria-current');
-    unmount();
-
-    renderWithProviders(<Sidebar />, { route: '/app/status' });
-    expect(screen.getByRole('link', { name: 'Status' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('lists Help below the Resources group and marks it current on /app/help', () => {

@@ -38,7 +38,6 @@ vi.mock('../../components/layout/RightPanel', () => ({
 vi.mock('../../components/canvas/EntityCanvas', () => ({
   EntityCanvas: () => <div>canvas</div>,
 }));
-vi.mock('../../components/layout/Breadcrumbs', () => ({ Breadcrumbs: () => null }));
 vi.mock('../../components/layout/ExpiryWarningBanner', () => ({
   ExpiryWarningBanner: () => null,
 }));
@@ -135,7 +134,7 @@ describe('AppPage wide layout (>= 1200 px)', () => {
   });
 
   it('shows the status column only on the canvas route', () => {
-    renderShell(true, '/app/status');
+    renderShell(true, '/app/audit');
     expect(statusColumn()).toBeNull();
     expect(screen.queryByRole('button', { name: /instance status/i })).not.toBeInTheDocument();
   });
