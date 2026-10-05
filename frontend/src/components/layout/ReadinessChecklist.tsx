@@ -4,7 +4,8 @@
  * deriveReadiness (the rule the wizard and the approval modal share), and
  * renders one row per step. The status icon carries a text alternative ("Done"
  * / "Missing"); each open row is a button that highlights the matching card
- * and scrolls it into view. Purely informational — it blocks nothing.
+ * and scrolls it into view. Purely informational — it blocks nothing. The
+ * right panel renders its own disclosure header and passes showTitle={false}.
  * Depends on: the five entity hooks, lib/readiness, Icon, i18n.store.
  */
 import { useOrganization } from '../../hooks/useOrganization';
@@ -16,7 +17,13 @@ import { deriveReadiness, READINESS_LABEL, revealReadinessCard } from '../../lib
 import { useI18n } from '../../stores/i18n.store';
 import { Icon } from '../ui/Icon';
 
-export function ReadinessChecklist({ instanceId }: { instanceId: string }) {
+export function ReadinessChecklist({
+  instanceId,
+  showTitle = true,
+}: {
+  instanceId: string;
+  showTitle?: boolean;
+}) {
   const { t } = useI18n();
   const { data: organization } = useOrganization(instanceId);
   const { data: contacts = [] } = useContacts(instanceId);
@@ -34,9 +41,11 @@ export function ReadinessChecklist({ instanceId }: { instanceId: string }) {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-xs font-semibold text-[color:var(--text-muted)]">
-        {t('readinessTitle')}
-      </h3>
+      {showTitle && (
+        <h3 className="text-xs font-semibold text-[color:var(--text-muted)]">
+          {t('readinessTitle')}
+        </h3>
+      )}
       <ul className="space-y-1">
         {items.map((item) => {
           const label = t(READINESS_LABEL[item.key]);

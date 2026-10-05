@@ -26,7 +26,7 @@ interface StateLook {
   icon: string;
   label: TranslationKey;
   text: TranslationKey;
-  /** Tinted surface + hairline of the banner box. */
+  /** Tinted surface of the banner (no border, so panels never stack boxes). */
   surface: string;
 }
 
@@ -36,35 +36,35 @@ const LOOK: Record<BannerState, StateLook> = {
     icon: 'draft',
     label: 'noRequest',
     text: 'approvalBannerNone',
-    surface: 'bg-neutral-surface border-neutral-border',
+    surface: 'bg-neutral-surface',
   },
   DRAFT: {
     tone: 'info',
     icon: 'edit_note',
     label: 'approvalStateDraft',
     text: 'approvalBannerDraft',
-    surface: 'bg-info-surface border-info-border',
+    surface: 'bg-info-surface',
   },
   PENDING: {
     tone: 'warning',
     icon: 'hourglass_top',
     label: 'pending',
     text: 'approvalBannerPending',
-    surface: 'bg-warning-surface border-warning-border',
+    surface: 'bg-warning-surface',
   },
   APPROVED: {
     tone: 'success',
     icon: 'verified',
     label: 'approved',
     text: 'approvalBannerApproved',
-    surface: 'bg-success-surface border-success-border',
+    surface: 'bg-success-surface',
   },
   REJECTED: {
     tone: 'danger',
     icon: 'block',
     label: 'rejected',
     text: 'approvalBannerRejected',
-    surface: 'bg-danger-surface border-danger-border',
+    surface: 'bg-danger-surface',
   },
 };
 
@@ -160,7 +160,7 @@ export function ApprovalStatusBanner({ approval, onResubmit, className = '' }: P
     <div
       key={state}
       data-approval-state={state}
-      className={`animate-fade-in rounded-xl border p-3 ${look.surface} ${className}`}
+      className={`animate-fade-in rounded-2xl p-3.5 ${look.surface} ${className}`}
     >
       <StatusPill tone={look.tone} icon={look.icon}>
         {t(look.label)}
@@ -177,10 +177,8 @@ export function ApprovalStatusBanner({ approval, onResubmit, className = '' }: P
         <FourEyesProgress fourEyes={approval.fourEyes} />
       )}
       {state === 'REJECTED' && (
-        <div className="mt-2.5 rounded-lg border border-danger-border bg-[color:var(--bg-card)] px-2.5 py-2">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-danger-fg">
-            {t('approvalBannerReason')}
-          </p>
+        <div className="mt-2.5">
+          <p className="text-xs font-semibold text-danger-fg">{t('approvalBannerReason')}</p>
           <p className="mt-0.5 whitespace-pre-wrap break-words text-xs text-[color:var(--text-primary)]">
             {approval?.comment?.trim() || t('approvalBannerNoReason')}
           </p>

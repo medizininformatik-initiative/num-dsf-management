@@ -5,7 +5,10 @@
  * starts below the TopBar, so it never covers the TopBar's actions.
  *
  * Wide layout (>= 1200 px): both panels are persistent columns the user can
- * collapse to a rail and expand again (smooth width/opacity transition).
+ * collapse to a rail and expand again. The collapse is choreographed: labels
+ * slide and fade out first, then the width follows on the spring curve;
+ * expanding grows the width at once and the labels return once it has room.
+ * Icons stay anchored at the same x, so the selection pill just narrows.
  * Narrow layout: the TopBar spans the full width, both panels show as rails
  * below it, and their buttons open the full panel as a modal Drawer. The
  * column choices survive resizing; crossing the breakpoint (useWideLayout, a
@@ -19,7 +22,7 @@
  * useOrganization, usePresence, lib/motion, layout/* (Sidebar, TopBar,
  * RightPanel, Drawer, useWideLayout, …), canvas/*, modals/*, ui/*.
  */
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useMatch } from 'react-router-dom';
 import { useCanvasStore } from '../stores/canvas.store';
 import { useI18n } from '../stores/i18n.store';
@@ -59,37 +62,19 @@ const NAV_DRAWER_ID = 'app-nav-drawer';
 const PANEL_COLUMN_ID = 'app-status-panel';
 const PANEL_DRAWER_ID = 'app-status-drawer';
 
-// Width changes run on the medium duration; the panel content stays mounted
-// that long while its column collapses.
-const COLUMN_MOTION = 'transition-[width] duration-medium ease-standard';
+// Width changes run on the medium duration with the spring curve; the panel
+// content stays mounted that long while its column collapses. Collapsing
+// waits a beat for the labels to leave (sidebarStyles fade()).
+function columnMotion(expanded: boolean): string {
+  return `transition-[width] duration-medium ease-spring ${
+    expanded ? '' : 'delay-[var(--duration-micro-exit)]'
+  }`;
+}
+
+/** The status panel's collapse or close button, placed in RightPanel's header row. */
+const PANEL_BUTTON = 'absolute right-2 top-2.5 z-10 h-9 w-9 shrink-0 p-0';
 
 type DrawerState = { kind: 'nav'; group?: SidebarGroup } | { kind: 'panel' } | null;
-
-/** Header row above the status panel: its label and the collapse/close button. */
-function PanelHeader({
-  titleId,
-  className = '',
-  children,
-}: {
-  titleId: string;
-  className?: string;
-  children: ReactNode;
-}) {
-  const { t } = useI18n();
-  return (
-    <div
-      className={`flex h-12 shrink-0 items-center justify-between gap-2 pl-4 pr-1.5 ${className}`}
-    >
-      <p
-        id={titleId}
-        className="truncate text-[11px] font-bold uppercase tracking-wider text-[color:var(--text-muted)]"
-      >
-        {t('shellStatusPanel')}
-      </p>
-      {children}
-    </div>
-  );
-}
 
 /** Shown on the canvas route while no instance is active. */
 function InstancePlaceholder({ loading }: { loading: boolean }) {
@@ -157,8 +142,6 @@ export function AppPage() {
   const closeDrawer = useCallback(() => setDrawer(null), []);
   const navCloseRef = useRef<HTMLButtonElement>(null);
   const panelCloseRef = useRef<HTMLButtonElement>(null);
-  const panelTitleId = useId();
-  const panelDrawerTitleId = useId();
 
   // Drawers belong to the narrow layout: crossing the breakpoint or navigating
   // closes them, while the user's column choices stay as they are.
@@ -183,7 +166,7 @@ export function AppPage() {
   const sidebarColumn = (
     <div
       id={NAV_COLUMN_ID}
-      className={`h-full shrink-0 overflow-hidden print:hidden ${COLUMN_MOTION} ${
+      className={`h-full shrink-0 overflow-hidden print:hidden ${columnMotion(navExpanded)} ${
         navExpanded ? 'w-[220px]' : 'w-16'
       }`}
     >
@@ -198,7 +181,7 @@ export function AppPage() {
   const statusColumn = (
     <div
       id={PANEL_COLUMN_ID}
-      className={`relative h-full shrink-0 overflow-hidden print:hidden ${COLUMN_MOTION} ${
+      className={`relative h-full shrink-0 overflow-hidden print:hidden ${columnMotion(panelExpanded)} ${
         panelExpanded ? 'w-[280px]' : 'w-12'
       }`}
     >
@@ -206,29 +189,25 @@ export function AppPage() {
       {panelContent.mounted && (
         <div
           data-state={panelContent.state}
-          className="flex h-full w-[280px] flex-col data-[state=closed]:pointer-events-none data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out"
+          className="relative h-full w-[280px] data-[state=closed]:pointer-events-none data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out"
         >
-          <PanelHeader titleId={panelTitleId} className="glass-chrome border-l">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setPanelCollapsed(true)}
-              aria-label={t('shellHideStatusPanel')}
-              title={t('shellHideStatusPanel')}
-              aria-expanded="true"
-              aria-controls={PANEL_COLUMN_ID}
-              className="h-9 w-9 shrink-0 p-0"
-            >
-              <Icon name="right_panel_close" size={20} />
-            </Button>
-          </PanelHeader>
-          <div className="min-h-0 flex-1">
-            <RightPanel instanceId={activeInstanceId} />
-          </div>
+          <RightPanel instanceId={activeInstanceId} />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPanelCollapsed(true)}
+            aria-label={t('shellHideStatusPanel')}
+            title={t('shellHideStatusPanel')}
+            aria-expanded="true"
+            aria-controls={PANEL_COLUMN_ID}
+            className={PANEL_BUTTON}
+          >
+            <Icon name="right_panel_close" size={20} />
+          </Button>
         </div>
       )}
       {!panelExpanded && (
-        <div className="glass-chrome absolute inset-y-0 right-0 flex w-12 animate-fade-in flex-col items-center border-b-0 border-l pt-1.5">
+        <div className="glass-chrome absolute inset-y-0 right-0 flex w-12 animate-fade-in flex-col items-center border-b-0 border-l pt-2.5">
           <Button
             variant="ghost"
             size="sm"
@@ -309,29 +288,22 @@ export function AppPage() {
           side="right"
           open={panelDrawerOpen}
           onClose={closeDrawer}
-          labelledBy={panelDrawerTitleId}
+          label={t('shellStatusPanel')}
           initialFocusRef={panelCloseRef}
           className="w-[320px] max-w-[90vw]"
         >
-          <PanelHeader
-            titleId={panelDrawerTitleId}
-            className="border-b border-[color:var(--border)]"
+          <RightPanel instanceId={activeInstanceId} bare />
+          <Button
+            ref={panelCloseRef}
+            variant="ghost"
+            size="sm"
+            onClick={closeDrawer}
+            aria-label={t('shellCloseStatusPanel')}
+            title={t('shellCloseStatusPanel')}
+            className={PANEL_BUTTON}
           >
-            <Button
-              ref={panelCloseRef}
-              variant="ghost"
-              size="sm"
-              onClick={closeDrawer}
-              aria-label={t('shellCloseStatusPanel')}
-              title={t('shellCloseStatusPanel')}
-              className="h-9 w-9 shrink-0 p-0"
-            >
-              <Icon name="close" size={20} />
-            </Button>
-          </PanelHeader>
-          <div className="min-h-0 flex-1">
-            <RightPanel instanceId={activeInstanceId} />
-          </div>
+            <Icon name="close" size={20} />
+          </Button>
         </Drawer>
       )}
 

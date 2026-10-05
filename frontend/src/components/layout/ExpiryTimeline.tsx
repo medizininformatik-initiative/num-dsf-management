@@ -2,7 +2,8 @@
  * ExpiryTimeline.tsx – Vertical timeline of the instance's certificate expiry
  * dates, soonest first. Each entry's dot and pill follow the shared
  * classification (certValidity: expired, critical < 30 days, warning < 90
- * days, valid) and its date the app language (formatDate).
+ * days, valid) and its date the app language (formatDate). The right panel
+ * renders its own disclosure header and passes showTitle={false}.
  * Depends on: useCertificates, lib/certStatus, lib/dateUtils, StatusPill, Icon, i18n store
  */
 import type { CSSProperties } from 'react';
@@ -16,6 +17,7 @@ import { Icon } from '../ui/Icon';
 
 interface Props {
   instanceId: string | null;
+  showTitle?: boolean;
 }
 
 /** Timeline dot colour per tone (the pill carries the text). */
@@ -25,7 +27,7 @@ const DOT_CLASS: Record<'danger' | 'warning' | 'success', string> = {
   success: 'bg-success-fg',
 };
 
-export function ExpiryTimeline({ instanceId }: Props) {
+export function ExpiryTimeline({ instanceId, showTitle = true }: Props) {
   const { t, lang } = useI18n();
   const { data } = useCertificates(instanceId);
   const certs: ApiCertificate[] = Array.isArray(data) ? data : [];
@@ -45,10 +47,12 @@ export function ExpiryTimeline({ instanceId }: Props) {
 
   return (
     <div>
-      <h3 className="mb-2.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[color:var(--text-muted)]">
-        <Icon name="event" size={16} />
-        {t('expiryTimelineTitle')}
-      </h3>
+      {showTitle && (
+        <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold text-[color:var(--text-muted)]">
+          <Icon name="event" size={16} />
+          {t('expiryTimelineTitle')}
+        </h3>
+      )}
       <div className="relative pl-3">
         {/* Rail */}
         <span
