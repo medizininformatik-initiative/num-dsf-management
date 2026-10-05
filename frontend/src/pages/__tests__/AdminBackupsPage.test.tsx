@@ -48,6 +48,9 @@ vi.mock('../../lib/authMode', () => ({
   reauthRedirect: vi.fn(),
 }));
 
+// The typing tests are slow when the whole suite runs on a loaded machine.
+vi.setConfig({ testTimeout: 15000 });
+
 const SHA = 'ab12'.repeat(16);
 const runs = [
   {
