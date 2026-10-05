@@ -14,6 +14,7 @@ import { requireImiAdmin } from '../middleware/admin.middleware';
 import { requireStepUp } from '../middleware/stepUp.middleware';
 import * as svc from '../services/approval.service';
 import { stepUpTotpRateLimit } from '../middleware/rateLimit.middleware';
+import { writeAuditLog } from '../services/audit.service';
 
 export const adminApprovalRouter = Router();
 
@@ -52,6 +53,17 @@ adminApprovalRouter.post(
       res.json({ data: result });
     } catch (e: any) {
       const code = e?.message;
+      if (code === 'ALREADY_DECIDED' || code === 'ALREADY_APPROVED_SAME_SITE') {
+        // Four-eyes violation attempts (same admin twice, same site twice) stay in the audit trail.
+        writeAuditLog({
+          userEmail: req.user!.email,
+          resourceType: 'APPROVAL',
+          resourceId: req.params.rid,
+          operation: 'DENIED',
+          diffJson: { reason: code },
+          ipAddress: req.ip || 'unknown',
+        }).catch(() => {});
+      }
       if (code === 'ALREADY_DECIDED')
         return res
           .status(409)

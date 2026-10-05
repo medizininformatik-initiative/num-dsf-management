@@ -5,7 +5,7 @@
  * SECURITY: PEM uploads are screened by rejectPrivateKey() before any
  * parsing or storage — see certificate.service.ts.
  */
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireInstanceOwnership } from '../middleware/instance.middleware';
 import { validate } from '../middleware/validate.middleware';
@@ -14,6 +14,23 @@ import * as svc from '../services/certificate.service';
 import { db } from '../db/connection';
 import { sanitizeError } from '../lib/sanitizeError';
 import { asyncHandler } from '../lib/asyncHandler';
+import { writeAuditLog } from '../services/audit.service';
+
+const DENIAL_REASONS = new Set(['PRIVATE_KEY_REJECTED', 'CA_BLACKLISTED', 'CA_NOT_WHITELISTED']);
+
+/** Audit a refused certificate upload (never the PEM itself) without blocking the response. */
+function auditCertificateDenial(req: Request, err: unknown): void {
+  const reason = err instanceof Error ? err.message : '';
+  if (!DENIAL_REASONS.has(reason)) return;
+  writeAuditLog({
+    userEmail: req.user?.email,
+    instanceId: req.instance?.id,
+    resourceType: 'CERTIFICATE',
+    operation: 'DENIED',
+    diffJson: { reason },
+    ipAddress: req.ip || 'unknown',
+  }).catch(() => {});
+}
 
 export const certificatesRouter = Router({ mergeParams: true });
 certificatesRouter.use(requireAuth, requireInstanceOwnership);
@@ -50,6 +67,7 @@ certificatesRouter.post('/', validate(createCertificateSchema), async (req, res)
     );
     res.status(201).json({ data: cert });
   } catch (err: unknown) {
+    auditCertificateDenial(req, err);
     if (err instanceof Error && err.message === 'PRIVATE_KEY_REJECTED') {
       return res
         .status(400)
@@ -67,6 +85,7 @@ certificatesRouter.post('/preview', validate(createCertificateSchema), async (re
   try {
     res.json({ data: await svc.previewCertificate(req.body.pem) });
   } catch (err: unknown) {
+    auditCertificateDenial(req, err);
     if (err instanceof Error && err.message === 'PRIVATE_KEY_REJECTED') {
       return res
         .status(400)
@@ -100,6 +119,7 @@ certificatesRouter.post('/:cid/renew', validate(renewCertificateSchema), async (
     );
     res.json({ data: cert });
   } catch (err: unknown) {
+    auditCertificateDenial(req, err);
     if (err instanceof Error && err.message === 'PRIVATE_KEY_REJECTED') {
       return res
         .status(400)

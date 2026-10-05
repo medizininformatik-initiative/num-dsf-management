@@ -16,6 +16,7 @@ import rateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import { redis } from '../services/redis.service';
 import { verifyAccessToken } from '../services/auth.service';
+import { auditedLimitHandler } from './rateLimitAudit';
 
 function createRedisStore(prefix: string) {
   return new RedisStore({
@@ -28,6 +29,7 @@ export const otpRateLimit = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_OTP_WINDOW_MS || '900000'),
   max: parseInt(process.env.RATE_LIMIT_OTP_MAX || '5'),
   store: createRedisStore('otp'),
+  handler: auditedLimitHandler('otp'),
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -59,6 +61,7 @@ export const stepUpTotpRateLimit = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_STEPUP_WINDOW_MS || '900000'),
   max: parseInt(process.env.RATE_LIMIT_STEPUP_MAX || '20'),
   store: createRedisStore('stepup'),
+  handler: auditedLimitHandler('stepup'),
   keyGenerator: (req) => `user:${(req as { user?: { id: string } }).user?.id || req.ip}`,
   standardHeaders: true,
   legacyHeaders: false,

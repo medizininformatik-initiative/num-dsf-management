@@ -35,6 +35,7 @@ import { extractClientCert } from '../lib/clientCert';
 import { resolveCertLogin } from '../services/auth.service';
 import { db } from '../db/connection';
 import { isCertAuthMode } from '../lib/authMode';
+import { writeAuditLog } from '../services/audit.service';
 
 export type StepUpResult =
   | { ok: true }
@@ -130,6 +131,16 @@ export async function requireStepUp(
 ): Promise<void> {
   const result = await checkStepUp(req);
   if (!result.ok) {
+    // A missing code is a client mistake, not a verification attempt.
+    if (result.code !== 'TOTP_REQUIRED') {
+      writeAuditLog({
+        userEmail: req.user?.email,
+        resourceType: 'AUTH',
+        operation: 'STEP_UP_FAILED',
+        diffJson: { reason: result.code, path: req.originalUrl.split('?')[0] },
+        ipAddress: req.ip || 'unknown',
+      }).catch(() => {});
+    }
     res.status(result.status).json({ error: { code: result.code, message: result.message } });
     return;
   }

@@ -107,6 +107,13 @@ downloadRouter.get('/bundle', requireAuth, requireInstanceOwnership, async (req,
 downloadRouter.get('/ip-address-list', requireAuth, requireImiAdmin, async (req, res) => {
   try {
     const buffer = await generateIpAddressListExcel();
+    writeAuditLog({
+      userEmail: req.user!.email,
+      resourceType: 'AUTH',
+      operation: 'CREATE',
+      diffJson: { action: 'ip_address_list_download', byteSize: buffer.length },
+      ipAddress: req.ip || 'unknown',
+    }).catch(() => {});
     const date = new Date().toISOString().split('T')[0];
     res.setHeader(
       'Content-Type',

@@ -311,6 +311,12 @@ authRouter.post(
     }
     const resolved = await resolveCertLogin(cert.fingerprint);
     if (!resolved) {
+      writeAuditLog({
+        resourceType: 'AUTH',
+        operation: 'FAILED_LOGIN',
+        diffJson: { reason: 'CERT_NOT_REGISTERED', method: 'cert' },
+        ipAddress: req.ip || 'unknown',
+      }).catch(() => {});
       res.status(401).json({
         error: {
           code: 'CERT_NOT_REGISTERED',
@@ -323,6 +329,14 @@ authRouter.post(
 
     const wl = await db('email_whitelist').where({ email: user.email }).first();
     if (!wl || wl.locked_at) {
+      writeAuditLog({
+        userEmail: user.email,
+        instanceId,
+        resourceType: 'AUTH',
+        operation: 'FAILED_LOGIN',
+        diffJson: { reason: 'ACCOUNT_LOCKED', method: 'cert' },
+        ipAddress: req.ip || 'unknown',
+      }).catch(() => {});
       res.status(401).json({ error: { code: 'ACCOUNT_LOCKED', message: 'Account is locked.' } });
       return;
     }
