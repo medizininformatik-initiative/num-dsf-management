@@ -5,7 +5,8 @@
  *   first and _history/:vid reads an old one, all with the site's client
  *   certificate and only for its own endpoints;
  * - site users list the versions and download one (X-Bundle-Version);
- * - an admin restores an old version as a new, current one (step-up, 409 for
+ * - an admin requests the restore of an old version, a second admin of another
+ *   site approves it and it becomes the new, current one (step-up, 409 for
  *   versions without stored input).
  * Versions are global, so assertions name this run's organizations and the
  * explicit version numbers instead of "the latest overall".
@@ -47,6 +48,7 @@ describe('versioned allow list: /fhir history, GUI history, restore', () => {
   let a: Site;
   let b: Site;
   let admin: Participant;
+  let admin2: Participant;
   let v1 = 0;
   let v2 = 0;
   const versionIds: string[] = [];
@@ -71,8 +73,9 @@ describe('versioned allow list: /fhir history, GUI history, restore', () => {
       label: 'hist-a',
       memberships: [{ parent: `hub-${run}.example.de`, roles: ['DIC'] }],
     });
-    [admin] = await seedParticipants(hackathonManifest(1, run));
+    [admin, admin2] = await seedParticipants(hackathonManifest(2, run));
     admin.token = await certLogin(admin.pem);
+    admin2.token = await certLogin(admin2.pem);
     // v1: only A (and whatever other suites seeded); v2: B joined.
     v1 = (await snapshot()).versionNumber;
     b = await seedSite({ label: 'hist-b' });
@@ -82,7 +85,11 @@ describe('versioned allow list: /fhir history, GUI history, restore', () => {
   afterAll(async () => {
     await db('bundle_versions').whereIn('id', versionIds).del();
     await db('bundle_versions').where('notes', 'like', `%${run}%`).del();
-    await removeParticipants([admin.user.email], [admin.user.orgIdentifier]);
+    await db('bundle_restore_requests').where('reason', 'like', `%${run}%`).del();
+    await removeParticipants(
+      [admin.user.email, admin2.user.email],
+      [admin.user.orgIdentifier, admin2.user.orgIdentifier],
+    );
     await removeSites([a, b]);
   });
 
@@ -287,11 +294,18 @@ describe('versioned allow list: /fhir history, GUI history, restore', () => {
       await db('bundle_versions').where({ id: legacy.id }).del();
     });
 
-    it('creates a new current version from the old input and the FHIR read serves it', async () => {
-      const res = await api(admin).post(restoreUrl(await idOf(v1)), {
+    it('creates a new current version from the old input once a second admin approves', async () => {
+      const requested = await api(admin).post(restoreUrl(await idOf(v1)), {
         reason: `back to v1 ${run}`,
       });
-      expect(res.status).toBe(201);
+      expect(requested.status).toBe(201);
+      const before = await db('bundle_versions').where('notes', 'like', `%${run}%`).first();
+      expect(before).toBeUndefined();
+
+      const res = await api(admin2).post(
+        `/api/v1/admin/bundle-restores/${requested.body.data.id}/approve`,
+      );
+      expect(res.status).toBe(200);
       const restored = Number(res.body.data.versionNumber);
       expect(restored).toBeGreaterThan(v2);
       versionIds.push(res.body.data.id);

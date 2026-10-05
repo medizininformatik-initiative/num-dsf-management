@@ -372,6 +372,9 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
       ['post', '/api/v1/admin/ca-blacklist'],
       ['post', '/api/v1/admin/ca-whitelist'],
       ['post', '/api/v1/admin/bundle-versions/x/restore'],
+      ['post', '/api/v1/admin/bundle-restores/x/approve'],
+      ['post', '/api/v1/admin/bundle-restores/x/reject'],
+      ['post', '/api/v1/admin/bundle-restores/x/cancel'],
       ['post', '/api/v1/admin/marketplace'],
       ['post', '/api/v1/admin/onboarding/import'],
     ];
