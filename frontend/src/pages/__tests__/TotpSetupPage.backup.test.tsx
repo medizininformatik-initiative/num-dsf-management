@@ -5,7 +5,8 @@
  * every code (one per line), and "Download .txt" saves a text file with the
  * account, the codes and a note through a temporary <a download>. authApi,
  * jwt-decode and sonner are mocked; URL.createObjectURL (absent in jsdom) is
- * stubbed and the anchor click intercepted.
+ * stubbed and the anchor click intercepted. The step opens with the success
+ * check confirming that 2FA is active.
  */
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
@@ -75,6 +76,10 @@ function readBlob(blob: Blob): Promise<string> {
 describe('TotpSetupPage — backup codes', () => {
   it('lists the codes and enables Continue only after the codes are confirmed as stored', async () => {
     await gotoBackupStep();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Two-factor authentication is now active.',
+    );
+    expect(screen.getByTestId('auth-check')).toBeInTheDocument();
     const list = screen.getByRole('list', { name: 'Backup codes' });
     CODES.forEach((c) => expect(list).toHaveTextContent(c));
 

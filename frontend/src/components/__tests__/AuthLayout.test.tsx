@@ -1,15 +1,18 @@
 /**
  * AuthLayout.test.tsx — shared auth-page shell. Covers branding (IMI logo,
- * "dsf." wordmark, "Allow List Management"), the title/subtitle, children
- * rendering inside the glass card that scales in, the translated footer, and
- * both environment-badge branches (white text on lib/environment's accent).
+ * the BrandMark "DSF Management Tool", "Allow List Management"), the
+ * title/subtitle, children rendering inside the glass card, the translated
+ * footer, both environment-badge branches (white text on lib/environment's
+ * accent), and the motion contract: the first card springs in, later steps
+ * slide in reading direction, `success` swaps in the check, and the ambient
+ * background pauses while the tab is hidden.
  *
  * lib/environment reads `import.meta.env.VITE_DSF_ENVIRONMENT` at module load
  * into module-level constants, so the PRODUCTION branch is exercised by
  * stubbing the env, resetting the module registry, and re-importing.
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -30,8 +33,9 @@ describe('AuthLayout', () => {
       </AuthLayout>,
     );
 
-    // Wordmark + product line.
-    expect(screen.getByText('dsf.')).toBeInTheDocument();
+    // BrandMark (decorative glyph + product name) + product line.
+    expect(screen.getByText('DSF Management Tool')).toBeInTheDocument();
+    expect(screen.getByTestId('brand-mark-glyph')).toHaveAttribute('aria-hidden', 'true');
     expect(screen.getByText('Allow List Management')).toBeInTheDocument();
 
     // IMI logo (linked to the institute).
@@ -97,7 +101,7 @@ describe('AuthLayout', () => {
     expect(screen.queryByText('TEST')).not.toBeInTheDocument();
   });
 
-  it('puts the content on a glass card that scales in, with translated footer text', async () => {
+  it('puts the content on a glass card that springs in, with translated footer text', async () => {
     const AuthLayout = await loadAuthLayout();
     render(
       <AuthLayout title="Sign in">
@@ -106,11 +110,103 @@ describe('AuthLayout', () => {
     );
 
     const card = screen.getByRole('main');
-    expect(card).toHaveClass('glass-thick', 'animate-scale-in');
+    expect(card).toHaveClass('glass-thick', 'animate-auth-card-in');
     expect(card).toContainElement(screen.getByRole('heading', { name: 'Sign in' }));
     expect(screen.getByText('In cooperation with')).toBeInTheDocument();
     expect(
       screen.getByText('Institute of Medical Informatics, University of Münster'),
     ).toBeInTheDocument();
+  });
+
+  it('keeps the card on later steps and slides the content in reading direction', async () => {
+    const AuthLayout = await loadAuthLayout();
+    const first = render(
+      <AuthLayout title="Email" step={0}>
+        <span>email</span>
+      </AuthLayout>,
+    );
+    first.unmount();
+
+    const forward = render(
+      <AuthLayout title="Code" step={1}>
+        <span>code</span>
+      </AuthLayout>,
+    );
+    expect(screen.getByRole('main')).not.toHaveClass('animate-auth-card-in');
+    expect(screen.getByRole('heading', { name: 'Code' }).parentElement).toHaveClass(
+      'animate-auth-step-forward',
+    );
+    forward.unmount();
+
+    render(
+      <AuthLayout title="Email again" step={0}>
+        <span>email</span>
+      </AuthLayout>,
+    );
+    expect(screen.getByRole('heading', { name: 'Email again' }).parentElement).toHaveClass(
+      'animate-auth-step-back',
+    );
+  });
+
+  it('slides between steps of the same instance', async () => {
+    const AuthLayout = await loadAuthLayout();
+    const { rerender } = render(
+      <AuthLayout title="Scan" step={2}>
+        <span>qr</span>
+      </AuthLayout>,
+    );
+    rerender(
+      <AuthLayout title="Confirm" step={3}>
+        <span>confirm</span>
+      </AuthLayout>,
+    );
+    expect(screen.getByRole('heading', { name: 'Confirm' }).parentElement).toHaveClass(
+      'animate-auth-step-forward',
+    );
+    rerender(
+      <AuthLayout title="Scan" step={2}>
+        <span>qr</span>
+      </AuthLayout>,
+    );
+    expect(screen.getByRole('heading', { name: 'Scan' }).parentElement).toHaveClass(
+      'animate-auth-step-back',
+    );
+  });
+
+  it('replaces the content with the success check and a status', async () => {
+    const AuthLayout = await loadAuthLayout();
+    render(
+      <AuthLayout title="Two-factor" success="Signed in.">
+        <button type="button">Sign in</button>
+      </AuthLayout>,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('Signed in.');
+    expect(screen.getByTestId('auth-check')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByRole('button', { name: 'Sign in' })).not.toBeInTheDocument();
+  });
+
+  it('pauses the ambient background while the tab is hidden', async () => {
+    const AuthLayout = await loadAuthLayout();
+    render(
+      <AuthLayout title="Sign in">
+        <span>child</span>
+      </AuthLayout>,
+    );
+    const ambient = screen.getByTestId('auth-ambient');
+    expect(ambient).toHaveAttribute('aria-hidden', 'true');
+    expect(ambient).not.toHaveAttribute('data-paused');
+
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(ambient).toHaveAttribute('data-paused');
+
+    hidden.mockReturnValue(false);
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(ambient).not.toHaveAttribute('data-paused');
+    hidden.mockRestore();
   });
 });

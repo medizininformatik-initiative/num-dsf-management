@@ -143,6 +143,12 @@ describe('OtpPage', () => {
     );
     expect(verifyOtp).toHaveBeenCalledWith('admin@example.com', '123456');
     screen.getAllByRole('textbox').forEach((input) => expect(input).toHaveValue(''));
+    // The emptied boxes stay marked invalid until the next digit.
+    screen
+      .getAllByRole('textbox')
+      .forEach((input) => expect(input).toHaveAttribute('aria-invalid', 'true'));
+    fireEvent.change(screen.getByLabelText('Digit 1 of 6'), { target: { value: '4' } });
+    expect(screen.getByLabelText('Digit 2 of 6')).not.toHaveAttribute('aria-invalid');
   });
 
   it('announces a rate-limited verification with its retry time', async () => {
@@ -154,5 +160,13 @@ describe('OtpPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Too many attempts. Please try again in 15 min.',
     );
+  });
+
+  it('pops the digit boxes in one after another', () => {
+    renderPage();
+    screen.getAllByRole('textbox').forEach((input, i) => {
+      expect(input).toHaveClass('animate-auth-digit-in');
+      expect(input.style.getPropertyValue('--stagger-index')).toBe(String(i));
+    });
   });
 });
