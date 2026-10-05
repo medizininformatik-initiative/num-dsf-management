@@ -30,9 +30,13 @@
 
 - 🧩 **Entity-graph canvas**: five entities for one DSF instance edited on a single page with live SVG relations
 - 🗺 **Federation map**: cross-instance allow-list as a Germany silhouette, peer edges by verbund (MII / NUM)
-- ✅ **Approval workflow**: 4-eyes IMI review with full snapshot, 7-day silent consent, append-only audit trail
+- ✅ **Approval workflow**: 4-eyes IMI review with full snapshot, 7-day silent consent; sites see their running request and can withdraw it
+- 🗂 **Versioned allow list**: each site publishes exactly the data of its last approved request; every published version is kept with history, diff and a four-eyes restore
+- 📥 **Bulk onboarding**: CSV/XLSX templates, many site files at once, in-tool table editor and a dry run before the import
+- 🔎 **Audit log**: filters, readable before/after details, flagged anomalies, CSV/JSON export
+- 💾 **Backups**: scheduled full JSON backups on the server (at least daily), checksum, optional encryption, manual restore script
 - 🔐 **Passwordless auth**: email allow-list + OTP + TOTP, optional mTLS client-cert sign-in
-- 📦 **FHIR allow-list bundle**: RS256-signed downloads consumed by DSF BPE processes over mTLS
+- 📦 **FHIR allow-list bundle**: RS256-signed downloads consumed by DSF BPE processes over mTLS; the download dialog links straight to the draft `downloadAllowList` Task on the site's own DSF FHIR server
 - 🧪 **CI / test pipeline**: Jest (backend) · Vitest (frontend) · contract suite · Playwright E2E + visual regression, all green on every push to `main`
 
 ---
@@ -254,8 +258,11 @@ when the active route is one of its children):
 - **`/app/admin/users`**: whitelist + admin role management (lock / unlock / promote / demote / remove). All writes require TOTP re-confirmation.
 - **`/app/admin/promotions`**: pending admin-promotion requests; second admin from a different site approves or rejects (NO silent consent).
 - **`/app/admin/ca-blacklist`**: distrusted CA subject DNs and fingerprints; certificate uploads issued by a CA on this list are rejected with `CA_BLACKLISTED`. Backed by a cached Mozilla trust-store snapshot as a picker.
-- **`/app/admin/bundle-versions`**: full federation-bundle history with added/removed/changed diff, RS256-signed download, and (in emergencies) restore.
-- **`/app/audit`**: append-only cross-instance audit log.
+- **`/app/admin/ca-blacklist`** also holds the **CA whitelist** (the CAs of DSF 2.1.1, seeded at init); with `CA_WHITELIST_ENFORCE=true` certificates from other issuers are rejected.
+- **`/app/admin/bundle-versions`**: full federation-bundle history with added/removed/changed diff and RS256-signed download. Restoring an old version is a four-eyes decision: one admin requests it, a second admin from another site approves.
+- **`/app/admin/onboarding`**: bulk onboarding of sites from CSV/XLSX templates (many files at once) or the in-tool table editor, with conflict detection and a dry run.
+- **`/app/admin/backups`**: backup schedule (every 6 h, 12 h or daily), retention, run history with checksums, backup now, step-up-protected download.
+- **`/app/audit`**: append-only cross-instance audit log with filters, anomaly flags (failed sign-in bursts, rejected private keys, untrusted issuers, night-time admin actions, mass deletes, four-eyes violations) and CSV/JSON export.
 
 Admin-role assignments are stored in `admin_grants`, each row signed RS256 over a canonical message. A DB-only attacker cannot grant themselves admin without the signing key.
 
@@ -267,6 +274,7 @@ The bootstrap admin set is populated on first backend start from `IMI_ADMIN_EMAI
 - **SHA-256 content hash** logged in the audit trail (`X-Content-Hash` header)
 - DSF processes authenticate via **mTLS client certificates** at `/fhir/Bundle/:endpointId`
 - Client-certificate thumbprints are stored per organization
+- Each site contributes the data of its **last approved request** (snapshot taken at submit): unsubmitted edits never reach the allow list, and a newer pending, rejected or withdrawn request does not drop an approved site
 - Bundles carry the DSF `read-access-tag` (`ALL`) on the envelope and every resource, plus the `dsf.dev` `StructureDefinition` `meta.profile` per resource type, so receiving DSF FHIR servers route them through the strict validator
 - A full snapshot of every approved bundle is persisted in `bundle_versions` (versioned, signed, hash-chained); the post-approval notification mail carries the content hash, signature `kid`, change counts, and direct download / verify URLs in the recipient's locale (DE / EN via `contacts.language`)
 
@@ -276,7 +284,7 @@ The bootstrap admin set is populated on first backend start from `IMI_ADMIN_EMAI
 
 ### Federation safety
 
-The Portal coexists with other Allow-List tools (e.g., a NUM-operated tool, future regional operators). Bundles emit `DELETE` only on `OrganizationAffiliation`; `Organization` and `Endpoint` records are never deleted from a participant's local FHIR server through our bundle (they may be referenced by another tool's allow-list).
+The Portal coexists with other Allow-List tools (e.g., a NUM-operated tool, future regional operators). Bundles emit `DELETE` on `OrganizationAffiliation` for removed memberships. `Organization` and `Endpoint` records are deleted only for an organization whose withdrawal from the allow list was approved.
 
 Memberships removed via the UI are soft-deleted; the next bundle emission carries the corresponding `DELETE-Affiliation` entry; a daily cron at 09:00 UTC hard-deletes soft-rows older than 90 days (`MEMBERSHIP_SOFT_DELETE_RETENTION_DAYS` configurable).
 
@@ -349,6 +357,10 @@ docker compose -f docker-compose.prod.yml up -d --build
 | `ADMIN_GRANT_PRIVATE_KEY_BASE64` | falls back to JWT keys | Optional separate signing key for `admin_grants`. |
 | `ADMIN_GRANT_PUBLIC_KEY_BASE64` | falls back to JWT keys | Pair of the above. |
 | `IMI_ADMIN_EMAILS` | (none) | Comma-separated bootstrap admins. Consumed once on first backend start, then ignored. Remove from prod after first boot. |
+| `AUTH_MODE` | (OTP) | `cert`: client-certificate-only deployment; the e-mail OTP routes are disabled and the re-presented client certificate is the step-up. |
+| `CA_WHITELIST_ENFORCE` | `false` | Reject certificates whose issuer is not on the CA whitelist (default: flag only). |
+| `BACKUP_DIR` | `/backups` | Where scheduled backups are written (a docker volume, never exposed). |
+| `BACKUP_ENCRYPTION_KEY` | (none) | Optional 64-hex AES-256-GCM key; when set, backup files are encrypted. |
 
 ### Database migrations
 
@@ -360,6 +372,17 @@ docker compose exec -T db mysql -udsf -p${DB_PASSWORD} dsf_allowlist < db/migrat
 ```
 
 Each migration is idempotent (uses `information_schema` checks via `PREPARE` / `EXECUTE`), so re-running them is safe. CI loops `for f in db/migrations/*.sql` to apply all of them on every test DB.
+
+### Backup and restore
+
+Scheduled backups land in `BACKUP_DIR` as `.json.gz` files (mode 0600). Copy them off the server regularly. Restore by hand on the server:
+
+```bash
+bash scripts/restore-backup.sh <file> --dry-run   # verify only
+bash scripts/restore-backup.sh <file> --yes       # restore, then restart the backend
+```
+
+A restore replaces all application tables in one transaction and invalidates every session. Details: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), section "Backup und Wiederherstellung".
 
 </details>
 
