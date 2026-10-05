@@ -4,10 +4,9 @@
  *
  * The role badge follows the same signal that decides which map view the page
  * renders: `meta.isAdmin` of the network-map response (shared ['network','map']
- * query). `useMe()` is only the fallback while the map loads. /auth/me sits in
- * the auth rate-limit zone and is not covered by the 401 refresh, so treating
- * a missing `me` as "member" mislabelled admins; an unknown role now renders
- * no badge instead of the member badge.
+ * query). `useMe()` is only the fallback while the map loads. /auth/me can
+ * fail (auth rate-limit zone), so treating a missing `me` as "member"
+ * mislabelled admins; an unknown role now renders no badge instead.
  * Dependencies: useNetworkMap, useMe, StatusPill, Icon, i18n.store
  */
 import { Icon } from '../ui/Icon';

@@ -50,6 +50,12 @@ function refreshAccessToken(): Promise<string> {
   return refreshPromise;
 }
 
+// Login-flow routes under /auth/ must not trigger a refresh; /auth/me may.
+function refreshable(url: string | undefined): boolean {
+  if (!url) return true;
+  return !url.includes('/auth/') || /\/auth\/me(\?|$)/.test(url);
+}
+
 // Axios interceptors – token refresh + global error handling
 axios.interceptors.response.use(
   (response) => response,
@@ -59,8 +65,9 @@ axios.interceptors.response.use(
 
     // 401 – silent token refresh. /auth/* is excluded so the refresh call
     // itself, and login-flow 401s (bad OTP/TOTP), never re-enter the refresh
-    // path. _retried bails a request that 401s again after one retry.
-    if (status === 401 && !originalRequest._retried && !originalRequest.url?.includes('/auth/')) {
+    // path; /auth/me is session data and refreshes like any API call.
+    // _retried bails a request that 401s again after one retry.
+    if (status === 401 && !originalRequest._retried && refreshable(originalRequest.url)) {
       originalRequest._retried = true;
       try {
         const accessToken = await refreshAccessToken();
@@ -70,11 +77,7 @@ axios.interceptors.response.use(
         useAuthStore.getState().clearAuth();
         reauthRedirect();
       }
-    } else if (
-      status === 401 &&
-      originalRequest._retried &&
-      !originalRequest.url?.includes('/auth/')
-    ) {
+    } else if (status === 401 && originalRequest._retried && refreshable(originalRequest.url)) {
       // Refresh succeeded but the fresh token is still rejected (revoked or a
       // permission 401). Without _retried we'd loop on refresh forever; instead
       // end the session so the user isn't stuck authenticated-but-broken.

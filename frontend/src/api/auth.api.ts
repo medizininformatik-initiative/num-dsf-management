@@ -5,7 +5,8 @@
  * Uses the default axios singleton — the same instance the rest of the app and
  * the main.tsx interceptors (refresh + error toasts) and the demo mock-adapter
  * hook — so a 401 on /auth/me and global error handling run consistently. The
- * 401-refresh interceptor excludes /auth/*, so these calls never recurse.
+ * 401-refresh interceptor excludes /auth/* except /auth/me, so these calls
+ * never recurse.
  * Also exports the error helpers the sign-in screens use to tell a rate limit
  * (with its retry time) or a transport failure apart from a wrong code.
  */
