@@ -18,7 +18,8 @@ type ResourceType =
   | 'AUTH'
   | 'APPROVAL'
   | 'MARKETPLACE'
-  | 'AUDIT';
+  | 'AUDIT'
+  | 'BACKUP';
 type Operation =
   | 'CREATE'
   | 'UPDATE'
@@ -36,7 +37,8 @@ type Operation =
   | 'DENIED'
   | 'STEP_UP_FAILED'
   | 'RATE_LIMITED'
-  | 'EXPORT';
+  | 'EXPORT'
+  | 'DOWNLOAD';
 
 interface AuditEntry {
   userEmail?: string;
