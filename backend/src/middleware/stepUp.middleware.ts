@@ -137,7 +137,7 @@ export async function requireStepUp(
         userEmail: req.user?.email,
         resourceType: 'AUTH',
         operation: 'STEP_UP_FAILED',
-        diffJson: { reason: result.code, path: req.originalUrl.split('?')[0] },
+        diffJson: { reason: result.code, path: (req.originalUrl ?? req.url ?? '').split('?')[0] },
         ipAddress: req.ip || 'unknown',
       }).catch(() => {});
     }

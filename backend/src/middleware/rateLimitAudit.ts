@@ -17,7 +17,7 @@ export function auditedLimitHandler(bucket: string): Options['handler'] {
       userEmail: email,
       resourceType: 'AUTH',
       operation: 'RATE_LIMITED',
-      diffJson: { bucket, path: req.originalUrl.split('?')[0] },
+      diffJson: { bucket, path: (req.originalUrl ?? req.url ?? '').split('?')[0] },
       ipAddress: req.ip || 'unknown',
     }).catch(() => {});
     res.status(options.statusCode).send(options.message);
