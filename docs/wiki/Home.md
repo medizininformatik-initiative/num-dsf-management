@@ -12,7 +12,7 @@ A web application for managing participants in the **Data Sharing Framework (DSF
 - **mTLS Authentication** — DSF processes authenticate via client certificates
 - **Certificate Management** — Upload, renewal wizard, expiry tracking and alerts
 - **CA Blacklist** — Reject certificate uploads issued by distrusted CAs
-- **Network Map** — Federation-wide allow list as an interactive Germany silhouette
+- **Federation Map** — Federation-wide allow list as an interactive Germany silhouette
 - **Process Marketplace** — Curated DSF process catalog
 - **Append-only Audit Log** — Tamper-evident operations history (DB-level triggers)
 - **Dark Mode** — Blue-tinted dark palette with modern scrollbars

@@ -29,7 +29,7 @@
 ## Highlights
 
 - 🧩 **Entity-graph canvas**: five entities for one DSF instance edited on a single page with live SVG relations
-- 🗺 **Network map**: cross-instance allow-list as a Germany silhouette, peer edges by verbund (MII / NUM)
+- 🗺 **Federation map**: cross-instance allow-list as a Germany silhouette, peer edges by verbund (MII / NUM)
 - ✅ **Approval workflow**: 4-eyes IMI review with full snapshot, 7-day silent consent, append-only audit trail
 - 🔐 **Passwordless auth**: email allow-list + OTP + TOTP, optional mTLS client-cert sign-in
 - 📦 **FHIR allow-list bundle**: RS256-signed downloads consumed by DSF BPE processes over mTLS
@@ -98,7 +98,7 @@ Each Instance owns exactly one Organization. The Organization has many Contacts,
 <table>
 <tr>
 <td width="33%" valign="top"><a href="docs/screenshots/01-canvas.png"><img src="docs/screenshots/01-canvas.png" width="100%" alt="Entity-graph canvas" /></a><br /><sub>🧩 <b>Entity canvas</b> · one page, live SVG relations</sub></td>
-<td width="33%" valign="top"><a href="docs/screenshots/02-map.png"><img src="docs/screenshots/02-map.png" width="100%" alt="Network map" /></a><br /><sub>🗺 <b>Network map</b> · federation across sites</sub></td>
+<td width="33%" valign="top"><a href="docs/screenshots/02-map.png"><img src="docs/screenshots/02-map.png" width="100%" alt="Federation map" /></a><br /><sub>🗺 <b>Federation map</b> · federation across sites</sub></td>
 <td width="33%" valign="top"><a href="docs/screenshots/03-admin-approval.png"><img src="docs/screenshots/03-admin-approval.png" width="100%" alt="Approval review" /></a><br /><sub>✅ <b>Approval review</b> · 4-eyes IMI</sub></td>
 </tr>
 <tr>
@@ -270,7 +270,7 @@ The bootstrap admin set is populated on first backend start from `IMI_ADMIN_EMAI
 - Bundles carry the DSF `read-access-tag` (`ALL`) on the envelope and every resource, plus the `dsf.dev` `StructureDefinition` `meta.profile` per resource type, so receiving DSF FHIR servers route them through the strict validator
 - A full snapshot of every approved bundle is persisted in `bundle_versions` (versioned, signed, hash-chained); the post-approval notification mail carries the content hash, signature `kid`, change counts, and direct download / verify URLs in the recipient's locale (DE / EN via `contacts.language`)
 
-### Network map
+### Federation map
 
 `/app/map` renders the network-wide allow-list as a schematic Germany silhouette. Pins per organization (clustered by city), peer edges per `parent_organization` verbund (MII / NUM), filters for verbund / cert-status / city / activity. Theme-aware: dark mode inverts the silhouette palette.
 
