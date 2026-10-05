@@ -92,10 +92,13 @@ describe('CertificatesCard', () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the complete DSF fingerprint (SHA-512) of the certificate', () => {
+  it('shows the complete SHA-512 thumbprint with the certtool command', () => {
     renderWithProviders(<CertificatesCard instanceId="i1" />);
-    const fingerprint = screen.getByRole('group', { name: 'DSF fingerprint (SHA-512)' });
-    expect(fingerprint).toHaveTextContent(THUMBPRINT_SHA512);
+    const fingerprint = screen.getByRole('group', { name: 'SHA-512 thumbprint' });
+    expect(within(fingerprint).getByTestId('thumbprint-value').textContent).toBe(THUMBPRINT_SHA512);
+    expect(within(fingerprint).getByTestId('thumbprint-command')).toHaveTextContent(
+      'certtool --fingerprint --hash=sha512',
+    );
     expect(
       within(fingerprint).getByRole('button', { name: 'Copy DSF fingerprint' }),
     ).toBeInTheDocument();

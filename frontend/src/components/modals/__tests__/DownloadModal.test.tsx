@@ -2,7 +2,7 @@
  * DownloadModal.test.tsx — the link DSF uses, the version history with DSF
  * history links, signed versioned downloads with local hash verification
  * (match, mismatch, unavailable), the three-step guide, the admin-only IP list
- * and the acknowledgement gate. API, sonner and browser download plumbing are stubbed.
+ * and the calm disclaimer note (no gate). API, sonner and browser download plumbing are stubbed.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
@@ -83,7 +83,6 @@ async function openWithEndpoint() {
 
 async function downloadVersion3() {
   const user = await openWithEndpoint();
-  await user.click(screen.getByTestId('disclaimer-checkbox'));
   await user.click(await screen.findByTestId('download-version-3'));
   return screen.findByTestId('verify-panel');
 }
@@ -165,11 +164,9 @@ describe('DownloadModal – DSF link and history', () => {
 });
 
 describe('DownloadModal – versioned download and verification', () => {
-  it('keeps version downloads disabled until the disclaimer is acknowledged', async () => {
+  it('enables version downloads right away, without any acknowledgement', async () => {
     await openWithEndpoint();
-    const button = await screen.findByTestId('download-version-3');
-    expect(button).toBeDisabled();
-    expect(button).toHaveAccessibleDescription('Confirm the notice above to enable the downloads.');
+    expect(await screen.findByTestId('download-version-3')).toBeEnabled();
   });
 
   it('downloads the chosen version, shows hash and signature and confirms a matching hash', async () => {
@@ -224,7 +221,6 @@ describe('DownloadModal – versioned download and verification', () => {
   it('toasts an error when the download fails', async () => {
     downloadBundle.mockRejectedValueOnce(new Error('boom'));
     const user = await openWithEndpoint();
-    await user.click(screen.getByTestId('disclaimer-checkbox'));
     await user.click(await screen.findByTestId('download-version-3'));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to download the bundle.'));
     expect(screen.queryByTestId('verify-panel')).toBeNull();
@@ -237,7 +233,6 @@ describe('DownloadModal – versioned download and verification', () => {
     );
     const user = userEvent.setup();
     renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
-    await user.click(screen.getByTestId('disclaimer-checkbox'));
     await user.click(screen.getByTestId('download-bundle-btn'));
     const panel = await screen.findByTestId('verify-panel');
     expect(downloadFull).toHaveBeenCalledTimes(1);
@@ -263,13 +258,12 @@ describe('DownloadModal – guide, IP list and gate', () => {
     expect(screen.queryByTestId('download-ip-btn')).toBeNull();
   });
 
-  it('offers the IP address list to admins, behind the gate', async () => {
+  it('offers the IP address list to admins, without a gate', async () => {
     me.isAdmin = true;
     downloadIpList.mockResolvedValue({ data: new Blob(['x']) });
     const user = userEvent.setup();
     renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
-    expect(screen.getByTestId('download-ip-btn')).toBeDisabled();
-    await user.click(screen.getByTestId('disclaimer-checkbox'));
+    expect(screen.getByTestId('download-ip-btn')).toBeEnabled();
     await user.click(screen.getByTestId('download-ip-btn'));
     await waitFor(() => expect(downloadIpList).toHaveBeenCalledTimes(1));
     expect(toast.success).toHaveBeenCalledWith('IP address list downloaded.');
@@ -282,19 +276,20 @@ describe('DownloadModal – guide, IP list and gate', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows the disclaimer and keeps every download disabled until it is acknowledged', async () => {
+  it('shows a calm disclaimer note and never gates a download', async () => {
     me.isAdmin = true;
-    const user = await openWithEndpoint();
+    await openWithEndpoint();
     expect(screen.getByRole('heading', { name: /download allow list/i })).toBeInTheDocument();
-    expect(screen.getByTestId('bundle-disclaimer')).toBeInTheDocument();
-    const gated = () => [
+    const note = screen.getByTestId('bundle-disclaimer');
+    expect(note).toHaveTextContent(/recommendation/i);
+    expect(within(note).queryByRole('checkbox')).toBeNull();
+    // The full text sits behind a disclosure.
+    expect(within(note).getByText('Full notice').closest('details')).not.toHaveAttribute('open');
+    const downloads = [
       screen.getByTestId('download-bundle-btn'),
       screen.getByTestId('download-ip-btn'),
-      screen.getByTestId('download-version-3'),
+      await screen.findByTestId('download-version-3'),
     ];
-    await screen.findByTestId('download-version-3');
-    for (const b of gated()) expect(b).toBeDisabled();
-    await user.click(screen.getByTestId('disclaimer-checkbox'));
-    for (const b of gated()) expect(b).toBeEnabled();
+    for (const d of downloads) expect(d).toBeEnabled();
   });
 });

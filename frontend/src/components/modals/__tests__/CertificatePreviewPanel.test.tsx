@@ -61,7 +61,7 @@ beforeEach(() => {
 });
 
 describe('certificate upload preview', () => {
-  it('shows subject, expiry, the grouped DSF fingerprint and the DSF-CA issuer', async () => {
+  it('shows subject, expiry, the contiguous SHA-512 thumbprint and the DSF-CA issuer', async () => {
     resolvePreview(preview());
     renderWithProviders(<CertificateModal open onClose={() => {}} instanceId="i1" />);
     enterPem();
@@ -71,9 +71,12 @@ describe('certificate upload preview', () => {
     ).toBeInTheDocument();
     expect(previewFn).toHaveBeenCalledWith(PEM);
     expect(screen.getByText(/\d+ days left/)).toBeInTheDocument();
-    // 128 hex characters in 32 groups of four.
-    expect(screen.getAllByText('0123')).toHaveLength(8);
-    expect(screen.getAllByText('cdef')).toHaveLength(8);
+    // Raw 128-character string, like certtool prints it, plus the command.
+    expect(screen.getByTestId('thumbprint-value').textContent).toBe(SHA512);
+    expect(screen.getByText('SHA-512 thumbprint')).toBeInTheDocument();
+    expect(screen.getByTestId('thumbprint-command')).toHaveTextContent(
+      'certtool --fingerprint --hash=sha512 --infile=client_certificate.pem',
+    );
     expect(screen.getByText('DSF-CA')).toBeInTheDocument();
     expect(saveButton()).toBeEnabled();
   });
@@ -85,7 +88,7 @@ describe('certificate upload preview', () => {
     renderWithProviders(<CertificateModal open onClose={() => {}} instanceId="i1" />);
     enterPem();
 
-    fireEvent.click(await screen.findByRole('button', { name: /copy fingerprint/i }, WAIT));
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy DSF fingerprint' }, WAIT));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(SHA512));
     delete (navigator as { clipboard?: unknown }).clipboard;
   });

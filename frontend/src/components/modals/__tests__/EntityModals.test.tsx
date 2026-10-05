@@ -182,17 +182,13 @@ describe('DownloadModal', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('keeps downloads gated until the disclaimer is acknowledged, then triggers the bundle download', async () => {
+  it('triggers the bundle download without any acknowledgement', async () => {
     const user = userEvent.setup();
     renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
 
     const bundleBtn = screen.getByTestId('download-bundle-btn');
-    // Validation/gate path: button is disabled before acknowledgment.
-    expect(bundleBtn).toBeDisabled();
-    expect(screen.getByTestId('download-ip-btn')).toBeDisabled();
-
-    await user.click(screen.getByTestId('disclaimer-checkbox'));
     expect(bundleBtn).toBeEnabled();
+    expect(screen.getByTestId('download-ip-btn')).toBeEnabled();
 
     await user.click(bundleBtn);
     await waitFor(() => expect(downloadBundle).toHaveBeenCalledTimes(1));
