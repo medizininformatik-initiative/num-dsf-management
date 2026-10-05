@@ -7,7 +7,7 @@
  * loading + empty branches. Default language is English.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, within } from '@testing-library/react';
+import { screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../../test/renderWithProviders';
 import type { MapOrganization, MapResponse } from '../../api/network.api';
 
@@ -15,6 +15,7 @@ interface MapHookResult {
   data: MapResponse | undefined;
   isLoading: boolean;
   error: unknown;
+  refetch?: () => void;
 }
 
 const NUM_VERBUND = 'num-testverband.example.de';
@@ -87,8 +88,8 @@ describe('MapPage', () => {
     hook.current = loaded(false);
     const { container } = renderWithProviders(<MapPage />);
 
-    // Edge paths carry the unique dasharray "4 3"; off by default.
-    const edgeSelector = 'path[stroke-dasharray="4 3"]';
+    // Edge paths are tagged data-map-edge; none are drawn by default.
+    const edgeSelector = 'path[data-map-edge]';
     expect(container.querySelectorAll(edgeSelector)).toHaveLength(0);
 
     const toggle = screen.getByRole('button', { name: /Show all connections/i });
@@ -148,5 +149,86 @@ describe('MapPage', () => {
       screen.getByText('No approved organizations in the allow list yet.'),
     ).toBeInTheDocument();
     expect(screen.getByText('No organizations match the current filter.')).toBeInTheDocument();
+  });
+
+  it('shows the load error as an alert with a retry action', () => {
+    const refetch = vi.fn();
+    hook.current = { data: undefined, isLoading: false, error: new Error('x'), refetch };
+    renderWithProviders(<MapPage />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to load network map.');
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('collapses and reopens the organization list from the toolbar', async () => {
+    hook.current = loaded(false);
+    renderWithProviders(<MapPage />);
+
+    // The toolbar toggle (aria-expanded) and the list's own close button share
+    // the label; drive the toggle.
+    const toggle = screen
+      .getAllByRole('button', { name: 'Hide organization list' })
+      .find((b) => b.hasAttribute('aria-expanded')) as HTMLElement;
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('complementary', { name: 'Organizations' })).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: 'Show organization list' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    // The list slides out, then unmounts.
+    await waitFor(() =>
+      expect(screen.queryByRole('complementary', { name: 'Organizations' })).toBeNull(),
+    );
+  });
+
+  it('highlights the map pin while its list row is hovered', () => {
+    hook.current = loaded(false);
+    const { container } = renderWithProviders(<MapPage />);
+
+    const pinBody = () =>
+      container.querySelector('[data-map-node="charite.de"] .map-marker-body') as Element;
+    expect(pinBody()).not.toHaveAttribute('data-hovered');
+    const row = screen.getByText('Charité Berlin');
+    fireEvent.mouseEnter(row);
+    expect(pinBody()).toHaveAttribute('data-hovered', 'true');
+    fireEvent.mouseLeave(row);
+    expect(pinBody()).not.toHaveAttribute('data-hovered');
+  });
+
+  it('marks the list row of a pin selected on the map', () => {
+    hook.current = loaded(false);
+    const { container } = renderWithProviders(<MapPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Charité Berlin, certificate/ }));
+    const row = container.querySelector('[data-org-row="charite.de"]');
+    expect(row).toHaveAttribute('aria-current', 'true');
+    // The details sheet docks on the right while the list occupies the left.
+    const panel = screen.getByRole('heading', { name: 'Charité Berlin' }).closest('aside');
+    expect(panel).toHaveAttribute('data-side', 'right');
+  });
+
+  it('docks the details sheet on the side of a western site once the list is closed', async () => {
+    hook.current = loaded(false);
+    renderWithProviders(<MapPage />);
+
+    const toggle = screen
+      .getAllByRole('button', { name: 'Hide organization list' })
+      .find((b) => b.hasAttribute('aria-expanded')) as HTMLElement;
+    fireEvent.click(toggle);
+    await waitFor(() =>
+      expect(screen.queryByRole('complementary', { name: 'Organizations' })).toBeNull(),
+    );
+
+    // Münster lies in the west of Germany.
+    fireEvent.click(
+      screen.getByRole('button', { name: /^Universitätsklinikum Münster, certificate/ }),
+    );
+    const panel = screen
+      .getByRole('heading', { name: 'Universitätsklinikum Münster' })
+      .closest('aside');
+    expect(panel).toHaveAttribute('data-side', 'left');
   });
 });
