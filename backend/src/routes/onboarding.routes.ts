@@ -11,6 +11,7 @@
 import express, { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireImiAdmin } from '../middleware/admin.middleware';
+import { requireCertStepUp } from '../middleware/stepUp.middleware';
 import { onboardingImportRateLimit } from '../middleware/rateLimit.middleware';
 import { asyncHandler } from '../lib/asyncHandler';
 import { errMessage } from '../lib/errMessage';
@@ -45,6 +46,7 @@ const rawBody = express.raw({
 onboardingRouter.post(
   '/import',
   ...importLimit,
+  requireCertStepUp,
   rawBody,
   asyncHandler(async (req, res) => {
     const buf = req.body as Buffer;

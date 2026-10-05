@@ -72,6 +72,9 @@ services:
     env_file: .env.prod
     environment:
       NODE_ENV: production
+      # Certificate-only backend: OTP/TOTP routes answer 403, every session is
+      # bound to the presented client certificate on each request.
+      AUTH_MODE: cert
     depends_on:
       db:
         condition: service_healthy

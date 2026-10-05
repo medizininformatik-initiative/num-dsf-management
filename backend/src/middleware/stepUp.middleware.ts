@@ -34,6 +34,7 @@ import { verifyTotpCode, isDevTotpBypassActive } from '../services/totp.service'
 import { extractClientCert } from '../lib/clientCert';
 import { resolveCertLogin } from '../services/auth.service';
 import { db } from '../db/connection';
+import { isCertAuthMode } from '../lib/authMode';
 
 export type StepUpResult =
   | { ok: true }
@@ -102,6 +103,24 @@ export async function checkStepUp(req: Request): Promise<StepUpResult> {
     return { ok: false, status: 401, code: 'TOTP_INVALID', message: 'Invalid TOTP code' };
   }
   return { ok: true };
+}
+
+/**
+ * Step-up for routes whose body is not JSON (the raw-body onboarding upload),
+ * where a typed TOTP code cannot travel. Enforced only in the certificate-only
+ * deployment (AUTH_MODE=cert), where the re-presented client certificate is
+ * the step-up and needs no body; passes through otherwise.
+ */
+export async function requireCertStepUp(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  if (!isCertAuthMode()) {
+    next();
+    return;
+  }
+  await requireStepUp(req, res, next);
 }
 
 export async function requireStepUp(
