@@ -1,6 +1,7 @@
 /**
- * RestoreDialog.tsx – confirmation for restoring an older allow-list version.
- * Explains that the restored list becomes the published list for every site,
+ * RestoreDialog.tsx – request to restore an older allow-list version.
+ * Explains that a second admin from another site must approve it and that the
+ * restored list then becomes the published list for every site,
  * requires a reason and, in OTP mode, a TOTP code (cert mode: the re-presented
  * client certificate is the step-up, no code field). Focus starts on the reason
  * field; Escape and the scrim cancel. Dependencies: DialogShell, Button, Icon,

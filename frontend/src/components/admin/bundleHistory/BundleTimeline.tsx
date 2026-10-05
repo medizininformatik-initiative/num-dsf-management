@@ -10,7 +10,12 @@ import { StatusPill } from '../../ui/StatusPill';
 import { Button } from '../../ui/Button';
 import { formatDateTime } from '../../../lib/dateUtils';
 import { useI18n } from '../../../stores/i18n.store';
-import { bundleVersionsApi, type BundleVersionListRow } from '../../../api/bundleVersions.api';
+import {
+  bundleVersionsApi,
+  type BundleRestoreRequest,
+  type BundleRestoreStatus,
+  type BundleVersionListRow,
+} from '../../../api/bundleVersions.api';
 import type { TranslationKey } from '../../../i18n/en';
 
 const TRIGGER: Record<
@@ -22,20 +27,42 @@ const TRIGGER: Record<
   RESTORE: { icon: 'history', label: 'historyTriggerRestore' },
 };
 
+// Status of the newest restore request on its source version (approved ones show on the new version).
+const REQUEST_PILL: Partial<
+  Record<BundleRestoreStatus, { tone: 'warning' | 'neutral'; icon: string; label: TranslationKey }>
+> = {
+  PENDING: { tone: 'warning', icon: 'hourglass_top', label: 'bundleRestoreStatusRequested' },
+  REJECTED: { tone: 'neutral', icon: 'block', label: 'bundleRestoreStatusRejected' },
+  CANCELLED: { tone: 'neutral', icon: 'undo', label: 'bundleRestoreStatusCancelled' },
+};
+
 interface Props {
   versions: BundleVersionListRow[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onRestore: (row: BundleVersionListRow) => void;
+  /** Restore requests, newest first: their status is shown on the versions they concern. */
+  restores?: BundleRestoreRequest[];
 }
 
-export function BundleTimeline({ versions, selectedId, onSelect, onRestore }: Props) {
+export function BundleTimeline({
+  versions,
+  selectedId,
+  onSelect,
+  onRestore,
+  restores = [],
+}: Props) {
   const { t, lang } = useI18n();
+  // Only one request can be pending, and nothing new can be requested meanwhile.
+  const restoreBlocked = restores.some((r) => r.status === 'PENDING');
   return (
     <ol className="space-y-2" aria-label={t('historyTimeline')} data-testid="bundle-timeline">
       {versions.map((v, i) => {
         const trigger = TRIGGER[v.triggered_by] ?? TRIGGER.MANUAL;
         const selected = v.id === selectedId;
+        const requested = restores.find((r) => r.sourceVersionId === v.id);
+        const requestPill = requested && REQUEST_PILL[requested.status];
+        const restoredBy = restores.find((r) => r.resultingVersionId === v.id);
         return (
           <li
             key={v.id}
@@ -70,6 +97,11 @@ export function BundleTimeline({ versions, selectedId, onSelect, onRestore }: Pr
                     <span className="text-xs font-semibold text-[color:var(--text-secondary)]">
                       {t(trigger.label)}
                     </span>
+                    {requestPill && (
+                      <StatusPill tone={requestPill.tone} icon={requestPill.icon}>
+                        {t(requestPill.label)}
+                      </StatusPill>
+                    )}
                   </span>
                   <span className="mt-0.5 block text-xs text-[color:var(--text-muted)]">
                     {formatDateTime(v.created_at, lang)}
@@ -78,6 +110,23 @@ export function BundleTimeline({ versions, selectedId, onSelect, onRestore }: Pr
                   {v.notes && (
                     <span className="mt-1 block text-xs text-[color:var(--text-secondary)]">
                       {v.notes}
+                    </span>
+                  )}
+                  {restoredBy && (
+                    <span className="mt-1 block text-xs text-[color:var(--text-secondary)]">
+                      {t('bundleRestoreRestoredFrom', {
+                        n: restoredBy.sourceVersionNumber ?? '?',
+                        requester: restoredBy.requestedBy,
+                        approver: restoredBy.decidedBy ?? '',
+                      })}
+                    </span>
+                  )}
+                  {requested?.status === 'REJECTED' && requested.decisionComment && (
+                    <span className="mt-1 block text-xs text-[color:var(--text-secondary)]">
+                      {t('bundleRestoreRejectedBy', {
+                        who: requested.decidedBy ?? '',
+                        comment: requested.decisionComment,
+                      })}
                     </span>
                   )}
                 </span>
@@ -96,6 +145,7 @@ export function BundleTimeline({ versions, selectedId, onSelect, onRestore }: Pr
                   <Button
                     size="sm"
                     variant="secondary"
+                    disabled={restoreBlocked}
                     onClick={() => onRestore(v)}
                     aria-label={t('historyRestoreAria', { n: v.version_number })}
                   >

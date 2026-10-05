@@ -1173,11 +1173,11 @@ export const de: Record<TranslationKey, string> = {
   historyAfter: 'Nachher',
   historyRawShow: 'Rohe FHIR-Daten anzeigen',
   historyRawHint: 'Die genauen FHIR-Einträge, die sich unterscheiden, für Fachleute.',
-  historyRestore: 'Wiederherstellen',
-  historyRestoreAria: 'Version {n} wiederherstellen',
-  historyRestoreTitle: 'Version {n} wiederherstellen?',
+  historyRestore: 'Wiederherstellung beantragen',
+  historyRestoreAria: 'Wiederherstellung von Version {n} beantragen',
+  historyRestoreTitle: 'Wiederherstellung von Version {n} beantragen',
   historyRestoreMessage:
-    'Die Liste von Version {n} wird als neue Version erneut veröffentlicht und ist die Allow List, die alle Standorte herunterladen, bis die nächste Freigabe sie ersetzt.',
+    'Sie beantragen, die Liste von Version {n} als neue Version erneut zu veröffentlichen. Bis ein zweiter Admin von einem anderen Standort den Antrag freigibt, ändert sich nichts.',
   historyRestoreConsequence: 'Das betrifft alle Standorte, nicht nur Ihren.',
   historyRestoreReason: 'Begründung',
   historyRestoreReasonHint: 'Wird im Verlauf und im Audit-Log festgehalten.',
@@ -1185,7 +1185,7 @@ export const de: Record<TranslationKey, string> = {
   historyRestoreTotp: 'Authenticator-Code',
   historyRestoreTotpRequired: 'Geben Sie Ihren 6-stelligen Authenticator-Code ein.',
   historyRestoreCertHint: 'Ihr Client-Zertifikat bestätigt diese Aktion, ein Code ist nicht nötig.',
-  historyRestoreConfirm: 'Version wiederherstellen',
+  historyRestoreConfirm: 'Wiederherstellung beantragen',
   historyRestoreSuccess: 'Version {n} als Version {m} wiederhergestellt.',
   historyRestoreNotRestorable: 'Diese Version kann nicht mehr wiederhergestellt werden.',
   historyRestoreFailed: 'Die Version konnte nicht wiederhergestellt werden.',
@@ -1208,6 +1208,38 @@ export const de: Record<TranslationKey, string> = {
   dlVerifyHash: 'SHA-256 der Datei',
   dlVerifySignature: 'Signatur',
   dlAdvanced: 'Weitere Möglichkeiten',
+
+  // ─── Vier-Augen-Wiederherstellung von Allow-List-Versionen ────────────────
+  bundleRestoreRequestedToast:
+    'Wiederherstellung von Version {n} beantragt. Ein zweiter Admin von einem anderen Standort muss sie freigeben.',
+  bundleRestoreAlreadyPending: 'Ein Wiederherstellungsantrag wartet bereits auf Freigabe.',
+  bundleRestoreNotPending: 'Über diesen Antrag wurde bereits entschieden.',
+  bundleRestorePendingTitle: 'Wiederherstellung wartet auf Freigabe',
+  bundleRestorePendingBody:
+    'Version {n} soll erneut veröffentlicht werden. Beantragt von {who}, {when}.',
+  bundleRestoreOwnHint: 'Ein zweiter Admin von einem anderen Standort muss Ihren Antrag freigeben.',
+  bundleRestoreApprove: 'Wiederherstellung freigeben',
+  bundleRestoreReject: 'Ablehnen',
+  bundleRestoreCancel: 'Meinen Antrag zurückziehen',
+  bundleRestoreApproveTitle: 'Wiederherstellung von Version {n} freigeben?',
+  bundleRestoreApproveBody:
+    'Die Liste von Version {n} wird als neue Version erneut veröffentlicht und ist die Allow List, die alle Standorte herunterladen, bis die nächste Freigabe sie ersetzt.',
+  bundleRestoreRejectTitle: 'Wiederherstellung von Version {n} ablehnen?',
+  bundleRestoreRejectBody: 'Der Antrag wird geschlossen, es wird nichts veröffentlicht.',
+  bundleRestoreRejectConfirm: 'Wiederherstellung ablehnen',
+  bundleRestoreCancelTitle: 'Wiederherstellungsantrag zurückziehen?',
+  bundleRestoreCancelBody: 'Ihr Antrag wird zurückgezogen, es wird nichts veröffentlicht.',
+  bundleRestoreCancelConfirm: 'Antrag zurückziehen',
+  bundleRestoreCommentLabel: 'Kommentar (erforderlich)',
+  bundleRestoreRejectedToast: 'Wiederherstellungsantrag abgelehnt.',
+  bundleRestoreCancelledToast: 'Wiederherstellungsantrag zurückgezogen.',
+  bundleRestoreActionFailed: 'Die Entscheidung konnte nicht gespeichert werden.',
+  bundleRestoreStatusRequested: 'Wiederherstellung beantragt',
+  bundleRestoreStatusRejected: 'Wiederherstellung abgelehnt',
+  bundleRestoreStatusCancelled: 'Wiederherstellung zurückgezogen',
+  bundleRestoreRestoredFrom:
+    'Wiederherstellung von v{n}, beantragt von {requester}, freigegeben von {approver}',
+  bundleRestoreRejectedBy: 'Abgelehnt von {who}: {comment}',
 
   // ─── Onboarding-Import (Massen-Upload CSV/JSON) ───────────────────────────
   adminOnboardingNavLabel: 'Onboarding',

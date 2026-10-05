@@ -2,8 +2,10 @@
  * AdminBundleVersionsPage.tsx – allow-list history for admins: a timeline of
  * every published version (newest first, current marked) and an intuitive diff
  * of the selected version against its predecessor (or any other version),
- * plus restore of older versions behind a reason and the admin step-up.
- * Dependencies: bundleVersionsApi, bundleHistory/* components, i18n store.
+ * plus the four-eyes restore of older versions: an admin requests it with a
+ * reason (step-up), a pending-request card lets a second admin of another site
+ * approve or reject it (step-up) and the requester cancel it.
+ * Dependencies: bundleVersionsApi, bundleHistory/* components, useMe, i18n store.
  */
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,6 +17,12 @@ import { Button } from '../components/ui/Button';
 import { BundleTimeline } from '../components/admin/bundleHistory/BundleTimeline';
 import { BundleDiffView } from '../components/admin/bundleHistory/BundleDiffView';
 import { RestoreDialog } from '../components/admin/bundleHistory/RestoreDialog';
+import {
+  PendingRestoreCard,
+  type RestoreDecisionKind,
+} from '../components/admin/bundleHistory/PendingRestoreCard';
+import { RestoreDecisionDialog } from '../components/admin/bundleHistory/RestoreDecisionDialog';
+import { useMe } from '../hooks/useMe';
 import { mapBundleDiff } from '../components/admin/bundleHistory/diffModel';
 import { getErrorCode, getErrorMessageForStepUp } from '../lib/getErrorMessage';
 
@@ -25,6 +33,7 @@ export function AdminBundleVersionsPage() {
   const [fromId, setFromId] = useState<string | null>(null);
   const [restoreRow, setRestoreRow] = useState<BundleVersionListRow | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [decisionKind, setDecisionKind] = useState<RestoreDecisionKind | null>(null);
 
   const list = useQuery({
     queryKey: ['bundle-versions'],
@@ -51,28 +60,39 @@ export function AdminBundleVersionsPage() {
   });
   const model = useMemo(() => (diff.data ? mapBundleDiff(diff.data) : null), [diff.data]);
 
+  const { data: me } = useMe();
+  const restores = useQuery({
+    queryKey: ['bundle-restores'],
+    queryFn: () => bundleVersionsApi.listRestores().then((r) => r.data.data),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+  });
+  const restoreRequests = useMemo(() => restores.data ?? [], [restores.data]);
+  const pendingRestore = restoreRequests.find((r) => r.status === 'PENDING') ?? null;
+
+  // Requesting only records the request; a second admin publishes it.
   const restore = useMutation({
     mutationFn: (input: { id: string; reason: string; totpCode?: string }) =>
       bundleVersionsApi.restore(input.id, { reason: input.reason, totpCode: input.totpCode }),
-    onSuccess: (res, vars) => {
-      const created = res.data.data;
-      const source = versions.find((v) => v.id === vars.id);
-      toast.success(
-        t('historyRestoreSuccess', {
-          n: source?.version_number ?? '',
-          m: created.version_number,
-        }),
-      );
+    onSuccess: (res) => {
+      toast.success(t('bundleRestoreRequestedToast', { n: res.data.data.sourceVersionNumber }));
       setRestoreRow(null);
-      setToId(null);
-      setFromId(null);
-      void qc.invalidateQueries({ queryKey: ['bundle-versions'] });
+      void qc.invalidateQueries({ queryKey: ['bundle-restores'] });
     },
     onError: (err) => {
-      if (getErrorCode(err) === 'VERSION_NOT_RESTORABLE') {
-        toast.error(t('historyRestoreNotRestorable'));
+      const code = getErrorCode(err);
+      if (code === 'VERSION_NOT_RESTORABLE' || code === 'ALREADY_PENDING') {
+        toast.error(
+          t(
+            code === 'ALREADY_PENDING'
+              ? 'bundleRestoreAlreadyPending'
+              : 'historyRestoreNotRestorable',
+          ),
+        );
         setRestoreRow(null);
         void qc.invalidateQueries({ queryKey: ['bundle-versions'] });
+        void qc.invalidateQueries({ queryKey: ['bundle-restores'] });
         return;
       }
       setRestoreError(
@@ -94,6 +114,14 @@ export function AdminBundleVersionsPage() {
       </h1>
       <p className="mb-6 max-w-2xl text-sm text-[color:var(--text-muted)]">{t('historyIntro')}</p>
 
+      {pendingRestore && (
+        <PendingRestoreCard
+          request={pendingRestore}
+          meEmail={me?.email ?? null}
+          onAction={setDecisionKind}
+        />
+      )}
+
       {list.isLoading ? (
         <Skeleton lines={4} />
       ) : list.isError ? (
@@ -110,6 +138,7 @@ export function AdminBundleVersionsPage() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <BundleTimeline
+            restores={restoreRequests}
             versions={versions}
             selectedId={to?.id ?? null}
             onSelect={(id) => {
@@ -174,6 +203,14 @@ export function AdminBundleVersionsPage() {
             )}
           </section>
         </div>
+      )}
+
+      {pendingRestore && decisionKind && (
+        <RestoreDecisionDialog
+          kind={decisionKind}
+          request={pendingRestore}
+          onClose={() => setDecisionKind(null)}
+        />
       )}
 
       {restoreRow && (
