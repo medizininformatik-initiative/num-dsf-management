@@ -191,14 +191,30 @@ type CertPem = Pick<CertRow, 'id' | 'pem'>;
 /**
  * Member of a legacy snapshot (submitted before the allowList section
  * existed). Certificate rows are only ever added or removed, never edited, so
- * the live PEM of an id listed in the snapshot is the approved one.
+ * the live PEM of an id listed in the snapshot is the approved one. When none
+ * of the listed certificates exists any more (renewed after the approval,
+ * before snapshots carried thumbprints), the site's live certificates are
+ * used instead of publishing it without a thumbprint.
  */
-function legacyMember(site: ApprovedSite, certsById: Map<string, CertPem>): AllowListMember {
+function legacyMember(
+  site: ApprovedSite,
+  certsById: Map<string, CertPem>,
+  liveCertsByOrg: Map<string, CertPem[]>,
+): AllowListMember {
   const snapshot = site.snapshot;
-  const thumbprints = (snapshotCertificateIds(snapshot) ?? [])
+  let certs = (snapshotCertificateIds(snapshot) ?? [])
     .map((id) => certsById.get(id))
-    .filter((c): c is CertPem => c !== undefined)
-    .map(dsfThumbprint);
+    .filter((c): c is CertPem => c !== undefined);
+  if (certs.length === 0) {
+    certs = liveCertsByOrg.get(site.orgIdentifier) ?? [];
+    if (certs.length > 0) {
+      logger.warn(
+        { organization: site.orgIdentifier, requestId: site.requestId },
+        'approved legacy snapshot lists no existing certificate, publishing the live certificates',
+      );
+    }
+  }
+  const thumbprints = certs.map(dsfThumbprint);
   return {
     identifier: site.orgIdentifier,
     name: snapshotOrgField(snapshot, 'name') ?? site.orgName,
@@ -241,6 +257,18 @@ async function loadApprovedState(): Promise<{
     loadMembers(unusable.map((s) => ({ identifier: s.orgIdentifier, name: s.orgName }))),
   ]);
   const certsById = new Map(certs.map((c) => [c.id, c]));
+  // Legacy sites none of whose approved certificates still exists (see legacyMember).
+  const orphaned = legacy
+    .filter((s) => !(snapshotCertificateIds(s.snapshot) ?? []).some((id) => certsById.has(id)))
+    .map((s) => s.orgIdentifier);
+  const liveCerts: Array<CertPem & { organization_id: string }> =
+    orphaned.length > 0
+      ? await db('certificates')
+          .whereIn('organization_id', orphaned)
+          .select('id', 'organization_id', 'pem')
+          .orderBy([{ column: 'created_at' }, { column: 'id' }])
+      : [];
+  const liveCertsByOrg = groupBy(liveCerts, (c) => c.organization_id);
   const liveByOrg = new Map(liveMembers.map((m) => [m.identifier, m]));
 
   const members: AllowListMember[] = [];
@@ -254,7 +282,7 @@ async function loadApprovedState(): Promise<{
       member = section.member;
     } else if (isUsableLegacySnapshot(site.snapshot)) {
       active = approvedActive(site);
-      member = legacyMember(site, certsById);
+      member = legacyMember(site, certsById, liveCertsByOrg);
     } else {
       warnUnusableSnapshot(site);
       active = site.orgActive;

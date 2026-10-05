@@ -265,6 +265,18 @@ describe('snapshots without the allowList section', () => {
     });
   });
 
+  it('uses the live certificates when none of the approved legacy certificates exists any more', async () => {
+    const site = await newSite();
+    await insertRequest(site, 'APPROVED', {
+      organization: { identifier: site.orgId, name: 'Renewed', active: true },
+      endpoints: [{ identifier: site.endpointIds[0], name: null, address: 'https://r.example.de' }],
+      certificates: [{ id: uuidv4() }],
+      memberships: [],
+    });
+    const live = await db('certificates').where({ organization_id: site.orgId }).first();
+    expect((await memberOf(site))?.thumbprints).toEqual([dsfThumbprint(live)]);
+  });
+
   it('derives a legacy deactivation as a removed organization', async () => {
     const site = await newSite();
     await insertRequest(site, 'APPROVED', {
