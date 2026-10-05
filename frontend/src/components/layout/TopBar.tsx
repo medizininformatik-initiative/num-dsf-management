@@ -3,8 +3,9 @@
  * sidebar header (56 px): search, theme and language toggles, notifications
  * and the instance actions with one primary CTA. The product name and the environment live in the sidebar header only (no
  * duplicate title or environment badge here). The approval CTA follows the
- * active instance's latest request: while one is PENDING it is disabled and
- * reads "Waiting for approval". Fits a 1024 px wide bar: below xl the
+ * active instance's latest request: while one is PENDING it turns into a
+ * "Request running" pill that opens the running request (with its withdraw
+ * action) instead of a second submit. Fits a 1024 px wide bar: below xl the
  * download action shows its icon only.
  * Dependencies: SearchBar, NotificationCenter, Button, Icon, canvas.store,
  * useApproval, theme.store, i18n.store
@@ -13,6 +14,7 @@ import { SearchBar } from './SearchBar';
 import { NotificationCenter } from './NotificationCenter';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
+import { StatusPill } from '../ui/StatusPill';
 import { useApprovalStatus, type ApprovalStatus } from '../../hooks/useApproval';
 import { useCanvasStore } from '../../stores/canvas.store';
 import { useI18n } from '../../stores/i18n.store';
@@ -79,18 +81,24 @@ export function TopBar({
               <Icon name="download" size={16} />
               <span className="sr-only xl:not-sr-only">{t('downloadAllowList')}</span>
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={onApproval}
-              disabled={pending}
-              title={pending ? t('approvalPendingBlocked') : undefined}
-            >
-              <Icon name={pending ? 'hourglass_top' : 'send'} size={16} />
-              <span className="sr-only sm:not-sr-only">
-                {pending ? t('approvalWaitingLabel') : t('sendForApproval')}
-              </span>
-            </Button>
+            {pending ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onApproval}
+                title={t('approvalRunningHint')}
+                aria-label={`${t('approvalRunningLabel')}: ${t('approvalRunningHint')}`}
+              >
+                <StatusPill tone="warning" icon="hourglass_top">
+                  {t('approvalRunningLabel')}
+                </StatusPill>
+              </Button>
+            ) : (
+              <Button variant="primary" size="sm" onClick={onApproval}>
+                <Icon name="send" size={16} />
+                <span className="sr-only sm:not-sr-only">{t('sendForApproval')}</span>
+              </Button>
+            )}
           </>
         )}
       </div>

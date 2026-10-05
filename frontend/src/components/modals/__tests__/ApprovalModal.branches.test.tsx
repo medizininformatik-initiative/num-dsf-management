@@ -13,7 +13,7 @@
  * runs, so asserted strings are the actual rendered output.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 import { useI18n } from '../../../stores/i18n.store';
 import { useCanvasStore } from '../../../stores/canvas.store';
@@ -21,6 +21,7 @@ import { useCanvasStore } from '../../../stores/canvas.store';
 // Hoisted submit double + per-test data state so each hook returns the shape the
 // component expects while letting individual tests flip the checklist outcome.
 const mutateAsync = vi.hoisted(() => vi.fn());
+const withdrawAsync = vi.hoisted(() => vi.fn());
 const data = vi.hoisted(() => ({
   org: null as Record<string, unknown> | null,
   contacts: [] as Record<string, unknown>[],
@@ -28,11 +29,14 @@ const data = vi.hoisted(() => ({
   certs: [] as Record<string, unknown>[],
   memberships: [] as Record<string, unknown>[],
   approval: null as Record<string, unknown> | null,
+  history: [] as Record<string, unknown>[],
 }));
 
 vi.mock('../../../hooks/useApproval', () => ({
   useSubmitApproval: () => ({ mutate: vi.fn(), mutateAsync, isPending: false }),
   useApprovalStatus: () => ({ data: data.approval, isLoading: false }),
+  useWithdrawApproval: () => ({ mutateAsync: withdrawAsync, isPending: false }),
+  useApprovalHistory: () => ({ data: data.history, isLoading: false }),
 }));
 vi.mock('../../../hooks/useOrganization', () => ({
   useOrganization: () => ({ data: data.org, isLoading: false }),
@@ -87,6 +91,7 @@ function seedEmptyData() {
   data.certs = [];
   data.memberships = [];
   data.approval = null;
+  data.history = [];
 }
 
 beforeEach(() => {
@@ -215,13 +220,14 @@ describe('ApprovalModal — shared readiness rule', () => {
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1), { timeout: 4000 });
   });
 
-  it('blocks a second withdrawal request while one is pending', () => {
+  it('shows the running request instead of a second withdrawal request while one is pending', () => {
     seedPassingData();
     data.org = { ...data.org, active: 0 };
     data.approval = { id: 'r1', status: 'PENDING', created_at: '2026-10-01T10:00:00Z' };
     renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
 
-    expect(screen.getByRole('button', { name: t('approvalWaitingLabel') })).toBeDisabled();
+    expect(screen.getByTestId('approval-running-request')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t('approvalWithdrawalSubmit') })).toBeNull();
   });
 
   it('closes and jumps to the card of an open item', () => {
@@ -244,24 +250,139 @@ describe('ApprovalModal — shared readiness rule', () => {
 });
 
 describe('ApprovalModal — request state up front', () => {
-  it('shows a pending request before submitting and blocks a second one', () => {
+  const running = {
+    id: 'r1',
+    status: 'PENDING',
+    created_at: '2026-09-28T09:30:00Z',
+    submitted_at: '2026-09-28T09:30:00Z',
+    submitted_by: 'admin@klinik.example.de',
+    snapshot_json: JSON.stringify({
+      contacts: [{}, {}],
+      endpoints: [{}],
+      certificates: [{}],
+      memberships: [{}, {}, {}],
+    }),
+    fourEyes: { approvals: 1, required: 2, silentConsentAt: null },
+  };
+
+  it('shows the running request on a pending request: submitter, contents, four-eyes progress', () => {
+    seedPassingData();
+    data.approval = running;
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+
+    expect(screen.getByRole('heading', { name: t('approvalRunningTitle') })).toBeInTheDocument();
+    expect(screen.getByText('admin@klinik.example.de')).toBeInTheDocument();
+    expect(screen.getByText('1 of 2 approvals')).toBeInTheDocument();
+    const panel = screen.getByTestId('approval-running-request');
+    expect(panel).toHaveTextContent(/Contacts\s*2|2\s*Contacts/);
+    expect(panel).toHaveTextContent('3');
+    expect(screen.queryByRole('button', { name: /send request for approval/i })).toBeNull();
+    expect(screen.getByRole('button', { name: t('approvalWithdrawBtn') })).toBeEnabled();
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('withdraws after the confirmation and closes', async () => {
+    seedPassingData();
+    data.approval = running;
+    withdrawAsync.mockResolvedValueOnce(undefined);
+    const onClose = vi.fn();
+    renderWithProviders(<ApprovalModal open onClose={onClose} instanceId="i1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: t('approvalWithdrawBtn') }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(withdrawAsync).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: t('approvalWithdrawBtn') }));
+
+    await waitFor(() => expect(withdrawAsync).toHaveBeenCalledTimes(1), { timeout: 4000 });
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(toastSuccess).toHaveBeenCalledWith(t('approvalWithdrawSuccess'));
+  });
+
+  it('does not withdraw when the confirmation is cancelled', async () => {
+    seedPassingData();
+    data.approval = running;
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: t('approvalWithdrawBtn') }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /cancel/i }));
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(withdrawAsync).not.toHaveBeenCalled();
+  });
+
+  it('tells the user when the request was decided in the meantime', async () => {
+    seedPassingData();
+    data.approval = running;
+    withdrawAsync.mockRejectedValueOnce({
+      response: { data: { error: { code: 'NOT_PENDING', message: 'x' } } },
+    });
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: t('approvalWithdrawBtn') }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: t('approvalWithdrawBtn') }));
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(t('approvalWithdrawNotPending')));
+  });
+
+  it('says so when there is no request yet and the history is empty', () => {
+    seedPassingData();
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+
+    expect(screen.getByText(t('approvalBannerNone'))).toBeInTheDocument();
+    const history = screen.getByTestId('approval-history');
+    expect(history).toHaveTextContent(t('noApprovalRequests'));
+  });
+
+  it('lists the full history with the last approved date, in both dialog states', () => {
+    seedPassingData();
+    data.history = [
+      {
+        id: 'h3',
+        status: 'PENDING',
+        created_at: '2026-10-03T10:00:00Z',
+        submitted_at: '2026-10-03T10:00:00Z',
+      },
+      {
+        id: 'h2',
+        status: 'REJECTED',
+        created_at: '2026-09-20T10:00:00Z',
+        submitted_at: '2026-09-20T10:00:00Z',
+        comment: 'Wrong endpoint address',
+      },
+      {
+        id: 'h1',
+        status: 'APPROVED',
+        created_at: '2026-09-01T10:00:00Z',
+        submitted_at: '2026-09-01T10:00:00Z',
+        resolved_at: '2026-09-02T10:00:00Z',
+      },
+    ];
+    data.approval = { ...running };
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+
+    const history = screen.getByTestId('approval-history');
+    const items = within(history).getAllByRole('listitem');
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('Request #3');
+    expect(items[2]).toHaveTextContent('Request #1');
+    expect(within(history).getByText('Wrong endpoint address')).toBeInTheDocument();
+    expect(history).toHaveTextContent(t('lastApproved'));
+  });
+
+  it('offers a fresh submit again after a withdrawal', () => {
     seedPassingData();
     data.approval = {
-      id: 'r1',
-      status: 'PENDING',
+      id: 'r4',
+      status: 'WITHDRAWN',
       created_at: '2026-09-28T09:30:00Z',
-      submitted_at: '2026-09-28T09:30:00Z',
-      fourEyes: { approvals: 1, required: 2, silentConsentAt: null },
+      resolved_at: '2026-09-29T09:30:00Z',
     };
     renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
 
-    expect(screen.getByText(t('approvalPendingBlocked'))).toBeInTheDocument();
-    expect(screen.getByText('1 of 2 approvals')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /send request for approval/i })).toBeNull();
-    const waiting = screen.getByRole('button', { name: /waiting for approval/i });
-    expect(waiting).toBeDisabled();
-    fireEvent.click(waiting);
-    expect(mutateAsync).not.toHaveBeenCalled();
+    expect(screen.getByText(t('approvalBannerWithdrawn'))).toBeInTheDocument();
+    expect(submitButton()).toBeEnabled();
   });
 
   it('shows the rejection reason and allows resubmitting', () => {

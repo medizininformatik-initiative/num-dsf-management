@@ -1,5 +1,5 @@
 /**
- * useApproval.ts — TanStack Query hooks for approval status, history, and submission,
+ * useApproval.ts — TanStack Query hooks for approval status, history, submission and withdrawal,
  * plus the shapes the approval endpoints return.
  * Wraps the entities API; a submit refreshes approval-status and approval-history
  * whether it succeeds or fails (a refused submit usually means the cached status is stale).
@@ -7,7 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/entities.api';
 
-export type ApprovalStatusValue = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
+export type ApprovalStatusValue = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
 
 /** One approval request as GET /approval/history lists it (newest first, max. 20). */
 export interface ApprovalRequest {
@@ -33,6 +33,10 @@ export interface FourEyes {
 /** GET /approval/status: the latest request plus its four-eyes progress, or null. */
 export interface ApprovalStatus extends ApprovalRequest {
   fourEyes?: FourEyes;
+  /** E-mail of the user who submitted the request (from the audit log; may be missing). */
+  submitted_by?: string | null;
+  /** Data snapshot the request was sent with (JSON string or parsed object). */
+  snapshot_json?: string | object | null;
 }
 
 export function useApprovalStatus(instanceId: string | null) {
@@ -63,6 +67,18 @@ export function useSubmitApproval(instanceId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api(instanceId).submitApproval(),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['approval-status', instanceId] });
+      qc.invalidateQueries({ queryKey: ['approval-history', instanceId] });
+    },
+  });
+}
+
+/** Take the PENDING request back; refreshes status and history either way (a 409 means it was decided meanwhile). */
+export function useWithdrawApproval(instanceId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api(instanceId).withdrawApproval(),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['approval-status', instanceId] });
       qc.invalidateQueries({ queryKey: ['approval-history', instanceId] });

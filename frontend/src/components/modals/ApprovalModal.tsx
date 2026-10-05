@@ -1,8 +1,9 @@
 /**
  * ApprovalModal.tsx — review-and-submit dialog for an instance approval request.
- * Shows the latest request up front (ApprovalStatusBanner): a PENDING request
- * blocks a second one before anyone presses submit, a rejection shows its
- * reason. The checklist is the shared readiness rule (deriveReadiness, as in
+ * While a request is PENDING the dialog is the "Running request" view
+ * (ApprovalRunningRequest) with a confirmed "Withdraw request" action instead
+ * of a second submit. Otherwise the latest request leads (ApprovalStatusBanner;
+ * a rejection shows its reason). The checklist is the shared readiness rule (deriveReadiness, as in
  * the wizard and the right panel); an open item closes the dialog and jumps to
  * its card. Below, the data the request will snapshot. Submits through the
  * cross-user guard; backend refusals map to translated messages.
@@ -14,7 +15,15 @@ import { useId, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
 import { parseJsonArray } from '../../lib/parseJsonArray';
-import { useApprovalStatus, useSubmitApproval, type ApprovalStatus } from '../../hooks/useApproval';
+import {
+  useApprovalStatus,
+  useSubmitApproval,
+  useWithdrawApproval,
+  type ApprovalStatus,
+} from '../../hooks/useApproval';
+import { useConfirm } from '../../hooks/useConfirm';
+import { ApprovalRunningRequest } from './ApprovalRunningRequest';
+import { ApprovalHistoryList } from './ApprovalHistoryList';
 import { useOrganization } from '../../hooks/useOrganization';
 import { useContacts } from '../../hooks/useContacts';
 import { useEndpoints } from '../../hooks/useEndpoints';
@@ -120,6 +129,9 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
   const guard = useCrossUserGuard();
   const statusQuery = useApprovalStatus(instanceId);
   const approval: ApprovalStatus | null | undefined = statusQuery.data;
+  const running = approval?.status === 'PENDING';
+  const { mutateAsync: withdraw, isPending: withdrawing } = useWithdrawApproval(instanceId);
+  const confirm = useConfirm();
   const { data: org } = useOrganization(instanceId);
   const { data: contactData } = useContacts(instanceId);
   const { data: endpointData } = useEndpoints(instanceId);
@@ -143,6 +155,27 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
   function jumpTo(key: ReadinessKey) {
     onClose();
     revealReadinessCard(key);
+  }
+
+  async function handleWithdraw() {
+    const ok = await confirm({
+      title: t('approvalWithdrawConfirmTitle'),
+      message: t('approvalWithdrawConfirmMessage'),
+      confirmLabel: t('approvalWithdrawBtn'),
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await withdraw();
+      toast.success(t('approvalWithdrawSuccess'));
+      onClose();
+    } catch (err: unknown) {
+      toast.error(
+        getErrorCode(err) === 'NOT_PENDING'
+          ? t('approvalWithdrawNotPending')
+          : t('approvalWithdrawFailed'),
+      );
+    }
   }
 
   async function handleSubmit() {
@@ -177,219 +210,224 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
       open={open}
       onClose={onClose}
       width="max-w-2xl"
-      title={t('approvalModalTitle')}
-      subtitle={t('approvalModalSubtitle')}
+      title={running ? t('approvalRunningTitle') : t('approvalModalTitle')}
+      subtitle={running ? t('approvalRunningSubtitle') : t('approvalModalSubtitle')}
     >
-      <div className="space-y-3">
-        {approval ? (
+      {running && approval ? (
+        <ApprovalRunningRequest approval={approval} />
+      ) : (
+        <div className="space-y-3">
           <ApprovalStatusBanner approval={approval} />
-        ) : (
-          <p className="rounded-xl border border-info-border bg-info-surface p-3 text-xs text-[color:var(--text-primary)]">
-            {t('approvalModalPendingNote')}
-          </p>
-        )}
-        {readiness.pending && (
-          <p role="status" className="text-xs font-medium text-warning-fg">
-            {t('approvalPendingBlocked')}
-          </p>
-        )}
-        {approval?.status === 'APPROVED' && (
-          <p className="text-xs text-[color:var(--text-secondary)]">
-            {t('approvalModalApprovedHint')}
-          </p>
-        )}
-
-        {readiness.withdrawal && (
-          <div className="rounded-xl border border-warning-border bg-warning-surface p-3 text-xs">
-            <p className="mb-1 flex items-center gap-2 font-bold text-warning-fg">
-              <Icon name="logout" size={16} />
-              {t('approvalWithdrawalTitle')}
+          {!approval && (
+            <p className="rounded-xl border border-info-border bg-info-surface p-3 text-xs text-[color:var(--text-primary)]">
+              {t('approvalModalPendingNote')}
             </p>
-            <p className="text-[color:var(--text-primary)]">{t('approvalWithdrawalNote')}</p>
-          </div>
-        )}
+          )}
+          {approval?.status === 'APPROVED' && (
+            <p className="text-xs text-[color:var(--text-secondary)]">
+              {t('approvalModalApprovedHint')}
+            </p>
+          )}
 
-        {/* Readiness checklist — the same rule as the wizard and the right panel */}
-        {!readiness.withdrawal && (
-          <div
-            className={`rounded-xl border p-3 ${
-              readiness.ready
-                ? 'border-success-border bg-success-surface'
-                : 'border-danger-border bg-danger-surface'
-            }`}
-          >
-            <p
-              className={`mb-2 text-[11px] font-bold uppercase tracking-wide ${
-                readiness.ready ? 'text-success-fg' : 'text-danger-fg'
+          {readiness.withdrawal && (
+            <div className="rounded-xl border border-warning-border bg-warning-surface p-3 text-xs">
+              <p className="mb-1 flex items-center gap-2 font-bold text-warning-fg">
+                <Icon name="logout" size={16} />
+                {t('approvalWithdrawalTitle')}
+              </p>
+              <p className="text-[color:var(--text-primary)]">{t('approvalWithdrawalNote')}</p>
+            </div>
+          )}
+
+          {/* Readiness checklist — the same rule as the wizard and the right panel */}
+          {!readiness.withdrawal && (
+            <div
+              className={`rounded-xl border p-3 ${
+                readiness.ready
+                  ? 'border-success-border bg-success-surface'
+                  : 'border-danger-border bg-danger-surface'
               }`}
             >
-              {readiness.ready ? t('approvalModalAllPassed') : t('approvalModalSomeFailed')}
-            </p>
-            <ul className="space-y-1">
-              {readiness.items.map((item) => {
-                const label = t(READINESS_LABEL[item.key]);
-                if (item.done) {
+              <p
+                className={`mb-2 text-[11px] font-bold uppercase tracking-wide ${
+                  readiness.ready ? 'text-success-fg' : 'text-danger-fg'
+                }`}
+              >
+                {readiness.ready ? t('approvalModalAllPassed') : t('approvalModalSomeFailed')}
+              </p>
+              <ul className="space-y-1">
+                {readiness.items.map((item) => {
+                  const label = t(READINESS_LABEL[item.key]);
+                  if (item.done) {
+                    return (
+                      <li
+                        key={item.key}
+                        className="flex items-center gap-2 px-1 py-0.5 text-xs text-[color:var(--text-primary)]"
+                      >
+                        <Icon
+                          name="check_circle"
+                          size={16}
+                          filled
+                          label={t('readinessItemDone')}
+                          className="text-success-fg"
+                        />
+                        <Icon
+                          name={READINESS_ICON[item.key]}
+                          size={14}
+                          className="text-[color:var(--text-muted)]"
+                        />
+                        <span>{label}</span>
+                      </li>
+                    );
+                  }
                   return (
-                    <li
-                      key={item.key}
-                      className="flex items-center gap-2 px-1 py-0.5 text-xs text-[color:var(--text-primary)]"
-                    >
-                      <Icon
-                        name="check_circle"
-                        size={16}
-                        filled
-                        label={t('readinessItemDone')}
-                        className="text-success-fg"
-                      />
-                      <Icon
-                        name={READINESS_ICON[item.key]}
-                        size={14}
-                        className="text-[color:var(--text-muted)]"
-                      />
-                      <span>{label}</span>
+                    <li key={item.key}>
+                      <button
+                        type="button"
+                        onClick={() => jumpTo(item.key)}
+                        className="press-effect flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-xs font-medium text-danger-fg hover:bg-[color:var(--bg-card)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+                      >
+                        <Icon name="cancel" size={16} label={t('readinessItemMissing')} />
+                        <Icon name={READINESS_ICON[item.key]} size={14} />
+                        <span className="flex-1">{label}</span>
+                        <Icon name="arrow_forward" size={14} />
+                      </button>
                     </li>
                   );
-                }
-                return (
-                  <li key={item.key}>
-                    <button
-                      type="button"
-                      onClick={() => jumpTo(item.key)}
-                      className="press-effect flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-xs font-medium text-danger-fg hover:bg-[color:var(--bg-card)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
-                    >
-                      <Icon name="cancel" size={16} label={t('readinessItemMissing')} />
-                      <Icon name={READINESS_ICON[item.key]} size={14} />
-                      <span className="flex-1">{label}</span>
-                      <Icon name="arrow_forward" size={14} />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-            {!readiness.ready && (
-              <p className="mt-2 text-[11px] text-[color:var(--text-secondary)]">
-                {t('approvalModalOpenItemsHint')}
-              </p>
-            )}
-          </div>
-        )}
-
-        {org && (
-          <Section title={t('organization')}>
-            <KV
-              k={t('orgCardIdentifier')}
-              v={<span className="mono-id text-primary dark:text-brand-400">{org.identifier}</span>}
-            />
-            <KV k={t('orgCardName')} v={org.name} />
-            <KV k={t('orgCardEmail')} v={org.email} />
-            <KV
-              k={t('orgCardCity')}
-              v={[org.city, org.country_code].filter(Boolean).join(' · ') || '—'}
-            />
-            <KV
-              k={t('orgModalActiveLabel')}
-              v={
-                <StatusPill tone={org.active ? 'success' : 'danger'}>
-                  {org.active ? t('approvalModalActive') : t('approvalModalInactive')}
-                </StatusPill>
-              }
-            />
-          </Section>
-        )}
-        <Section title={t('requestCardSectionContacts', { n: contacts.length })}>
-          {contacts.length === 0 && <p className={empty}>{t('approvalModalNoContacts')}</p>}
-          {contacts.map((c) => (
-            <div key={c.id} className={itemBox}>
-              <p className="text-xs font-bold text-[color:var(--text-primary)]">{c.name || '—'}</p>
-              <p className="text-[11px] text-[color:var(--text-muted)]">
-                {parseJsonArray(c.types).join(' · ')} ·{' '}
-                {c.email_validated ? t('contactEmailValidated') : t('contactEmailNotValidated')}
-              </p>
-            </div>
-          ))}
-        </Section>
-        <Section title={t('requestCardSectionEndpoints', { n: endpoints.length })}>
-          {endpoints.length === 0 && <p className={empty}>{t('approvalModalNoEndpoints')}</p>}
-          {endpoints.map((ep) => (
-            <div key={ep.identifier} className={itemBox}>
-              <p className="text-xs font-bold text-[color:var(--text-primary)]">
-                {ep.name || ep.identifier}
-              </p>
-              <p className="break-all font-mono text-[11px] text-[color:var(--text-muted)]">
-                {ep.address}
-              </p>
-              {(ep.ipAddresses ?? []).length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {(ep.ipAddresses ?? []).map((ip) => (
-                    <StatusPill key={ip.id ?? ip.ip} tone="neutral" className="font-mono">
-                      {ip.ip}
-                    </StatusPill>
-                  ))}
-                </div>
+                })}
+              </ul>
+              {!readiness.ready && (
+                <p className="mt-2 text-[11px] text-[color:var(--text-secondary)]">
+                  {t('approvalModalOpenItemsHint')}
+                </p>
               )}
             </div>
-          ))}
-        </Section>
-        <Section title={t('requestCardSectionCertificates', { n: certs.length })}>
-          {certs.length === 0 && <p className={empty}>{t('approvalModalNoCerts')}</p>}
-          {certs.map((c) => {
-            const expired = certValidity(c.valid_until).state === 'expired';
-            const date = formatDate(c.valid_until, lang) || c.valid_until;
-            return (
-              <div key={c.id} className={`${itemBox} flex items-start justify-between gap-2`}>
-                <div className="min-w-0">
-                  <p className="mono-id break-all text-[11px] text-primary dark:text-brand-400">
-                    {c.subject}
-                  </p>
-                  <p className="text-[11px] text-[color:var(--text-muted)]">
-                    {expired
-                      ? t('approvalModalExpired', { date })
-                      : t('approvalModalExpires', { date })}
-                  </p>
-                </div>
-                {expired && <StatusPill tone="danger">{t('expiryTimelineExpired')}</StatusPill>}
+          )}
+
+          {org && (
+            <Section title={t('organization')}>
+              <KV
+                k={t('orgCardIdentifier')}
+                v={
+                  <span className="mono-id text-primary dark:text-brand-400">{org.identifier}</span>
+                }
+              />
+              <KV k={t('orgCardName')} v={org.name} />
+              <KV k={t('orgCardEmail')} v={org.email} />
+              <KV
+                k={t('orgCardCity')}
+                v={[org.city, org.country_code].filter(Boolean).join(' · ') || '—'}
+              />
+              <KV
+                k={t('orgModalActiveLabel')}
+                v={
+                  <StatusPill tone={org.active ? 'success' : 'danger'}>
+                    {org.active ? t('approvalModalActive') : t('approvalModalInactive')}
+                  </StatusPill>
+                }
+              />
+            </Section>
+          )}
+          <Section title={t('requestCardSectionContacts', { n: contacts.length })}>
+            {contacts.length === 0 && <p className={empty}>{t('approvalModalNoContacts')}</p>}
+            {contacts.map((c) => (
+              <div key={c.id} className={itemBox}>
+                <p className="text-xs font-bold text-[color:var(--text-primary)]">
+                  {c.name || '—'}
+                </p>
+                <p className="text-[11px] text-[color:var(--text-muted)]">
+                  {parseJsonArray(c.types).join(' · ')} ·{' '}
+                  {c.email_validated ? t('contactEmailValidated') : t('contactEmailNotValidated')}
+                </p>
               </div>
-            );
-          })}
-        </Section>
-        <Section title={t('requestCardSectionMemberships', { n: memberships.length })}>
-          {memberships.length === 0 && <p className={empty}>{t('approvalModalNoMemberships')}</p>}
-          {memberships.map((ms) => (
-            <div key={ms.id} className={itemBox}>
-              <p className="text-xs font-bold text-[color:var(--text-primary)]">
-                {ms.parent_organization}
-              </p>
-              <p className="text-[11px] font-bold text-info-fg">
-                {parseJsonArray(ms.roles).join(' · ')}
-              </p>
-            </div>
-          ))}
-        </Section>
-      </div>
+            ))}
+          </Section>
+          <Section title={t('requestCardSectionEndpoints', { n: endpoints.length })}>
+            {endpoints.length === 0 && <p className={empty}>{t('approvalModalNoEndpoints')}</p>}
+            {endpoints.map((ep) => (
+              <div key={ep.identifier} className={itemBox}>
+                <p className="text-xs font-bold text-[color:var(--text-primary)]">
+                  {ep.name || ep.identifier}
+                </p>
+                <p className="break-all font-mono text-[11px] text-[color:var(--text-muted)]">
+                  {ep.address}
+                </p>
+                {(ep.ipAddresses ?? []).length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {(ep.ipAddresses ?? []).map((ip) => (
+                      <StatusPill key={ip.id ?? ip.ip} tone="neutral" className="font-mono">
+                        {ip.ip}
+                      </StatusPill>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </Section>
+          <Section title={t('requestCardSectionCertificates', { n: certs.length })}>
+            {certs.length === 0 && <p className={empty}>{t('approvalModalNoCerts')}</p>}
+            {certs.map((c) => {
+              const expired = certValidity(c.valid_until).state === 'expired';
+              const date = formatDate(c.valid_until, lang) || c.valid_until;
+              return (
+                <div key={c.id} className={`${itemBox} flex items-start justify-between gap-2`}>
+                  <div className="min-w-0">
+                    <p className="mono-id break-all text-[11px] text-primary dark:text-brand-400">
+                      {c.subject}
+                    </p>
+                    <p className="text-[11px] text-[color:var(--text-muted)]">
+                      {expired
+                        ? t('approvalModalExpired', { date })
+                        : t('approvalModalExpires', { date })}
+                    </p>
+                  </div>
+                  {expired && <StatusPill tone="danger">{t('expiryTimelineExpired')}</StatusPill>}
+                </div>
+              );
+            })}
+          </Section>
+          <Section title={t('requestCardSectionMemberships', { n: memberships.length })}>
+            {memberships.length === 0 && <p className={empty}>{t('approvalModalNoMemberships')}</p>}
+            {memberships.map((ms) => (
+              <div key={ms.id} className={itemBox}>
+                <p className="text-xs font-bold text-[color:var(--text-primary)]">
+                  {ms.parent_organization}
+                </p>
+                <p className="text-[11px] font-bold text-info-fg">
+                  {parseJsonArray(ms.roles).join(' · ')}
+                </p>
+              </div>
+            ))}
+          </Section>
+        </div>
+      )}
+      <ApprovalHistoryList instanceId={instanceId} />
       <div className="mt-4 flex justify-end gap-3 border-t border-[color:var(--border)] pt-4">
         <Button variant="secondary" onClick={onClose}>
-          {t('modalCancelBtn')}
+          {running ? t('downloadModalClose') : t('modalCancelBtn')}
         </Button>
-        <Button onClick={handleSubmit} disabled={!canSubmit || isPending}>
-          {readiness.pending ? (
-            <>
-              <Icon name="hourglass_top" size={16} />
-              {t('approvalWaitingLabel')}
-            </>
-          ) : isPending ? (
-            t('modalSavingBtn')
-          ) : readiness.withdrawal ? (
-            <>
-              <Icon name="logout" size={16} />
-              {t('approvalWithdrawalSubmit')}
-            </>
-          ) : (
-            <>
-              <Icon name="send" size={16} />
-              {t('approvalModalSubmitBtn')}
-            </>
-          )}
-        </Button>
+        {running ? (
+          <Button variant="destructive" onClick={handleWithdraw} disabled={withdrawing}>
+            <Icon name="undo" size={16} />
+            {withdrawing ? t('modalSavingBtn') : t('approvalWithdrawBtn')}
+          </Button>
+        ) : (
+          <Button onClick={handleSubmit} disabled={!canSubmit || isPending}>
+            {isPending ? (
+              t('modalSavingBtn')
+            ) : readiness.withdrawal ? (
+              <>
+                <Icon name="logout" size={16} />
+                {t('approvalWithdrawalSubmit')}
+              </>
+            ) : (
+              <>
+                <Icon name="send" size={16} />
+                {t('approvalModalSubmitBtn')}
+              </>
+            )}
+          </Button>
+        )}
       </div>
     </Modal>
   );

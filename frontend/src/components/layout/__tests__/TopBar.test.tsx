@@ -64,17 +64,18 @@ describe('TopBar', () => {
     expect(useApprovalStatus).toHaveBeenCalledWith('i1');
   });
 
-  it('disables and relabels the approval action while a request is pending', () => {
+  it('shows a "request running" pill that opens the running request while one is pending', () => {
     approval.data = { status: 'PENDING' };
     const onApproval = vi.fn();
     renderWithProviders(
       <TopBar onDownload={vi.fn()} onApproval={onApproval} showInstanceActions />,
     );
     expect(screen.queryByRole('button', { name: /send for approval/i })).not.toBeInTheDocument();
-    const waiting = screen.getByRole('button', { name: /waiting for approval/i });
-    expect(waiting).toBeDisabled();
-    fireEvent.click(waiting);
-    expect(onApproval).not.toHaveBeenCalled();
+    const running = screen.getByRole('button', { name: /request running/i });
+    expect(running).toBeEnabled();
+    expect(running).toHaveTextContent('Request running');
+    fireEvent.click(running);
+    expect(onApproval).toHaveBeenCalledTimes(1);
   });
 
   it('offers the approval action again after a rejection', () => {

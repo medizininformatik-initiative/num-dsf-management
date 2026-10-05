@@ -1,6 +1,6 @@
 /**
  * ApprovalStatusBanner.tsx – The latest approval request at a glance, one look
- * per state (no request, DRAFT, PENDING, APPROVED, REJECTED): a StatusPill,
+ * per state (no request, DRAFT, PENDING, APPROVED, REJECTED, WITHDRAWN): a StatusPill,
  * the date that matters (formatDateTime), the reviewer, the rejection reason
  * and, while PENDING, the four-eyes progress with the silent-consent date.
  * Shared by the right panel and the approval modal; with `onResubmit` a
@@ -19,7 +19,7 @@ import { StatusPill } from '../ui/StatusPill';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 
-type BannerState = 'NONE' | 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
+type BannerState = 'NONE' | 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
 
 interface StateLook {
   tone: StatusTone;
@@ -66,6 +66,13 @@ const LOOK: Record<BannerState, StateLook> = {
     text: 'approvalBannerRejected',
     surface: 'bg-danger-surface',
   },
+  WITHDRAWN: {
+    tone: 'neutral',
+    icon: 'undo',
+    label: 'approvalStateWithdrawn',
+    text: 'approvalBannerWithdrawn',
+    surface: 'bg-neutral-surface',
+  },
 };
 
 const SILENT_CONSENT = 'SYSTEM:silent-consent';
@@ -74,7 +81,8 @@ function toState(status: string | null | undefined): BannerState {
   return status === 'DRAFT' ||
     status === 'PENDING' ||
     status === 'APPROVED' ||
-    status === 'REJECTED'
+    status === 'REJECTED' ||
+    status === 'WITHDRAWN'
     ? status
     : 'NONE';
 }
@@ -144,6 +152,8 @@ export function ApprovalStatusBanner({ approval, onResubmit, className = '' }: P
     dateLine = at('approvalBannerApprovedAt', approval.resolved_at);
   if (approval && state === 'REJECTED')
     dateLine = at('approvalBannerRejectedAt', approval.resolved_at);
+  if (approval && state === 'WITHDRAWN')
+    dateLine = at('approvalBannerWithdrawnAt', approval.resolved_at);
 
   const resolvedBy =
     (state === 'APPROVED' || state === 'REJECTED') && approval?.resolved_by

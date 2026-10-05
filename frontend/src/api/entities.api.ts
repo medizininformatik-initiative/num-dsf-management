@@ -111,6 +111,8 @@ function api(instanceId: string) {
       axios.get(`${base}/approval/history`, { headers: authHeader() }),
     submitApproval: () =>
       axios.post(`${base}/approval/submit`, {}, { headers: authHeader() }),
+    withdrawApproval: () =>
+      axios.post(`${base}/approval/withdraw`, {}, { headers: authHeader() }),
 
     downloadBundle: (endpointId: string, version?: number) =>
       axios.get(
