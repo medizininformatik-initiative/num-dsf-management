@@ -88,7 +88,7 @@
    quick fade. The ring follows the target's corner radius (set inline). */
 .fk-ring {
   --fk-ring: var(--focus-ring);
-  --fk-ring-soft: rgba(176, 30, 102, 0.28);
+  --fk-ring-soft: rgba(103, 95, 168, 0.28);
   position: absolute;
   z-index: 19;
   pointer-events: none;
@@ -97,7 +97,7 @@
     0 0 0 10px transparent;
 }
 :root.dark .fk-ring {
-  --fk-ring-soft: rgba(224, 99, 153, 0.32);
+  --fk-ring-soft: rgba(155, 148, 212, 0.32);
 }
 .fk-ring[data-state='open'] {
   animation: fk-ring-pulse var(--duration-long) var(--ease-standard) both;

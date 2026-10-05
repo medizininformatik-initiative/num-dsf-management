@@ -75,7 +75,7 @@ export function MarketplaceFilterBar({
               onClick={() => onChange({ status: c.key })}
               className={`press-effect min-h-[36px] rounded-full border px-4 text-[13px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--primary)] ${
                 active
-                  ? 'border-transparent bg-[color:var(--primary)] text-white'
+                  ? 'border-transparent bg-[color:var(--accent-solid)] text-white'
                   : 'glass-thin text-[color:var(--text-primary)]'
               }`}
             >

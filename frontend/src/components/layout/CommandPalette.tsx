@@ -111,7 +111,7 @@ export function CommandPalette() {
         id: 'act-org',
         label: t('cmdEditOrganization'),
         icon: 'corporate_fare',
-        color: '#8a1750',
+        color: 'var(--primary)',
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('org-edit');

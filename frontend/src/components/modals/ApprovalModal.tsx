@@ -278,7 +278,7 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
           <Section title={t('organization')}>
             <KV
               k={t('orgCardIdentifier')}
-              v={<span className="mono-id text-primary">{org.identifier}</span>}
+              v={<span className="mono-id text-primary dark:text-brand-400">{org.identifier}</span>}
             />
             <KV k={t('orgCardName')} v={org.name} />
             <KV k={t('orgCardEmail')} v={org.email} />
@@ -338,7 +338,9 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
             return (
               <div key={c.id} className={`${itemBox} flex items-start justify-between gap-2`}>
                 <div className="min-w-0">
-                  <p className="mono-id break-all text-[11px] text-primary">{c.subject}</p>
+                  <p className="mono-id break-all text-[11px] text-primary dark:text-brand-400">
+                    {c.subject}
+                  </p>
                   <p className="text-[11px] text-[color:var(--text-muted)]">
                     {expired
                       ? t('approvalModalExpired', { date })

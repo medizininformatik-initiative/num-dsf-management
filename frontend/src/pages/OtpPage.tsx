@@ -169,7 +169,7 @@ export function OtpPage() {
               disabled={loading}
               className={`h-14 w-12 rounded-input border-[1.5px] text-center text-xl font-semibold text-[color:var(--text-primary)] transition-colors duration-short ease-standard focus:border-[color:var(--accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50 ${
                 d
-                  ? 'border-[color:var(--accent)] bg-[#6c63ff]/10'
+                  ? 'border-[color:var(--accent)] bg-[color:var(--accent-surface)]'
                   : 'border-[color:var(--border)] bg-[color:var(--bg-input)]'
               }`}
             />

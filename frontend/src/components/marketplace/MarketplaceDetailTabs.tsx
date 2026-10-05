@@ -71,7 +71,7 @@ export function DetailTabList({
             onKeyDown={(e) => onKeyDown(e, i)}
             className={`press-effect min-h-[36px] whitespace-nowrap rounded-full px-4 text-[13px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--primary)] ${
               active
-                ? 'bg-[color:var(--primary)] text-white'
+                ? 'bg-[color:var(--accent-solid)] text-white'
                 : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
             }`}
           >

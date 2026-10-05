@@ -80,7 +80,7 @@ export function AdminHelpPage() {
                   <a
                     href={`#${id}`}
                     onClick={(e) => jumpTo(e, id)}
-                    className="press-effect inline-block rounded-full px-2.5 py-1 text-xs font-medium text-primary hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] dark:text-brand-400"
+                    className="press-effect inline-block rounded-full px-2.5 py-1 text-xs font-medium text-primary dark:text-brand-400 hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] dark:text-brand-400"
                   >
                     {TOC_LABEL[id]}
                   </a>

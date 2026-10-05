@@ -36,7 +36,7 @@ export function AdminPage() {
         actions={
           <Link
             to="/app/admin/help"
-            className="press-effect inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-primary hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] dark:text-brand-400"
+            className="press-effect inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-primary dark:text-brand-400 hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] dark:text-brand-400"
           >
             <Icon name="help" size={16} />
             {t('adminHelpLink')}
