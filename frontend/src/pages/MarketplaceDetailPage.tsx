@@ -29,6 +29,7 @@ import {
   trustLevel,
 } from '../components/marketplace/marketplaceUtils';
 import { Button } from '../components/ui/Button';
+import { Breadcrumbs } from '../components/layout/Breadcrumbs';
 import { Icon } from '../components/ui/Icon';
 import { StatusPill } from '../components/ui/StatusPill';
 
@@ -70,7 +71,7 @@ export function MarketplaceDetailPage() {
   if (isLoading) {
     return (
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8" aria-busy="true">
-        <div className="mx-auto max-w-5xl space-y-4">
+        <div className="space-y-4">
           <span className="sr-only">{t('loading')}</span>
           {backButton}
           <div aria-hidden="true" className="glass h-40 rounded-[24px] p-6">
@@ -90,7 +91,7 @@ export function MarketplaceDetailPage() {
   if (!entry) {
     return (
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
-        <div className="mx-auto max-w-5xl space-y-6">
+        <div className="space-y-6">
           {backButton}
           <div className="glass flex flex-col items-center gap-3 rounded-[20px] p-12 text-center">
             <Icon name="search_off" size={40} className="text-[color:var(--text-muted)]" />
@@ -113,7 +114,8 @@ export function MarketplaceDetailPage() {
       className="flex-1 overflow-y-auto"
     >
       <div className="glass-chrome sticky top-0 z-20 px-4 py-2 sm:px-8">
-        <div className="mx-auto flex max-w-5xl items-center gap-3">
+        <Breadcrumbs current={displayName(entry)} />
+        <div className="flex items-center gap-3">
           {backButton}
           <div
             aria-hidden="true"
@@ -140,7 +142,7 @@ export function MarketplaceDetailPage() {
       </div>
 
       <div className="px-4 pb-10 pt-4 sm:px-8">
-        <div className="mx-auto flex max-w-5xl animate-scale-in flex-col gap-5">
+        <div className="flex animate-scale-in flex-col gap-5">
           <section className="glass flex flex-col gap-5 rounded-[24px] p-5 sm:p-7">
             <div className="flex flex-wrap items-start gap-4">
               <MarketplaceTile entry={entry} size={72} />

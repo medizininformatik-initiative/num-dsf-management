@@ -6,20 +6,21 @@
  * so the page tracks the active locale.
  */
 import { useI18n } from '../stores/i18n.store';
+import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 
 export function LegalPage() {
   const { t } = useI18n();
   return (
-    <div className="mx-auto max-w-3xl p-8">
-      <h1 className="mb-6 text-2xl font-semibold text-[color:var(--text-primary)]">
-        {t('legalPageTitle')}
-      </h1>
-      <section className="glass-thin space-y-4 rounded-2xl p-6 text-sm leading-relaxed text-[color:var(--text-secondary)]">
-        <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">
-          {t('bundleDisclaimerHeading')}
-        </h2>
-        <p>{t('bundleDisclaimerBody')}</p>
-      </section>
+    <div className="flex-1 overflow-y-auto">
+      <AdminPageHeader icon="gavel" title={t('legalPageTitle')} />
+      <div className="p-6 sm:p-8">
+        <section className="glass-thin space-y-4 rounded-2xl p-6 text-sm leading-relaxed text-[color:var(--text-secondary)]">
+          <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">
+            {t('bundleDisclaimerHeading')}
+          </h2>
+          <p className="max-w-prose">{t('bundleDisclaimerBody')}</p>
+        </section>
+      </div>
     </div>
   );
 }

@@ -199,7 +199,7 @@ export function AdminUsersPage() {
         subtitle={t('adminUsersSubtitle')}
       />
 
-      <div className="mx-auto max-w-5xl space-y-5 px-6 py-6 sm:px-8">
+      <div className="space-y-5 px-6 py-6 sm:px-8">
         {/* Add row */}
         <form
           onSubmit={requestAdd}

@@ -44,7 +44,7 @@ export function AdminPage() {
         }
       />
 
-      <div className="mx-auto max-w-5xl space-y-5 px-6 py-6 sm:px-8">
+      <div className="space-y-5 px-6 py-6 sm:px-8">
         <div className="flex gap-3 rounded-xl border border-info-border bg-info-surface px-5 py-4 text-info-fg">
           <Icon name="shield" size={24} className="mt-0.5 shrink-0" />
           <div className="text-[13px] leading-normal">

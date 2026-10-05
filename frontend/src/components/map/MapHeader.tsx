@@ -1,15 +1,16 @@
 /**
- * MapHeader.tsx – Page title strip for /app/map. Rendered by AppPage above
- * Breadcrumbs so the page title sits ABOVE the Dashboard/Map sub-nav.
+ * MapHeader.tsx – Page header for /app/map: breadcrumb trail, then the page title
+ * with the role badge, in one glass bar.
  *
  * The role badge follows the same signal that decides which map view the page
  * renders: `meta.isAdmin` of the network-map response (shared ['network','map']
  * query). `useMe()` is only the fallback while the map loads. /auth/me can
  * fail (auth rate-limit zone), so treating a missing `me` as "member"
  * mislabelled admins; an unknown role now renders no badge instead.
- * Dependencies: useNetworkMap, useMe, StatusPill, Icon, i18n.store
+ * Dependencies: useNetworkMap, useMe, Breadcrumbs, StatusPill, Icon, i18n.store
  */
 import { Icon } from '../ui/Icon';
+import { Breadcrumbs } from '../layout/Breadcrumbs';
 import { StatusPill } from '../ui/StatusPill';
 import { useMe } from '../../hooks/useMe';
 import { useNetworkMap } from '../../hooks/useNetworkMap';
@@ -22,7 +23,8 @@ export function MapHeader() {
   const isAdmin: boolean | undefined = map ? map.isAdmin : me?.isAdmin;
   const known = isAdmin !== undefined;
   return (
-    <header className="glass-chrome px-7 pb-2.5 pt-4">
+    <header className="glass-chrome px-6 pb-2.5 pt-3 sm:px-8">
+      <Breadcrumbs />
       <div className="flex items-center gap-3">
         <Icon name="hub" size={24} className="text-[color:var(--primary)]" />
         <div>

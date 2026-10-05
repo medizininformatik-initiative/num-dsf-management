@@ -10,7 +10,7 @@ import { useMe } from '../hooks/useMe';
 import { useI18n } from '../stores/i18n.store';
 import type { TranslationKey } from '../i18n/en';
 import { Button } from '../components/ui/Button';
-import { Icon } from '../components/ui/Icon';
+import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { StatusPill } from '../components/ui/StatusPill';
 import { formatDateTime } from '../lib/dateUtils';
 import type { StatusTone } from '../lib/statusColors';
@@ -66,105 +66,98 @@ export function AuditPage() {
   if (me && !me.isAdmin) return <Navigate to="/app" replace />;
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 font-sans">
-      <div className="mb-2 flex items-center gap-3">
-        <Icon name="history" size={28} className="text-[color:var(--primary)]" />
-        <div>
-          <h1 className="m-0 text-xl font-bold text-[color:var(--text-primary)]">
-            {t('auditLog')}
-          </h1>
-          <p className="mt-0.5 text-[13px] text-[color:var(--text-secondary)]">
-            {isAdmin ? t('auditScopeAdmin') : t('auditScopeOwner')}
+    <div className="flex-1 overflow-y-auto font-sans">
+      <AdminPageHeader
+        icon="history"
+        title={t('auditLog')}
+        subtitle={isAdmin ? t('auditScopeAdmin') : t('auditScopeOwner')}
+      />
+      <div className="p-6 sm:p-8">
+        {isLoading && <p className="text-sm text-[color:var(--text-muted)]">{t('loading')}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-danger-fg">
+            {t('auditLoadFailed')}
           </p>
-        </div>
+        )}
+
+        {!isLoading && !error && rows.length === 0 && (
+          <p className="text-sm text-[color:var(--text-muted)]">{t('auditEmpty')}</p>
+        )}
+
+        {rows.length > 0 && (
+          <div className="glass-thin overflow-x-auto rounded-2xl">
+            <table className="w-full border-collapse text-[12px]">
+              <thead>
+                <tr className="bg-[color:var(--bg-hover)]">
+                  <th className={TH}>{t('auditColTimestamp')}</th>
+                  <th className={TH}>{t('auditColInstance')}</th>
+                  <th className={TH}>{t('auditColUser')}</th>
+                  <th className={TH}>{t('auditColResource')}</th>
+                  <th className={TH}>{t('auditColOperation')}</th>
+                  <th className={TH}>{t('auditColIp')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const op = OPERATION[r.operation];
+                  const resourceKey = RESOURCE[r.resource_type];
+                  return (
+                    <tr key={r.id} className="border-t border-[color:var(--border)]">
+                      <td className={`${TD} whitespace-nowrap`}>
+                        {formatDateTime(r.timestamp, lang)}
+                      </td>
+                      <td className={TD}>
+                        {r.organization_name ??
+                          r.instance_label ??
+                          (r.instance_id ? r.instance_id.slice(0, 8) : '—')}
+                        {r.organization_identifier && (
+                          <div className="font-mono text-[11px] text-[color:var(--text-muted)]">
+                            {r.organization_identifier}
+                          </div>
+                        )}
+                      </td>
+                      <td className={`${TD} font-mono`}>{r.user_email ?? '—'}</td>
+                      <td className={TD}>{resourceKey ? t(resourceKey) : r.resource_type}</td>
+                      <td className="px-3 py-2.5">
+                        <StatusPill tone={op?.tone ?? 'neutral'} className="capitalize">
+                          {op ? t(op.label) : r.operation}
+                        </StatusPill>
+                      </td>
+                      <td className={`${TD} font-mono text-[color:var(--text-muted)]`}>
+                        {r.ip_address ?? '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-end gap-3 text-[12px]">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page === 1}
+            >
+              {t('prev')}
+            </Button>
+            <span className="text-[color:var(--text-secondary)]">
+              {t('paginationShowing', { page, total: totalPages })}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              disabled={page === totalPages}
+            >
+              {t('next')}
+            </Button>
+          </div>
+        )}
       </div>
-
-      <div className="my-5 h-px bg-[color:var(--border)]" />
-
-      {isLoading && <p className="text-sm text-[color:var(--text-muted)]">{t('loading')}</p>}
-      {error && (
-        <p role="alert" className="text-sm text-danger-fg">
-          {t('auditLoadFailed')}
-        </p>
-      )}
-
-      {!isLoading && !error && rows.length === 0 && (
-        <p className="text-sm text-[color:var(--text-muted)]">{t('auditEmpty')}</p>
-      )}
-
-      {rows.length > 0 && (
-        <div className="glass-thin overflow-x-auto rounded-2xl">
-          <table className="w-full border-collapse text-[12px]">
-            <thead>
-              <tr className="bg-[color:var(--bg-hover)]">
-                <th className={TH}>{t('auditColTimestamp')}</th>
-                <th className={TH}>{t('auditColInstance')}</th>
-                <th className={TH}>{t('auditColUser')}</th>
-                <th className={TH}>{t('auditColResource')}</th>
-                <th className={TH}>{t('auditColOperation')}</th>
-                <th className={TH}>{t('auditColIp')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const op = OPERATION[r.operation];
-                const resourceKey = RESOURCE[r.resource_type];
-                return (
-                  <tr key={r.id} className="border-t border-[color:var(--border)]">
-                    <td className={`${TD} whitespace-nowrap`}>
-                      {formatDateTime(r.timestamp, lang)}
-                    </td>
-                    <td className={TD}>
-                      {r.organization_name ??
-                        r.instance_label ??
-                        (r.instance_id ? r.instance_id.slice(0, 8) : '—')}
-                      {r.organization_identifier && (
-                        <div className="font-mono text-[11px] text-[color:var(--text-muted)]">
-                          {r.organization_identifier}
-                        </div>
-                      )}
-                    </td>
-                    <td className={`${TD} font-mono`}>{r.user_email ?? '—'}</td>
-                    <td className={TD}>{resourceKey ? t(resourceKey) : r.resource_type}</td>
-                    <td className="px-3 py-2.5">
-                      <StatusPill tone={op?.tone ?? 'neutral'} className="capitalize">
-                        {op ? t(op.label) : r.operation}
-                      </StatusPill>
-                    </td>
-                    <td className={`${TD} font-mono text-[color:var(--text-muted)]`}>
-                      {r.ip_address ?? '—'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-end gap-3 text-[12px]">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setPage(Math.max(1, page - 1))}
-            disabled={page === 1}
-          >
-            {t('prev')}
-          </Button>
-          <span className="text-[color:var(--text-secondary)]">
-            {t('paginationShowing', { page, total: totalPages })}
-          </span>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setPage(Math.min(totalPages, page + 1))}
-            disabled={page === totalPages}
-          >
-            {t('next')}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

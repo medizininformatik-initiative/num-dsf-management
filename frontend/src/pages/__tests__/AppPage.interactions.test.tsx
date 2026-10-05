@@ -28,7 +28,6 @@ vi.mock('../../hooks/useOrganization', () => ({
 // as buttons; EntityCanvas exposes a button that fires the highlight wiring.
 vi.mock('../../components/layout/Sidebar', () => ({ Sidebar: () => <div /> }));
 vi.mock('../../components/layout/RightPanel', () => ({ RightPanel: () => <div /> }));
-vi.mock('../../components/layout/Breadcrumbs', () => ({ Breadcrumbs: () => <div /> }));
 vi.mock('../../components/layout/AppFooter', () => ({ AppFooter: () => <div /> }));
 vi.mock('../../components/layout/ExpiryWarningBanner', () => ({
   ExpiryWarningBanner: () => <div />,

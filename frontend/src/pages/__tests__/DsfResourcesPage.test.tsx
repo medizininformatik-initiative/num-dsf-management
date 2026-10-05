@@ -39,7 +39,7 @@ describe('DsfResourcesPage', () => {
     expect(linter).toHaveAttribute('target', '_blank');
     expect(linter).toHaveAttribute('rel', 'noopener noreferrer');
     expect(linter).toHaveAccessibleDescription('Validate BPMN process plugins against DSF rules.');
-    for (const link of screen.getAllByRole('link')) {
+    for (const link of screen.getAllByRole('link').filter((a) => !a.closest('nav'))) {
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     }
@@ -65,9 +65,12 @@ describe('DsfResourcesPage', () => {
     const search = screen.getByRole('searchbox', { name: 'Search resources' });
 
     await user.type(search, 'omg.org');
-    expect(screen.getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual([
-      'https://www.omg.org/spec/BPMN/2.0/',
-    ]);
+    expect(
+      screen
+        .getAllByRole('link')
+        .filter((a) => !a.closest('nav'))
+        .map((a) => a.getAttribute('href')),
+    ).toEqual(['https://www.omg.org/spec/BPMN/2.0/']);
     expect(screen.getByText('1 resource')).toBeInTheDocument();
 
     await user.clear(search);
@@ -78,6 +81,8 @@ describe('DsfResourcesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Clear filters' }));
     expect(search).toHaveValue('');
     expect(section('Start here')).toBeInTheDocument();
-    expect(screen.getAllByRole('link')).toHaveLength(DSF_RESOURCES.length);
+    expect(screen.getAllByRole('link').filter((a) => !a.closest('nav'))).toHaveLength(
+      DSF_RESOURCES.length,
+    );
   });
 });

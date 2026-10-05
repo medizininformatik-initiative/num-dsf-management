@@ -39,7 +39,7 @@ describe('AdminHelpPage', () => {
 
   it('renders the table-of-contents links pointing at the section anchors', () => {
     renderWithProviders(<AdminHelpPage />, { route: '/app/admin/help' });
-    const nav = screen.getByRole('navigation');
+    const nav = screen.getByRole('navigation', { name: 'On this page' });
     expect(within(nav).getByText('On this page')).toBeInTheDocument();
 
     const approvalLink = within(nav).getByRole('link', { name: 'Approval workflow' });
@@ -78,6 +78,6 @@ describe('AdminHelpPage', () => {
     renderWithProviders(<AdminHelpPage />, { route: '/app/admin/help', lang: 'de' });
     // The title is translated, so the English heading must be absent.
     expect(screen.queryByRole('heading', { name: 'Admin Reference' })).not.toBeInTheDocument();
-    expect(screen.getByRole('navigation')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Auf dieser Seite' })).toBeInTheDocument();
   });
 });

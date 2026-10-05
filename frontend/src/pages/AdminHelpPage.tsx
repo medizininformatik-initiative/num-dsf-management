@@ -28,7 +28,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
         <span aria-hidden="true" className="h-5 w-1 rounded-sm bg-primary" />
         {title}
       </h2>
-      <div className="space-y-2 text-[13px] leading-relaxed text-[color:var(--text-secondary)] [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5">
+      <div className="max-w-3xl space-y-2 text-[13px] leading-relaxed text-[color:var(--text-secondary)] [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5">
         {children}
       </div>
     </section>
@@ -62,7 +62,6 @@ export function AdminHelpPage() {
         icon="help"
         title={t('adminHelpTitle')}
         subtitle={t('adminHelpSubtitle')}
-        maxWidth="max-w-4xl"
         toolbar={
           <nav
             aria-labelledby="admin-help-toc"
@@ -91,7 +90,7 @@ export function AdminHelpPage() {
         }
       />
 
-      <div className="mx-auto max-w-4xl animate-fade-in px-6 py-6 sm:px-8">
+      <div className="animate-fade-in px-6 py-6 sm:px-8">
         <Section id="approval" title={t('adminHelpApprovalTitle')}>
           <p>{t('adminHelpApprovalP1')}</p>
           <p>{t('adminHelpApprovalP2')}</p>

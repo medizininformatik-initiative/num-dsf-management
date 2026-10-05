@@ -18,6 +18,7 @@ import { MarketplaceDeleteDialog } from '../components/marketplace/MarketplaceDe
 import { MarketplaceAddModal } from '../components/modals/MarketplaceAddModal';
 import { MarketplaceEditStatusModal } from '../components/modals/MarketplaceEditStatusModal';
 import { Button } from '../components/ui/Button';
+import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { Icon } from '../components/ui/Icon';
 import {
   DEFAULT_FILTERS,
@@ -208,26 +209,22 @@ export function MarketplacePage() {
       onScroll={(e) => {
         savedScrollTop = e.currentTarget.scrollTop;
       }}
-      className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8"
+      className="flex-1 overflow-y-auto"
     >
-      <div className="mx-auto flex max-w-6xl animate-scale-in flex-col gap-6">
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="m-0 text-[28px] font-bold leading-tight tracking-tight text-[color:var(--text-primary)]">
-              {t('marketplaceTitle')}
-            </h1>
-            <p className="m-0 mt-1 text-sm text-[color:var(--text-secondary)]">
-              {t('marketplaceSubtitle')}
-            </p>
-          </div>
-          {isAdmin && (
+      <AdminPageHeader
+        icon="storefront"
+        title={t('marketplaceTitle')}
+        subtitle={t('marketplaceSubtitle')}
+        actions={
+          isAdmin ? (
             <Button onClick={() => setAddOpen(true)}>
               <Icon name="add" size={18} />
               {t('marketplaceAdd')}
             </Button>
-          )}
-        </header>
-
+          ) : undefined
+        }
+      />
+      <div className="flex animate-scale-in flex-col gap-6 px-4 py-6 sm:px-8 sm:py-8">
         <MarketplaceFilterBar
           searchValue={searchInput}
           onSearchChange={setSearchInput}

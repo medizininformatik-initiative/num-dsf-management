@@ -51,7 +51,6 @@ vi.mock('../../components/layout/Sidebar', () => ({
   Sidebar: () => <div data-testid="sidebar" />,
 }));
 vi.mock('../../components/layout/TopBar', () => ({ TopBar: () => <div data-testid="topbar" /> }));
-vi.mock('../../components/layout/Breadcrumbs', () => ({ Breadcrumbs: () => <div /> }));
 vi.mock('../../components/layout/AppFooter', () => ({ AppFooter: () => <div /> }));
 vi.mock('../../components/layout/ExpiryWarningBanner', () => ({
   ExpiryWarningBanner: () => <div />,

@@ -2,7 +2,7 @@
  * LayoutShell.test.tsx — covers the four app-shell layout pieces together:
  * Sidebar (nav links, instance switcher, identity footer, select/keyboard
  * handlers), TopBar (action buttons), SearchBar (input filtering, select
- * handler, org name||identifier label fallback) and Breadcrumbs (the trail).
+ * handler, org name||identifier label fallback).
  * Stores and entity/auth hooks are stubbed so nothing touches the network.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -41,7 +41,6 @@ vi.mock('../../../hooks/useApproval', () => ({ useApprovalStatus: () => ({ data:
 import { Sidebar } from '../Sidebar';
 import { TopBar } from '../TopBar';
 import { SearchBar } from '../SearchBar';
-import { Breadcrumbs } from '../Breadcrumbs';
 
 describe('Sidebar', () => {
   beforeEach(() => {
@@ -60,7 +59,7 @@ describe('Sidebar', () => {
       'href',
       '/app/map',
     );
-    expect(screen.getByRole('link', { name: /status/i })).toHaveAttribute('href', '/app/status');
+    expect(screen.queryByRole('link', { name: /^status$/i })).not.toBeInTheDocument();
 
     // Instance switcher header + the two instances
     expect(screen.getByText('Instances')).toBeInTheDocument();
@@ -150,17 +149,5 @@ describe('SearchBar', () => {
       target: { value: 'zzz-nothing' },
     });
     expect(screen.getByText(/no results for/i)).toBeInTheDocument();
-  });
-});
-
-describe('Breadcrumbs', () => {
-  it('renders a labelled trail on a sub-route with the parent as a link', () => {
-    renderWithProviders(<Breadcrumbs />, { route: '/app/admin/users' });
-
-    expect(screen.getByRole('navigation')).toBeInTheDocument();
-    const parent = screen.getByRole('link', { name: /dashboard/i });
-    expect(parent).toHaveAttribute('href', '/app');
-    // Last segment is plain text, not a link.
-    expect(screen.getByText('User management')).not.toHaveAttribute('href');
   });
 });

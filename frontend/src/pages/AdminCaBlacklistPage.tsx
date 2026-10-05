@@ -68,7 +68,7 @@ export function AdminCaBlacklistPage() {
           </div>
         }
       />
-      <div className="mx-auto max-w-5xl px-6 py-6 sm:px-8">
+      <div className="px-6 py-6 sm:px-8">
         <div
           role="tabpanel"
           id="ca-panel-whitelist"

@@ -3,35 +3,56 @@ import { screen } from '@testing-library/react';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 import { Breadcrumbs } from '../Breadcrumbs';
 
+function trail(): string[] {
+  const nav = screen.getByRole('navigation', { name: 'Breadcrumb' });
+  return Array.from(nav.querySelectorAll('li')).map(
+    (li) => li.querySelector('a, [aria-current]')?.textContent ?? '',
+  );
+}
+
 describe('Breadcrumbs', () => {
-  it('renders nothing on the top-level route', () => {
+  it('renders nothing on the dashboard', () => {
     const { container } = renderWithProviders(<Breadcrumbs />, { route: '/app' });
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('renders nothing one level deep, where the sidebar and page header suffice', () => {
-    const { container } = renderWithProviders(<Breadcrumbs />, { route: '/app/audit' });
-    expect(container).toBeEmptyDOMElement();
+  it('shows the overview and the current page on a top-level route', () => {
+    renderWithProviders(<Breadcrumbs />, { route: '/app/audit' });
+    expect(trail()).toEqual(['Dashboard', 'Audit Log']);
+    expect(screen.getByText('Audit Log')).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/app');
   });
 
-  it('names the trail and marks the current page', () => {
-    renderWithProviders(<Breadcrumbs />, { route: '/app/admin/users' });
-    const nav = screen.getByRole('navigation', { name: 'Breadcrumb' });
-    expect(nav.querySelectorAll('li')).toHaveLength(3);
-    // The page header names the current page; the trail keeps it for screen readers only.
-    const current = screen.getByText('User management');
-    expect(current).toHaveAttribute('aria-current', 'page');
-    expect(current.closest('li')).toHaveClass('sr-only');
+  it('does not show another admin page as the parent of a sibling', () => {
+    renderWithProviders(<Breadcrumbs />, { route: '/app/admin/onboarding' });
+    expect(trail()).toEqual(['Dashboard', 'Onboarding']);
+    expect(screen.queryByRole('link', { name: 'Approval Review' })).not.toBeInTheDocument();
+  });
+
+  it('nests the admin guide below the approval review', () => {
+    renderWithProviders(<Breadcrumbs />, { route: '/app/admin/help' });
+    expect(trail()).toEqual(['Dashboard', 'Approval Review', 'Admin guide']);
     expect(screen.getByRole('link', { name: 'Approval Review' })).toHaveAttribute(
       'href',
       '/app/admin',
     );
   });
 
-  it('translates every route segment instead of showing the raw path', () => {
-    renderWithProviders(<Breadcrumbs />, { route: '/app/admin/ca-blacklist', lang: 'de' });
+  it('puts the entry name last on a marketplace detail page', () => {
+    renderWithProviders(<Breadcrumbs current="Cohort Explorer" />, {
+      route: '/app/marketplace/cohort-explorer',
+    });
+    expect(trail()).toEqual(['Dashboard', 'Marketplace', 'Cohort Explorer']);
+    expect(screen.getByRole('link', { name: 'Marketplace' })).toHaveAttribute(
+      'href',
+      '/app/marketplace',
+    );
+  });
+
+  it('translates the trail', () => {
+    renderWithProviders(<Breadcrumbs />, { route: '/app/map', lang: 'de' });
     expect(screen.getByRole('navigation', { name: 'Brotkrümelnavigation' })).toBeInTheDocument();
-    expect(screen.queryByText('ca-blacklist')).not.toBeInTheDocument();
+    expect(screen.getByText('Verbundkarte')).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Übersicht' })).toHaveAttribute('href', '/app');
   });
 });

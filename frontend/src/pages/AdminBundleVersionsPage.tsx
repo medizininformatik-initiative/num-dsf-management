@@ -14,6 +14,7 @@ import { bundleVersionsApi, type BundleVersionListRow } from '../api/bundleVersi
 import { useI18n } from '../stores/i18n.store';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
+import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { BundleTimeline } from '../components/admin/bundleHistory/BundleTimeline';
 import { BundleDiffView } from '../components/admin/bundleHistory/BundleDiffView';
 import { RestoreDialog } from '../components/admin/bundleHistory/RestoreDialog';
@@ -108,124 +109,129 @@ export function AdminBundleVersionsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-6 md:p-8" data-testid="admin-bundle-versions">
-      <h1 className="mb-2 text-2xl font-semibold text-[color:var(--text-primary)]">
-        {t('bundleVersionsTitle')}
-      </h1>
-      <p className="mb-6 max-w-2xl text-sm text-[color:var(--text-muted)]">{t('historyIntro')}</p>
-
-      {pendingRestore && (
-        <PendingRestoreCard
-          request={pendingRestore}
-          meEmail={me?.email ?? null}
-          onAction={setDecisionKind}
-        />
-      )}
-
-      {list.isLoading ? (
-        <Skeleton lines={4} />
-      ) : list.isError ? (
-        <div role="alert" className="glass-thin flex flex-wrap items-center gap-3 rounded-2xl p-4">
-          <span className="text-sm text-danger-fg">{t('historyLoadFailed')}</span>
-          <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
-            {t('historyRetry')}
-          </Button>
-        </div>
-      ) : versions.length === 0 ? (
-        <p className="glass-thin rounded-2xl p-4 text-sm italic text-[color:var(--text-muted)]">
-          {t('bundleVersionsEmpty')}
-        </p>
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-          <BundleTimeline
-            restores={restoreRequests}
-            versions={versions}
-            selectedId={to?.id ?? null}
-            onSelect={(id) => {
-              setToId(id);
-              setFromId(null);
-            }}
-            onRestore={startRestore}
+    <div className="flex-1 overflow-y-auto" data-testid="admin-bundle-versions">
+      <AdminPageHeader
+        icon="history"
+        title={t('bundleVersionsTitle')}
+        subtitle={t('historyIntro')}
+      />
+      <div className="p-6 md:p-8">
+        {pendingRestore && (
+          <PendingRestoreCard
+            request={pendingRestore}
+            meEmail={me?.email ?? null}
+            onAction={setDecisionKind}
           />
+        )}
 
-          <section aria-live="polite" data-testid="bundle-versions-diff" className="min-w-0">
-            {to && !from ? (
-              <p className="glass-thin rounded-2xl p-4 text-sm text-[color:var(--text-secondary)]">
-                {t('historyFirstVersion')}
-              </p>
-            ) : (
-              to &&
-              from &&
-              older &&
-              newer && (
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-base font-semibold text-[color:var(--text-primary)]">
-                      {t('historyShowing', {
-                        to: newer.version_number,
-                        from: older.version_number,
-                      })}
-                    </h2>
-                    <label className="flex items-center gap-2 text-xs font-semibold text-[color:var(--text-secondary)]">
-                      {t('historyCompareWith')}
-                      <select
-                        value={from.id}
-                        onChange={(e) => setFromId(e.target.value)}
-                        className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1 text-sm text-[color:var(--text-primary)]"
-                      >
-                        {versions
-                          .filter((v) => v.id !== to.id)
-                          .map((v) => (
-                            <option key={v.id} value={v.id}>
-                              v{v.version_number}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
-                  </div>
-                  {diff.isLoading ? (
-                    <Skeleton lines={4} />
-                  ) : diff.isError ? (
-                    <div
-                      role="alert"
-                      className="glass-thin flex flex-wrap items-center gap-3 rounded-2xl p-4"
-                    >
-                      <span className="text-sm text-danger-fg">{t('historyDiffLoadFailed')}</span>
-                      <Button size="sm" variant="secondary" onClick={() => void diff.refetch()}>
-                        {t('historyRetry')}
-                      </Button>
+        {list.isLoading ? (
+          <Skeleton lines={4} />
+        ) : list.isError ? (
+          <div
+            role="alert"
+            className="glass-thin flex flex-wrap items-center gap-3 rounded-2xl p-4"
+          >
+            <span className="text-sm text-danger-fg">{t('historyLoadFailed')}</span>
+            <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
+              {t('historyRetry')}
+            </Button>
+          </div>
+        ) : versions.length === 0 ? (
+          <p className="glass-thin rounded-2xl p-4 text-sm italic text-[color:var(--text-muted)]">
+            {t('bundleVersionsEmpty')}
+          </p>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+            <BundleTimeline
+              restores={restoreRequests}
+              versions={versions}
+              selectedId={to?.id ?? null}
+              onSelect={(id) => {
+                setToId(id);
+                setFromId(null);
+              }}
+              onRestore={startRestore}
+            />
+
+            <section aria-live="polite" data-testid="bundle-versions-diff" className="min-w-0">
+              {to && !from ? (
+                <p className="glass-thin rounded-2xl p-4 text-sm text-[color:var(--text-secondary)]">
+                  {t('historyFirstVersion')}
+                </p>
+              ) : (
+                to &&
+                from &&
+                older &&
+                newer && (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h2 className="text-base font-semibold text-[color:var(--text-primary)]">
+                        {t('historyShowing', {
+                          to: newer.version_number,
+                          from: older.version_number,
+                        })}
+                      </h2>
+                      <label className="flex items-center gap-2 text-xs font-semibold text-[color:var(--text-secondary)]">
+                        {t('historyCompareWith')}
+                        <select
+                          value={from.id}
+                          onChange={(e) => setFromId(e.target.value)}
+                          className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1 text-sm text-[color:var(--text-primary)]"
+                        >
+                          {versions
+                            .filter((v) => v.id !== to.id)
+                            .map((v) => (
+                              <option key={v.id} value={v.id}>
+                                v{v.version_number}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
                     </div>
-                  ) : model && diff.data ? (
-                    <BundleDiffView model={model} raw={diff.data} />
-                  ) : null}
-                </div>
-              )
-            )}
-          </section>
-        </div>
-      )}
+                    {diff.isLoading ? (
+                      <Skeleton lines={4} />
+                    ) : diff.isError ? (
+                      <div
+                        role="alert"
+                        className="glass-thin flex flex-wrap items-center gap-3 rounded-2xl p-4"
+                      >
+                        <span className="text-sm text-danger-fg">{t('historyDiffLoadFailed')}</span>
+                        <Button size="sm" variant="secondary" onClick={() => void diff.refetch()}>
+                          {t('historyRetry')}
+                        </Button>
+                      </div>
+                    ) : model && diff.data ? (
+                      <BundleDiffView model={model} raw={diff.data} />
+                    ) : null}
+                  </div>
+                )
+              )}
+            </section>
+          </div>
+        )}
 
-      {pendingRestore && decisionKind && (
-        <RestoreDecisionDialog
-          kind={decisionKind}
-          request={pendingRestore}
-          onClose={() => setDecisionKind(null)}
-        />
-      )}
+        {pendingRestore && decisionKind && (
+          <RestoreDecisionDialog
+            kind={decisionKind}
+            request={pendingRestore}
+            onClose={() => setDecisionKind(null)}
+          />
+        )}
 
-      {restoreRow && (
-        <RestoreDialog
-          open
-          versionNumber={restoreRow.version_number}
-          busy={restore.isPending}
-          error={restoreError}
-          onCancel={() => setRestoreRow(null)}
-          onConfirm={({ reason, totpCode }) => {
-            setRestoreError(null);
-            restore.mutate({ id: restoreRow.id, reason, totpCode });
-          }}
-        />
-      )}
+        {restoreRow && (
+          <RestoreDialog
+            open
+            versionNumber={restoreRow.version_number}
+            busy={restore.isPending}
+            error={restoreError}
+            onCancel={() => setRestoreRow(null)}
+            onConfirm={({ reason, totpCode }) => {
+              setRestoreError(null);
+              restore.mutate({ id: restoreRow.id, reason, totpCode });
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

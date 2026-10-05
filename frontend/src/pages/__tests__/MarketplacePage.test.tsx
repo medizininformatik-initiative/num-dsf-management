@@ -262,7 +262,7 @@ describe('MarketplacePage', () => {
 
     renderWithProviders(<MarketplacePage />, { route: '/app/marketplace?sort=popular' });
 
-    const links = screen.getAllByRole('link');
+    const links = screen.getAllByRole('link').filter((a) => !a.closest('nav'));
     expect(links[0]).toHaveAttribute('href', '/app/marketplace/b');
   });
 

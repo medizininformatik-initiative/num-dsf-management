@@ -34,7 +34,7 @@ const CHIP =
   'press-effect inline-block rounded-full px-2.5 py-1 text-xs font-medium text-primary dark:text-brand-400 hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]';
 const CHIP_ACTIVE = 'bg-[color:var(--accent-surface)] !text-[color:var(--accent-on-surface)]';
 const BODY =
-  'space-y-2 text-[13px] leading-relaxed text-[color:var(--text-secondary)] [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5';
+  'max-w-3xl space-y-2 text-[13px] leading-relaxed text-[color:var(--text-secondary)] [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5';
 
 function stagger(i: number): CSSProperties {
   return { '--stagger-index': Math.min(i, 8) } as CSSProperties;
@@ -201,7 +201,6 @@ export function HelpPage() {
         icon="help"
         title={t('helpTitle')}
         subtitle={t('helpSubtitle')}
-        maxWidth="max-w-4xl"
         actions={
           me?.isAdmin ? (
             <Link
@@ -247,7 +246,7 @@ export function HelpPage() {
         }
       />
 
-      <div className="mx-auto max-w-4xl px-6 py-6 sm:px-8">
+      <div className="px-6 py-6 sm:px-8">
         {total === 0 ? (
           <div role="status" className="glass-thin animate-fade-in rounded-2xl p-6 text-center">
             <p className="text-sm font-semibold text-[color:var(--text-primary)]">

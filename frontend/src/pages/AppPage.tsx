@@ -1,6 +1,6 @@
 /**
  * AppPage.tsx — Authenticated app shell: the Sidebar, the TopBar over the
- * routed content (banners, Breadcrumbs, canvas or Outlet, AppFooter) and, on
+ * routed content (banners, canvas or Outlet, AppFooter) and, on
  * the canvas route, the instance status panel (RightPanel) in a column that
  * starts below the TopBar, so it never covers the TopBar's actions.
  *
@@ -48,7 +48,6 @@ import { DownloadModal } from '../components/modals/DownloadModal';
 import { CertRenewalModal } from '../components/modals/CertRenewalModal';
 import { ExpiryWarningBanner } from '../components/layout/ExpiryWarningBanner';
 import { CrossUserInstanceBanner } from '../components/layout/CrossUserInstanceBanner';
-import { Breadcrumbs } from '../components/layout/Breadcrumbs';
 import { AppFooter } from '../components/layout/AppFooter';
 import { MapHeader } from '../components/map/MapHeader';
 import { ActivityFeed } from '../components/canvas/ActivityFeed';
@@ -241,7 +240,6 @@ export function AppPage() {
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             {isMapRoute && <MapHeader />}
             {isCanvasRoute && <CrossUserInstanceBanner instanceId={activeInstanceId} />}
-            <Breadcrumbs />
             {isCanvasRoute && <ExpiryWarningBanner />}
             {isCanvasRoute ? (
               activeInstanceId ? (

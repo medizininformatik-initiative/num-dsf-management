@@ -152,7 +152,7 @@ export function AdminPromotionsPage() {
         subtitle={t('adminPromotionsSubtitle')}
       />
 
-      <div className="mx-auto max-w-5xl space-y-5 px-6 py-6 sm:px-8">
+      <div className="space-y-5 px-6 py-6 sm:px-8">
         <div className="flex gap-3 rounded-xl border border-info-border bg-info-surface p-4 text-info-fg">
           <Icon name="shield" size={22} className="mt-px shrink-0" />
           <div className="text-[13px] leading-5">

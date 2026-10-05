@@ -12,6 +12,7 @@ import { useCallback, useId, useMemo, useState, type CSSProperties } from 'react
 import { useI18n } from '../stores/i18n.store';
 import { Icon } from '../components/ui/Icon';
 import { Button } from '../components/ui/Button';
+import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { ResourceCard } from '../components/resources/ResourceCard';
 import { ResourceGrid } from '../components/resources/ResourceGrid';
 import { CategoryFilter } from '../components/resources/CategoryFilter';
@@ -69,16 +70,12 @@ export function DsfResourcesPage() {
 
   return (
     <div className="flex-1 overflow-y-auto font-sans">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8">
-        <header className="flex animate-fade-in flex-col gap-2">
-          <h1 className="m-0 text-[28px] font-bold leading-tight tracking-tight text-[color:var(--text-primary)]">
-            {t('dsfResourcesTitle')}
-          </h1>
-          <p className="m-0 max-w-2xl text-[15px] text-[color:var(--text-secondary)]">
-            {t('dsfResourcesIntro')}
-          </p>
-        </header>
-
+      <AdminPageHeader
+        icon="menu_book"
+        title={t('dsfResourcesTitle')}
+        subtitle={t('dsfResourcesIntro')}
+      />
+      <div className="flex w-full flex-col gap-8 px-4 py-8 sm:px-8">
         <div className="flex flex-col gap-3">
           <div className="glass flex max-w-xl items-center gap-2 rounded-full px-4 py-1.5">
             <Icon name="search" size={20} className="text-[color:var(--text-muted)]" />
