@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { screen, fireEvent } from '@testing-library/react';
 import { renderWithProviders } from '../../../test/renderWithProviders';
-import { GeoMapCluster, clusterKeyOf } from '../GeoMapCluster';
+import { GeoMapCluster } from '../GeoMapCluster';
+import { clusterKeyOf } from '../mapGeometry';
 import type { MapOrganization, MapClusterGroup } from '../../../api/network.api';
 
 function member(id: string, status: MapOrganization['cert_status']): MapOrganization {
@@ -25,7 +26,7 @@ const group: MapClusterGroup = {
 };
 
 describe('GeoMapCluster', () => {
-  it('renders city initials and the full member count badge', () => {
+  it('renders a count bubble named after the city and its site count', () => {
     renderWithProviders(
       <svg>
         <GeoMapCluster
@@ -40,7 +41,7 @@ describe('GeoMapCluster', () => {
         />
       </svg>,
     );
-    expect(screen.getByText('BE')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Berlin: 2 sites' })).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
   });
 
@@ -78,7 +79,51 @@ describe('GeoMapCluster', () => {
         />
       </svg>,
     );
-    fireEvent.click(screen.getByText('BE'));
+    fireEvent.click(screen.getByRole('button', { name: 'Berlin: 2 sites' }));
     expect(onSelect).toHaveBeenCalledWith(clusterKeyOf(group));
+  });
+
+  it('splits its ring into one arc per member certificate state', () => {
+    const { container } = renderWithProviders(
+      <svg>
+        <GeoMapCluster
+          group={group}
+          x={200}
+          y={200}
+          isHovered={false}
+          isSelected={false}
+          matchedCount={2}
+          onSelect={vi.fn()}
+          onHover={vi.fn()}
+        />
+      </svg>,
+    );
+    const arcs = Array.from(container.querySelectorAll('circle[stroke-dasharray]'));
+    expect(arcs.map((c) => (c as SVGElement).style.stroke)).toEqual([
+      'var(--tone-success-fg)',
+      'var(--tone-danger-fg)',
+    ]);
+  });
+
+  it('reports the expanded state while its members are fanned out', () => {
+    renderWithProviders(
+      <svg>
+        <GeoMapCluster
+          group={group}
+          x={200}
+          y={200}
+          isHovered={false}
+          isSelected
+          expanded
+          matchedCount={2}
+          onSelect={vi.fn()}
+          onHover={vi.fn()}
+        />
+      </svg>,
+    );
+    expect(screen.getByRole('button', { name: 'Berlin: 2 sites' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
   });
 });
