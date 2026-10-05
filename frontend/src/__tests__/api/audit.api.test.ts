@@ -6,7 +6,11 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { getCrossInstanceAudit, type AuditResponse } from '../../api/audit.api';
+import {
+  exportCrossInstanceAudit,
+  getCrossInstanceAudit,
+  type AuditResponse,
+} from '../../api/audit.api';
 import { useAuthStore } from '../../stores/auth.store';
 
 beforeAll(() => {
@@ -92,5 +96,58 @@ describe('getCrossInstanceAudit', () => {
     await getCrossInstanceAudit({});
     expect(lastRequest?.search.get('page')).toBeNull();
     expect(lastRequest?.search.get('limit')).toBeNull();
+  });
+
+  it('sends set filters and drops empty / false ones', async () => {
+    await getCrossInstanceAudit({
+      page: 1,
+      limit: 50,
+      from: '2026-03-01T00:00:00.000Z',
+      actor: 'alice',
+      q: '',
+      flaggedOnly: true,
+      resource: undefined,
+    });
+    expect(lastRequest?.search.get('from')).toBe('2026-03-01T00:00:00.000Z');
+    expect(lastRequest?.search.get('actor')).toBe('alice');
+    expect(lastRequest?.search.get('flaggedOnly')).toBe('true');
+    expect(lastRequest?.search.has('q')).toBe(false);
+    expect(lastRequest?.search.has('resource')).toBe(false);
+
+    await getCrossInstanceAudit({ flaggedOnly: false });
+    expect(lastRequest?.search.has('flaggedOnly')).toBe(false);
+  });
+});
+
+describe('exportCrossInstanceAudit', () => {
+  it('requests /audit/export as a blob with the format and filters, and reads the filename', async () => {
+    server.use(
+      http.get('*/audit/export', ({ request }) => {
+        capture(request);
+        return new HttpResponse('a,b\r\n', {
+          headers: {
+            'Content-Type': 'text/csv',
+            'Content-Disposition': 'attachment; filename="audit-all-2026-10-05.csv"',
+          },
+        });
+      }),
+    );
+    const { blob, filename } = await exportCrossInstanceAudit('csv', {
+      operation: 'DELETE',
+      flaggedOnly: true,
+    });
+    expect(lastRequest?.pathname).toMatch(/\/audit\/export$/);
+    expect(lastRequest?.authorization).toBe('Bearer test-token');
+    expect(lastRequest?.search.get('format')).toBe('csv');
+    expect(lastRequest?.search.get('operation')).toBe('DELETE');
+    expect(lastRequest?.search.get('flaggedOnly')).toBe('true');
+    expect(filename).toBe('audit-all-2026-10-05.csv');
+    expect(blob.size).toBe(5);
+  });
+
+  it('falls back to a dated filename without a Content-Disposition header', async () => {
+    server.use(http.get('*/audit/export', () => new HttpResponse('[]')));
+    const { filename } = await exportCrossInstanceAudit('json', {});
+    expect(filename).toMatch(/^audit-all-\d{4}-\d{2}-\d{2}\.json$/);
   });
 });
