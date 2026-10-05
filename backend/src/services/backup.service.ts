@@ -18,7 +18,7 @@ import { db } from '../db/connection';
 import { redis } from './redis.service';
 import { writeAuditLog } from './audit.service';
 import { logger } from '../lib/logger';
-import { errMessage } from '../lib/errMessage';
+import { errCode, errMessage } from '../lib/errMessage';
 import { readBackupKey } from '../lib/backupCrypto';
 import {
   BackupMode,
@@ -77,6 +77,13 @@ interface RunRow {
 
 export function backupDir(): string {
   return process.env.BACKUP_DIR || '/backups';
+}
+
+/** Message of any thrown value, with the errno code as a fallback. */
+function describeError(err: unknown): string {
+  const message = (err as { message?: unknown } | null)?.message;
+  if (typeof message === 'string' && message) return message;
+  return errCode(err) || 'Unknown error';
 }
 
 function appVersion(): string {
@@ -234,7 +241,7 @@ export async function runBackup(opts: RunBackupOptions): Promise<BackupRun> {
       opts,
       status: 'FAILED',
       encrypted: !!key,
-      error: errMessage(err),
+      error: describeError(err),
     }).catch((e) => logger.error({ err: errMessage(e) }, '[backup] could not record failed run'));
     throw err;
   } finally {
