@@ -365,3 +365,23 @@ Full FHIR bundle snapshots persisted on each approval (017). Signed with RS256 o
 | input_json | LONGTEXT | yes | NULL | Network state the bundle was built from (members, withdrawn organizations, parent names; no contact data), added in 024. NULL on older versions, which are not restorable and not readable per receiver. |
 
 FKs: `approval_request_id` → `approval_requests.id` ON DELETE SET NULL (fk_bv_approval).
+
+## bundle_restore_requests
+
+Four-eyes requests to publish an old bundle version again (025). A second admin from a different site approves or rejects; approval creates the new RESTORE version.
+
+| Column | Type | Nullable | Default | Key |
+|---|---|---|---|---|
+| id | CHAR(36) | no | — | PK |
+| source_version_id | CHAR(36) | no | — | FK → bundle_versions.id |
+| reason | VARCHAR(500) | no | — | |
+| requested_by | VARCHAR(255) | no | — | |
+| requested_at | DATETIME(3) | no | — | idx_brr_requested |
+| status | ENUM('PENDING','APPROVED','REJECTED','CANCELLED') | no | 'PENDING' | |
+| decided_by | VARCHAR(255) | yes | NULL | |
+| decided_at | DATETIME(3) | yes | NULL | |
+| decision_comment | TEXT | yes | NULL | Rejection comment |
+| resulting_version_id | CHAR(36) | yes | NULL | The RESTORE version created on approval |
+| pending_slot | TINYINT (generated, stored) | yes | 1 while PENDING, else NULL | UNIQUE uq_brr_one_pending: at most one pending request |
+
+FKs: `source_version_id` → `bundle_versions.id` ON DELETE CASCADE (fk_brr_source).

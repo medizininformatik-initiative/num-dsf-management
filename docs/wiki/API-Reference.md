@@ -210,9 +210,22 @@ Mounted at `/api/v1/admin/bundle-versions`. All `requireAdmin`.
 |--------|------|------|---------|
 | GET | /api/v1/admin/bundle-versions | requireAdmin | Paginated bundle history (`?page=&limit=`); includes `meta` pagination. Rows carry `isCurrent` (the version the allow list is published from) and `restorable` (has a stored input). |
 | GET | /api/v1/admin/bundle-versions/:id | requireAdmin | Single version + parsed bundle (+ `restorable`). |
-| POST | /api/v1/admin/bundle-versions/:id/restore | requireAdmin + step-up | Publish an old version again as a new version (`triggered_by` RESTORE). Body `{ reason (3-500), totpCode? }` → `{ id, versionNumber, contentHash, restoredFromVersion }` (201). 404 unknown id, 409 `VERSION_NOT_RESTORABLE` (version without stored input), 400 invalid reason. |
+| POST | /api/v1/admin/bundle-versions/:id/restore | requireAdmin + step-up | Request that an old version is published again (four-eyes, nothing is published yet). Body `{ reason (3-500), totpCode? }` → `{ id, sourceVersionNumber }` (201), a `PENDING` restore request. 404 unknown id, 409 `VERSION_NOT_RESTORABLE` (version without stored input), 409 `ALREADY_PENDING` (only one pending request at a time), 400 invalid reason. |
 | GET | /api/v1/admin/bundle-versions/:id/download | requireAdmin | Raw bundle JSON as attachment (signature + content-hash headers). |
 | GET | /api/v1/admin/bundle-versions/:idA/diff/:idB | requireAdmin | Diff between two versions. |
+
+### Bundle Restores (four-eyes)
+
+Mounted at `/api/v1/admin/bundle-restores`. All `requireAdmin`; the writes need the step-up (TOTP code, or the re-presented client certificate in certificate mode). Same rules as admin promotions: no self-approval, the approver is from a different site (email domain) than the requester, the first decision is final.
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/admin/bundle-restores | requireAdmin | Restore requests, newest first (`id`, `sourceVersionId`, `sourceVersionNumber`, `reason`, `requestedBy`, `requestedAt`, `status` PENDING/APPROVED/REJECTED/CANCELLED, `decidedBy`, `decidedAt`, `decisionComment`, `resultingVersionId`, `resultingVersionNumber`). |
+| POST | /api/v1/admin/bundle-restores/:rid/approve | requireAdmin + step-up | Second admin of another site approves: the old version is published again as a new version (`triggered_by` RESTORE, `triggered_by_email` the approver) → `{ id, versionNumber, restoredFromVersion }`. 403 `SELF_APPROVE` / `SAME_SITE`, 404 unknown request, 409 `NOT_PENDING` (already decided) or `VERSION_NOT_RESTORABLE` (checked again; the request stays pending). |
+| POST | /api/v1/admin/bundle-restores/:rid/reject | requireAdmin + step-up | Body `{ comment (3-500) }`. Closes the request, nothing is published. 409 `NOT_PENDING`. |
+| POST | /api/v1/admin/bundle-restores/:rid/cancel | requireAdmin + step-up | The requester withdraws a pending request. 403 `NOT_REQUESTER`, 409 `NOT_PENDING`. |
+
+Every step (request, approve, reject, cancel) is written to the audit log (`resource_type` APPROVAL, `diff_json.action` `bundle_restore`).
 
 ### Approval / Audit / Instances (admin.routes)
 
