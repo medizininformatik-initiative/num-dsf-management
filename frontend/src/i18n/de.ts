@@ -1242,7 +1242,7 @@ export const de: Record<TranslationKey, string> = {
   adminOnboardingNavLabel: 'Onboarding',
   adminOnboardingTitle: 'Massen-Onboarding-Import',
   adminOnboardingIntro:
-    'Laden Sie eine CSV- oder JSON-Datei mit den Spalten organizationIdentifier, organizationName, contactEmail und clientCertFingerprint hoch (optional zusätzlich city und countryCode). Der Fingerabdruck ist der SHA-512-Fingerabdruck des Client-Zertifikats.',
+    'Legen Sie mehrere Standorte auf einmal an: Tragen Sie sie in die Tabelle ein, fügen Sie Zeilen aus Excel ein oder laden Sie eine CSV- oder XLSX-Datei hoch. Jeder Standort braucht einen Identifier, einen Namen, eine Kontakt-E-Mail und den SHA-512-Fingerabdruck seines Client-Zertifikats.',
   adminOnboardingFileLabel: 'Datei',
   adminOnboardingNoFileChosen: 'Keine Datei ausgewählt',
   adminOnboardingImportBtn: 'Importieren',
@@ -1261,7 +1261,7 @@ export const de: Record<TranslationKey, string> = {
   adminOnboardingErrorFileTooLarge: 'Die Datei ist zu groß.',
   adminOnboardingErrorPemNotAllowed: 'PEM-Inhalte sind in dieser Datei nicht erlaubt.',
   adminOnboardingErrorUnsupportedFormat:
-    'Nicht unterstütztes Dateiformat. Bitte CSV oder JSON verwenden.',
+    'Nicht unterstütztes Dateiformat. Bitte CSV, XLSX oder JSON verwenden.',
   adminOnboardingErrorTooManyRows: 'Die Datei enthält zu viele Zeilen.',
   adminOnboardingErrorEmptyBody: 'Die Datei ist leer.',
   adminOnboardingImportFailed: 'Import fehlgeschlagen.',
@@ -1506,6 +1506,58 @@ export const de: Record<TranslationKey, string> = {
     'Der Identifier ist eine stabile FQDN-artige ID (z. B. ukm.de) — Buchstaben, Ziffern, Punkt, Doppelpunkt, Bindestrich.',
   glossaryRoles:
     'Rollen beschreiben, welche Aufgabe deine Organisation im Netzwerk übernimmt (z. B. DIC, HRP, DTS).',
+
+  // Onboarding — guided bulk entry (templates, editor, 3-step flow)
+  onbStepperLabel: 'Schritte des Onboardings',
+  onbStepMethod: 'Methode wählen',
+  onbStepReview: 'Prüfen und korrigieren',
+  onbStepImport: 'Import',
+  onbStepDone: 'erledigt',
+  onbMethodEditorTitle: 'In der Tabelle erfassen',
+  onbMethodEditorBody:
+    'Tragen Sie Standorte in eine Tabelle ein oder fügen Sie aus Excel kopierte Zeilen ein. Fehler werden schon beim Tippen markiert.',
+  onbMethodFileTitle: 'Datei hochladen',
+  onbMethodFileBody:
+    'Laden Sie eine ausgefüllte CSV-, XLSX- oder JSON-Datei hoch. Sie wird geprüft, bevor etwas gespeichert wird.',
+  onbTemplatesTitle: 'Mit einer Vorlage starten',
+  onbTemplatesBody:
+    'Die Vorlagen enthalten alle Spalten, eine Beispielzeile (beim Import ignoriert) und in der Excel-Datei Auswahllisten sowie ein Hilfeblatt.',
+  onbTemplateXlsx: 'Excel-Vorlage (.xlsx)',
+  onbTemplateCsv: 'CSV-Vorlage (.csv)',
+  onbTemplateFailed: 'Die Vorlage konnte nicht heruntergeladen werden.',
+  onbUploadPrompt: 'Datei auswählen oder hierher ziehen',
+  onbUploadFormats: 'CSV, XLSX oder JSON, bis 1 MB und 1000 Zeilen',
+  onbColIdentifier: 'Identifier (FQDN)',
+  onbColName: 'Name',
+  onbColEmail: 'Kontakt-E-Mail',
+  onbColFingerprint: 'Zertifikat-Fingerabdruck',
+  onbColCity: 'Stadt',
+  onbColCountry: 'Land',
+  onbErrRequired: 'Pflichtfeld',
+  onbErrFqdn: 'Muss ein gültiger FQDN sein, z. B. klinik.example.de',
+  onbErrFormula: 'Darf nicht mit = + - @ beginnen',
+  onbErrTooLong: 'Zu lang',
+  onbErrEmail: 'Keine gültige E-Mail-Adresse',
+  onbErrFingerprint: 'Benötigt 128 Hexzeichen (SHA-512)',
+  onbErrCountry: 'Zwei Buchstaben, z. B. DE',
+  onbEditorRowNumber: 'Zeile',
+  onbEditorRemoveColumn: 'Zeile entfernen',
+  onbEditorRemoveRow: 'Zeile {row} entfernen',
+  onbEditorAddRow: 'Zeile hinzufügen',
+  onbEditorPasteHint: 'Tipp: Aus Excel kopierte Zeilen in eine beliebige Zelle einfügen',
+  onbEditorRowCount: '{count} Zeilen',
+  onbWillCreate: 'Wird angelegt',
+  onbWillUpdate: 'Wird aktualisiert',
+  onbPreviewNote:
+    'Prüfung bestanden für {ok} Standorte, {skipped} werden übersprungen. Es wurde noch nichts gespeichert.',
+  onbValidate: 'Zeilen prüfen',
+  onbValidating: 'Prüfe…',
+  onbValidateFailed: 'Die Prüfung ist fehlgeschlagen.',
+  onbValidateFirst: 'Prüfen Sie zuerst die Zeilen, danach können Sie importieren.',
+  onbImportN: '{count} Standorte importieren',
+  onbBack: 'Zurück',
+  onbFixAndRetry: 'Korrigieren und erneut versuchen',
+  onbOnboardMore: 'Weitere Standorte anlegen',
 
   // Guided canvas — empty-state hints
   emptyOrganizationHint:

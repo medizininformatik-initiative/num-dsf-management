@@ -1,0 +1,90 @@
+/**
+ * OnboardingMethodStep.tsx – step 1 of the bulk onboarding flow: pick how to
+ * enter the sites (type them into the in-tool editor, or upload a CSV / XLSX /
+ * JSON file) and download the CSV or XLSX template.
+ * Dependencies: Button, Icon, onboarding.api (template download), sonner, i18n store.
+ */
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Button } from '../../ui/Button';
+import { Icon } from '../../ui/Icon';
+import { useI18n } from '../../../stores/i18n.store';
+import {
+  downloadOnboardingTemplate,
+  type OnboardingTemplateKind,
+} from '../../../api/onboarding.api';
+import type { TranslationKey } from '../../../i18n/en';
+
+export type OnboardingMethod = 'editor' | 'file';
+
+const METHODS: {
+  id: OnboardingMethod;
+  icon: string;
+  title: TranslationKey;
+  body: TranslationKey;
+}[] = [
+  { id: 'editor', icon: 'table_chart', title: 'onbMethodEditorTitle', body: 'onbMethodEditorBody' },
+  { id: 'file', icon: 'upload_file', title: 'onbMethodFileTitle', body: 'onbMethodFileBody' },
+];
+
+export function OnboardingMethodStep({ onChoose }: { onChoose: (m: OnboardingMethod) => void }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState<OnboardingTemplateKind | null>(null);
+
+  async function download(kind: OnboardingTemplateKind) {
+    setBusy(kind);
+    try {
+      await downloadOnboardingTemplate(kind);
+    } catch {
+      toast.error(t('onbTemplateFailed'));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="space-y-5" data-testid="onboarding-step-method">
+      <div className="grid gap-3 sm:grid-cols-2">
+        {METHODS.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => onChoose(m.id)}
+            data-testid={`onboarding-method-${m.id}`}
+            className="glass hover-lift press-effect flex flex-col items-start gap-2 rounded-2xl p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary dark:text-brand-400">
+              <Icon name={m.icon} size={22} />
+            </span>
+            <span className="text-[15px] font-semibold text-[color:var(--text-primary)]">
+              {t(m.title)}
+            </span>
+            <span className="text-[13px] text-[color:var(--text-secondary)]">{t(m.body)}</span>
+          </button>
+        ))}
+      </div>
+
+      <section className="glass-thin rounded-2xl p-4">
+        <h2 className="text-[13px] font-semibold text-[color:var(--text-primary)]">
+          {t('onbTemplatesTitle')}
+        </h2>
+        <p className="mt-1 text-xs text-[color:var(--text-secondary)]">{t('onbTemplatesBody')}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(['xlsx', 'csv'] as const).map((kind) => (
+            <Button
+              key={kind}
+              variant="secondary"
+              size="sm"
+              onClick={() => download(kind)}
+              disabled={busy !== null}
+              data-testid={`onboarding-template-${kind}`}
+            >
+              <Icon name="download" size={18} />
+              {t(kind === 'xlsx' ? 'onbTemplateXlsx' : 'onbTemplateCsv')}
+            </Button>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}

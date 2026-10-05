@@ -1,20 +1,41 @@
 /**
- * useOnboardingImport.ts – TanStack Query mutation hook for the admin bulk
- * onboarding import. A successful import can create or update organizations
- * across many instances at once, so on success it invalidates every cached
- * organization and instance query by prefix rather than a single instanceId.
+ * useOnboardingImport.ts – TanStack Query mutation hooks for the admin bulk
+ * onboarding. useOnboardingImport writes: a successful import can create or
+ * update organizations across many instances at once, so on success it
+ * invalidates every cached organization and instance query by prefix rather
+ * than a single instanceId. useOnboardingDryRun validates the same source
+ * (a file, or rows from the in-tool editor) on the server without writing,
+ * so it touches no cache.
  * Dependencies: @tanstack/react-query, onboarding.api
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { importOnboarding, type OnboardingImportResult } from '../api/onboarding.api';
+import {
+  importOnboarding,
+  importOnboardingRows,
+  type OnboardingImportResult,
+  type OnboardingRowInput,
+} from '../api/onboarding.api';
+
+export type OnboardingSource = File | OnboardingRowInput[];
+
+function submit(source: OnboardingSource, dryRun: boolean): Promise<OnboardingImportResult> {
+  if (Array.isArray(source)) return importOnboardingRows(source, dryRun ? { dryRun } : undefined);
+  return dryRun ? importOnboarding(source, { dryRun }) : importOnboarding(source);
+}
 
 export function useOnboardingImport() {
   const qc = useQueryClient();
-  return useMutation<OnboardingImportResult, Error, File>({
-    mutationFn: (file: File) => importOnboarding(file),
+  return useMutation<OnboardingImportResult, Error, OnboardingSource>({
+    mutationFn: (source) => submit(source, false),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['organization'] });
       qc.invalidateQueries({ queryKey: ['instances'] });
     },
+  });
+}
+
+export function useOnboardingDryRun() {
+  return useMutation<OnboardingImportResult, Error, OnboardingSource>({
+    mutationFn: (source) => submit(source, true),
   });
 }
