@@ -22,7 +22,14 @@ vi.mock('../../../hooks/useMe', () => ({
 }));
 vi.mock('../../../hooks/useEndpoints', () => ({
   useEndpoints: () => ({
-    data: [{ identifier: 'dsf.klinik.example.de', name: 'Klinik FHIR' }],
+    data: [
+      {
+        identifier: 'dsf.klinik.example.de',
+        name: 'Klinik FHIR',
+        address: 'https://fhir.klinik.example.de/fhir/',
+      },
+      { identifier: 'broken.example.de', name: 'Broken', address: 'ftp://broken.example.de' },
+    ],
     isLoading: false,
   }),
 }));
@@ -291,5 +298,43 @@ describe('DownloadModal – guide, IP list and gate', () => {
       await screen.findByTestId('download-version-3'),
     ];
     for (const d of downloads) expect(d).toBeEnabled();
+  });
+});
+
+describe('DownloadModal – start the Task in your own DSF', () => {
+  const TASK_HREF =
+    'https://fhir.klinik.example.de/fhir/Task?_profile=http%3A%2F%2Fdsf.dev%2Ffhir%2FStructureDefinition%2Ftask-download-allow-list&status=draft';
+
+  it('asks for an endpoint before offering the Task link', () => {
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    expect(screen.getByText(/select an endpoint to get the task link/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('dsf-task-open')).toBeNull();
+  });
+
+  it('opens the draft Task on the endpoint’s own FHIR server in a new tab', async () => {
+    await openWithEndpoint();
+    const open = screen.getByTestId('dsf-task-open');
+    expect(open).toHaveAttribute('href', TASK_HREF);
+    expect(open).toHaveAttribute('target', '_blank');
+    expect(open).toHaveAttribute('rel', 'noopener noreferrer');
+    const steps = within(screen.getByTestId('dsf-task-steps'));
+    expect(steps.getAllByRole('listitem')).toHaveLength(3);
+    expect(screen.getByTestId('dsf-task-allowlist-url')).toHaveTextContent(BASE);
+  });
+
+  it('copies the Task link and the allow-list link', async () => {
+    const user = await openWithEndpoint();
+    await user.click(screen.getByTestId('dsf-task-copy'));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(TASK_HREF);
+    await user.click(screen.getByRole('button', { name: 'Copy allow-list link' }));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(BASE);
+  });
+
+  it('shows a hint instead of a link for a non-http(s) endpoint address', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    await user.selectOptions(screen.getByLabelText('Endpoint'), 'broken.example.de');
+    expect(screen.getByRole('alert')).toHaveTextContent(/not a valid http\(s\) url/i);
+    expect(screen.queryByTestId('dsf-task-open')).toBeNull();
   });
 });

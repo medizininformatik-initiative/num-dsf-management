@@ -1,7 +1,9 @@
 /**
  * DownloadModal.tsx — download dialog of the allow list. Leads with the link DSF
  * itself uses (the current allow list of the selected endpoint, fetched with the
- * site's client certificate), lists the published versions with their DSF
+ * site's client certificate) with a button that opens the draft Task of the
+ * downloadAllowList process on the site's own DSF FHIR server (DsfTaskStart),
+ * lists the published versions with their DSF
  * history link and a signed GUI download, and keeps the network-wide bundle,
  * the IP address list (IMI admins only) and the content preview under a
  * disclosure. Downloads are always available; the verification disclaimer is a
@@ -20,8 +22,10 @@ import { useBundleHistory } from '../../hooks/useBundleHistory';
 import { useMe } from '../../hooks/useMe';
 import { api, downloadFullAllowListBundle } from '../../api/entities.api';
 import { fingerprintGroups } from '../../lib/fingerprint';
+import { saveBlob, toBlob, headerValue, sha256Hex } from '../../lib/downloadBlob';
 import { BundlePreview } from './BundlePreview';
 import { DownloadVersionList } from './DownloadVersionList';
+import { DsfTaskStart } from './DsfTaskStart';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { Skeleton } from '../ui/Skeleton';
@@ -32,6 +36,13 @@ interface Props {
   open: boolean;
   onClose: () => void;
   instanceId: string;
+}
+
+interface EndpointOption {
+  identifier: string;
+  name?: string;
+  /** FHIR base address of the endpoint's DSF FHIR server. */
+  address?: string;
 }
 
 interface Verification {
@@ -51,39 +62,6 @@ const codeBox =
 const sectionTitle = 'text-sm font-bold text-[color:var(--text-primary)]';
 const helpText = 'text-xs leading-relaxed text-[color:var(--text-muted)]';
 const fieldLabel = 'text-[11px] font-semibold text-[color:var(--text-secondary)]';
-
-function saveBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function toBlob(data: BlobPart, type: string): Blob {
-  return data instanceof Blob ? data : new Blob([data], { type });
-}
-
-/** A response header from axios (AxiosHeaders or a plain object). */
-function headerValue(headers: unknown, name: string): string | null {
-  if (!headers || typeof headers !== 'object') return null;
-  const h = headers as { get?: (n: string) => unknown } & Record<string, unknown>;
-  const value = typeof h.get === 'function' ? h.get(name) : h[name];
-  return typeof value === 'string' && value ? value : null;
-}
-
-/** Hex SHA-256 of a blob, or null without WebCrypto (e.g. outside a secure context). */
-async function sha256Hex(blob: Blob): Promise<string | null> {
-  try {
-    const subtle = globalThis.crypto?.subtle;
-    if (!subtle || typeof blob.arrayBuffer !== 'function') return null;
-    const digest = await subtle.digest('SHA-256', await blob.arrayBuffer());
-    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
-  } catch {
-    return null;
-  }
-}
 
 /** Monospace value with a copy button. */
 function CopyField({
@@ -254,7 +232,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
             className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-sm text-[color:var(--text-primary)]"
           >
             <option value="">{t('downloadModalSelectEndpointPlaceholder')}</option>
-            {endpoints.map((ep: { identifier: string; name?: string }) => (
+            {endpoints.map((ep: EndpointOption) => (
               <option key={ep.identifier} value={ep.identifier}>
                 {ep.name || ep.identifier}
               </option>
@@ -289,6 +267,17 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
             </p>
           )}
         </section>
+
+        <DsfTaskStart
+          fhirBase={
+            selectedEndpoint
+              ? (endpoints.find((ep: EndpointOption) => ep.identifier === selectedEndpoint)
+                  ?.address ?? '')
+              : undefined
+          }
+          allowListUrl={bundleBase}
+          onCopy={(text) => void copy(text)}
+        />
 
         {selectedEndpoint && (
           <section className="glass-thin rounded-2xl p-4" aria-labelledby={`${uid}-history`}>
