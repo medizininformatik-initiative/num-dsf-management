@@ -685,6 +685,33 @@ export const de: Record<TranslationKey, string> = {
   expiryBannerTitlePlural: '{n} Zertifikate laufen bald ab',
   expiryDaysRemaining: '{n}T verbleibend',
 
+  // Map — modern canvas (floating controls, legend, keyboard, states)
+  mapNetworkLabel: 'Netzwerkkarte Deutschland',
+  mapKeyboardHint:
+    'Mit den Pfeiltasten wechseln Sie zwischen Standorten, mit + und − zoomen Sie, mit 0 sehen Sie ganz Deutschland.',
+  mapZoomGroup: 'Zoom',
+  mapZoomIn: 'Vergrößern',
+  mapZoomOut: 'Verkleinern',
+  mapZoomReset: 'Ganz Deutschland anzeigen',
+  mapLegendTitle: 'Legende',
+  mapLegendInactive: 'Inaktiv',
+  mapLegendCluster: 'Mehrere Standorte',
+  mapLegendConnection: 'Gemeinsames Netzwerk',
+  mapNodeLabel: '{name}, Zertifikat: {status}',
+  mapNodeLabelInactive: '{name}, inaktiv, Zertifikat: {status}',
+  mapClusterLabel: '{city}: {n} Standorte',
+  mapShowList: 'Organisationsliste einblenden',
+  mapHideList: 'Organisationsliste ausblenden',
+  mapSearchLabel: 'Organisationen durchsuchen',
+  mapClearSearch: 'Suche leeren',
+  mapFilterActivityLabel: 'Aktivität',
+  mapFilterStatusLabel: 'Zertifikatsstatus',
+  mapFilterNetworkLabel: 'Netzwerk',
+  mapNoMatches: 'Keine Standorte entsprechen den aktuellen Filtern.',
+  mapResetFilters: 'Filter zurücksetzen',
+  mapRetry: 'Erneut versuchen',
+  mapDetailsOpensNewTab: 'öffnet in einem neuen Tab',
+
   // Map — page-level
   mapAdminViewSubtitle: 'Admin-Ansicht · vollständige Details für jeden freigegebenen Knoten',
   mapMemberViewSubtitle: 'Aktive P2P-Knoten in der Allow-Liste',

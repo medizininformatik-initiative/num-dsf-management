@@ -675,6 +675,33 @@ export const en = {
   expiryBannerTitlePlural: '{n} certificates expiring soon',
   expiryDaysRemaining: '{n}d remaining',
 
+  // Map — modern canvas (floating controls, legend, keyboard, states)
+  mapNetworkLabel: 'Network map of Germany',
+  mapKeyboardHint:
+    'Use the arrow keys to move between sites, + and − to zoom and 0 to show all of Germany.',
+  mapZoomGroup: 'Zoom',
+  mapZoomIn: 'Zoom in',
+  mapZoomOut: 'Zoom out',
+  mapZoomReset: 'Show all of Germany',
+  mapLegendTitle: 'Legend',
+  mapLegendInactive: 'Inactive',
+  mapLegendCluster: 'Several sites',
+  mapLegendConnection: 'Shared network',
+  mapNodeLabel: '{name}, certificate: {status}',
+  mapNodeLabelInactive: '{name}, inactive, certificate: {status}',
+  mapClusterLabel: '{city}: {n} sites',
+  mapShowList: 'Show organization list',
+  mapHideList: 'Hide organization list',
+  mapSearchLabel: 'Search organizations',
+  mapClearSearch: 'Clear search',
+  mapFilterActivityLabel: 'Activity',
+  mapFilterStatusLabel: 'Certificate status',
+  mapFilterNetworkLabel: 'Network',
+  mapNoMatches: 'No sites match the current filters.',
+  mapResetFilters: 'Reset filters',
+  mapRetry: 'Try again',
+  mapDetailsOpensNewTab: 'opens in a new tab',
+
   // Map — page-level
   mapAdminViewSubtitle: 'Admin view · full details for every approved node',
   mapMemberViewSubtitle: 'Active P2P nodes across the allow list',
