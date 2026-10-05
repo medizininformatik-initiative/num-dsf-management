@@ -1,16 +1,27 @@
 /**
  * MapHeader.tsx – Page title strip for /app/map. Rendered by AppPage above
  * Breadcrumbs so the page title sits ABOVE the Dashboard/Map sub-nav.
+ *
+ * The role badge follows the same signal that decides which map view the page
+ * renders: `meta.isAdmin` of the network-map response (shared ['network','map']
+ * query). `useMe()` is only the fallback while the map loads. /auth/me sits in
+ * the auth rate-limit zone and is not covered by the 401 refresh, so treating
+ * a missing `me` as "member" mislabelled admins; an unknown role now renders
+ * no badge instead of the member badge.
+ * Dependencies: useNetworkMap, useMe, StatusPill, Icon, i18n.store
  */
 import { Icon } from '../ui/Icon';
 import { StatusPill } from '../ui/StatusPill';
 import { useMe } from '../../hooks/useMe';
+import { useNetworkMap } from '../../hooks/useNetworkMap';
 import { useI18n } from '../../stores/i18n.store';
 
 export function MapHeader() {
   const { t } = useI18n();
+  const { data: map } = useNetworkMap();
   const { data: me } = useMe();
-  const isAdmin = !!me?.isAdmin;
+  const isAdmin: boolean | undefined = map ? map.isAdmin : me?.isAdmin;
+  const known = isAdmin !== undefined;
   return (
     <header className="glass-chrome px-7 pb-2.5 pt-4">
       <div className="flex items-center gap-3">
@@ -19,17 +30,21 @@ export function MapHeader() {
           <h1 className="m-0 text-lg font-bold text-[color:var(--text-primary)]">
             {t('networkMap')}
           </h1>
-          <p className="mt-0.5 text-[12px] text-[color:var(--text-secondary)]">
-            {isAdmin ? t('mapAdminViewSubtitle') : t('mapMemberViewSubtitle')}
-          </p>
+          {known && (
+            <p className="mt-0.5 text-[12px] text-[color:var(--text-secondary)]">
+              {isAdmin ? t('mapAdminViewSubtitle') : t('mapMemberViewSubtitle')}
+            </p>
+          )}
         </div>
-        <StatusPill
-          tone={isAdmin ? 'info' : 'neutral'}
-          icon={isAdmin ? 'shield' : 'person'}
-          className="ml-auto"
-        >
-          {isAdmin ? t('mapRoleAdmin') : t('mapRoleMember')}
-        </StatusPill>
+        {known && (
+          <StatusPill
+            tone={isAdmin ? 'info' : 'neutral'}
+            icon={isAdmin ? 'shield' : 'person'}
+            className="ml-auto animate-fade-in"
+          >
+            {isAdmin ? t('mapRoleAdmin') : t('mapRoleMember')}
+          </StatusPill>
+        )}
       </div>
     </header>
   );
