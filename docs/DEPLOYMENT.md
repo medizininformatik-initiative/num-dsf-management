@@ -347,9 +347,9 @@ The security model is identical to the nginx variant: the SHA-512 fingerprint ma
 
 ### Onboarding sites in bulk (admin upload)
 
-Once an admin can sign in, new sites are onboarded from **Administration > Onboarding** (`/app/admin/onboarding`) by uploading a CSV or JSON file. Each row creates or updates a complete site in one transaction: the organization, its instance, the contact user, the allow-list entry, and the client-certificate fingerprint. Re-uploading the same file is idempotent (existing sites are updated, not duplicated).
+Once an admin can sign in, new sites are onboarded from **Administration > Onboarding** (`/app/admin/onboarding`) in three steps: **1. choose a method** (type the sites into the in-tool table, or upload a CSV, XLSX or JSON file), **2. review and fix** (a dry run checks every row against the server and shows per row whether it would be created, updated or rejected, without writing anything), **3. import** (with a summary). The page offers an Excel template (`.xlsx`: header row, an example row, a country drop-down and a "Help" sheet explaining each column) and a CSV template. In the table, rows can be added and removed, cells are validated while typing, and rows copied from Excel or Sheets (tab-separated, with or without the header line) can be pasted into any cell. Each row creates or updates a complete site in one transaction: the organization, its instance, the contact user, the allow-list entry, and the client-certificate fingerprint. Re-uploading the same file is idempotent (existing sites are updated, not duplicated).
 
-Columns (CSV header row) or object keys (JSON):
+Columns (CSV header row, first row of the XLSX sheet "Sites") or object keys (JSON). A row whose `organizationIdentifier` starts with `#` is a comment and is ignored (the templates' example row uses this, so uploading an untouched template imports nothing):
 
 | Field | Required | Notes |
 |---|---|---|
@@ -384,7 +384,9 @@ JSON example:
 
 The upload is admin-only and hardened at the boundary:
 
-- The endpoint (`POST /api/v1/admin/onboarding/import`) requires an authenticated IMI admin; anyone else gets `403`.
+- The endpoint (`POST /api/v1/admin/onboarding/import`) requires an authenticated IMI admin; anyone else gets `403`. It accepts `text/csv`, `application/json` and an `.xlsx` workbook (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`; the first sheet that is not "Help" is read, header in row 1, formula cells are rejected like a leading `=`).
+- `?dryRun=true` runs the same parsing and validation and reports per row `created` / `updated` / `failed` (including fingerprint conflicts between rows of the same file) without writing anything. Because it changes nothing, it needs no certificate step-up and does not count against the rate limit. Every result row carries its 1-based data-row number (`row`).
+- The templates are admin-only downloads: `GET /api/v1/admin/onboarding/template.xlsx` and `GET /api/v1/admin/onboarding/template.csv`.
 - It is rate-limited (10 requests per 15 minutes per user).
 - The body is capped at 1 MB (`413`) and 1000 rows (`413`).
 - A file that contains a PEM block (`-----BEGIN`) is rejected outright (`400`), so a private key or certificate body is never accepted here.
@@ -392,7 +394,7 @@ The upload is admin-only and hardened at the boundary:
 - A fingerprint already registered to a different organization is refused for that row (`FINGERPRINT_IN_USE`); a unique index enforces it as a backstop.
 - Every imported row is written to the append-only audit log with only the first 16 characters of the fingerprint, never the full value.
 
-A row that fails validation does not abort the import: the response reports a per-row result (`created` / `updated` / `failed` with the reason) plus a summary, and the UI shows the same table so an admin can fix and re-upload only the bad rows.
+A row that fails validation does not abort the import: the response reports a per-row result (`created` / `updated` / `failed` with the reason) plus a summary, and the UI shows the same table so an admin can fix and re-upload only the bad rows. In the table editor the dry-run result is shown on the affected row itself, so the row can be corrected in place and checked again.
 
 How a site obtains its fingerprint: it runs `certtool --fingerprint --hash=sha512 --infile=client_certificate.pem` on its browser client certificate and sends you that value plus the minimal org data above. After import, the site reaches the portal with its certificate and no login screen.
 
