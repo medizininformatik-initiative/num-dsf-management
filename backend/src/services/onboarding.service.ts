@@ -13,6 +13,7 @@
  * (errCode/errMessage), uuid, zod.
  */
 import { z } from 'zod';
+import ExcelJS from 'exceljs';
 import { v4 as uuidv4 } from 'uuid';
 import { parseCsv } from '../lib/csv';
 import { normalizeFingerprint, isValidSha512Fingerprint } from '../lib/certFingerprint';
@@ -77,10 +78,116 @@ export const onboardingRowSchema = z.object({
 
 export type OnboardingRow = z.infer<typeof onboardingRowSchema>;
 
+export const ONBOARDING_COLUMNS = [
+  'organizationIdentifier',
+  'organizationName',
+  'contactEmail',
+  'clientCertFingerprint',
+  'city',
+  'countryCode',
+] as const;
+
+export const XLSX_CONTENT_TYPE =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+export interface ParsedOnboarding {
+  valid: OnboardingRow[];
+  /** 1-based data-row number (header excluded) of each entry in `valid`. */
+  validRows: number[];
+  errors: { row: number; issue: string }[];
+}
+
+// A row whose identifier cell starts with "#" is a comment (the template's
+// example row), never data.
+function isCommentRow(raw: unknown): boolean {
+  if (raw === null || typeof raw !== 'object') return false;
+  const id = (raw as Record<string, unknown>).organizationIdentifier;
+  return typeof id === 'string' && id.trimStart().startsWith('#');
+}
+
+function validateRows(rawRows: { raw: unknown; row: number }[]): ParsedOnboarding {
+  if (rawRows.length > MAX_ROWS) throw new Error('TOO_MANY_ROWS');
+  const valid: OnboardingRow[] = [];
+  const validRows: number[] = [];
+  const errors: { row: number; issue: string }[] = [];
+  for (const { raw, row } of rawRows) {
+    if (isCommentRow(raw)) continue;
+    const result = onboardingRowSchema.safeParse(raw);
+    if (result.success) {
+      valid.push(result.data);
+      validRows.push(row);
+    } else {
+      errors.push({ row, issue: result.error.issues[0]?.message ?? 'Invalid row' });
+    }
+  }
+  return { valid, validRows, errors };
+}
+
+// Flattens an exceljs cell value to the plain text a CSV cell would hold. A
+// formula cell becomes "=<formula>" so the formula-injection guard rejects it.
+function cellText(value: ExcelJS.CellValue): string {
+  if (value === null || value === undefined) return '';
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value !== 'object') return String(value);
+  if ('formula' in value || 'sharedFormula' in value) {
+    return `=${(value as { formula?: string }).formula ?? ''}`;
+  }
+  if ('richText' in value) return value.richText.map((r) => r.text).join('');
+  if ('text' in value) return String(value.text);
+  return '';
+}
+
+/**
+ * Parses an .xlsx onboarding upload (first sheet that is not "Help", header in
+ * row 1) into the same validated shape as parseOnboardingFile. Async because
+ * exceljs reads the workbook asynchronously.
+ */
+export async function parseOnboardingXlsx(buf: Buffer): Promise<ParsedOnboarding> {
+  if (buf.length > MAX_FILE_BYTES) throw new Error('FILE_TOO_LARGE');
+  const wb = new ExcelJS.Workbook();
+  try {
+    await wb.xlsx.load(buf as unknown as ExcelJS.Buffer);
+  } catch {
+    throw new Error('UNSUPPORTED_FORMAT');
+  }
+  const sheet = wb.worksheets.find((w) => w.name.toLowerCase() !== 'help') ?? wb.worksheets[0];
+  if (!sheet) throw new Error('UNSUPPORTED_FORMAT');
+  if (sheet.rowCount > MAX_ROWS + 50) throw new Error('TOO_MANY_ROWS');
+
+  const header: string[] = [];
+  sheet.getRow(1).eachCell({ includeEmpty: false }, (cell, col) => {
+    header[col] = cellText(cell.value).trim();
+  });
+
+  const rawRows: { raw: Record<string, string>; row: number }[] = [];
+  for (let r = 2; r <= sheet.rowCount; r += 1) {
+    const raw: Record<string, string> = {};
+    let any = false;
+    sheet.getRow(r).eachCell({ includeEmpty: false }, (cell, col) => {
+      const key = header[col];
+      if (!key) return;
+      const v = cellText(cell.value);
+      if (v.trim() !== '') any = true;
+      raw[key] = v;
+    });
+    if (!any) continue;
+    for (const key of ONBOARDING_COLUMNS) raw[key] ??= '';
+    rawRows.push({ raw, row: r - 1 });
+  }
+  if (JSON.stringify(rawRows).includes('-----BEGIN')) throw new Error('PEM_NOT_ALLOWED');
+  return validateRows(rawRows);
+}
+
+/** True when the upload is an Excel workbook (content type or ZIP magic bytes). */
+export function isXlsxUpload(buf: Buffer, contentType: string | undefined): boolean {
+  if (contentType?.includes('spreadsheetml')) return true;
+  return buf.length > 3 && buf[0] === 0x50 && buf[1] === 0x4b && buf[2] === 0x03;
+}
+
 export function parseOnboardingFile(
   buf: Buffer,
   contentType: string | undefined,
-): { valid: OnboardingRow[]; errors: { row: number; issue: string }[] } {
+): ParsedOnboarding {
   if (buf.length > MAX_FILE_BYTES) throw new Error('FILE_TOO_LARGE');
 
   const text = buf.toString('utf-8');
@@ -109,20 +216,52 @@ export function parseOnboardingFile(
     rawRows = parseCsv(text);
   }
 
-  if (rawRows.length > MAX_ROWS) throw new Error('TOO_MANY_ROWS');
+  return validateRows(rawRows.map((raw, idx) => ({ raw, row: idx + 1 })));
+}
 
-  const valid: OnboardingRow[] = [];
-  const errors: { row: number; issue: string }[] = [];
-  rawRows.forEach((raw, idx) => {
-    const result = onboardingRowSchema.safeParse(raw);
-    if (result.success) {
-      valid.push(result.data);
-    } else {
-      errors.push({ row: idx + 1, issue: result.error.issues[0]?.message ?? 'Invalid row' });
+/**
+ * Dry run of importSites: reports per row what an import would do (created /
+ * updated / failed) without writing anything. Mirrors the import's checks,
+ * including conflicts between rows of the same file (a later row that reuses
+ * an earlier row's fingerprint under another identifier would fail).
+ */
+export async function previewSites(rows: OnboardingRow[]): Promise<ImportResult> {
+  const results: ImportRowResult[] = [];
+  const seenIds = new Set<string>();
+  const fileFingerprintOwner = new Map<string, string>();
+
+  for (const row of rows) {
+    const identifier = row.organizationIdentifier;
+    const fp = row.clientCertFingerprint;
+    const owner = await db('organizations')
+      .where({ client_cert_fingerprint: fp })
+      .whereNot({ identifier })
+      .first();
+    const fileOwner = fileFingerprintOwner.get(fp);
+    if (owner || (fileOwner && fileOwner !== identifier)) {
+      results.push({ identifier, action: 'failed', ok: false, issue: 'FINGERPRINT_IN_USE' });
+      continue;
     }
-  });
+    fileFingerprintOwner.set(fp, identifier);
+    const exists =
+      seenIds.has(identifier) || !!(await db('organizations').where({ identifier }).first());
+    seenIds.add(identifier);
+    results.push({ identifier, action: exists ? 'updated' : 'created', ok: true });
+  }
 
-  return { valid, errors };
+  return { summary: summarize(results), rows: results };
+}
+
+function summarize(rowResults: ImportRowResult[]): ImportResult['summary'] {
+  return rowResults.reduce(
+    (acc, r) => {
+      if (r.action === 'created') acc.created += 1;
+      else if (r.action === 'updated') acc.updated += 1;
+      else acc.failed += 1;
+      return acc;
+    },
+    { created: 0, updated: 0, failed: 0 },
+  );
 }
 
 export interface ImportRowResult {
@@ -270,15 +409,5 @@ export async function importSites(
     }
   }
 
-  const summary = rowResults.reduce(
-    (acc, r) => {
-      if (r.action === 'created') acc.created += 1;
-      else if (r.action === 'updated') acc.updated += 1;
-      else acc.failed += 1;
-      return acc;
-    },
-    { created: 0, updated: 0, failed: 0 },
-  );
-
-  return { summary, rows: rowResults };
+  return { summary: summarize(rowResults), rows: rowResults };
 }
