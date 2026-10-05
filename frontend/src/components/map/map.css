@@ -1,0 +1,397 @@
+/* map.css – Network map materials and motion.
+ * A calm, Apple-Maps-like base: quiet canvas, soft land with a coastline
+ * hairline and faint state borders, glass markers with a status ring. Colours
+ * are scoped tokens on .map-root and switch with the app's .dark class.
+ * Motion uses the global tokens (--duration-*, --ease-*). Classes containing
+ * "animate-" are exempt from the global Reduce Motion collapse, so their
+ * keyframes are redefined at the end of this file as opacity crossfades; all
+ * other map animations (the edge flow) simply stop under Reduce Motion.
+ * Dependencies: src/index.css motion and tone tokens. */
+
+.map-root {
+  --map-bg: #eef0f5;
+  --map-bg-glow: rgba(255, 255, 255, 0.95);
+  --map-land: #ffffff;
+  --map-coast: rgba(15, 23, 42, 0.18);
+  --map-state-border: rgba(15, 23, 42, 0.08);
+  --map-land-shadow: rgba(15, 23, 42, 0.12);
+  --map-pin-fill: #ffffff;
+  --map-pin-shadow: rgba(15, 23, 42, 0.28);
+  --map-cluster-fill: rgba(255, 255, 255, 0.94);
+  --map-edge-flow: rgba(255, 255, 255, 0.9);
+  --map-other-fill: rgba(15, 23, 42, 0.025);
+  --map-other-stroke: rgba(15, 23, 42, 0.16);
+  --map-tooltip-fill: rgba(255, 255, 255, 0.96);
+  --map-tooltip-stroke: rgba(15, 23, 42, 0.1);
+}
+
+:root.dark .map-root {
+  --map-bg: #0b0b0d;
+  --map-bg-glow: rgba(255, 255, 255, 0.035);
+  --map-land: #1c1c1f;
+  --map-coast: rgba(255, 255, 255, 0.16);
+  --map-state-border: rgba(255, 255, 255, 0.06);
+  --map-land-shadow: rgba(0, 0, 0, 0.7);
+  --map-pin-fill: #2a2a2e;
+  --map-pin-shadow: rgba(0, 0, 0, 0.7);
+  --map-cluster-fill: rgba(42, 42, 46, 0.94);
+  --map-edge-flow: rgba(255, 255, 255, 0.7);
+  --map-other-fill: rgba(255, 255, 255, 0.02);
+  --map-other-stroke: rgba(255, 255, 255, 0.14);
+  --map-tooltip-fill: rgba(28, 28, 31, 0.97);
+  --map-tooltip-stroke: rgba(255, 255, 255, 0.1);
+}
+
+.map-canvas {
+  background:
+    radial-gradient(ellipse 70% 60% at 45% 45%, var(--map-bg-glow), transparent 75%), var(--map-bg);
+}
+
+/* ─── Base map ─────────────────────────────────────────────────────────── */
+.map-land {
+  fill: var(--map-land);
+}
+.map-coast {
+  fill: var(--map-land);
+  stroke: var(--map-coast);
+  stroke-width: 1.5;
+}
+.map-state-borders {
+  fill: none;
+  stroke: var(--map-state-border);
+  stroke-width: 0.75;
+}
+.map-other-zone {
+  fill: var(--map-other-fill);
+  stroke: var(--map-other-stroke);
+  stroke-dasharray: 3 4;
+}
+.map-other-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ─── Viewport ─────────────────────────────────────────────────────────── */
+.map-svg {
+  touch-action: none;
+  cursor: grab;
+}
+.map-svg[data-dragging='true'] {
+  cursor: grabbing;
+}
+.map-svg:focus {
+  outline: none;
+}
+.map-svg:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  border-radius: 16px;
+}
+.map-zoom-layer,
+.map-counter-scale {
+  transform-origin: 0 0;
+  transition: transform var(--duration-long) var(--ease-spring);
+}
+.map-svg[data-dragging='true'] .map-zoom-layer,
+.map-svg[data-dragging='true'] .map-counter-scale {
+  transition: none;
+}
+
+/* ─── Markers ──────────────────────────────────────────────────────────── */
+.map-marker {
+  cursor: pointer;
+  outline: none;
+}
+.map-marker[data-leaving='true'] {
+  pointer-events: none;
+}
+.map-marker-body {
+  transform-origin: 0 0;
+  transition: transform var(--duration-short) var(--ease-spring-bouncy);
+}
+.map-marker:hover .map-marker-body,
+.map-marker-body[data-hovered='true'] {
+  transform: scale(1.12);
+}
+.map-marker-body[data-selected='true'] {
+  transform: scale(1.24);
+}
+.map-pin-fill {
+  fill: var(--map-pin-fill);
+}
+.map-cluster-fill {
+  fill: var(--map-cluster-fill);
+}
+.map-pin-label {
+  fill: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+  user-select: none;
+}
+.map-pin-label[data-inactive='true'] {
+  fill: var(--text-muted);
+}
+.map-marker-body[data-selected='true'] .map-pin-label {
+  fill: var(--bg-card);
+}
+.map-halo {
+  opacity: 0;
+  transition: opacity var(--duration-short) var(--ease-standard);
+}
+.map-marker-body[data-selected='true'] .map-halo {
+  opacity: 0.2;
+}
+.map-focus-ring {
+  fill: none;
+  stroke: var(--focus-ring);
+  stroke-width: 2;
+  opacity: 0;
+}
+.map-marker:focus-visible .map-focus-ring {
+  opacity: 1;
+}
+
+/* Entrance: pins pop in on a short spring, staggered north to south. */
+.map-animate-node-in {
+  transform-origin: 0 0;
+  animation: map-node-in var(--duration-medium) var(--ease-spring-bouncy)
+    calc(min(var(--stagger-index, 0), 40) * 18ms) both;
+}
+.map-animate-node-out {
+  transform-origin: 0 0;
+  animation: map-node-out var(--duration-short-exit) var(--ease-exit) both;
+}
+/* A cluster splits into its members: each flies out from the bubble. */
+.map-animate-fan-in {
+  transform-origin: 0 0;
+  animation: map-fan-in var(--duration-medium) var(--ease-spring-bouncy)
+    calc(min(var(--stagger-index, 0), 12) * var(--stagger-step)) both;
+}
+.map-animate-fan-out {
+  transform-origin: 0 0;
+  animation: map-fan-out var(--duration-short-exit) var(--ease-exit) both;
+}
+
+@keyframes map-node-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+@keyframes map-node-out {
+  to {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+@keyframes map-fan-in {
+  from {
+    opacity: 0;
+    transform: translate(calc(var(--dx) * -1), calc(var(--dy) * -1)) scale(0.4);
+  }
+}
+@keyframes map-fan-out {
+  to {
+    opacity: 0;
+    transform: translate(calc(var(--dx) * -1), calc(var(--dy) * -1)) scale(0.4);
+  }
+}
+
+/* ─── Edges ────────────────────────────────────────────────────────────── */
+.map-edge {
+  fill: none;
+  stroke-linecap: round;
+  transition: opacity var(--duration-short) var(--ease-standard);
+}
+.map-animate-edge-in {
+  animation: map-edge-fade var(--duration-short) var(--ease-standard) both;
+}
+/* Selected edges draw on from the selected node, then a dash flow runs. */
+.map-animate-edge-draw {
+  stroke-dasharray: 1 1;
+  animation: map-edge-draw var(--duration-long) var(--ease-standard) both;
+}
+.map-animate-edge-retract {
+  stroke-dasharray: 1 1;
+  animation: map-edge-retract var(--duration-medium-exit) var(--ease-exit) both;
+}
+.map-edge-flow {
+  fill: none;
+  stroke: var(--map-edge-flow);
+  stroke-linecap: round;
+  animation:
+    map-edge-fade var(--duration-short) var(--ease-standard) var(--duration-long) both,
+    map-edge-flow 1.2s linear var(--duration-long) infinite;
+}
+
+@keyframes map-edge-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes map-edge-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes map-edge-retract {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 1;
+  }
+}
+@keyframes map-edge-flow {
+  to {
+    stroke-dashoffset: calc(var(--flow) * -1);
+  }
+}
+
+/* ─── Sheets and floating controls ─────────────────────────────────────── */
+.map-viewport {
+  transition:
+    left var(--duration-long) var(--ease-spring),
+    right var(--duration-long) var(--ease-spring),
+    bottom var(--duration-long) var(--ease-spring);
+}
+.map-animate-sheet-in-right {
+  animation: map-sheet-in-right var(--duration-long) var(--ease-spring) both;
+}
+.map-animate-sheet-out-right {
+  animation: map-sheet-out-right var(--duration-long-exit) var(--ease-exit) both;
+}
+.map-animate-sheet-in-left {
+  animation: map-sheet-in-left var(--duration-long) var(--ease-spring) both;
+}
+.map-animate-sheet-out-left {
+  animation: map-sheet-out-left var(--duration-long-exit) var(--ease-exit) both;
+}
+.map-animate-sheet-in-bottom {
+  animation: map-sheet-in-bottom var(--duration-long) var(--ease-spring) both;
+}
+.map-animate-sheet-out-bottom {
+  animation: map-sheet-out-bottom var(--duration-long-exit) var(--ease-exit) both;
+}
+@keyframes map-sheet-in-right {
+  from {
+    transform: translateX(calc(100% + 16px));
+  }
+}
+@keyframes map-sheet-out-right {
+  to {
+    transform: translateX(calc(100% + 16px));
+  }
+}
+@keyframes map-sheet-in-left {
+  from {
+    transform: translateX(calc(-100% - 16px));
+  }
+}
+@keyframes map-sheet-out-left {
+  to {
+    transform: translateX(calc(-100% - 16px));
+  }
+}
+@keyframes map-sheet-in-bottom {
+  from {
+    transform: translateY(calc(100% + 16px));
+  }
+}
+@keyframes map-sheet-out-bottom {
+  to {
+    transform: translateY(calc(100% + 16px));
+  }
+}
+
+/* Segmented control thumb slides between options. */
+.map-segment-thumb {
+  transition: transform var(--duration-medium) var(--ease-spring);
+}
+
+/* Org list row ↔ map selection sync: the highlight eases in. */
+.map-list-row {
+  transition:
+    background-color var(--duration-short) var(--ease-standard),
+    color var(--duration-short) var(--ease-standard),
+    box-shadow var(--duration-short) var(--ease-standard);
+}
+
+/* ─── Reduce Motion: movement becomes a crossfade ──────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .map-animate-node-in,
+  .map-animate-fan-in {
+    animation-delay: 0s;
+  }
+  @keyframes map-node-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes map-node-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes map-fan-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes map-fan-out {
+    to {
+      opacity: 0;
+    }
+  }
+  .map-animate-edge-draw,
+  .map-animate-edge-retract {
+    stroke-dasharray: none;
+  }
+  @keyframes map-edge-draw {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes map-edge-retract {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes map-sheet-in-right {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes map-sheet-out-right {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes map-sheet-in-left {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes map-sheet-out-left {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes map-sheet-in-bottom {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes map-sheet-out-bottom {
+    to {
+      opacity: 0;
+    }
+  }
+}
