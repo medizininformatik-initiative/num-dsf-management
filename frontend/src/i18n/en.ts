@@ -1510,6 +1510,136 @@ export const en = {
     'The allow list is a recommendation: please check its content and signature before you deploy it.',
   dlDisclaimerMore: 'Full notice',
 
+  // Help page — user guide (EN/DE, FHIR resource names stay English)
+  helpNavLabel: 'Help',
+  helpTitle: 'Help',
+  helpSubtitle: 'How to maintain your site in the DSF allow list, step by step.',
+  helpSearchLabel: 'Search the help',
+  helpSearchPlaceholder: 'Search the help…',
+  helpTocLabel: 'On this page',
+  helpNoResults: 'Nothing found for "{query}".',
+  helpNoResultsHint: 'Try a different word or clear the search.',
+  helpClearSearch: 'Clear search',
+  helpAdminLink: 'Administrators: open the admin reference',
+  helpFaqToc: 'FAQ',
+  helpFaqTitle: 'Frequently asked questions',
+  helpContactToc: 'Contact',
+  helpLegalLink: 'Legal notice',
+  helpS_start_title: 'Getting started',
+  helpS_start_toc: 'Getting started',
+  helpS_start_0:
+    'The portal manages the entry of your site in the DSF allow list: who you are, how you can be reached, where your DSF FHIR server runs and which certificate it uses. Everything is edited on one page, and nothing becomes visible to other sites until IMI has approved it.',
+  helpS_start_1_0: 'Create or open your DSF instance in the sidebar.',
+  helpS_start_1_1: 'Fill in the organization.',
+  helpS_start_1_2: 'Add at least one contact with the MEDIC role.',
+  helpS_start_1_3: 'Add your endpoint with its IP addresses.',
+  helpS_start_1_4: 'Upload the public client certificate.',
+  helpS_start_1_5: 'Add the memberships in your networks.',
+  helpS_start_1_6: 'Submit everything for approval.',
+  helpS_organization_title: 'Organization',
+  helpS_organization_toc: 'Organization',
+  helpS_organization_0:
+    'The organization is the central record of your site. Its identifier is the domain name (FQDN) of your institution, for example klinik-eins.example.de. It is the key that all other entries refer to.',
+  helpS_organization_1_0:
+    'The identifier cannot be changed once it has been approved. To use a different domain, create a new instance.',
+  helpS_organization_1_1:
+    'Name, e-mail address and postal address are shown to the other sites of the network.',
+  helpS_contacts_title: 'Contacts',
+  helpS_contacts_toc: 'Contacts',
+  helpS_contacts_0:
+    'Contacts are the people IMI and the other sites can turn to. Every contact has one or more roles. At least one contact with the MEDIC role (the medical contact of the site) is required before you can submit.',
+  helpS_contacts_1_0:
+    'Each contact receives a verification e-mail; use "Resend verification" if it did not arrive.',
+  helpS_contacts_1_1: 'Contacts also receive the reminders before a certificate expires.',
+  helpS_contacts_1_2: 'Contact details are never published in the allow list that the DSF reads.',
+  helpS_endpoints_title: 'Endpoints and IP addresses',
+  helpS_endpoints_toc: 'Endpoints',
+  helpS_endpoints_0:
+    'An endpoint describes your DSF FHIR server: its identifier (FQDN), its address (the FHIR base URL, for example https://dsf.klinik-eins.example.de/fhir) and the IP addresses it connects from.',
+  helpS_endpoints_1_0:
+    'Mark every IP address as FHIR, BPE or both, so the network can open the correct firewall rules.',
+  helpS_endpoints_1_1: 'The endpoint identifier cannot be changed after approval.',
+  helpS_certificates_title: 'Certificates and the SHA-512 thumbprint',
+  helpS_certificates_toc: 'Certificates',
+  helpS_certificates_0:
+    'Upload the public client certificate of your DSF server in PEM format. Never upload a private key: the portal rejects it immediately and does not store it.',
+  helpS_certificates_1:
+    'Before you save, the portal shows the subject, the expiry date, the issuer and the SHA-512 thumbprint of the certificate. This is the same value as in the DSF configuration: the SHA-512 thumbprint of the local organization client certificate. You can compare it with the value that certtool calculates:',
+  helpS_certificates_3_0:
+    'The thumbprint is one continuous string of 128 lower-case hex characters, without separators.',
+  helpS_certificates_3_1:
+    'An issuer marked "DSF-CA" is accepted by the production DSF; other issuers produce a warning.',
+  helpS_memberships_title: 'Memberships',
+  helpS_memberships_toc: 'Memberships',
+  helpS_memberships_0:
+    'A membership places your organization in a network (the parent organization, for example a research network) with one of your endpoints and the roles you take there, such as DIC, HRP or TTP.',
+  helpS_memberships_1:
+    'Without a membership your site is listed, but no network lists it as a participant.',
+  helpS_approval_title: 'Submitting and the four-eyes review',
+  helpS_approval_toc: 'Approval',
+  helpS_approval_0:
+    'Changes only take effect after review. When your data is complete, open the Approval card and submit. IMI checks the request; a second person decides on it (four-eyes principle), so nobody can approve their own request.',
+  helpS_approval_1_0:
+    'Status: Draft, Pending, Approved or Rejected. While a request is pending, you cannot submit another one.',
+  helpS_approval_1_1:
+    'If a request is rejected, the reviewer states the reason. Correct the data and submit again.',
+  helpS_approval_1_2: 'All steps are recorded in the audit log.',
+  helpS_afterApproval_title: 'After the approval',
+  helpS_afterApproval_toc: 'After approval',
+  helpS_afterApproval_0:
+    'Every approval publishes a new, numbered version of the allow list. Older versions stay available, so you can always see what was valid at a given time.',
+  helpS_afterApproval_1:
+    'Your DSF fetches the current allow list from this link of the portal (replace <endpoint> with the identifier of your endpoint):',
+  helpS_afterApproval_3_0:
+    'The Download dialog shows this link ready to copy, together with the history of all versions and their history links.',
+  helpS_afterApproval_3_1:
+    'Each download shows the content hash and signature so you can verify it.',
+  helpS_dsfImport_title: 'Importing the allow list into the DSF',
+  helpS_dsfImport_toc: 'DSF import',
+  helpS_dsfImport_0:
+    'The DSF imports the allow list with the process downloadAllowList of dsf-process-allow-list:',
+  helpS_dsfImport_1_0:
+    'Open the Download dialog, select your endpoint and copy the link /fhir/Bundle/<endpoint>.',
+  helpS_dsfImport_1_1:
+    'Optionally verify the bundle: compare its SHA-256 with the content hash shown in the dialog.',
+  helpS_dsfImport_1_2:
+    'Start the process downloadAllowList in your DSF with the task input allow-list|allow_list and the link as value.',
+  helpS_dsfImport_2:
+    'The allow list is a recommendation of the network. Check its content and signature before you deploy it.',
+  helpS_renewal_title: 'Certificate renewal and expiry warnings',
+  helpS_renewal_toc: 'Renewal',
+  helpS_renewal_0:
+    'The Certificates card shows the remaining validity of each certificate: from 90 days before expiry a warning ("Expiring"), from 30 days "Renew now", afterwards "Expired". The contacts of your organization are reminded by e-mail as well.',
+  helpS_renewal_1_0: 'Click Renew on the certificate and upload the new public certificate.',
+  helpS_renewal_1_1:
+    'Submit the change for approval. Until it is approved, the old certificate stays valid in the allow list.',
+  helpS_renewal_1_2:
+    'Switch your DSF to the new certificate only after the approval, so the other sites already know it.',
+  helpS_withdrawal_title: 'Withdrawal from the allow list',
+  helpS_withdrawal_toc: 'Withdrawal',
+  helpS_withdrawal_0:
+    'If your site leaves the network, request the withdrawal on the Approval card. Your organization is deactivated; once IMI has approved the request, every other site removes it from its allow list, together with its endpoints and memberships.',
+  helpS_withdrawal_1:
+    'The history keeps the withdrawal, and it can be lifted later by a new request.',
+  helpFaq_0_q: 'Why can I not submit?',
+  helpFaq_0_a:
+    'Check the list on the Approval card: an organization, at least one contact with the MEDIC role, an endpoint and a certificate are required. A request that is already being reviewed also blocks a new submission.',
+  helpFaq_1_q: 'The portal says my upload contains a private key. What now?',
+  helpFaq_1_a:
+    'You pasted the wrong file. Upload only the certificate (-----BEGIN CERTIFICATE-----). Treat the key as exposed if it left your server, and replace it.',
+  helpFaq_2_q: 'The thumbprint differs from my DSF configuration.',
+  helpFaq_2_a:
+    'Calculate it again with certtool from the file your DSF actually uses. If both differ, the certificate in the portal is not the one on your server.',
+  helpFaq_3_q: 'How long does a review take?',
+  helpFaq_3_a:
+    'The duration depends on the workload of the reviewers. You see the status of your request on the Approval card.',
+  helpFaq_4_q: 'Can I go back to an earlier version of my entry?',
+  helpFaq_4_a:
+    'Earlier versions are listed in the Download dialog. To restore data, change it on the page and submit it for approval again.',
+  helpContactTitle: 'Contact and support',
+  helpContactBody:
+    'For questions about your entry or a review, contact the IMI operator team of the Institute of Medical Informatics Muenster. The legal notice lists how to reach them.',
+
   // Schema validation — organization
   identifierTooShort: 'Identifier must be at least 3 characters',
   orgIdentifierInvalidFqdn: 'Must be a valid FQDN (e.g. ukm.de)',

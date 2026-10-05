@@ -371,6 +371,13 @@ export function Sidebar({
               onNavigate={onNavigate}
             />
           </li>
+          <li>
+            <NavItem
+              item={{ to: '/app/help', icon: 'help', label: t('helpNavLabel') }}
+              rail={rail}
+              onNavigate={onNavigate}
+            />
+          </li>
         </ul>
       </nav>
 

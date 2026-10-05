@@ -1545,6 +1545,139 @@ export const de: Record<TranslationKey, string> = {
     'Die Allow-List ist eine Empfehlung: Bitte prüfen Sie Inhalt und Signatur, bevor Sie sie einspielen.',
   dlDisclaimerMore: 'Vollständiger Hinweis',
 
+  // Help page — user guide (EN/DE, FHIR resource names stay English)
+  helpNavLabel: 'Hilfe',
+  helpTitle: 'Hilfe',
+  helpSubtitle: 'So pflegen Sie Ihren Standort in der DSF-Allow-List, Schritt für Schritt.',
+  helpSearchLabel: 'Hilfe durchsuchen',
+  helpSearchPlaceholder: 'Hilfe durchsuchen …',
+  helpTocLabel: 'Auf dieser Seite',
+  helpNoResults: 'Für „{query}“ wurde nichts gefunden.',
+  helpNoResultsHint: 'Versuchen Sie ein anderes Wort oder setzen Sie die Suche zurück.',
+  helpClearSearch: 'Suche zurücksetzen',
+  helpAdminLink: 'Administratoren: zur Admin-Referenz',
+  helpFaqToc: 'FAQ',
+  helpFaqTitle: 'Häufige Fragen',
+  helpContactToc: 'Kontakt',
+  helpLegalLink: 'Rechtlicher Hinweis',
+  helpS_start_title: 'Erste Schritte',
+  helpS_start_toc: 'Erste Schritte',
+  helpS_start_0:
+    'Das Portal verwaltet den Eintrag Ihres Standorts in der DSF-Allow-List: wer Sie sind, wie Sie erreichbar sind, wo Ihr DSF-FHIR-Server läuft und welches Zertifikat er verwendet. Alles wird auf einer Seite bearbeitet, und nichts wird für andere Standorte sichtbar, bevor das IMI es freigegeben hat.',
+  helpS_start_1_0: 'Legen Sie Ihre DSF-Instanz in der Seitenleiste an oder öffnen Sie sie.',
+  helpS_start_1_1: 'Erfassen Sie die Organisation.',
+  helpS_start_1_2: 'Ergänzen Sie mindestens einen Kontakt mit der Rolle MEDIC.',
+  helpS_start_1_3: 'Ergänzen Sie Ihren Endpunkt mit den IP-Adressen.',
+  helpS_start_1_4: 'Laden Sie das öffentliche Client-Zertifikat hoch.',
+  helpS_start_1_5: 'Fügen Sie die Mitgliedschaften in Ihren Netzwerken hinzu.',
+  helpS_start_1_6: 'Reichen Sie alles zur Genehmigung ein.',
+  helpS_organization_title: 'Organisation',
+  helpS_organization_toc: 'Organisation',
+  helpS_organization_0:
+    'Die Organisation ist der zentrale Datensatz Ihres Standorts. Ihr Identifier ist der Domainname (FQDN) Ihrer Einrichtung, zum Beispiel klinik-eins.example.de. Auf ihn verweisen alle übrigen Einträge.',
+  helpS_organization_1_0:
+    'Der Identifier lässt sich nach der Genehmigung nicht mehr ändern. Für eine andere Domain legen Sie eine neue Instanz an.',
+  helpS_organization_1_1:
+    'Name, E-Mail-Adresse und Postanschrift sehen die anderen Standorte des Netzwerks.',
+  helpS_contacts_title: 'Kontakte',
+  helpS_contacts_toc: 'Kontakte',
+  helpS_contacts_0:
+    'Kontakte sind die Personen, an die sich das IMI und andere Standorte wenden können. Jeder Kontakt hat eine oder mehrere Rollen. Vor dem Einreichen ist mindestens ein Kontakt mit der Rolle MEDIC (der medizinische Ansprechpartner des Standorts) erforderlich.',
+  helpS_contacts_1_0:
+    'Jeder Kontakt erhält eine Bestätigungs-E-Mail; über „Bestätigung erneut senden“ fordern Sie sie bei Bedarf noch einmal an.',
+  helpS_contacts_1_1:
+    'Kontakte erhalten außerdem die Erinnerungen vor dem Ablauf eines Zertifikats.',
+  helpS_contacts_1_2:
+    'Kontaktdaten werden nie in der Allow-List veröffentlicht, die das DSF liest.',
+  helpS_endpoints_title: 'Endpunkte und IP-Adressen',
+  helpS_endpoints_toc: 'Endpunkte',
+  helpS_endpoints_0:
+    'Ein Endpunkt beschreibt Ihren DSF-FHIR-Server: seinen Identifier (FQDN), seine Adresse (die FHIR-Basis-URL, zum Beispiel https://dsf.klinik-eins.example.de/fhir) und die IP-Adressen, von denen aus er verbindet.',
+  helpS_endpoints_1_0:
+    'Markieren Sie jede IP-Adresse als FHIR, BPE oder beides, damit das Netzwerk die passenden Firewall-Regeln einrichten kann.',
+  helpS_endpoints_1_1: 'Der Endpunkt-Identifier lässt sich nach der Genehmigung nicht mehr ändern.',
+  helpS_certificates_title: 'Zertifikate und der SHA-512-Thumbprint',
+  helpS_certificates_toc: 'Zertifikate',
+  helpS_certificates_0:
+    'Laden Sie das öffentliche Client-Zertifikat Ihres DSF-Servers im PEM-Format hoch. Laden Sie niemals einen privaten Schlüssel hoch: Das Portal weist ihn sofort zurück und speichert ihn nicht.',
+  helpS_certificates_1:
+    'Vor dem Speichern zeigt das Portal Subject, Ablaufdatum, Aussteller und den SHA-512-Thumbprint des Zertifikats. Das ist derselbe Wert wie in der DSF-Konfiguration: der SHA-512-Thumbprint des lokalen Organisations-Client-Zertifikats. Sie können ihn mit dem Wert vergleichen, den certtool berechnet:',
+  helpS_certificates_3_0:
+    'Der Thumbprint ist eine zusammenhängende Zeichenkette aus 128 Hex-Zeichen in Kleinbuchstaben, ohne Trennzeichen.',
+  helpS_certificates_3_1:
+    'Ein als „DSF-CA“ gekennzeichneter Aussteller wird vom Produktiv-DSF akzeptiert; andere Aussteller führen zu einer Warnung.',
+  helpS_memberships_title: 'Mitgliedschaften',
+  helpS_memberships_toc: 'Mitgliedschaften',
+  helpS_memberships_0:
+    'Eine Mitgliedschaft ordnet Ihre Organisation einem Netzwerk zu (der übergeordneten Organisation, zum Beispiel einem Forschungsverbund), mit einem Ihrer Endpunkte und den Rollen, die Sie dort übernehmen, etwa DIC, HRP oder TTP.',
+  helpS_memberships_1:
+    'Ohne Mitgliedschaft ist Ihr Standort zwar verzeichnet, aber kein Netzwerk führt ihn als Teilnehmer.',
+  helpS_approval_title: 'Einreichen und Vier-Augen-Prüfung',
+  helpS_approval_toc: 'Genehmigung',
+  helpS_approval_0:
+    'Änderungen wirken erst nach einer Prüfung. Sobald Ihre Daten vollständig sind, öffnen Sie die Karte „Genehmigung“ und reichen ein. Das IMI prüft den Antrag; eine zweite Person entscheidet darüber (Vier-Augen-Prinzip), sodass niemand den eigenen Antrag freigeben kann.',
+  helpS_approval_1_0:
+    'Status: Entwurf, In Prüfung, Genehmigt oder Abgelehnt. Solange ein Antrag in Prüfung ist, können Sie keinen weiteren einreichen.',
+  helpS_approval_1_1:
+    'Wird ein Antrag abgelehnt, nennt die prüfende Person den Grund. Korrigieren Sie die Daten und reichen Sie erneut ein.',
+  helpS_approval_1_2: 'Alle Schritte werden im Audit-Log protokolliert.',
+  helpS_afterApproval_title: 'Nach der Genehmigung',
+  helpS_afterApproval_toc: 'Nach Genehmigung',
+  helpS_afterApproval_0:
+    'Jede Genehmigung veröffentlicht eine neue, nummerierte Version der Allow-List. Ältere Versionen bleiben verfügbar, sodass Sie jederzeit nachvollziehen können, was zu einem bestimmten Zeitpunkt galt.',
+  helpS_afterApproval_1:
+    'Ihr DSF holt die aktuelle Allow-List über diesen Link des Portals (ersetzen Sie <endpoint> durch den Identifier Ihres Endpunkts):',
+  helpS_afterApproval_3_0:
+    'Der Download-Dialog zeigt diesen Link kopierfertig, dazu den Verlauf aller Versionen mit ihren History-Links.',
+  helpS_afterApproval_3_1:
+    'Jeder Download zeigt Content-Hash und Signatur, damit Sie ihn prüfen können.',
+  helpS_dsfImport_title: 'Allow-List ins DSF importieren',
+  helpS_dsfImport_toc: 'DSF-Import',
+  helpS_dsfImport_0:
+    'Das DSF importiert die Allow-List mit dem Prozess downloadAllowList aus dsf-process-allow-list:',
+  helpS_dsfImport_1_0:
+    'Öffnen Sie den Download-Dialog, wählen Sie Ihren Endpunkt und kopieren Sie den Link /fhir/Bundle/<endpoint>.',
+  helpS_dsfImport_1_1:
+    'Prüfen Sie das Bundle optional: Vergleichen Sie seinen SHA-256 mit dem im Dialog angezeigten Content-Hash.',
+  helpS_dsfImport_1_2:
+    'Starten Sie den Prozess downloadAllowList in Ihrem DSF mit dem Task-Input allow-list|allow_list und dem Link als Wert.',
+  helpS_dsfImport_2:
+    'Die Allow-List ist eine Empfehlung des Netzwerks. Prüfen Sie Inhalt und Signatur, bevor Sie sie einspielen.',
+  helpS_renewal_title: 'Zertifikatserneuerung und Ablaufwarnungen',
+  helpS_renewal_toc: 'Erneuerung',
+  helpS_renewal_0:
+    'Die Karte „Zertifikate“ zeigt die Restlaufzeit jedes Zertifikats: ab 90 Tagen vor Ablauf eine Warnung („Läuft ab“), ab 30 Tagen „Jetzt erneuern“, danach „Abgelaufen“. Die Kontakte Ihrer Organisation werden zusätzlich per E-Mail erinnert.',
+  helpS_renewal_1_0:
+    'Klicken Sie beim Zertifikat auf „Erneuern“ und laden Sie das neue öffentliche Zertifikat hoch.',
+  helpS_renewal_1_1:
+    'Reichen Sie die Änderung zur Genehmigung ein. Bis zur Genehmigung gilt in der Allow-List weiterhin das alte Zertifikat.',
+  helpS_renewal_1_2:
+    'Stellen Sie Ihr DSF erst nach der Genehmigung auf das neue Zertifikat um, damit die anderen Standorte es bereits kennen.',
+  helpS_withdrawal_title: 'Austritt aus der Allow-List',
+  helpS_withdrawal_toc: 'Austritt',
+  helpS_withdrawal_0:
+    'Verlässt Ihr Standort das Netzwerk, beantragen Sie den Austritt auf der Karte „Genehmigung“. Ihre Organisation wird deaktiviert; sobald das IMI den Antrag genehmigt hat, entfernen alle anderen Standorte sie aus ihrer Allow-List, samt Endpunkten und Mitgliedschaften.',
+  helpS_withdrawal_1:
+    'Der Verlauf bewahrt den Austritt; er lässt sich später durch einen neuen Antrag wieder aufheben.',
+  helpFaq_0_q: 'Warum kann ich nicht einreichen?',
+  helpFaq_0_a:
+    'Prüfen Sie die Liste auf der Karte „Genehmigung“: Erforderlich sind eine Organisation, mindestens ein Kontakt mit der Rolle MEDIC, ein Endpunkt und ein Zertifikat. Auch ein Antrag, der bereits geprüft wird, verhindert eine neue Einreichung.',
+  helpFaq_1_q: 'Das Portal meldet einen privaten Schlüssel in meinem Upload. Was nun?',
+  helpFaq_1_a:
+    'Sie haben die falsche Datei eingefügt. Laden Sie nur das Zertifikat hoch (-----BEGIN CERTIFICATE-----). Gilt der Schlüssel als offengelegt, weil er Ihren Server verlassen hat, ersetzen Sie ihn.',
+  helpFaq_2_q: 'Der Thumbprint weicht von meiner DSF-Konfiguration ab.',
+  helpFaq_2_a:
+    'Berechnen Sie ihn mit certtool erneut, und zwar aus der Datei, die Ihr DSF tatsächlich verwendet. Weichen beide Werte ab, ist das Zertifikat im Portal nicht das auf Ihrem Server.',
+  helpFaq_3_q: 'Wie lange dauert eine Prüfung?',
+  helpFaq_3_a:
+    'Die Dauer hängt von der Auslastung der Prüfenden ab. Den Status Ihres Antrags sehen Sie auf der Karte „Genehmigung“.',
+  helpFaq_4_q: 'Kann ich zu einer früheren Version meines Eintrags zurück?',
+  helpFaq_4_a:
+    'Frühere Versionen sehen Sie im Download-Dialog. Um Daten wiederherzustellen, ändern Sie sie auf der Seite und reichen sie erneut zur Genehmigung ein.',
+  helpContactTitle: 'Kontakt und Support',
+  helpContactBody:
+    'Bei Fragen zu Ihrem Eintrag oder zu einer Prüfung wenden Sie sich an das IMI-Betriebsteam des Instituts für Medizinische Informatik Münster. Der rechtliche Hinweis nennt die Kontaktwege.',
+
   // Schema validation — organization
   identifierTooShort: 'Bezeichner muss mindestens 3 Zeichen lang sein',
   orgIdentifierInvalidFqdn: 'Muss ein gültiger FQDN sein (z.B. ukm.de)',

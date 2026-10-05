@@ -106,6 +106,17 @@ export function CommandPalette() {
           close();
         },
       },
+      {
+        id: 'nav-help',
+        label: t('helpNavLabel'),
+        icon: 'help',
+        color: 'var(--primary)',
+        category: t('cmdCategoryNavigation'),
+        action: () => {
+          navigate('/app/help');
+          close();
+        },
+      },
       // Actions
       {
         id: 'act-org',

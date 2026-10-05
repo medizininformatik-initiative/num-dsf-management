@@ -12,6 +12,7 @@ import { AppPage } from './pages/AppPage';
 import { AuditPage } from './pages/AuditPage';
 import { AdminPage } from './pages/AdminPage';
 import { AdminHelpPage } from './pages/AdminHelpPage';
+import { HelpPage } from './pages/HelpPage';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminPromotionsPage } from './pages/AdminPromotionsPage';
 import { AdminCaBlacklistPage } from './pages/AdminCaBlacklistPage';
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
       { path: 'marketplace', element: <MarketplacePage /> },
       { path: 'marketplace/:slug', element: <MarketplaceDetailPage /> },
       { path: 'resources', element: <DsfResourcesPage /> },
+      { path: 'help', element: <HelpPage /> },
       { path: 'legal', element: <LegalPage /> },
     ],
   },
