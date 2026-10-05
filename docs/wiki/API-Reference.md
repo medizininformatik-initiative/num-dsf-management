@@ -329,7 +329,7 @@ Mounted at `/fhir`. Machine-to-machine; authenticated by client-certificate thum
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /fhir/Bundle/:endpointId | mTLS | The current allow list for one endpoint owned by the calling cert's org: receiver view of the latest bundle version. `Bundle.meta.versionId` / `lastUpdated`, `ETag: W/"<version>"`, `Last-Modified`; 304 on a matching `If-None-Match`. Falls back to the live state while no version has a stored input. |
+| GET | /fhir/Bundle/:endpointId | mTLS | The current allow list for one endpoint owned by the calling cert's org: receiver view of the latest bundle version. `Bundle.meta.versionId` / `lastUpdated`, `ETag: W/"<version>"`, `Last-Modified`; 304 on a matching `If-None-Match`. Falls back to the approved state (computed on the fly) while no version has a stored input. |
 | GET | /fhir/Bundle/:endpointId/_history | mTLS | FHIR `Bundle` of type `history`, newest first, one entry per version (`fullUrl`, `request`, `response.etag`, `response.lastModified`, no resource). `?_count=` (default 50, max 200). |
 | GET | /fhir/Bundle/:endpointId/_history/:vid | mTLS | Receiver view of one version. 404 for an unknown version or one without stored input. |
 | GET | /fhir/Bundle | mTLS | Network-wide bundle of the current version. |

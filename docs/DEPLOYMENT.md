@@ -483,6 +483,8 @@ The scheduler starts at backend boot (`backend/src/index.ts`). Jobs swallow indi
 
 The portal generates the DSF allow list in the format of the legacy allow-list portal: Organization, Endpoint and OrganizationAffiliation resources as conditional PUTs, plus DELETE entries for removed affiliations. Only approved organizations with at least one certificate and one endpoint are published, because the DSF organization profile requires both.
 
+**Each site contributes the data of its last approved request.** When a site submits for approval, the portal stores next to the review snapshot the data the allow list would publish for it: organization, endpoints, certificate thumbprints (SHA-512, never the PEM), affiliations and removed affiliations. A new version is built from the latest APPROVED request of every site. Consequently an edit that was not submitted and approved (a changed endpoint, a new certificate, a deleted membership) is never published, even when another site's approval creates a version meanwhile. A newer request that is still pending, was rejected or was withdrawn does not drop an already approved site; its previously approved data stays in the list. A site whose latest approved request has active=false is published as withdrawn (DELETE entries). Requests approved before this rule existed are read from their review snapshot; the thumbprints come from the stored certificates with the ids listed in it. The IP address list and the network map follow the same rule.
+
 ### DSF process `downloadAllowList` (dsf-process-allow-list)
 
 A site starts the process locally on its own DSF FHIR server (requester `LOCAL_ALL` or a `DSF_ADMIN` practitioner) and sets the Task input `http://dsf.dev/fhir/CodeSystem/allow-list|allow_list` to:
@@ -501,9 +503,9 @@ The portal's GUI download `GET /api/v1/instances/:id/download/bundle?endpointId=
 
 #### Current link, history and restore
 
-The link above always points at the **current** allow list. The allow list is versioned: every approval (four-eyes, silent consent, or an approved withdrawal) stores a new bundle version together with the network state it was built from. The current list is the receiver view of the latest version. Edits made after an approval (a new certificate, a changed endpoint) do not appear in it until the next version exists.
+The link above always points at the **current** allow list. The allow list is versioned: every approval (four-eyes, silent consent, or an approved withdrawal) stores a new bundle version together with the network state it was built from. The current list is the receiver view of the latest version. Edits made after an approval (a new certificate, a changed endpoint) do not appear in it until the site has submitted them and the request has been approved; a version created by another site's approval in between still carries the old approved data of this site.
 
-The current read carries `Bundle.meta.versionId` (the version number) and `Bundle.meta.lastUpdated`, plus the headers `ETag: W/"<version>"` and `Last-Modified`. A conditional read with `If-None-Match` answers `304` while the version is unchanged. Before the first approval after the upgrade that introduced versions (migration 024), the portal falls back to the live state.
+The current read carries `Bundle.meta.versionId` (the version number) and `Bundle.meta.lastUpdated`, plus the headers `ETag: W/"<version>"` and `Last-Modified`. A conditional read with `If-None-Match` answers `304` while the version is unchanged. Before the first approval after the upgrade that introduced versions (migration 024), the portal falls back to the approved state computed on the fly.
 
 Older versions stay readable with the same client certificate and the same endpoint ownership rule (a certificate of one organization cannot read another organization's endpoint):
 

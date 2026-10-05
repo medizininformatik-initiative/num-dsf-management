@@ -141,6 +141,10 @@ A site submits its instance for review; two IMI admins from different sites must
 sign (4-eyes), or silent consent auto-approves after 7 days. The
 `PENDING → APPROVED` transition triggers a post-commit snapshot of the
 federation-wide bundle into `bundle_versions`, RS256-signed and content-hashed.
+Each site contributes the data of its **latest APPROVED request**: at submit
+`buildSnapshot` stores an `allowList` section in `snapshot_json` (the exact
+member the builder would emit, SHA-512 thumbprints, no PEM). Unsubmitted live
+edits and newer pending, rejected or withdrawn requests never reach a version.
 Site notification mails are queued in `pending_notifications` and flushed by
 cron. The signed bundle is then served to DSF BPE processes over mTLS. Source:
 [`approval.service.ts`](../../backend/src/services/approval.service.ts),
@@ -176,8 +180,9 @@ sequenceDiagram
 Notes:
 
 - `buildSnapshot` strips the organization `email` and includes no contact PII in
-  what is later published; `generateFullBundle` emits only APPROVED + active
-  organizations and never publishes contact data (GDPR).
+  what is later published; `generateFullBundle` emits the approved snapshot of every
+  site whose latest APPROVED request is active (`approved-snapshot.service.ts`)
+  and never publishes contact data (GDPR).
 - Each `bundle_versions` row stores the full bundle JSON (~50 KB), an RS256 JWT
   signature with a `kid` derived from the public-key fingerprint, and a SHA-256
   `content_hash`. `diffVersions` produces added/removed/changed entry buckets.
