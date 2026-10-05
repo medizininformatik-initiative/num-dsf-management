@@ -305,7 +305,7 @@ export const en = {
   certDaysLeft: '{n}d left',
   certRemoveBtn: 'Remove',
   certCardFkOrganization: 'Organization',
-  certCardDsfThumbprintLabel: 'DSF fingerprint (SHA-512)',
+  certCardDsfThumbprintLabel: 'SHA-512 thumbprint',
   certCardCopyThumbprint: 'Copy DSF fingerprint',
   certCardThumbprintCopied: 'DSF fingerprint copied to the clipboard.',
 
@@ -812,7 +812,6 @@ export const en = {
   expiryTimelineDaysLeft: '{n} days left',
   onboardingStepSubmitted: 'Submitted',
   onboardingStepsLabel: 'Onboarding steps',
-  downloadAckHint: 'Confirm the notice above to enable the downloads.',
   downloadResultHashMatch: 'The downloaded file matches this hash.',
   downloadResultHashMismatch: 'The downloaded file does not match this hash. Do not import it.',
   downloadResultHashUnchecked: 'Compare the hash of the file yourself (step 2).',
@@ -943,8 +942,6 @@ export const en = {
   bundleDisclaimerHeading: "Bundle verification is the recipient's responsibility",
   bundleDisclaimerBody:
     'This Allow-List bundle is a recommendation. Before deploying it into your DSF environment, you must independently verify its contents, signature, and provenance. The Institute of Medical Informatics Muenster operates this tool but does not assume liability for blind installation of the bundle at receiving sites.',
-  bundleDisclaimerAcknowledge:
-    'I have read the disclaimer and will verify the bundle before deployment.',
   bundleDisclaimerLinkLabel: 'Disclaimer',
   legalPageTitle: 'Legal — Disclaimer',
   // ─── FQDN immutability (federation hardening 2026-05-18) ──────────────────
@@ -1503,6 +1500,15 @@ export const en = {
     'Paste the PUBLIC certificate in PEM format. Never paste a private key — it is rejected.',
   hintEndpointIdentifier: 'FQDN-style id, e.g. fhir.ukm.de.',
   hintEndpointIp: 'Mark each IP as FHIR and/or BPE so the network allow-lists it correctly.',
+
+  // Wave 4 — thumbprint, download note
+  certThumbprintDescription:
+    'The SHA-512 thumbprint of the local organization client certificate. It can be calculated with certtool:',
+  certThumbprintCopyCommand: 'Copy certtool command',
+  certThumbprintCommandCopied: 'Command copied to the clipboard.',
+  dlDisclaimerNote:
+    'The allow list is a recommendation: please check its content and signature before you deploy it.',
+  dlDisclaimerMore: 'Full notice',
 
   // Schema validation — organization
   identifierTooShort: 'Identifier must be at least 3 characters',

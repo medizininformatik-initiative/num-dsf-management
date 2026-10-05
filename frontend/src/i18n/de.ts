@@ -311,7 +311,7 @@ export const de: Record<TranslationKey, string> = {
   certDaysLeft: '{n}T verbleibend',
   certRemoveBtn: 'Entfernen',
   certCardFkOrganization: 'Organisation',
-  certCardDsfThumbprintLabel: 'DSF-Fingerprint (SHA-512)',
+  certCardDsfThumbprintLabel: 'SHA-512-Thumbprint',
   certCardCopyThumbprint: 'DSF-Fingerprint kopieren',
   certCardThumbprintCopied: 'DSF-Fingerprint in die Zwischenablage kopiert.',
 
@@ -824,7 +824,6 @@ export const de: Record<TranslationKey, string> = {
   expiryTimelineDaysLeft: 'Noch {n} Tage',
   onboardingStepSubmitted: 'Eingereicht',
   onboardingStepsLabel: 'Einrichtungsschritte',
-  downloadAckHint: 'Bestätigen Sie den Hinweis oben, um die Downloads freizugeben.',
   downloadResultHashMatch: 'Die heruntergeladene Datei entspricht diesem Hash.',
   downloadResultHashMismatch:
     'Die heruntergeladene Datei entspricht nicht diesem Hash. Importieren Sie sie nicht.',
@@ -958,8 +957,6 @@ export const de: Record<TranslationKey, string> = {
   bundleDisclaimerHeading: 'Die Verifikation des Bundles obliegt dem empfangenden Standort',
   bundleDisclaimerBody:
     'Dieses Allow-List-Bundle ist eine Empfehlung. Vor dem Deployment in Ihre DSF-Umgebung müssen Sie Inhalt, Signatur und Provenienz eigenständig überprüfen. Das Institut für Medizinische Informatik Münster betreibt dieses Werkzeug, übernimmt aber keine Haftung für die ungeprüfte Übernahme des Bundles an empfangenden Standorten.',
-  bundleDisclaimerAcknowledge:
-    'Ich habe den Hinweis gelesen und werde das Bundle vor dem Deployment überprüfen.',
   bundleDisclaimerLinkLabel: 'Rechtlicher Hinweis',
   legalPageTitle: 'Rechtlicher Hinweis',
   // ─── FQDN-Unveränderlichkeit (Föderationshärtung 2026-05-18) ─────────────
@@ -1538,6 +1535,15 @@ export const de: Record<TranslationKey, string> = {
   hintEndpointIdentifier: 'FQDN-artige ID, z. B. fhir.ukm.de.',
   hintEndpointIp:
     'Markieren Sie jede IP als FHIR und/oder BPE, damit das Netzwerk sie korrekt freischaltet.',
+
+  // Wave 4 — thumbprint, download note
+  certThumbprintDescription:
+    'Der SHA-512-Thumbprint des lokalen Organisations-Client-Zertifikats. Er lässt sich mit certtool berechnen:',
+  certThumbprintCopyCommand: 'certtool-Befehl kopieren',
+  certThumbprintCommandCopied: 'Befehl in die Zwischenablage kopiert.',
+  dlDisclaimerNote:
+    'Die Allow-List ist eine Empfehlung: Bitte prüfen Sie Inhalt und Signatur, bevor Sie sie einspielen.',
+  dlDisclaimerMore: 'Vollständiger Hinweis',
 
   // Schema validation — organization
   identifierTooShort: 'Bezeichner muss mindestens 3 Zeichen lang sein',

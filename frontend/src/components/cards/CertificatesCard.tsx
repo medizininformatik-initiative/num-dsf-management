@@ -15,7 +15,7 @@ import { useCertificates, useDeleteCertificate } from '../../hooks/useCertificat
 import { useOrganization } from '../../hooks/useOrganization';
 import { EntityCard } from './EntityCard';
 import { FkLink } from './FkLink';
-import { CertificateFingerprint } from './CertificateFingerprint';
+import { CertificateFingerprint, CERTTOOL_COMMAND } from './CertificateFingerprint';
 import { useModals } from '../../hooks/useModals';
 import { formatDate } from '../../lib/dateUtils';
 import {
@@ -236,6 +236,12 @@ function CertificateItem({
         hex={cert.thumbprintSha512}
         copyLabel={t('certCardCopyThumbprint')}
         copiedMessage={t('certCardThumbprintCopied')}
+        description={t('certThumbprintDescription')}
+        command={{
+          text: CERTTOOL_COMMAND,
+          copyLabel: t('certThumbprintCopyCommand'),
+          copiedMessage: t('certThumbprintCommandCopied'),
+        }}
       />
       <details className="group/more mt-2">
         <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-md text-[11px] font-semibold text-[color:var(--text-secondary)] transition-colors duration-short ease-standard hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
