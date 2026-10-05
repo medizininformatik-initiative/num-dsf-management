@@ -1,11 +1,19 @@
 /**
- * MapFilters.tsx – Search + active/inactive + cert-status filters for the network map
- * Dependencies: react, network.api types, i18n.store
+ * MapFilters.tsx – Floating glass toolbar of the network map: search (with a
+ * clear button), an activity segmented control whose thumb slides between
+ * All / Active / Inactive, certificate-status toggle chips in the shared
+ * tones, the visible-count summary (announced politely), and a second row
+ * with the network (Verbund) pills and the "show all connections" toggle.
+ * An optional leading slot holds the organization-list toggle.
+ * Dependencies: react, network.api types, i18n.store, lib/statusColors,
+ * mapLabels, ui/Icon, map.css.
  */
 import type { ReactNode } from 'react';
 import type { MapOrganization } from '../../api/network.api';
 import { useI18n } from '../../stores/i18n.store';
-import { STATUS_COLOR } from '../../lib/statusColors';
+import { CERT_STATUS_TONE, TONE_CLASS, certStatusColor } from '../../lib/statusColors';
+import { CERT_STATUSES, CERT_STATUS_LABEL_KEY } from './mapLabels';
+import { Icon } from '../ui/Icon';
 
 export interface MapFilterState {
   query: string;
@@ -22,17 +30,25 @@ interface Props {
   showAllEdges: boolean;
   onToggleShowAllEdges: () => void;
   verbundPills: ReactNode; // <VerbundPills … /> instance, owned by parent
+  /** Rendered first in the toolbar, e.g. the organization-list toggle. */
+  leading?: ReactNode;
 }
 
-const STATUS_LABEL_KEY: Record<
-  MapOrganization['cert_status'],
-  'mapStatusValid' | 'mapStatusExpiring' | 'mapStatusExpired' | 'mapStatusNone'
+const MODES = ['all', 'active', 'inactive'] as const;
+const MODE_LABEL_KEY: Record<
+  (typeof MODES)[number],
+  'mapFilterAll' | 'mapFilterActive' | 'mapFilterInactive'
 > = {
-  VALID: 'mapStatusValid',
-  EXPIRING: 'mapStatusExpiring',
-  EXPIRED: 'mapStatusExpired',
-  NONE: 'mapStatusNone',
+  all: 'mapFilterAll',
+  active: 'mapFilterActive',
+  inactive: 'mapFilterInactive',
 };
+
+const FOCUS =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]';
+const CHIP = `press-effect inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition-colors duration-short ease-standard ${FOCUS}`;
+const CHIP_OFF =
+  'border-[color:var(--border)] bg-transparent text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)]';
 
 export function MapFilters({
   state,
@@ -43,6 +59,7 @@ export function MapFilters({
   showAllEdges,
   onToggleShowAllEdges,
   verbundPills,
+  leading,
 }: Props) {
   const { t } = useI18n();
   function toggleStatus(s: MapOrganization['cert_status']) {
@@ -51,159 +68,115 @@ export function MapFilters({
     else next.add(s);
     onChange({ ...state, certStatuses: next });
   }
-
-  const allStatuses: MapOrganization['cert_status'][] = ['VALID', 'EXPIRING', 'EXPIRED', 'NONE'];
-  const modeLabelKey: Record<
-    'all' | 'active' | 'inactive',
-    'mapFilterAll' | 'mapFilterActive' | 'mapFilterInactive'
-  > = {
-    all: 'mapFilterAll',
-    active: 'mapFilterActive',
-    inactive: 'mapFilterInactive',
-  };
+  const modeIndex = MODES.indexOf(state.activeMode);
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        padding: '4px 28px 12px',
-      }}
-      className="glass-chrome"
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        {/* search input — unchanged */}
-        <div style={{ position: 'relative', flex: '0 0 280px' }}>
-          <span
-            className="material-symbols-outlined"
-            style={{
-              position: 'absolute',
-              left: '10px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              fontSize: '18px',
-              color: 'var(--text-muted)',
-            }}
-          >
-            search
-          </span>
+    <div className="glass flex flex-col gap-2 rounded-2xl px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        {leading}
+
+        <div className="relative w-full min-w-[12rem] sm:w-64">
+          <Icon
+            name="search"
+            size={18}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)]"
+          />
           <input
-            type="text"
+            type="search"
             value={state.query}
             onChange={(e) => onChange({ ...state, query: e.target.value })}
             placeholder={t('mapFilterSearchPlaceholder')}
+            aria-label={t('mapSearchLabel')}
+            className={`h-9 w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-input)] pl-9 pr-9 text-[13px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--focus-ring)] focus:outline-none [&::-webkit-search-cancel-button]:hidden`}
+          />
+          {state.query && (
+            <button
+              type="button"
+              onClick={() => onChange({ ...state, query: '' })}
+              aria-label={t('mapClearSearch')}
+              className={`press-effect absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 animate-fade-in items-center justify-center rounded-full text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] ${FOCUS}`}
+            >
+              <Icon name="close" size={16} />
+            </button>
+          )}
+        </div>
+
+        <div
+          role="group"
+          aria-label={t('mapFilterActivityLabel')}
+          className="relative grid h-9 grid-cols-3 rounded-xl bg-[color:var(--bg-hover)] p-0.5"
+        >
+          <span
+            aria-hidden="true"
+            className="map-segment-thumb absolute inset-y-0.5 left-0.5 rounded-[10px] bg-[color:var(--bg-card)] shadow-sm"
             style={{
-              width: '100%',
-              padding: '8px 10px 8px 36px',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              fontSize: '12px',
-              color: 'var(--text-primary)',
-              background: 'var(--bg-page)',
-              outline: 'none',
+              width: 'calc((100% - 4px) / 3)',
+              transform: `translateX(${modeIndex * 100}%)`,
             }}
           />
-        </div>
-
-        {/* active toggle — unchanged */}
-        <div
-          style={{
-            display: 'inline-flex',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            border: '1px solid var(--border)',
-          }}
-        >
-          {(['all', 'active', 'inactive'] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => onChange({ ...state, activeMode: mode })}
-              style={{
-                padding: '6px 12px',
-                fontSize: '11px',
-                fontWeight: 600,
-                border: 'none',
-                cursor: 'pointer',
-                background: state.activeMode === mode ? 'var(--primary)' : 'var(--bg-card)',
-                color: state.activeMode === mode ? '#fff' : 'var(--text-secondary)',
-                textTransform: 'capitalize',
-              }}
-            >
-              {t(modeLabelKey[mode])}
-            </button>
-          ))}
-        </div>
-
-        {/* status chips — unchanged */}
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          {allStatuses.map((s) => {
-            const on = state.certStatuses.has(s);
+          {MODES.map((mode) => {
+            const on = state.activeMode === mode;
             return (
               <button
-                key={s}
-                onClick={() => toggleStatus(s)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '4px 10px',
-                  borderRadius: '999px',
-                  border: `1px solid ${on ? STATUS_COLOR[s] : 'var(--border)'}`,
-                  background: on ? STATUS_COLOR[s] + '22' : 'transparent',
-                  color: 'var(--text-primary)',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
+                key={mode}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onChange({ ...state, activeMode: mode })}
+                className={`relative z-[1] rounded-[10px] px-3 text-[12px] font-semibold capitalize transition-colors duration-short ease-standard ${FOCUS} ${on ? 'text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'}`}
               >
-                <span
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: STATUS_COLOR[s],
-                  }}
-                />
-                {t(STATUS_LABEL_KEY[s])}
+                {t(MODE_LABEL_KEY[mode])}
               </button>
             );
           })}
         </div>
 
-        <div style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--text-muted)' }}>
+        <div
+          role="group"
+          aria-label={t('mapFilterStatusLabel')}
+          className="flex flex-wrap items-center gap-1.5"
+        >
+          {CERT_STATUSES.map((s) => {
+            const on = state.certStatuses.has(s);
+            return (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleStatus(s)}
+                className={`${CHIP} ${on ? TONE_CLASS[CERT_STATUS_TONE[s]] : CHIP_OFF}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-2 w-2 rounded-full transition-opacity duration-short"
+                  style={{ background: certStatusColor(s), opacity: on ? 1 : 0.45 }}
+                />
+                {t(CERT_STATUS_LABEL_KEY[s])}
+              </button>
+            );
+          })}
+        </div>
+
+        <p
+          className="m-0 ml-auto text-[12px] text-[color:var(--text-secondary)]"
+          aria-live="polite"
+        >
           {t('mapFilterShowingOfCities', {
             visible: visibleCount,
             total: totalCount,
             cities: cityCount,
           })}
-        </div>
+        </p>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+      <div className="flex flex-wrap items-center gap-2">
         {verbundPills}
         <button
+          type="button"
+          aria-pressed={showAllEdges}
           onClick={onToggleShowAllEdges}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '4px 10px',
-            borderRadius: '999px',
-            border: `1px solid ${showAllEdges ? 'var(--primary)' : 'var(--border)'}`,
-            background: showAllEdges
-              ? 'color-mix(in srgb, var(--primary) 14%, transparent)'
-              : 'transparent',
-            color: showAllEdges ? 'var(--primary)' : 'var(--text-secondary)',
-            fontSize: '11px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            marginLeft: 'auto',
-          }}
+          className={`${CHIP} ml-auto ${showAllEdges ? 'border-[color:var(--primary)] bg-[color:color-mix(in_srgb,var(--primary)_12%,transparent)] text-[color:var(--text-primary)]' : CHIP_OFF}`}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
-            polyline
-          </span>
+          <Icon name="polyline" size={16} />
           {t('mapShowAllEdges')}
         </button>
       </div>
