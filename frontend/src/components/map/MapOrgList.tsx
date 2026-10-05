@@ -1,25 +1,36 @@
 /**
- * MapOrgList.tsx – Left-rail list of organizations grouped by parent_organization
- * (verbund). Mirrors map-pin selection: clicking a row calls onSelect with the
- * org identifier, the same value the GeoMap pins emit.
+ * MapOrgList.tsx – Collapsible glass list of organizations grouped by
+ * parent_organization (Verbund): a floating sidebar on wide screens, a bottom
+ * sheet below 1024px. It mirrors the map both ways: rows select with the same
+ * identifier the pins emit, hovering a row highlights its pin (and the pin's
+ * hover highlights the row), and a selection made on the map expands its
+ * group and scrolls the row into view (scrollIntoViewSafe, so Reduce Motion
+ * jumps). It slides in and out with the sheet motion (usePresence).
+ * Dependencies: react, network.api types, i18n.store, lib/statusColors,
+ * lib/peerEdges, lib/motion, usePresence, useScrollEdges, ui/Icon, map.css.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useScrollEdges } from '../../hooks/useScrollEdges';
+import { usePresence } from '../../hooks/usePresence';
 import type { MapOrganization } from '../../api/network.api';
 import { useI18n } from '../../stores/i18n.store';
-import { STATUS_COLOR } from '../../lib/statusColors';
+import { certStatusColor } from '../../lib/statusColors';
+import { verbundColor } from '../../lib/peerEdges';
+import { exitMs, scrollIntoViewSafe } from '../../lib/motion';
+import { Icon } from '../ui/Icon';
 
 interface Props {
   organizations: MapOrganization[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-}
-
-function verbundColor(parent: string): string {
-  const p = parent.toLowerCase();
-  if (p.includes('mii')) return '#b01e66';
-  if (p.includes('num')) return '#4a90d9';
-  return '#64748b';
+  hoveredId?: string | null;
+  onHover?: (id: string | null) => void;
+  /** Collapsed lists unmount after their exit animation. */
+  open?: boolean;
+  onClose?: () => void;
+  /** Floating sidebar (wide) or bottom sheet (narrow). */
+  variant?: 'sidebar' | 'sheet';
+  id?: string;
 }
 
 interface Group {
@@ -27,9 +38,11 @@ interface Group {
   members: MapOrganization[];
 }
 
+const NONE_KEY = '__none__';
+const EXIT_MS = exitMs('long');
+
 function groupByParent(orgs: MapOrganization[]): Group[] {
   const buckets = new Map<string, MapOrganization[]>();
-  const NONE_KEY = '__none__';
   for (const o of orgs) {
     const parents = (o.memberships ?? []).map((m) => m.parent_organization);
     if (parents.length === 0) {
@@ -56,10 +69,27 @@ function groupByParent(orgs: MapOrganization[]): Group[] {
     }));
 }
 
-export function MapOrgList({ organizations, selectedId, onSelect }: Props) {
+const VARIANT_CLASS = {
+  sidebar: { box: 'left-3 top-3 bottom-3 w-[272px]', edge: 'left' },
+  sheet: { box: 'inset-x-3 bottom-3 max-h-[60%]', edge: 'bottom' },
+} as const;
+
+export function MapOrgList({
+  organizations,
+  selectedId,
+  onSelect,
+  hoveredId = null,
+  onHover,
+  open = true,
+  onClose,
+  variant = 'sidebar',
+  id,
+}: Props) {
   const { t } = useI18n();
+  const { mounted, state } = usePresence(open, EXIT_MS);
   const groups = useMemo(() => groupByParent(organizations), [organizations]);
-  const scrollEdgesRef = useScrollEdges<HTMLElement>();
+  const scrollEdgesRef = useScrollEdges<HTMLDivElement>();
+  const listRef = useRef<HTMLDivElement | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   function toggle(parent: string) {
@@ -71,154 +101,144 @@ export function MapOrgList({ organizations, selectedId, onSelect }: Props) {
     });
   }
 
+  // Map → list: open the selected organization's groups, then bring its row
+  // into view.
+  useEffect(() => {
+    if (!selectedId) return;
+    const org = organizations.find((o) => o.identifier === selectedId);
+    if (!org) return;
+    const parents = org.memberships.map((m) => m.parent_organization);
+    setCollapsed((prev) => {
+      if (!parents.some((p) => prev.has(p))) return prev;
+      const next = new Set(prev);
+      for (const p of parents) next.delete(p);
+      return next;
+    });
+    const raf = requestAnimationFrame(() => {
+      const rows = listRef.current?.querySelectorAll<HTMLElement>('[data-org-row]');
+      const row = rows && Array.from(rows).find((r) => r.dataset.orgRow === selectedId);
+      scrollIntoViewSafe(row, { block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [selectedId, organizations]);
+
+  if (!mounted) return null;
+
+  let rowIndex = 0;
   return (
     <aside
-      ref={scrollEdgesRef}
-      className="glass-thin scroll-edges rounded-none border-y-0 border-l-0"
-      style={{
-        width: '260px',
-        flexShrink: 0,
-        overflowY: 'auto',
-        fontFamily: 'Inter, system-ui, sans-serif',
-      }}
+      id={id}
+      aria-label={t('mapOrgListTitle')}
+      data-state={state}
+      className={`glass absolute z-[3] flex flex-col overflow-hidden rounded-2xl data-[state=closed]:pointer-events-none ${VARIANT_CLASS[variant].box} map-animate-sheet-${state === 'open' ? 'in' : 'out'}-${VARIANT_CLASS[variant].edge}`}
     >
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-        <p
-          style={{
-            margin: 0,
-            fontSize: '11px',
-            fontWeight: 700,
-            color: 'var(--text-secondary)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-          }}
-        >
-          {t('mapOrgListTitle')}
-        </p>
-        <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
-          {t('mapOrgListCount', { n: organizations.length, v: groups.length })}
-        </p>
+      <div className="flex items-start gap-2 border-b border-[color:var(--border)] px-4 pb-2.5 pt-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="m-0 text-[13px] font-semibold text-[color:var(--text-primary)]">
+            {t('mapOrgListTitle')}
+          </h2>
+          <p className="m-0 mt-0.5 text-[11px] text-[color:var(--text-secondary)]">
+            {t('mapOrgListCount', { n: organizations.length, v: groups.length })}
+          </p>
+        </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('mapHideList')}
+            className="press-effect -mr-1.5 flex h-8 w-8 items-center justify-center rounded-lg text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+          >
+            <Icon name={variant === 'sheet' ? 'close' : 'left_panel_close'} size={18} />
+          </button>
+        )}
       </div>
-      {groups.map((g) => {
-        const isCollapsed = collapsed.has(g.parent);
-        const labelText = g.parent === '__none__' ? t('mapOrgNoVerbund') : g.parent;
-        return (
-          <div key={g.parent}>
-            <button
-              onClick={() => toggle(g.parent)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                border: 'none',
-                background: 'color-mix(in srgb, var(--bg-hover) 70%, transparent)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontFamily: 'inherit',
-              }}
-            >
-              <span
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: verbundColor(g.parent),
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{ flex: 1, fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)' }}
+      <div
+        ref={(el) => {
+          listRef.current = el;
+          scrollEdgesRef(el);
+        }}
+        className="scroll-edges min-h-0 flex-1 overflow-y-auto px-2 py-2"
+      >
+        {groups.map((g) => {
+          const isCollapsed = collapsed.has(g.parent);
+          const labelText = g.parent === NONE_KEY ? t('mapOrgNoVerbund') : g.parent;
+          return (
+            <div key={g.parent} className="mb-1">
+              <button
+                type="button"
+                onClick={() => toggle(g.parent)}
+                aria-expanded={!isCollapsed}
+                className="press-effect flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
               >
-                {labelText}
-              </span>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                {g.members.length}
-              </span>
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: '14px', color: 'var(--text-muted)' }}
-              >
-                {isCollapsed ? 'expand_more' : 'expand_less'}
-              </span>
-            </button>
-            {!isCollapsed &&
-              g.members.map((m) => {
-                const isSel = selectedId === m.identifier;
-                return (
-                  <button
-                    key={m.identifier}
-                    onClick={() => onSelect(m.identifier)}
-                    title={m.identifier}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '6px 16px 6px 28px',
-                      border: 'none',
-                      background: isSel
-                        ? 'color-mix(in srgb, var(--primary) 14%, transparent)'
-                        : 'transparent',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      fontFamily: 'inherit',
-                      borderLeft: isSel ? '3px solid var(--primary)' : '3px solid transparent',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        background: STATUS_COLOR[m.cert_status],
-                        flexShrink: 0,
-                      }}
-                    />
-                    <span
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        fontSize: '11px',
-                        color: isSel ? 'var(--primary)' : 'var(--text-primary)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
+                <span
+                  aria-hidden="true"
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{
+                    background:
+                      g.parent === NONE_KEY ? 'var(--text-muted)' : verbundColor(g.parent),
+                  }}
+                />
+                <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                  {labelText}
+                </span>
+                <span className="text-[11px] tabular-nums text-[color:var(--text-muted)]">
+                  {g.members.length}
+                </span>
+                <Icon
+                  name="expand_more"
+                  size={16}
+                  className={`text-[color:var(--text-muted)] transition-transform duration-short ease-spring ${isCollapsed ? '-rotate-90' : ''}`}
+                />
+              </button>
+              {!isCollapsed &&
+                g.members.map((m) => {
+                  const isSel = selectedId === m.identifier;
+                  const isHover = hoveredId === m.identifier;
+                  const index = rowIndex++;
+                  return (
+                    <button
+                      key={m.identifier}
+                      type="button"
+                      data-org-row={m.identifier}
+                      aria-current={isSel ? 'true' : undefined}
+                      onClick={() => onSelect(m.identifier)}
+                      onMouseEnter={() => onHover?.(m.identifier)}
+                      onMouseLeave={() => onHover?.(null)}
+                      onFocus={() => onHover?.(m.identifier)}
+                      onBlur={() => onHover?.(null)}
+                      title={m.identifier}
+                      style={{ '--stagger-index': index } as CSSProperties}
+                      className={`map-list-row flex w-full animate-list-item-in items-center gap-2.5 rounded-lg py-1.5 pl-6 pr-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
+                        isSel
+                          ? 'bg-[color:color-mix(in_srgb,var(--primary)_12%,transparent)] font-semibold text-[color:var(--text-primary)] shadow-[inset_2px_0_0_var(--primary)]'
+                          : isHover
+                            ? 'bg-[color:var(--bg-hover)] text-[color:var(--text-primary)]'
+                            : 'text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)]'
+                      }`}
                     >
-                      {m.name}
-                    </span>
-                    {!m.active && (
                       <span
-                        style={{
-                          fontSize: '11px',
-                          color: 'var(--text-muted)',
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        {t('mapOrgInactive')}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-          </div>
-        );
-      })}
-      {groups.length === 0 && (
-        <p
-          style={{
-            padding: '16px',
-            fontSize: '11px',
-            color: 'var(--text-muted)',
-            textAlign: 'center',
-            margin: 0,
-          }}
-        >
-          {t('mapOrgListEmpty')}
-        </p>
-      )}
+                        aria-hidden="true"
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ background: certStatusColor(m.cert_status) }}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-[12px]">{m.name}</span>
+                      {!m.active && (
+                        <span className="text-[11px] uppercase text-[color:var(--text-muted)]">
+                          {t('mapOrgInactive')}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+            </div>
+          );
+        })}
+        {groups.length === 0 && (
+          <p className="m-0 p-4 text-center text-[12px] text-[color:var(--text-secondary)]">
+            {t('mapOrgListEmpty')}
+          </p>
+        )}
+      </div>
     </aside>
   );
 }
