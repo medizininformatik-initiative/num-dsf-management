@@ -232,6 +232,15 @@ A per-site login certificate is registered either by the site itself in the Orga
 
 IMI admins also sign in on this box by their own client certificate, seeded via `IMI_ADMIN_CERT_FINGERPRINTS`. There is no separate OTP deployment to maintain for admins and no OTP fallback: a browser that presents an unregistered cert (or none) lands on a status page explaining how to get registered.
 
+**Backend enforcement (`AUTH_MODE=cert`).** `docker-compose.cert-auth.yml` sets `AUTH_MODE=cert` on the backend. Any other compose file that runs the certificate-only deployment, for example the Apache override on the production host, must set it too (`AUTH_MODE=cert` in `.env.prod` is enough). Without it the backend stays in the default OTP/TOTP mode and relies on the proxy alone. With it the backend itself:
+
+- answers `403 OTP_DISABLED` on `/auth/request-otp`, `verify-otp`, `verify-totp`, `setup-totp`, `confirm-totp` (the proxy rule becomes defense in depth), and never serves `/auth/dev-login`;
+- requires, on every authenticated request, a `cert` session (token claim `amr`) AND the proxy-verified client certificate, and checks that the certificate still maps to the token's user and the account is not locked. A stolen access token or refresh cookie is useless without the certificate, and removing a certificate from the portal ends the session on the next request;
+- makes `/auth/refresh` require the matching certificate;
+- applies the certificate step-up to the onboarding import as well (the other admin writes already had it).
+
+What the code cannot do and the proxy must: with `SSLVerifyClient optional_no_ca` a TLS client without a certificate completes the handshake and can load the static frontend shell and `/health`; that exposes no data, because every API route and `/fhir/**` then answers 401. (Refusing even the shell would need `SSLVerifyClient require`, which the shared vhost cannot use because of the status page for unregistered certificates.) The proxy must also reset `X-Client-Cert`, `X-Client-Verify` and `X-Ssl-Client-Cert` on every request (see the Apache rules below), because the backend trusts them, and be the only network path to the backend.
+
 **Accepted residual risk:** sensitive admin writes (approving a request, editing another org's data) still require step-up re-verification, but on this stack that step-up is a re-presented client certificate instead of a typed TOTP code. Certificate step-up is non-interactive: the browser attaches the certificate to every request on its own, so it does not prove the admin intended this particular action the way entering a fresh TOTP code does. Script running inside the page, for example from an XSS bug or a malicious browser extension, could perform an admin write under this guard the same way a genuine click would. The Content-Security-Policy and the same-origin session cookie are the controls for this path, so admins using the cert profile should keep browser extensions to a minimum.
 
 ### Debian install, step by step (cert-auth variant)

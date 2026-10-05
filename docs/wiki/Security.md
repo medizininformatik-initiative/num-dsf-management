@@ -15,6 +15,17 @@
 - **Admin Role** — Stored in the signed `admin_grants` table (RS256 over the grant), bootstrapped once from `IMI_ADMIN_EMAILS`, then extended only via 4-eyes promotion
 - **TOTP Re-confirmation** — Required for approve/reject and all admin writes
 
+## Certificate-only mode (`AUTH_MODE=cert`)
+
+The production deployment signs users in by client certificate only. With `AUTH_MODE=cert` the backend enforces this itself, independent of the reverse proxy (the proxy only requests the certificate with `optional_no_ca`, so a TLS client without one still reaches the backend):
+
+- **No e-mail login** — `/auth/request-otp`, `verify-otp`, `verify-totp`, `setup-totp` and `confirm-totp` answer `403 OTP_DISABLED`; `/auth/dev-login` answers 404
+- **Session bound to the certificate** — every authenticated request must be a `cert` session (token claim `amr`), must carry the proxy-verified client certificate, and that certificate must still resolve to the token's user. A stolen access token or refresh cookie is useless without the certificate; removing or replacing the certificate ends the session on the next request, and so does locking or de-whitelisting the account
+- **Refresh needs the certificate** — `/auth/refresh` fails without the matching certificate (the token is not consumed, so a thief cannot burn the real session)
+- **Downloads** — the GUI bundle downloads need such a session (plus instance ownership or admin for the per-site bundle); `/fhir/**` needs a registered certificate on every request. The network-wide bundle is open to every registered site by design, because `/fhir/Bundle` already serves the same document to any registered DSF certificate; the Excel IP list is admin only
+- **Admin actions** — every admin route requires a signed admin grant plus a step-up, which here is the certificate presented again and matched to the same user. Promotions need two admins from different sites, no self-approval; `admin_grants` rows are only written by the signed approval path
+- **Proxy duty** — the front proxy must reset `X-Client-Cert` and `X-Client-Verify` and be the only ingress, see [Deployment](https://github.com/Mukeyii/num-dsf-allowlist/blob/main/docs/DEPLOYMENT.md)
+
 ## Transport Security
 
 - **Helmet.js** — CSP, HSTS, X-Frame-Options on all routes
