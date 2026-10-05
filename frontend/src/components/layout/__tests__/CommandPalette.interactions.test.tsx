@@ -102,6 +102,16 @@ describe('CommandPalette interactions', () => {
     );
   });
 
+  it('offers a Help command that navigates to the help page', () => {
+    renderPalette();
+    openPalette();
+
+    setQuery('help');
+    fireEvent.keyDown(screen.getByPlaceholderText(/type a command/i), { key: 'Enter' });
+
+    expect(screen.getByTestId('location').textContent).toBe('/app/help');
+  });
+
   it('moves the selection with ArrowDown before running it', () => {
     renderPalette();
     openPalette();

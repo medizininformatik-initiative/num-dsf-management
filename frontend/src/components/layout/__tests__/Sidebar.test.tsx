@@ -59,6 +59,15 @@ describe('Sidebar navigation', () => {
     expect(screen.getByRole('link', { name: 'Status' })).toHaveAttribute('aria-current', 'page');
   });
 
+  it('lists Help below the Resources group and marks it current on /app/help', () => {
+    renderWithProviders(<Sidebar />, { route: '/app/help' });
+    const help = screen.getByRole('link', { name: 'Help' });
+    expect(help).toHaveAttribute('href', '/app/help');
+    expect(help).toHaveAttribute('aria-current', 'page');
+    const resources = screen.getByRole('button', { name: 'Resources' });
+    expect(resources.compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('highlights a closed group that contains the current route and expands it on click', async () => {
     const user = userEvent.setup();
     renderWithProviders(<Sidebar />, { route: '/app/admin/users' });
