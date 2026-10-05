@@ -20,7 +20,9 @@
 #                 (stands in for Let's Encrypt)              -> failed
 #
 # The portal sites are seeded with the production hackathon seed and approved
-# directly in the database; the four-eyes flow itself is covered by the jest
+# directly in the database (later changes are submitted as a request and
+# approved the same way, because the allow list publishes the data of each
+# site's latest approved request); the four-eyes flow itself is covered by the jest
 # replay tests (backend/src/__tests__/api/hackathon-replay*.test.ts).
 # Dependencies: docker compose, openssl, node (host), curl (inside bpe-app).
 set -euo pipefail
@@ -141,6 +143,17 @@ new Function("db", "return (async () => {" + process.env.JS + "})()")(db)
 
 publish_version() { # publish_version <notes>: new bundle version, as an approval would create
   "${DEV[@]}" exec -T backend node -r ts-node/register/transpile-only     src/scripts/snapshot-bundle.ts "dsf-e2e: $1"
+}
+
+approve_change() { # approve_change <org>: submit the org's current data as a request and approve it
+  # The allow list publishes the data of a site's latest APPROVED request, so a
+  # direct edit of the live tables only reaches the bundle through a request.
+  portal_js "
+    const { submitApproval } = require('./src/services/approval.service');
+    const org = await db('organizations').where({ identifier: '$1' }).first();
+    const request = await submitApproval(org.instance_id, 'dsf-admin@$1', '127.0.0.1');
+    await db('approval_requests').where({ id: request.id })
+      .update({ status: 'APPROVED', resolved_at: new Date() });"
 }
 
 seed_portal() {
@@ -310,11 +323,13 @@ scenario apache-again "https://allowlist.portal-e2e.example.de/fhir/Bundle/$RECE
 verify_peers 1
 
 portal_js "await db('memberships').where({ organization_id: '$PEER2' }).update({ deleted_at: new Date() });"
+approve_change "$PEER2"
 publish_version leave-hub
 scenario leave-hub "https://allowlist.portal-e2e.example.de/fhir/Bundle/$RECEIVER_EP" completed
 verify_peers 0
 
 portal_js "await db('organizations').where({ identifier: '$PEER1' }).update({ active: false });"
+approve_change "$PEER1"
 publish_version withdraw
 scenario withdraw "https://allowlist.portal-e2e.example.de/fhir/Bundle/$RECEIVER_EP" completed
 check "$PEER1 organization deleted" "$(total "Organization?identifier=$ORG_SID%7C$PEER1")" 0
