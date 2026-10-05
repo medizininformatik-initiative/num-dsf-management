@@ -6,12 +6,22 @@
  * non-admin-redirect states.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../../test/renderWithProviders';
 import type { AuditEntry, AuditResponse } from '../../api/audit.api';
 
 const useCrossInstanceAudit = vi.hoisted(() => vi.fn());
-vi.mock('../../hooks/useAudit', () => ({ useCrossInstanceAudit }));
+const useAuditSites = vi.hoisted(() => vi.fn());
+vi.mock('../../hooks/useAudit', () => ({ useCrossInstanceAudit, useAuditSites }));
+
+const exportCrossInstanceAudit = vi.hoisted(() => vi.fn());
+vi.mock('../../api/audit.api', async (importActual) => ({
+  ...(await importActual<typeof import('../../api/audit.api')>()),
+  exportCrossInstanceAudit,
+}));
+
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+vi.mock('sonner', () => ({ toast }));
 
 const useMe = vi.hoisted(() => vi.fn());
 vi.mock('../../hooks/useMe', () => ({ useMe }));
@@ -54,6 +64,11 @@ function ok(
 describe('AuditPage', () => {
   beforeEach(() => {
     useCrossInstanceAudit.mockReset();
+    useAuditSites.mockReset();
+    exportCrossInstanceAudit.mockReset();
+    toast.success.mockReset();
+    toast.error.mockReset();
+    useAuditSites.mockReturnValue({ data: [] });
     useMe.mockReturnValue({ data: { email: 'admin@imi.example.de', isAdmin: true } });
   });
 
@@ -82,15 +97,17 @@ describe('AuditPage', () => {
     expect(screen.getByRole('columnheader', { name: 'Operation' })).toBeInTheDocument();
 
     // One <tr> per entry in the table body (plus the header row).
-    expect(screen.getAllByRole('row')).toHaveLength(3);
+    const table = screen.getByRole('table');
+    expect(within(table).getAllByRole('row')).toHaveLength(3);
 
-    // Cell content from both rows is rendered.
+    // Cell content from both rows is rendered (the filter dropdowns offer the same
+    // labels, so look inside the table).
     // Enum values are shown translated, never raw.
-    expect(screen.getByText('Contact')).toBeInTheDocument();
-    expect(screen.getByText('Certificate')).toBeInTheDocument();
-    expect(screen.getByText('updated')).toBeInTheDocument();
-    expect(screen.getByText('deleted')).toBeInTheDocument();
-    expect(screen.queryByText('UPDATE')).toBeNull();
+    expect(within(table).getByText('Contact')).toBeInTheDocument();
+    expect(within(table).getByText('Certificate')).toBeInTheDocument();
+    expect(within(table).getByText('updated')).toBeInTheDocument();
+    expect(within(table).getByText('deleted')).toBeInTheDocument();
+    expect(within(table).queryByText('UPDATE')).toBeNull();
     expect(screen.getByText('alice@imi.example.de')).toBeInTheDocument();
     expect(screen.getByText('bob@imi.example.de')).toBeInTheDocument();
     expect(screen.getByText('10.0.0.2')).toBeInTheDocument();
@@ -127,7 +144,7 @@ describe('AuditPage', () => {
     expect(await screen.findByText('user2@imi.de')).toBeInTheDocument();
     expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled();
-    expect(useCrossInstanceAudit).toHaveBeenCalledWith(2, 50, true);
+    expect(useCrossInstanceAudit).toHaveBeenCalledWith(2, 50, true, expect.any(Object));
 
     // Advance to the last page: Next becomes disabled.
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
@@ -191,5 +208,210 @@ describe('AuditPage', () => {
     // The page redirects (<Navigate to="/app">) so none of its content renders.
     expect(screen.queryByRole('heading', { name: 'Audit Log' })).not.toBeInTheDocument();
     expect(screen.queryByText('No audit entries yet.')).not.toBeInTheDocument();
+  });
+
+  describe('anomaly flags', () => {
+    const flagged = entry({
+      id: 'f1',
+      resource_type: 'CERTIFICATE',
+      operation: 'DENIED',
+      diff_json: { reason: 'PRIVATE_KEY_REJECTED' },
+      flags: [{ code: 'PRIVATE_KEY_REJECTED', severity: 'critical' }],
+    });
+
+    function withSummary(rows: AuditEntry[]) {
+      const res = ok(rows, rows.length);
+      res.data.meta.summary = { info: 1, warning: 2, critical: 3, flagged: 6, scanned: 40 };
+      return res;
+    }
+
+    it('marks a flagged row with an accent, a labelled pill and a readable event', () => {
+      useCrossInstanceAudit.mockReturnValue(withSummary([flagged, entry({ id: 'plain' })]));
+      renderWithProviders(<AuditPage />);
+
+      const table = screen.getByRole('table');
+      const rows = within(table).getAllByRole('row');
+      expect(rows[1]).toHaveAttribute('data-flag', 'critical');
+      expect(rows[2]).not.toHaveAttribute('data-flag');
+      // Text, not colour alone.
+      expect(within(rows[1]).getByText('Private key submitted')).toBeInTheDocument();
+      expect(
+        within(rows[1]).getByText('Certificate upload refused: it contained a private key'),
+      ).toBeInTheDocument();
+    });
+
+    it('shows the severity counts of the current filter', () => {
+      useCrossInstanceAudit.mockReturnValue(withSummary([flagged]));
+      renderWithProviders(<AuditPage />);
+
+      const bar = screen.getByRole('region', { name: 'Anomalies' });
+      expect(within(bar).getByText('Critical: 3')).toBeInTheDocument();
+      expect(within(bar).getByText('Warning: 2')).toBeInTheDocument();
+      expect(within(bar).getByText('Notice: 1')).toBeInTheDocument();
+    });
+
+    it('says so when nothing is flagged', () => {
+      const res = ok([entry({ id: 'plain' })], 1);
+      res.data.meta.summary = { info: 0, warning: 0, critical: 0, flagged: 0, scanned: 12 };
+      useCrossInstanceAudit.mockReturnValue(res);
+      renderWithProviders(<AuditPage />);
+      expect(
+        screen.getByText('No anomalies among the newest 12 matching entries.'),
+      ).toBeInTheDocument();
+    });
+
+    it('expands a row to explain the rule and list the recorded fields', () => {
+      useCrossInstanceAudit.mockReturnValue(withSummary([flagged]));
+      renderWithProviders(<AuditPage />);
+
+      const toggle = screen.getByRole('button', { name: 'Show details' });
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      fireEvent.click(toggle);
+
+      expect(screen.getByRole('button', { name: 'Hide details' })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      );
+      expect(screen.getByText('Why this is flagged')).toBeInTheDocument();
+      expect(screen.getByText(/never stored or logged/)).toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: 'Field' })).toBeInTheDocument();
+      expect(screen.getByText('PRIVATE_KEY_REJECTED', { selector: 'td' })).toBeInTheDocument();
+    });
+
+    it('shows a before/after table for an update', () => {
+      useCrossInstanceAudit.mockReturnValue(
+        ok(
+          [
+            entry({
+              id: 'u1',
+              operation: 'UPDATE',
+              diff_json: { before: { name: 'Old name' }, after: { name: 'New name' } },
+            }),
+          ],
+          1,
+        ),
+      );
+      renderWithProviders(<AuditPage />);
+      fireEvent.click(screen.getByRole('button', { name: 'Show details' }));
+      expect(screen.getByRole('columnheader', { name: 'Before' })).toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: 'After' })).toBeInTheDocument();
+      expect(screen.getByText('Old name')).toBeInTheDocument();
+      expect(screen.getByText('New name')).toBeInTheDocument();
+    });
+  });
+
+  describe('filters', () => {
+    it('applies a changed filter to the query and resets to page one', async () => {
+      useCrossInstanceAudit.mockReturnValue(ok([entry({ id: 'x' })], 1));
+      renderWithProviders(<AuditPage />);
+
+      fireEvent.change(screen.getByLabelText('Operation'), { target: { value: 'DELETE' } });
+      fireEvent.change(screen.getByLabelText('User'), { target: { value: 'alice' } });
+      fireEvent.click(screen.getByLabelText('Anomalies only'));
+
+      await waitFor(() =>
+        expect(useCrossInstanceAudit).toHaveBeenLastCalledWith(
+          1,
+          50,
+          true,
+          expect.objectContaining({ operation: 'DELETE', actor: 'alice', flaggedOnly: true }),
+        ),
+      );
+    });
+
+    it('converts the picked days to the start and end of the local day', async () => {
+      useCrossInstanceAudit.mockReturnValue(ok([entry({ id: 'x' })], 1));
+      renderWithProviders(<AuditPage />);
+
+      fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-03-10' } });
+      fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-03-11' } });
+
+      await waitFor(() => {
+        const filters = useCrossInstanceAudit.mock.lastCall?.[3] as { from?: string; to?: string };
+        expect(filters.from).toBe(new Date('2026-03-10T00:00:00.000').toISOString());
+        expect(filters.to).toBe(new Date('2026-03-11T23:59:59.999').toISOString());
+      });
+    });
+
+    it('offers the sites and filters by the picked one', async () => {
+      useAuditSites.mockReturnValue({
+        data: [{ id: 'site-1', label: 'l', org_identifier: 'ukm.de', org_name: 'UKM' }],
+      });
+      useCrossInstanceAudit.mockReturnValue(ok([entry({ id: 'x' })], 1));
+      renderWithProviders(<AuditPage />);
+
+      fireEvent.change(screen.getByLabelText('Site'), { target: { value: 'site-1' } });
+      await waitFor(() =>
+        expect(useCrossInstanceAudit).toHaveBeenLastCalledWith(
+          1,
+          50,
+          true,
+          expect.objectContaining({ instanceId: 'site-1' }),
+        ),
+      );
+    });
+
+    it('resets all filters and shows the no-match text when a filter matches nothing', async () => {
+      useCrossInstanceAudit.mockReturnValue(ok([], 0));
+      renderWithProviders(<AuditPage />);
+      expect(screen.getByRole('button', { name: 'Reset filters' })).toBeDisabled();
+
+      fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'zzz' } });
+      expect(await screen.findByText('No audit entries found.')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }));
+      expect(screen.getByLabelText('Search')).toHaveValue('');
+      expect(await screen.findByText('No audit entries yet.')).toBeInTheDocument();
+    });
+  });
+
+  describe('export', () => {
+    beforeEach(() => {
+      vi.stubGlobal('URL', {
+        ...URL,
+        createObjectURL: vi.fn(() => 'blob:audit'),
+        revokeObjectURL: vi.fn(),
+      });
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    });
+
+    it('downloads the current filter as CSV', async () => {
+      useCrossInstanceAudit.mockReturnValue(ok([entry({ id: 'x' })], 1));
+      exportCrossInstanceAudit.mockResolvedValue({
+        blob: new Blob(['a']),
+        filename: 'audit-all-2026-10-05.csv',
+      });
+      renderWithProviders(<AuditPage />);
+
+      fireEvent.change(screen.getByLabelText('Operation'), { target: { value: 'DELETE' } });
+      await waitFor(() =>
+        expect(useCrossInstanceAudit).toHaveBeenLastCalledWith(
+          1,
+          50,
+          true,
+          expect.objectContaining({ operation: 'DELETE' }),
+        ),
+      );
+      fireEvent.click(screen.getByRole('button', { name: /Export CSV/ }));
+
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Audit log exported.'));
+      expect(exportCrossInstanceAudit).toHaveBeenCalledWith(
+        'csv',
+        expect.objectContaining({ operation: 'DELETE' }),
+      );
+      expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
+    });
+
+    it('exports JSON and reports a failed export', async () => {
+      useCrossInstanceAudit.mockReturnValue(ok([entry({ id: 'x' })], 1));
+      exportCrossInstanceAudit.mockRejectedValue(new Error('403'));
+      renderWithProviders(<AuditPage />);
+
+      fireEvent.click(screen.getByRole('button', { name: /Export JSON/ }));
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('The export failed.'));
+      expect(exportCrossInstanceAudit).toHaveBeenCalledWith('json', expect.any(Object));
+      expect(toast.success).not.toHaveBeenCalled();
+    });
   });
 });
