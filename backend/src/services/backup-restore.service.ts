@@ -13,7 +13,10 @@
  * audit_logs is append-only (DELETE/UPDATE triggers, migration 013). Restoring
  * into an emptied table is the one documented exception: the triggers of the
  * restored tables are dropped before the transaction and re-created afterwards
- * (also after a failure), without their original DEFINER clause.
+ * (also after a failure), without their original DEFINER clause. With binary
+ * logging on (MySQL 8 default) only an account with SUPER may create triggers,
+ * so the restore checks that up front and refuses before touching any data;
+ * run it with the MySQL root account then (RESTORE_DB_USER / _PASSWORD).
  *
  * Never logs row content. Dependencies: mysql2, backup-dump.service, lib/backup*
  */
@@ -98,16 +101,44 @@ interface TriggerDef {
   ddl: string;
 }
 
-async function captureAndDropTriggers(conn: Connection, tables: string[]): Promise<TriggerDef[]> {
+async function triggerNames(conn: Connection, tables: string[]): Promise<string[]> {
   if (tables.length === 0) return [];
-  const db = conn.promise();
-  const [rows] = await db.query(
+  const [rows] = await conn.promise().query(
     `SELECT TRIGGER_NAME AS name FROM information_schema.TRIGGERS
       WHERE TRIGGER_SCHEMA = DATABASE() AND EVENT_OBJECT_TABLE IN (?)`,
     [tables],
   );
+  return (rows as Array<{ name: string }>).map((r) => r.name);
+}
+
+/**
+ * Whether this account may (re-)create triggers: always without binary
+ * logging or with log_bin_trust_function_creators, otherwise only with SUPER.
+ */
+export async function canCreateTriggers(conn: Connection): Promise<boolean> {
+  const db = conn.promise();
+  const [vars] = await db.query(
+    'SELECT @@log_bin AS logBin, @@log_bin_trust_function_creators AS trusted',
+  );
+  const v = (vars as Array<{ logBin: unknown; trusted: unknown }>)[0];
+  if (!Number(v.logBin) || Number(v.trusted)) return true;
+  const [grants] = await db.query('SHOW GRANTS');
+  return grantsAllowTriggers(
+    (grants as Array<Record<string, unknown>>).map((row) => String(Object.values(row)[0] ?? '')),
+  );
+}
+
+/** True when a global grant (ON *.*) includes SUPER or ALL PRIVILEGES. */
+export function grantsAllowTriggers(grants: string[]): boolean {
+  return grants.some(
+    (grant) => /\bON \*\.\*/.test(grant) && /\b(ALL PRIVILEGES|SUPER)\b/.test(grant),
+  );
+}
+
+async function captureAndDropTriggers(conn: Connection, names: string[]): Promise<TriggerDef[]> {
+  const db = conn.promise();
   const defs: TriggerDef[] = [];
-  for (const { name } of rows as Array<{ name: string }>) {
+  for (const name of names) {
     const [res] = await db.query(`SHOW CREATE TRIGGER ${mysql.escapeId(name)}`);
     const ddl = String((res as Array<Record<string, unknown>>)[0]['SQL Original Statement']);
     // A DEFINER of another account cannot be re-created without SUPER.
@@ -175,10 +206,18 @@ export async function restoreBackup(
     if (opts.dryRun) return { plan, restored: false, counts: {} };
 
     await db.query("SET SESSION time_zone = '+00:00'");
-    dropped = await captureAndDropTriggers(
+    const triggers = await triggerNames(
       conn,
       plan.tables.map((t) => t.name),
     );
+    if (triggers.length > 0 && !(await canCreateTriggers(conn))) {
+      throw new Error(
+        'RESTORE_TRIGGER_PRIVILEGE: binary logging is on and this MySQL account may not ' +
+          're-create the append-only triggers. Nothing was changed. Run the restore with the ' +
+          'MySQL root account (RESTORE_DB_USER=root RESTORE_DB_PASSWORD=...).',
+      );
+    }
+    dropped = await captureAndDropTriggers(conn, triggers);
     if (dropped.length > 0) {
       log(`Temporarily dropped ${dropped.length} trigger(s); they are re-created at the end.`);
       log('If this process is killed now, re-apply db/migrations/013 and 015 to restore them.');
