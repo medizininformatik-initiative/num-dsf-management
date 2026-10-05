@@ -23,9 +23,9 @@
   --border-strong: #d5d8e3;
   /* Materials (.glass-*, .scrim) */
   --glass-tint: 255 255 255;
-  --glass-opacity-thin: 0.6;
-  --glass-opacity-regular: 0.72;
-  --glass-opacity-thick: 0.86;
+  --glass-opacity-thin: 0.88;
+  --glass-opacity-regular: 0.92;
+  --glass-opacity-thick: 0.96;
   --glass-opacity-chrome: 0.8;
   --glass-saturate: 180%;
   --glass-border: rgba(255, 255, 255, 0.65);
@@ -61,32 +61,32 @@
 }
 
 :root.dark {
-  --bg-page: #13141d;
-  --bg-card: #1b1c28;
-  --bg-input: #21222f;
-  --bg-hover: #272838;
-  --border: #2a2d42;
+  --bg-page: #0b0b0d;
+  --bg-card: #151517;
+  --bg-input: #1c1c1f;
+  --bg-hover: #222226;
+  --border: #2c2c30;
   /* muted: 5.6 on card, 4.8 on hover; secondary: 7.1 on card */
-  --text-primary: #e8e9f0;
-  --text-secondary: #a3a7bf;
-  --text-muted: #8f93ab;
+  --text-primary: #f2f2f4;
+  --text-secondary: #a1a1a8;
+  --text-muted: #8e8e95;
   --shadow: rgba(0, 0, 0, 0.4);
   --primary: #b01e66;
-  --accent: #6c63ff;
+  --accent: #e06399;
   --shadow-lift: 0 10px 28px -8px rgba(0, 0, 0, 0.65), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
-  --border-strong: #3a3d57;
-  --glass-tint: 27 28 40;
-  --glass-opacity-thin: 0.66;
-  --glass-opacity-regular: 0.76;
-  --glass-opacity-thick: 0.88;
+  --border-strong: #3d3d42;
+  --glass-tint: 21 21 23;
+  --glass-opacity-thin: 0.9;
+  --glass-opacity-regular: 0.93;
+  --glass-opacity-thick: 0.97;
   --glass-opacity-chrome: 0.84;
   --glass-saturate: 150%;
   --glass-border: rgba(255, 255, 255, 0.09);
   --glass-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.6), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
-  --scrim: rgba(5, 6, 10, 0.5);
-  --scrim-opaque: rgba(5, 6, 10, 0.72);
+  --scrim: rgba(0, 0, 0, 0.55);
+  --scrim-opaque: rgba(0, 0, 0, 0.75);
   --focus-ring: #e06399;
-  --skeleton: #262838;
+  --skeleton: #232326;
   --skeleton-shine: rgba(255, 255, 255, 0.06);
   --tone-success-fg: #6ee7b7;
   --tone-success-surface: rgba(16, 185, 129, 0.16);
@@ -467,15 +467,15 @@ body {
   }
   .glass-thin {
     --_glass-opacity: var(--glass-opacity-thin);
-    --_glass-blur: 12px;
+    --_glass-blur: 16px;
   }
   .glass {
     --_glass-opacity: var(--glass-opacity-regular);
-    --_glass-blur: 20px;
+    --_glass-blur: 24px;
   }
   .glass-thick {
     --_glass-opacity: var(--glass-opacity-thick);
-    --_glass-blur: 28px;
+    --_glass-blur: 32px;
   }
   .glass-chrome {
     --_glass-opacity: var(--glass-opacity-chrome);
@@ -689,7 +689,7 @@ body {
   background-color: rgba(239, 68, 68, 0.12) !important;
 }
 :root.dark .bg-blue-100 {
-  background-color: rgba(99, 102, 241, 0.12) !important;
+  background-color: rgba(59, 130, 246, 0.12) !important;
 }
 :root.dark .bg-indigo-100 {
   background-color: rgba(176, 30, 102, 0.12) !important;
@@ -792,7 +792,7 @@ body {
     [style*='; color: var(--accent)'],
     [style^='color: var(--accent)']
   ) {
-  color: #a5a0ff !important;
+  color: #f08cb8 !important;
 }
 :root.dark
   :is([style*='background: rgb(254, 243, 199)'], [style*='background: rgb(254, 243, 199)'] *):is(
