@@ -278,8 +278,18 @@ Mounted at `/api/v1/audit` (per-instance audit lives under each instance — see
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /api/v1/audit | requireAuth | Cross-instance audit log; admins see all rows, non-admins only their own instances. `?page=&limit=` (limit ≤ 200), `meta` pagination. |
-| GET | /api/v1/instances/:instanceId/audit | requireOwner | Per-instance audit log. Query `?page=&limit=&resource=&operation=`, `meta` pagination. |
+| GET | /api/v1/audit | requireAuth | Cross-instance audit log; admins see all rows, non-admins only their own instances. Paging `?page=&limit=` (limit ≤ 200) plus the filters below; `meta` has pagination, `isAdmin` and `summary`. |
+| GET | /api/v1/audit/export | requireAdmin | CSV / JSON export of the current filter over all sites (`?format=csv\|json` plus the filters below). Non-admins get 403. |
+| GET | /api/v1/instances/:instanceId/audit | requireOwner | Per-instance audit log, same filters and `meta` as above. |
+| GET | /api/v1/instances/:instanceId/audit/export | requireOwner | CSV / JSON export of the current filter for one site. |
+
+**Filters** (all optional, shared by list and export): `resource`, `operation`, `from` / `to` (ISO date-time, inclusive), `actor` (e-mail contains), `instanceId` (one site; ignored on the per-instance routes, and a non-admin never sees more than their own sites), `q` (free text over user, resource id, IP, site name / identifier / label and the recorded details; `%` and `_` are literal), `flaggedOnly=true`.
+
+**Rows** carry the audit columns plus `instance_label`, `organization_identifier`, `organization_name` and `flags: [{ code, severity }]` (`info` | `warning` | `critical`). `meta.summary` is `{ info, warning, critical, flagged, scanned }`. Flags are computed server-side (`services/auditAnomalies.ts`) over the newest 5 000 rows of the filter, so the summary and `flaggedOnly` cover that window. Rules: bursts of failed sign-in / step-up / rate-limit events per e-mail or IP (5 in 15 min = warning, 10 = critical), rejected private-key uploads, issuers off the CA whitelist or on the blacklist, admin or approval actions between 22:00 and 06:00 Europe/Berlin, 10 or more deletes by one actor in 10 min, admin promotions / sign-in permissions / admin removal, CA list changes, and four-eyes violations on approvals.
+
+**Export.** The response is an attachment `audit-<scope>-<yyyy-mm-dd>.<csv|json>` (`scope` is `all` or `site-<instance id prefix>`), at most 50 000 rows (`X-Audit-Export-Rows`, `X-Audit-Export-Truncated`). CSV is UTF-8 with BOM, CRLF lines and a neutralised formula start (cells beginning with `=`, `+`, `-`, `@`, TAB or CR get a leading `'`); `flags` and `details` are columns. Every export is itself written to the audit log (`resource_type` AUDIT, `operation` EXPORT, with format, row count and filters).
+
+**Events recorded beyond the entity CRUD** (`operation`): `DENIED` (refused certificate upload with `diff_json.reason` `PRIVATE_KEY_REJECTED` / `CA_NOT_WHITELISTED` / `CA_BLACKLISTED`; four-eyes refusals `ALREADY_DECIDED` / `ALREADY_APPROVED_SAME_SITE` on approvals), `STEP_UP_FAILED` (admin step-up failed, reason code only, never the code), `RATE_LIMITED` (sign-in or step-up limit hit, with the bucket), `FAILED_LOGIN` (also for a client certificate that is unknown or belongs to a locked account), `EXPORT`. The IP address list download is recorded as a `CREATE` with `diff_json.action` `ip_address_list_download`. PEM content, codes and secrets are never part of an entry.
 
 ---
 
