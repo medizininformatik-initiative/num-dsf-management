@@ -2,8 +2,10 @@
  * AdminBundleVersionsPage.test.tsx — allow-list history: timeline (newest
  * first, current marked), default diff of the newest version against its
  * predecessor rendered in plain language, version selection, empty/error
- * states and the restore flow in cert mode (reason only) and OTP mode
- * (reason + TOTP), including the VERSION_NOT_RESTORABLE conflict.
+ * states and the four-eyes restore: the request dialog in cert mode (reason
+ * only) and OTP mode (reason + TOTP), the VERSION_NOT_RESTORABLE conflict, and
+ * the pending-restore card (approve, reject, cancel in both modes, same-site
+ * and own-request rules, status in the timeline).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
@@ -14,13 +16,19 @@ const api = vi.hoisted(() => ({
   list: vi.fn(),
   diff: vi.fn(),
   restore: vi.fn(),
+  listRestores: vi.fn(),
+  approveRestore: vi.fn(),
+  rejectRestore: vi.fn(),
+  cancelRestore: vi.fn(),
 }));
+const useMe = vi.hoisted(() => vi.fn());
 const certMode = vi.hoisted(() => ({ value: false }));
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 
 vi.mock('../../api/bundleVersions.api', () => ({
   bundleVersionsApi: { ...api, downloadUrl: (id: string) => `/download/${id}` },
 }));
+vi.mock('../../hooks/useMe', () => ({ useMe }));
 vi.mock('../../lib/authMode', () => ({
   isCertMode: () => certMode.value,
   needsTotpStepUp: () => !certMode.value,
@@ -70,6 +78,8 @@ beforeEach(() => {
     row(5, { restorable: false }),
   ]);
   api.diff.mockResolvedValue({ data: { data: { added: [newOrg], removed: [], changed: [] } } });
+  api.listRestores.mockResolvedValue({ data: { data: [] } });
+  useMe.mockReturnValue({ data: { email: 'alice@imi-a.example.de', isAdmin: true } });
 });
 
 describe('AdminBundleVersionsPage', () => {
@@ -86,9 +96,11 @@ describe('AdminBundleVersionsPage', () => {
     expect(within(items[0]).getByText('Current')).toBeInTheDocument();
     expect(within(items[0]).getByText('Quarterly approval')).toBeInTheDocument();
     // Only restorable, non-current versions offer Restore.
-    expect(within(items[0]).queryByRole('button', { name: /Restore/ })).toBeNull();
-    expect(within(items[1]).getByRole('button', { name: 'Restore version 6' })).toBeInTheDocument();
-    expect(within(items[2]).queryByRole('button', { name: /Restore/ })).toBeNull();
+    expect(within(items[0]).queryByRole('button', { name: /restore/i })).toBeNull();
+    expect(
+      within(items[1]).getByRole('button', { name: 'Request restore of version 6' }),
+    ).toBeInTheDocument();
+    expect(within(items[2]).queryByRole('button', { name: /restore/i })).toBeNull();
   });
 
   it('diffs the newest version against its predecessor and explains it in plain language', async () => {
@@ -166,21 +178,21 @@ describe('AdminBundleVersionsPage', () => {
   describe('restore', () => {
     it('in cert mode asks only for a reason, then restores and confirms', async () => {
       certMode.value = true;
-      api.restore.mockResolvedValue({ data: { data: { id: 'id8', version_number: 8 } } });
+      api.restore.mockResolvedValue({ data: { data: { id: 'rr1', sourceVersionNumber: 6 } } });
       const user = userEvent.setup();
       renderWithProviders(<AdminBundleVersionsPage />);
-      await user.click(await screen.findByRole('button', { name: 'Restore version 6' }));
+      await user.click(await screen.findByRole('button', { name: 'Request restore of version 6' }));
       const dialog = await screen.findByRole('dialog');
       expect(within(dialog).getByText(/affects all sites/)).toBeInTheDocument();
       expect(within(dialog).queryByLabelText('Authenticator code')).toBeNull();
 
       // A reason is required.
-      await user.click(within(dialog).getByRole('button', { name: 'Restore version' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Request restore' }));
       expect(within(dialog).getByRole('alert')).toHaveTextContent('Please give a reason.');
       expect(api.restore).not.toHaveBeenCalled();
 
       await user.type(within(dialog).getByLabelText('Reason'), 'Wrong thumbprint approved');
-      await user.click(within(dialog).getByRole('button', { name: 'Restore version' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Request restore' }));
       await waitFor(() =>
         expect(api.restore).toHaveBeenCalledWith('id6', {
           reason: 'Wrong thumbprint approved',
@@ -188,26 +200,59 @@ describe('AdminBundleVersionsPage', () => {
         }),
       );
       await waitFor(() =>
-        expect(toast.success).toHaveBeenCalledWith('Version 6 restored as version 8.'),
+        expect(toast.success).toHaveBeenCalledWith(
+          'Restore of version 6 requested. A second admin from another site must approve it.',
+        ),
       );
-      // The timeline is refreshed.
-      await waitFor(() => expect(api.list.mock.calls.length).toBeGreaterThan(1));
+      // The restore requests are refreshed.
+      await waitFor(() => expect(api.listRestores.mock.calls.length).toBeGreaterThan(1));
+    });
+
+    it('explains in the dialog that a second admin from another site must approve', async () => {
+      certMode.value = true;
+      const user = userEvent.setup();
+      renderWithProviders(<AdminBundleVersionsPage />);
+      await user.click(await screen.findByRole('button', { name: 'Request restore of version 6' }));
+      const dialog = await screen.findByRole('dialog');
+      expect(
+        within(dialog).getByRole('heading', { name: 'Request restore of version 6' }),
+      ).toBeInTheDocument();
+      expect(dialog).toHaveTextContent('a second admin from another site approves the request');
+      expect(within(dialog).getByRole('button', { name: 'Request restore' })).toBeInTheDocument();
+    });
+
+    it('tells when another restore request is already pending', async () => {
+      certMode.value = true;
+      api.restore.mockRejectedValue({
+        response: { data: { error: { code: 'ALREADY_PENDING', message: 'x' } } },
+      });
+      const user = userEvent.setup();
+      renderWithProviders(<AdminBundleVersionsPage />);
+      await user.click(await screen.findByRole('button', { name: 'Request restore of version 6' }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByLabelText('Reason'), 'Rollback');
+      await user.click(within(dialog).getByRole('button', { name: 'Request restore' }));
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledWith(
+          'A restore request is already waiting for approval.',
+        ),
+      );
     });
 
     it('in OTP mode also requires a six-digit TOTP code', async () => {
-      api.restore.mockResolvedValue({ data: { data: { id: 'id8', version_number: 8 } } });
+      api.restore.mockResolvedValue({ data: { data: { id: 'rr1', sourceVersionNumber: 6 } } });
       const user = userEvent.setup();
       renderWithProviders(<AdminBundleVersionsPage />);
-      await user.click(await screen.findByRole('button', { name: 'Restore version 6' }));
+      await user.click(await screen.findByRole('button', { name: 'Request restore of version 6' }));
       const dialog = await screen.findByRole('dialog');
       await user.type(within(dialog).getByLabelText('Reason'), 'Rollback');
       await user.type(within(dialog).getByLabelText('Authenticator code'), '12');
-      await user.click(within(dialog).getByRole('button', { name: 'Restore version' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Request restore' }));
       expect(within(dialog).getByRole('alert')).toHaveTextContent('6-digit');
       expect(api.restore).not.toHaveBeenCalled();
 
       await user.type(within(dialog).getByLabelText('Authenticator code'), '3456');
-      await user.click(within(dialog).getByRole('button', { name: 'Restore version' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Request restore' }));
       await waitFor(() =>
         expect(api.restore).toHaveBeenCalledWith('id6', { reason: 'Rollback', totpCode: '123456' }),
       );
@@ -216,7 +261,7 @@ describe('AdminBundleVersionsPage', () => {
     it('cancelling does not restore', async () => {
       const user = userEvent.setup();
       renderWithProviders(<AdminBundleVersionsPage />);
-      await user.click(await screen.findByRole('button', { name: 'Restore version 6' }));
+      await user.click(await screen.findByRole('button', { name: 'Request restore of version 6' }));
       await user.click(
         within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }),
       );
@@ -230,10 +275,10 @@ describe('AdminBundleVersionsPage', () => {
       });
       const user = userEvent.setup();
       renderWithProviders(<AdminBundleVersionsPage />);
-      await user.click(await screen.findByRole('button', { name: 'Restore version 6' }));
+      await user.click(await screen.findByRole('button', { name: 'Request restore of version 6' }));
       const dialog = await screen.findByRole('dialog');
       await user.type(within(dialog).getByLabelText('Reason'), 'Rollback');
-      await user.click(within(dialog).getByRole('button', { name: 'Restore version' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Request restore' }));
       await waitFor(() =>
         expect(toast.error).toHaveBeenCalledWith('This version can no longer be restored.'),
       );
@@ -246,11 +291,11 @@ describe('AdminBundleVersionsPage', () => {
       });
       const user = userEvent.setup();
       renderWithProviders(<AdminBundleVersionsPage />);
-      await user.click(await screen.findByRole('button', { name: 'Restore version 6' }));
+      await user.click(await screen.findByRole('button', { name: 'Request restore of version 6' }));
       const dialog = await screen.findByRole('dialog');
       await user.type(within(dialog).getByLabelText('Reason'), 'Rollback');
       await user.type(within(dialog).getByLabelText('Authenticator code'), '123456');
-      await user.click(within(dialog).getByRole('button', { name: 'Restore version' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Request restore' }));
       expect(await within(dialog).findByText('Invalid code')).toBeInTheDocument();
     });
   });
