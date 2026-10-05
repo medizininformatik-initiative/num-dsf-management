@@ -7,7 +7,9 @@
  *
  * SECURITY: Access token still only in memory (Zustand). Never localStorage.
  * The refresh token is httpOnly — JS can't read it, browser sends it automatically.
- * While restoring, a translated, theme-aware status line is shown (role="status").
+ * While restoring, the sign-in hero is shown on the ambient background: the
+ * BrandMark with its intro, an indeterminate gradient bar and a translated
+ * status line (role="status"); static under Reduce Motion.
  */
 import { useEffect, useState, ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
@@ -19,6 +21,8 @@ import { useI18n } from '../stores/i18n.store';
 import { useAuthStore } from '../stores/auth.store';
 import { isCertMode, reauthRedirect } from '../lib/authMode';
 import { CertStatusPage } from '../pages/CertStatusPage';
+import { AuthAmbient } from './auth/AuthAmbient';
+import { AuthHero } from './auth/AuthHero';
 
 type DevRole = 'admin' | 'member' | 'site';
 
@@ -229,10 +233,14 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[color:var(--bg-page)] font-sans">
-        <div className="animate-fade-in text-center">
-          <span className="dsf-wordmark text-2xl font-bold tracking-tight">dsf.</span>
-          <p role="status" className="mt-2 text-xs text-[color:var(--text-muted)]">
+      <div className="relative flex min-h-screen items-center justify-center bg-[color:var(--bg-page)] px-4 font-sans">
+        <AuthAmbient />
+        <div className="relative z-[1] flex flex-col items-center gap-6 text-center">
+          <AuthHero />
+          <div className="auth-progress" aria-hidden="true">
+            <span />
+          </div>
+          <p role="status" className="m-0 text-xs text-[color:var(--text-secondary)]">
             {t('authRestoringSession')}
           </p>
         </div>
