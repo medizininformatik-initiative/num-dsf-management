@@ -122,7 +122,7 @@ describe('network.service', () => {
 });
 
 describe('network.service – federation set matches the bundle rule', () => {
-  // Org A: latest approval is REJECTED (an older one was APPROVED) → excluded.
+  // Org A: a newer request was REJECTED, the older APPROVED one still holds → included.
   const rejectedOrg = `svc-network-rej-${Date.now()}-${uuidv4().slice(0, 8)}.example.de`;
   const rejectedInstance = uuidv4();
   // Org B: latest approval is APPROVED but active=0 → excluded.
@@ -200,9 +200,9 @@ describe('network.service – federation set matches the bundle rule', () => {
     await db('users').where({ id: userId }).del();
   });
 
-  it('excludes an org whose latest approval is REJECTED (older APPROVED ignored)', async () => {
+  it('keeps an approved org on the map when a newer request was REJECTED', async () => {
     const { organizations } = await getNetworkMap({ isAdmin: true });
-    expect(organizations.some((o: any) => o.identifier === rejectedOrg)).toBe(false);
+    expect(organizations.some((o: any) => o.identifier === rejectedOrg)).toBe(true);
   });
 
   it('excludes an inactive org even if its latest approval is APPROVED', async () => {

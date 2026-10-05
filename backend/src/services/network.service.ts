@@ -2,10 +2,18 @@
  * network.service.ts – Cross-instance "allow list" view for the map
  * Admins receive full details. Non-admins receive only active/inactive +
  * endpoint names + aggregate cert status — no PII, no IPs, no exact expiry dates.
- * Dependencies: db
+ * Dependencies: db, approved-snapshot.service
  */
 import { db } from '../db/connection';
 import { parseJsonStringArray as safeJsonArray } from '../lib/jsonColumn';
+import {
+  approvedActive,
+  loadLatestApprovedSites,
+  snapshotCertificateIds,
+  snapshotEndpoints,
+  snapshotMemberships,
+  snapshotOrgField,
+} from './approved-snapshot.service';
 import type {
   OrganizationRow,
   EndpointRow,
@@ -42,25 +50,16 @@ function certStatus(validUntils: (Date | string | null)[]): {
 
 export async function getNetworkMap(opts: { isAdmin: boolean }) {
   // The federation set MUST match fhir.service.generateFullBundle (the single
-  // source of truth): active = true AND the LATEST approval_requests row (by
-  // created_at) for the instance is 'APPROVED'. A divergent rule (e.g. ANY
-  // APPROVED row) would keep de-approved or deactivated orgs on the map.
-  // created_at, id DESC is a deterministic tiebreaker on equal timestamps.
-  const approvedRows = await db('organizations')
-    .where({ active: true })
-    .whereRaw(
-      `(
-      SELECT status FROM approval_requests
-      WHERE instance_id = organizations.instance_id
-      ORDER BY created_at DESC, id DESC LIMIT 1
-    ) = 'APPROVED'`,
-    )
-    .select('identifier');
-  const approvedOrgIds: string[] = approvedRows.map(
-    (r: Pick<OrganizationRow, 'identifier'>) => r.identifier,
-  );
-
+  // source of truth): a site is on the map when its LATEST APPROVED request
+  // says it is active. A newer pending/rejected/withdrawn request does not hide
+  // an approved site. Endpoints, IPs, memberships, certificates and the
+  // organization master data come from that approved snapshot (what the
+  // allow list publishes); contacts and the admin e-mail are live. A site
+  // whose approved request has no usable snapshot is shown from live data.
+  const sites = (await loadLatestApprovedSites()).filter(approvedActive);
+  const approvedOrgIds: string[] = sites.map((s) => s.orgIdentifier);
   if (approvedOrgIds.length === 0) return { organizations: [] };
+  const siteByOrg = new Map(sites.map((s) => [s.orgIdentifier, s]));
 
   const orgs: OrganizationRow[] = await db('organizations').whereIn('identifier', approvedOrgIds);
   const endpoints: EndpointRow[] = await db('endpoints').whereIn('organization_id', approvedOrgIds);
@@ -76,18 +75,47 @@ export async function getNetworkMap(opts: { isAdmin: boolean }) {
     .whereNull('deleted_at');
 
   const organizations = orgs.map((org) => {
-    const orgCerts = certs.filter((c) => c.organization_id === org.identifier);
+    const snapshot = siteByOrg.get(org.identifier)?.snapshot ?? null;
+    const approvedCertIds = snapshotCertificateIds(snapshot);
+    const orgCerts = certs.filter(
+      (c) =>
+        c.organization_id === org.identifier &&
+        (!approvedCertIds || approvedCertIds.includes(c.id)),
+    );
     const { status, next, daysUntil } = certStatus(orgCerts.map((c) => c.valid_until));
 
-    const orgEndpointsRaw = endpoints.filter((e) => e.organization_id === org.identifier);
-    const orgMembershipsRaw = memberships.filter((m) => m.organization_id === org.identifier);
+    const approvedEndpoints = snapshotEndpoints(snapshot);
+    const orgEndpointsRaw: Array<{
+      identifier: string;
+      name: string | null;
+      address: string;
+      ips: Array<{ ip: string; is_fhir: boolean; is_bpe: boolean }>;
+    }> =
+      approvedEndpoints ??
+      endpoints
+        .filter((e) => e.organization_id === org.identifier)
+        .map((e) => ({
+          identifier: e.identifier,
+          name: e.name,
+          address: e.address,
+          ips: endpointIps
+            .filter((ip) => ip.endpoint_id === e.identifier)
+            .map((ip) => ({ ip: ip.ip, is_fhir: !!ip.is_fhir, is_bpe: !!ip.is_bpe })),
+        }));
+    const orgMembershipsRaw: Array<{
+      parent_organization: string;
+      endpoint_id: string;
+      roles: unknown;
+    }> =
+      snapshotMemberships(snapshot) ??
+      memberships.filter((m) => m.organization_id === org.identifier);
 
     const base = {
       identifier: org.identifier,
-      name: org.name,
-      active: !!org.active,
-      city: org.city ?? null,
-      country_code: org.country_code ?? null,
+      name: snapshotOrgField(snapshot, 'name') ?? org.name,
+      active: true,
+      city: snapshotOrgField(snapshot, 'city') ?? org.city ?? null,
+      country_code: snapshotOrgField(snapshot, 'country_code') ?? org.country_code ?? null,
       cert_status: status,
     };
 
@@ -112,13 +140,7 @@ export async function getNetworkMap(opts: { isAdmin: boolean }) {
       identifier: ep.identifier,
       name: ep.name,
       address: ep.address,
-      ips: endpointIps
-        .filter((ip) => ip.endpoint_id === ep.identifier)
-        .map((ip) => ({
-          ip: ip.ip,
-          is_fhir: !!ip.is_fhir,
-          is_bpe: !!ip.is_bpe,
-        })),
+      ips: ep.ips,
     }));
     const adminContacts = contacts
       .filter((c) => c.organization_id === org.identifier)
