@@ -10,6 +10,7 @@ import { db } from './connection';
 import { v4 as uuidv4 } from 'uuid';
 import { signGrant } from '../lib/adminGrants';
 import { seedCertificate } from './seedCertificates';
+import { buildMarketplaceFixtures } from './seed-marketplace-fixtures';
 
 const USER_ID = uuidv4();
 const ADMIN_EMAIL = 'admin@imi-test.example.de';
@@ -843,51 +844,58 @@ async function main() {
   console.log(`  [+] ${imiEmails.length} bootstrap admins (re)signed`);
 
   // --- Block 14: Marketplace fixtures ---
-  // Inserted directly (not via service) to avoid GitHub API calls during seeding.
-  // The 10:00 UTC sync cron will populate description/stars/release/last_commit
-  // automatically. Mix of statuses for UX richness.
-  const MARKETPLACE_FIXTURES = [
-    {
-      url: 'https://github.com/datasharingframework/dsf-process-allow-list',
-      name: 'dsf-process-allow-list',
-      status: 'APPROVED',
-    },
-    {
-      url: 'https://github.com/datasharingframework/dsf-process-feasibility',
-      name: 'dsf-process-feasibility',
-      status: 'APPROVED',
-    },
-    {
-      url: 'https://github.com/datasharingframework/dsf-process-tutorial',
-      name: 'dsf-process-tutorial',
-      status: 'APPROVED',
-    },
-    {
-      url: 'https://github.com/datasharingframework/dsf-process-hello-world',
-      name: 'dsf-process-hello-world',
-      status: 'EXPERIMENTAL',
-    },
-    {
-      url: 'https://github.com/datasharingframework/dsf-process-ping-pong',
-      name: 'dsf-process-ping-pong',
-      status: 'EXPERIMENTAL',
-    },
-  ];
+  // Inserted directly (not via service) so seeding never calls the GitHub API.
+  // Descriptions, topics, DSF metadata and releases are fictional but plausible
+  // (seed-marketplace-fixtures.ts) so the dev UI is populated offline. The
+  // nightly GitHub sync (scheduler -> syncAll) overwrites repo facts with real
+  // values when it has network access.
+  const MARKETPLACE_FIXTURES = buildMarketplaceFixtures();
   for (const f of MARKETPLACE_FIXTURES) {
+    const row = {
+      slug: f.slug,
+      name: f.name,
+      description: f.description,
+      status: f.status,
+      stars: f.stars,
+      forks: f.forks,
+      open_issues: f.openIssues,
+      license: f.license,
+      language: 'Java',
+      topics: JSON.stringify(f.topics),
+      homepage: f.homepage,
+      latest_release_tag: f.releases[0].tag,
+      last_commit_at: new Date(f.releases[0].publishedAt),
+      process_identifiers: JSON.stringify(f.processIdentifiers),
+      dsf_version_min: f.dsfVersionMin,
+      required_roles: JSON.stringify(f.requiredRoles),
+      message_names: JSON.stringify(f.messageNames),
+      artifact_url: f.artifactUrl,
+      metadata_source: 'MANIFEST',
+      verified: f.verified ? 1 : 0,
+      updated_at: new Date(),
+    };
     await db('marketplace_entries')
       .insert({
         id: uuidv4(),
         git_url: f.url,
-        name: f.name,
-        description: null,
-        status: f.status,
-        stars: 0,
+        ...row,
         added_by: 'SYSTEM:seed',
         added_at: new Date(),
-        updated_at: new Date(),
       })
       .onConflict('git_url')
-      .ignore();
+      .merge(row);
+    const entry = await db('marketplace_entries').where({ git_url: f.url }).first('id');
+    await db('marketplace_releases')
+      .insert(
+        f.releases.map((r) => ({
+          id: uuidv4(),
+          entry_id: entry.id,
+          tag: r.tag,
+          published_at: new Date(r.publishedAt),
+        })),
+      )
+      .onConflict(['entry_id', 'tag'])
+      .merge(['published_at']);
   }
   console.log(`  [+] ${MARKETPLACE_FIXTURES.length} marketplace fixtures seeded`);
 
