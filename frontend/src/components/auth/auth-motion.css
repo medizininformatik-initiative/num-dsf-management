@@ -1,0 +1,331 @@
+/*
+ * auth-motion.css – Motion of the sign-in screens (AuthLayout, AuthAmbient,
+ * AuthSuccess, CertStatusPage, the AuthBootstrap loading state).
+ * Movement keyframes are declared only for prefers-reduced-motion:
+ * no-preference; under Reduce Motion the same names become opacity-only
+ * crossfades and the loops stop (block at the end). One-shot classes carry
+ * the "animate-" prefix so the global reduced-motion rule in index.css keeps
+ * their crossfade timing instead of collapsing them to 1 ms.
+ */
+
+/* ─── Ambient background: drifting IMI-gradient aurora ─────────────────── */
+.auth-ambient {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  contain: strict;
+  --auth-blob-opacity: 0.3;
+}
+:root.dark .auth-ambient {
+  --auth-blob-opacity: 0.2;
+}
+
+.auth-ambient__blob {
+  position: absolute;
+  width: 62vmax;
+  height: 62vmax;
+  border-radius: 50%;
+  opacity: var(--auth-blob-opacity);
+  filter: blur(48px);
+  will-change: transform;
+  /* Negative delay from AuthAmbient keeps the drift continuous across routes. */
+  animation-delay: var(--auth-ambient-t, 0s);
+}
+.auth-ambient__blob--magenta {
+  top: -26vmax;
+  left: -18vmax;
+  background: radial-gradient(circle, var(--brand-magenta) 0%, transparent 64%);
+}
+.auth-ambient__blob--violet {
+  top: -22vmax;
+  right: -24vmax;
+  background: radial-gradient(circle, var(--brand-violet) 0%, transparent 64%);
+}
+.auth-ambient__blob--blue {
+  bottom: -30vmax;
+  left: -10vmax;
+  background: radial-gradient(circle, var(--brand-blue) 0%, transparent 64%);
+}
+.auth-ambient__blob--green {
+  bottom: -28vmax;
+  right: -20vmax;
+  background: radial-gradient(circle, var(--brand-green) 0%, transparent 62%);
+  opacity: calc(var(--auth-blob-opacity) * 0.8);
+}
+/* Keeps the centre calm and readable behind the card. */
+.auth-ambient__veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 55% at 50% 48%, var(--bg-page) 0%, transparent 100%);
+  opacity: 0.55;
+}
+.auth-ambient[data-paused] .auth-ambient__blob {
+  animation-play-state: paused;
+}
+
+/* ─── Card ──────────────────────────────────────────────────────────────── */
+/* Height is set from the measured content; the global reduced-motion rule
+   drops the height transition, so the size then changes at once. */
+.auth-card {
+  overflow: hidden;
+  transition: height var(--duration-long) var(--ease-spring);
+}
+
+/* Settled brand: after its first intro the BrandMark no longer replays it on
+   every step; the hover breathe stays. */
+.auth-brand--settled .brand-mark :is(.bm-link, .bm-node, .bm-core, .bm-ring, .bm-sheen) {
+  animation: none;
+}
+
+/* ─── Certificate check + loading visuals (resting state) ──────────────── */
+.auth-cert-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid var(--brand-violet);
+  opacity: 0;
+}
+.auth-cert-scan {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 22%;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--brand-blue), transparent);
+  opacity: 0;
+}
+.auth-progress {
+  position: relative;
+  height: 3px;
+  width: 9rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--border);
+}
+.auth-progress > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--brand-gradient);
+}
+
+/* ─── Success check ─────────────────────────────────────────────────────── */
+.auth-check-circle,
+.auth-check-mark {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+/* ─── Motion (only without Reduce Motion) ──────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .auth-ambient__blob--magenta {
+    animation: auth-drift-a 38s ease-in-out infinite alternate;
+    animation-delay: var(--auth-ambient-t, 0s);
+  }
+  .auth-ambient__blob--violet {
+    animation: auth-drift-b 46s ease-in-out infinite alternate;
+    animation-delay: var(--auth-ambient-t, 0s);
+  }
+  .auth-ambient__blob--blue {
+    animation: auth-drift-c 52s ease-in-out infinite alternate;
+    animation-delay: var(--auth-ambient-t, 0s);
+  }
+  .auth-ambient__blob--green {
+    animation: auth-drift-d 42s ease-in-out infinite alternate;
+    animation-delay: var(--auth-ambient-t, 0s);
+  }
+
+  .auth-cert-ring {
+    animation: auth-ring 2.4s var(--ease-standard) infinite;
+  }
+  .auth-cert-ring + .auth-cert-ring {
+    animation-delay: 1.2s;
+  }
+  .auth-cert-scan {
+    animation: auth-scan 1.8s ease-in-out infinite alternate;
+  }
+  .auth-progress > span {
+    animation: auth-progress 1.4s var(--ease-standard) infinite;
+  }
+}
+
+.animate-auth-rise {
+  animation: auth-rise var(--duration-long) var(--ease-spring) both;
+  animation-delay: var(--auth-delay, 0ms);
+}
+.animate-auth-card-in {
+  animation: auth-card-in 640ms var(--ease-spring-bouncy) 140ms both;
+}
+.animate-auth-step-forward {
+  animation: auth-step-forward var(--duration-long) var(--ease-spring) both;
+}
+.animate-auth-step-back {
+  animation: auth-step-back var(--duration-long) var(--ease-spring) both;
+}
+/* Reading direction: in RTL, forward comes from the left. */
+[dir='rtl'] .animate-auth-step-forward {
+  animation-name: auth-step-back;
+}
+[dir='rtl'] .animate-auth-step-back {
+  animation-name: auth-step-forward;
+}
+.animate-auth-digit-in {
+  animation: auth-digit-in var(--duration-medium) var(--ease-spring-bouncy) both;
+  animation-delay: calc(var(--stagger-index, 0) * 45ms + 160ms);
+}
+.animate-auth-success-in {
+  animation: auth-success-in 520ms var(--ease-spring-bouncy) both;
+}
+.animate-auth-success-in .auth-check-circle {
+  animation: auth-draw 520ms var(--ease-standard) 60ms both;
+}
+.animate-auth-success-in .auth-check-mark {
+  animation: auth-draw 360ms var(--ease-spring) 420ms both;
+}
+
+@keyframes auth-drift-a {
+  to {
+    transform: translate3d(14vw, 10vh, 0) scale(1.12);
+  }
+}
+@keyframes auth-drift-b {
+  to {
+    transform: translate3d(-12vw, 14vh, 0) scale(0.92);
+  }
+}
+@keyframes auth-drift-c {
+  to {
+    transform: translate3d(16vw, -10vh, 0) scale(1.08);
+  }
+}
+@keyframes auth-drift-d {
+  to {
+    transform: translate3d(-14vw, -12vh, 0) scale(1.15);
+  }
+}
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+}
+@keyframes auth-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.96);
+  }
+}
+@keyframes auth-step-forward {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+@keyframes auth-step-back {
+  from {
+    opacity: 0;
+    transform: translateX(-32px);
+  }
+}
+@keyframes auth-digit-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.6);
+  }
+}
+@keyframes auth-success-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+@keyframes auth-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+@keyframes auth-ring {
+  from {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+@keyframes auth-scan {
+  from {
+    opacity: 0.9;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0.9;
+    transform: translateY(2.2rem);
+  }
+}
+@keyframes auth-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* ─── Reduce Motion: static crossfades, no loops ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .auth-ambient__blob,
+  .auth-cert-ring,
+  .auth-cert-scan,
+  .auth-progress > span {
+    animation: none !important;
+  }
+  .auth-cert-ring:first-child {
+    opacity: 0.35;
+  }
+  .auth-progress > span {
+    width: 100%;
+    opacity: 0.6;
+  }
+
+  @keyframes auth-rise {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes auth-card-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes auth-step-forward {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes auth-step-back {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes auth-digit-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes auth-success-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes auth-draw {
+    from {
+      opacity: 0;
+    }
+  }
+}
