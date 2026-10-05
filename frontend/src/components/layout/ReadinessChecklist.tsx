@@ -34,7 +34,7 @@ export function ReadinessChecklist({ instanceId }: { instanceId: string }) {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--text-muted)]">
+      <h3 className="text-xs font-semibold text-[color:var(--text-muted)]">
         {t('readinessTitle')}
       </h3>
       <ul className="space-y-1">
@@ -62,7 +62,7 @@ export function ReadinessChecklist({ instanceId }: { instanceId: string }) {
               <button
                 type="button"
                 onClick={() => revealReadinessCard(item.key)}
-                className="press-effect flex w-full items-center gap-2 rounded-lg bg-[color:var(--bg-hover)] px-2 py-1 text-left text-xs text-[color:var(--text-primary)] hover:bg-warning-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+                className="press-effect flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-xs text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
               >
                 <Icon
                   name="error"

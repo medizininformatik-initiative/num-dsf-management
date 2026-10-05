@@ -1,6 +1,6 @@
 /**
  * EntityCard.tsx – the shared card of the entity canvas: a glass section with
- * an accent stripe, an icon + title header, an optional header slot and an add
+ * a hairline border, an icon + title header, an optional header slot and an add
  * Button named after the card ("+ Add Contacts"). `status` swaps the body for
  * a skeleton while loading or an error with a retry Button, so a failed
  * request never looks like "no data yet". The section (`card-<id>`) is the FK
@@ -18,7 +18,7 @@ import './entity-card.css';
 interface EntityCardProps {
   id: string;
   title: string;
-  /** Accent colour of the card (stripe and icon tile). */
+  /** Accent colour of the card (kept for callers; the chrome is neutral). */
   borderColor: string;
   icon: string;
   iconColor?: string;
@@ -39,7 +39,6 @@ export function EntityCard({
   title,
   borderColor,
   icon,
-  iconColor,
   badge,
   headerRight,
   onAdd,
@@ -59,20 +58,17 @@ export function EntityCard({
       aria-labelledby={titleId}
       aria-busy={status === 'loading' || undefined}
       tabIndex={-1}
-      className="entity-card glass hover-lift flex h-full flex-col rounded-card p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+      className="entity-card flex h-full flex-col rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       style={{ '--card-accent': borderColor } as CSSProperties}
     >
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="mb-5 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span
-            className="entity-card-icon inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]"
-            style={{ color: iconColor || borderColor }}
-          >
+          <span className="entity-card-icon inline-flex shrink-0 items-center justify-center text-[color:var(--text-muted)]">
             <Icon name={icon} size={20} />
           </span>
           <h3
             id={titleId}
-            className="truncate text-base font-bold leading-6 text-[color:var(--text-primary)]"
+            className="truncate text-base font-semibold leading-6 text-[color:var(--text-primary)]"
           >
             {title}
           </h3>
@@ -99,7 +95,7 @@ export function EntityCard({
       )}
       {status === 'error' && (
         <div className="flex min-h-[7.5rem] flex-col items-center justify-center gap-2.5 px-4 py-3 text-center">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-danger-border bg-danger-surface text-danger-fg">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-danger-surface text-danger-fg">
             <Icon name="cloud_off" size={22} />
           </span>
           <p role="alert" className="text-[13px] font-medium text-[color:var(--text-secondary)]">

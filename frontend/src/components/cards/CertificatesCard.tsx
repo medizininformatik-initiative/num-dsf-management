@@ -197,7 +197,7 @@ function CertificateItem({
   return (
     <li
       data-entity-row={`certificates:${cert.id}`}
-      className="hover-lift animate-list-item-in rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-3"
+      className="hover-lift animate-list-item-in rounded-xl bg-[color:var(--bg-hover)] p-3.5"
       style={{ '--stagger-index': index } as CSSProperties}
     >
       <div className="flex items-start justify-between gap-2">

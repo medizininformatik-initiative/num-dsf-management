@@ -124,11 +124,41 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
           {endpoints.map((ep, index) => {
             const name = ep.name || ep.identifier;
             const ips = ep.ipAddresses ?? [];
+            const renderIps = (list: typeof ips) => {
+              const chips = (
+                <ul aria-label={t('endpointCardIpsLabel')} className="mt-2 flex flex-wrap gap-1">
+                  {list.map((ip) => (
+                    <li
+                      key={ip.id}
+                      className="inline-flex items-center gap-1 rounded-full bg-[color:var(--bg-card)] py-0.5 pl-2 pr-1 text-[11px] text-[color:var(--text-secondary)]"
+                    >
+                      <span className="mono-id">{ip.ip}</span>
+                      {ip.isFhir && <IpFlag kind="fhir" />}
+                      {ip.isBpe && <IpFlag kind="bpe" />}
+                    </li>
+                  ))}
+                </ul>
+              );
+              if (list.length <= 3) return chips;
+              return (
+                <details className="group/ips mt-1.5">
+                  <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-md text-[11px] font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
+                    <Icon
+                      name="chevron_right"
+                      size={16}
+                      className="transition-transform duration-short ease-spring group-open/ips:rotate-90"
+                    />
+                    {t('endpointCardIpsLabel')} ({list.length})
+                  </summary>
+                  {chips}
+                </details>
+              );
+            };
             return (
               <li
                 key={ep.identifier}
                 data-entity-row={`endpoints:${ep.identifier}`}
-                className="hover-lift animate-list-item-in flex items-start gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-3"
+                className="hover-lift animate-list-item-in flex items-start gap-2 rounded-xl bg-[color:var(--bg-hover)] p-3.5"
                 style={{ '--stagger-index': index } as CSSProperties}
               >
                 <div className="min-w-0 flex-1">
@@ -146,23 +176,7 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
                   >
                     {ep.address}
                   </p>
-                  {ips.length > 0 && (
-                    <ul
-                      aria-label={t('endpointCardIpsLabel')}
-                      className="mt-2 flex flex-wrap gap-1"
-                    >
-                      {ips.map((ip) => (
-                        <li
-                          key={ip.id}
-                          className="inline-flex items-center gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--bg-card)] py-0.5 pl-2 pr-1 text-[11px] text-[color:var(--text-secondary)]"
-                        >
-                          <span className="mono-id">{ip.ip}</span>
-                          {ip.isFhir && <IpFlag kind="fhir" />}
-                          {ip.isBpe && <IpFlag kind="bpe" />}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  {ips.length > 0 && renderIps(ips)}
                 </div>
                 <div className="flex shrink-0 flex-col gap-1">
                   <Button

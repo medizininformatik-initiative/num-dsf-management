@@ -153,7 +153,7 @@ export function OrganizationCard({ instanceId }: Props) {
         <div className="mb-3">
           <p
             id={sharedWithId}
-            className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]"
+            className="mb-1.5 text-[11px] font-semibold text-[color:var(--text-muted)]"
           >
             {t('orgCardSharedWith')}
           </p>
@@ -172,7 +172,7 @@ export function OrganizationCard({ instanceId }: Props) {
         </div>
       )}
 
-      <dl className="mb-3 divide-y divide-[color:var(--border)] text-xs">
+      <dl className="mb-4 text-xs">
         <Row label={t('orgCardIdentifier')}>
           <span className="font-mono text-primary dark:text-brand-400">{org.identifier}</span>
         </Row>
@@ -200,7 +200,7 @@ export function OrganizationCard({ instanceId }: Props) {
       </dl>
 
       {/* Pinned to the bottom when the grid stretches the card. */}
-      <div className="mt-auto flex items-center justify-between gap-3 border-t border-[color:var(--border)] pt-3 text-xs">
+      <div className="mt-auto flex items-center justify-between gap-3 pt-3 text-xs">
         <span className="text-[color:var(--text-muted)]">{t('orgCardApproval')}</span>
         <StatusPill tone={approvalPill.tone} icon={approvalPill.icon}>
           {t(approvalPill.label)}

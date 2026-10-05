@@ -30,8 +30,7 @@ import { ExpiryTimeline } from './ExpiryTimeline';
 import { ReadinessChecklist } from './ReadinessChecklist';
 import { useScrollEdges } from '../../hooks/useScrollEdges';
 
-const sectionHeading =
-  'mb-2 text-[11px] font-bold uppercase tracking-widest text-[color:var(--text-muted)]';
+const sectionHeading = 'mb-2 text-xs font-semibold text-[color:var(--text-muted)]';
 
 function Section({ index, children }: { index: number; children: ReactNode }) {
   return (
@@ -75,13 +74,10 @@ export function RightPanel({
     <aside
       ref={edgesRef}
       aria-labelledby={headingId}
-      className={`scroll-edges glass-chrome flex h-full w-full flex-col gap-6 overflow-y-auto overscroll-contain border-b-0 border-l p-5 ${className}`}
+      className={`scroll-edges glass-chrome flex h-full w-full flex-col gap-8 overflow-y-auto overscroll-contain border-b-0 border-l p-6 ${className}`}
     >
       <div>
-        <h2
-          id={headingId}
-          className="text-lg font-bold tracking-tight text-[color:var(--text-primary)]"
-        >
+        <h2 id={headingId} className="text-base font-semibold text-[color:var(--text-primary)]">
           {t('approvalStatus')}
         </h2>
         <p className="text-xs text-[color:var(--text-muted)]">{t('rightPanelSubtitle')}</p>
@@ -102,14 +98,11 @@ export function RightPanel({
 
       <Section index={2}>
         <h3 className={sectionHeading}>{t('overview')}</h3>
-        <dl className="grid grid-cols-2 gap-2">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
           {stats.map((s) => (
-            <div
-              key={s.label}
-              className="flex flex-col-reverse rounded-xl bg-[color:var(--bg-hover)] p-3 text-center"
-            >
-              <dt className="truncate text-[11px] text-[color:var(--text-muted)]">{t(s.label)}</dt>
-              <dd className="text-lg font-bold text-[color:var(--text-primary)]">{s.value}</dd>
+            <div key={s.label} className="flex flex-col-reverse">
+              <dt className="truncate text-xs text-[color:var(--text-muted)]">{t(s.label)}</dt>
+              <dd className="text-lg font-semibold text-[color:var(--text-primary)]">{s.value}</dd>
             </div>
           ))}
         </dl>
@@ -137,7 +130,7 @@ export function RightPanel({
                     </time>
                   </div>
                   {resolved && req.comment && (
-                    <p className="mt-1 whitespace-pre-wrap break-words border-l-2 border-[color:var(--border)] pl-2 text-xs text-[color:var(--text-secondary)]">
+                    <p className="mt-1 whitespace-pre-wrap break-words pl-2 text-xs text-[color:var(--text-secondary)]">
                       {req.comment}
                     </p>
                   )}

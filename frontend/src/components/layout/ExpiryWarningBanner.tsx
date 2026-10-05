@@ -89,7 +89,7 @@ export function ExpiryWarningBanner() {
         {mounted && (
           <section
             aria-labelledby={titleId}
-            className={`mx-5 mt-2 flex flex-wrap items-start gap-3 rounded-xl border p-3 ${TONE_SURFACE[tone]}`}
+            className={`mx-5 mt-2 flex flex-wrap items-start gap-3 rounded-xl border p-3.5 ${TONE_SURFACE[tone]}`}
           >
             <Icon
               name={tone === 'danger' ? 'error' : 'warning'}

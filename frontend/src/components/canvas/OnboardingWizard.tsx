@@ -92,14 +92,14 @@ export function OnboardingWizard({ instanceId }: Props) {
   return (
     <section
       aria-labelledby={headingId}
-      className="entity-card-shadow mb-4 animate-fade-in rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] px-4 py-3"
+      className="mb-4 animate-fade-in rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] px-5 py-3"
     >
       <div className="mb-1.5 flex items-center justify-between gap-3">
         <h2
           id={headingId}
-          className="flex items-center gap-1.5 text-xs font-bold text-[color:var(--text-primary)]"
+          className="flex items-center gap-1.5 text-xs font-semibold text-[color:var(--text-primary)]"
         >
-          <Icon name="rocket_launch" size={16} className="text-primary" />
+          <Icon name="rocket_launch" size={16} className="text-[color:var(--text-muted)]" />
           {t('onboardingHeader')}
         </h2>
         <span className="text-[11px] text-[color:var(--text-muted)]">
@@ -110,7 +110,7 @@ export function OnboardingWizard({ instanceId }: Props) {
       {/* Progress bar (the counter above carries the value) */}
       <div
         aria-hidden="true"
-        className="mb-2.5 h-1 overflow-hidden rounded-full bg-[color:var(--bg-hover)]"
+        className="mb-2 h-0.5 overflow-hidden rounded-full bg-[color:var(--bg-hover)]"
       >
         <div
           className="h-full rounded-full bg-primary transition-[width] duration-medium ease-standard"
@@ -126,10 +126,10 @@ export function OnboardingWizard({ instanceId }: Props) {
           if (step.done) {
             return (
               <li key={step.key} className={tile}>
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-success-border bg-success-surface text-success-fg">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-success-surface text-success-fg">
                   <Icon name="check" size={14} label={t('readinessItemDone')} />
                 </span>
-                <span className="text-[11px] font-semibold leading-tight text-[color:var(--text-secondary)]">
+                <span className="text-[11px] font-medium leading-tight text-[color:var(--text-secondary)]">
                   {step.label}
                 </span>
               </li>
@@ -158,7 +158,7 @@ export function OnboardingWizard({ instanceId }: Props) {
                     label={step.key === 'submit' ? undefined : t('readinessItemMissing')}
                   />
                 </span>
-                <span className="text-[11px] font-semibold leading-tight text-[color:var(--text-primary)]">
+                <span className="text-[11px] font-medium leading-tight text-[color:var(--text-primary)]">
                   {step.label}
                 </span>
               </button>
