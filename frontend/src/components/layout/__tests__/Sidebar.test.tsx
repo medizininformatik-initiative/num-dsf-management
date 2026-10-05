@@ -10,6 +10,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 import { useCanvasStore } from '../../../stores/canvas.store';
+import { useAuthStore } from '../../../stores/auth.store';
 
 vi.mock('../../../hooks/useInstance', () => ({
   useInstances: () => ({
@@ -40,7 +41,7 @@ describe('Sidebar navigation', () => {
     renderWithProviders(<Sidebar />, { route: '/app' });
     const dashboard = screen.getByRole('link', { name: 'Dashboard' });
     expect(dashboard).toHaveAttribute('aria-current', 'page');
-    expect(dashboard.className).toContain('bg-brand-50');
+    expect(dashboard.className).toContain('accent-surface');
     expect(screen.getByRole('link', { name: 'Network Map' })).not.toHaveAttribute('aria-current');
     expect(screen.getByRole('link', { name: 'Status' })).not.toHaveAttribute('aria-current');
   });
@@ -63,7 +64,7 @@ describe('Sidebar navigation', () => {
     renderWithProviders(<Sidebar />, { route: '/app/admin/users' });
     const group = screen.getByRole('button', { name: 'Administration' });
     expect(group).toHaveAttribute('aria-expanded', 'false');
-    expect(group.className).toContain('bg-brand-50');
+    expect(group.className).toContain('accent-surface');
 
     await user.click(group);
 
@@ -127,15 +128,25 @@ describe('Sidebar instance switcher', () => {
 });
 
 describe('Sidebar environment badge', () => {
-  it('names the TEST environment in the full sidebar', () => {
+  it('names the TEST environment once, under the product name', () => {
     renderWithProviders(<Sidebar />, { route: '/app' });
-    expect(screen.getByText('Test environment')).toBeVisible();
+    expect(screen.getByText('DSF Management Tool')).toBeVisible();
+    expect(screen.getAllByText('Test environment')).toHaveLength(1);
+    expect(screen.getByText('Test environment')).toHaveAttribute('data-env', 'TEST');
   });
 
-  it('keeps a compact TEST badge in the rail', () => {
+  it('keeps the mark and the environment as its tooltip in the rail', () => {
     renderWithProviders(<Sidebar variant="rail" onToggle={vi.fn()} />, { route: '/app' });
-    expect(screen.getByText('TEST')).toBeInTheDocument();
-    expect(screen.getByText('Test environment')).toHaveClass('sr-only');
+    expect(screen.getByTestId('brand-mark-glyph')).toBeInTheDocument();
+    expect(screen.getByTitle('Test environment')).toBeInTheDocument();
+  });
+
+  it('shows the signed-in email without repeating the active instance', () => {
+    useAuthStore.getState().setTokens('tok', { id: 'u1', email: 'op@imi-test.example.de' });
+    renderWithProviders(<Sidebar />, { route: '/app' });
+    expect(screen.getByText('op@imi-test.example.de')).toBeInTheDocument();
+    // alpha.example.de is active: named once, by its switcher row.
+    expect(screen.getAllByText('alpha.example.de')).toHaveLength(1);
   });
 });
 
@@ -202,7 +213,7 @@ describe('Sidebar variants', () => {
   it('translates its labels', () => {
     renderWithProviders(<Sidebar />, { route: '/app', lang: 'de' });
     expect(screen.getByRole('navigation', { name: 'Hauptnavigation' })).toBeInTheDocument();
-    expect(screen.getByText('Verwaltungsportal')).toBeInTheDocument();
+    expect(screen.getByText('DSF Management Tool')).toBeInTheDocument();
     expect(screen.getByText('Testumgebung')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'alpha.example.de anheften' })).toBeInTheDocument();
   });

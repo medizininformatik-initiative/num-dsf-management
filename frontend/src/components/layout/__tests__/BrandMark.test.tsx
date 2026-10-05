@@ -45,8 +45,14 @@ describe('BrandMark', () => {
     );
   });
 
-  it('passes extra classes to the name, e.g. the rail fade', () => {
-    render(<BrandMark nameClassName="opacity-0" />);
-    expect(screen.getByText('DSF Management Tool')).toHaveClass('opacity-0');
+  it('passes extra classes to the name block and shows a second line under it', () => {
+    render(
+      <BrandMark nameClassName="opacity-0">
+        <span>Test environment</span>
+      </BrandMark>,
+    );
+    const name = screen.getByText('DSF Management Tool');
+    expect(name.parentElement).toHaveClass('opacity-0');
+    expect(name.parentElement).toContainElement(screen.getByText('Test environment'));
   });
 });
