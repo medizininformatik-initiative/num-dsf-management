@@ -18,7 +18,7 @@
   --shadow: rgba(24, 28, 32, 0.06);
   /* Accent, derived from the violet of the IMI logo gradient (sampled from
      public/logos/IMI-Logo-grad-eng.png). --primary / --accent: accent text,
-     icons and rings on surfaces (light 5.6:1 on card, 5.0 on page; dark 5.9
+     icons and rings on surfaces (light 5.6:1 on card, 5.0 on page; dark 6.6
      on card). --accent-solid: filled controls with white text (5.6:1 in both
      themes). --accent-surface: the tinted selection pill. */
   --primary: #675fa8;
