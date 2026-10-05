@@ -12,6 +12,8 @@ import { db } from '../../db/connection';
 import { cleanTestData, seedTestUser, seedAdminUser } from '../helpers/seed';
 import { getTestToken } from '../helpers/auth';
 import { v4 as uuidv4 } from 'uuid';
+import ExcelJS from 'exceljs';
+import { XLSX_CONTENT_TYPE } from '../../services/onboarding.service';
 
 const FP_A = 'a'.repeat(128);
 const FP_B = 'b'.repeat(128);
@@ -175,5 +177,119 @@ describe('POST /api/v1/admin/onboarding/import', () => {
 
     expect(res.status).toBe(413);
     expect(res.body.error.code).toBe('FILE_TOO_LARGE');
+  });
+
+  describe('templates', () => {
+    it('serves the CSV template to an admin and 403 to others', async () => {
+      const token = getTestToken(adminEmail, adminUserId);
+      const ok = await request(app)
+        .get('/api/v1/admin/onboarding/template.csv')
+        .set('Authorization', `Bearer ${token}`);
+      expect(ok.status).toBe(200);
+      expect(ok.headers['content-type']).toMatch(/text\/csv/);
+      expect(ok.headers['content-disposition']).toMatch(/dsf-onboarding-template\.csv/);
+      expect(ok.text.split(/\r?\n/)[0]).toBe(
+        'organizationIdentifier,organizationName,contactEmail,clientCertFingerprint,city,countryCode',
+      );
+
+      const nonAdminToken = getTestToken(nonAdminEmail, nonAdminUserId);
+      const denied = await request(app)
+        .get('/api/v1/admin/onboarding/template.csv')
+        .set('Authorization', `Bearer ${nonAdminToken}`);
+      expect(denied.status).toBe(403);
+    });
+
+    it('serves the XLSX template as a workbook', async () => {
+      const token = getTestToken(adminEmail, adminUserId);
+      const res = await request(app)
+        .get('/api/v1/admin/onboarding/template.xlsx')
+        .set('Authorization', `Bearer ${token}`)
+        .buffer(true)
+        .parse((r, cb) => {
+          const chunks: Buffer[] = [];
+          r.on('data', (c: Buffer) => chunks.push(c));
+          r.on('end', () => cb(null, Buffer.concat(chunks)));
+        });
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toMatch(/spreadsheetml/);
+      expect((res.body as Buffer).subarray(0, 2).toString()).toBe('PK');
+    });
+
+    it('returns 401 for the templates without a token', async () => {
+      const res = await request(app).get('/api/v1/admin/onboarding/template.xlsx');
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('xlsx import and dry run', () => {
+    async function xlsxOf(rows: string[][]): Promise<Buffer> {
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('Sites');
+      ws.addRow(HEADER.split(','));
+      rows.forEach((r) => ws.addRow(r));
+      return Buffer.from(await wb.xlsx.writeBuffer());
+    }
+
+    it('imports an .xlsx upload through the same path as CSV', async () => {
+      const token = getTestToken(adminEmail, adminUserId);
+      const id = `import-xlsx-${uuidv4().slice(0, 8)}.example.de`;
+      const email = `import-xlsx-${uuidv4().slice(0, 8)}@example.de`;
+      identifiers.push(id);
+      emails.push(email);
+
+      const res = await request(app)
+        .post('/api/v1/admin/onboarding/import')
+        .set('Authorization', `Bearer ${token}`)
+        .set('Content-Type', XLSX_CONTENT_TYPE)
+        .send(await xlsxOf([[id, 'Xlsx Org', email, FP_A]]));
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.dryRun).toBe(false);
+      expect(res.body.data.summary).toEqual({ created: 1, updated: 0, failed: 0 });
+      expect(res.body.data.rows[0]).toMatchObject({ identifier: id, row: 1 });
+      expect(await db('organizations').where({ identifier: id }).first()).toBeTruthy();
+    });
+
+    it('dryRun=true reports created/updated/failed with row numbers and writes nothing', async () => {
+      const token = getTestToken(adminEmail, adminUserId);
+      const idNew = `dry-new-${uuidv4().slice(0, 8)}.example.de`;
+      const idTaken = `dry-taken-${uuidv4().slice(0, 8)}.example.de`;
+      const email = `dry-${uuidv4().slice(0, 8)}@example.de`;
+      identifiers.push(idNew, idTaken);
+      emails.push(email);
+
+      // Real import first so FP_B belongs to idTaken.
+      await request(app)
+        .post('/api/v1/admin/onboarding/import')
+        .set('Authorization', `Bearer ${token}`)
+        .set('Content-Type', 'text/csv')
+        .send(csvOf([`${idTaken},Taken Org,${email},${FP_B}`]));
+
+      const csv = csvOf([
+        `${idNew},New Org,${email},${FP_A}`,
+        `bad,Bad Org,${email},${FP_A}`,
+        `${idTaken},Taken Org renamed,${email},${FP_B}`,
+        `dry-clash-${idNew},Clash Org,${email},${FP_B}`,
+      ]);
+      const res = await request(app)
+        .post('/api/v1/admin/onboarding/import?dryRun=true')
+        .set('Authorization', `Bearer ${token}`)
+        .set('Content-Type', 'text/csv')
+        .send(csv);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.dryRun).toBe(true);
+      expect(res.body.data.parseErrors).toEqual([{ row: 2, issue: 'Must be a valid FQDN' }]);
+      expect(
+        res.body.data.rows.map((r: { action: string; row: number }) => [r.row, r.action]),
+      ).toEqual([
+        [1, 'created'],
+        [3, 'updated'],
+        [4, 'failed'],
+      ]);
+      expect(res.body.data.rows[2].issue).toBe('FINGERPRINT_IN_USE');
+      expect(await db('organizations').where({ identifier: idNew }).first()).toBeUndefined();
+      expect(await db('audit_logs').where({ resource_id: idNew }).first()).toBeUndefined();
+    });
   });
 });
