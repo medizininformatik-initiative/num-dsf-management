@@ -385,3 +385,39 @@ Four-eyes requests to publish an old bundle version again (025). A second admin 
 | pending_slot | TINYINT (generated, stored) | yes | 1 while PENDING, else NULL | UNIQUE uq_brr_one_pending: at most one pending request |
 
 FKs: `source_version_id` → `bundle_versions.id` ON DELETE CASCADE (fk_brr_source).
+
+## backup_settings
+
+Schedule of the application backups (028). A single row, `id = 1` (CHECK), seeded with the defaults.
+
+| Column | Type | Nullable | Default | Key |
+|---|---|---|---|---|
+| id | TINYINT | no | — | PK (CHECK id = 1) |
+| enabled | TINYINT(1) | no | 1 | |
+| mode | ENUM('EVERY_6H','EVERY_12H','DAILY') | no | 'DAILY' | |
+| daily_time | CHAR(5) | no | '02:30' | HH:MM, Europe/Berlin, used when mode is DAILY |
+| retention_count | INT | no | 14 | CHECK 7 to 365 |
+| updated_by | VARCHAR(255) | yes | NULL | |
+| updated_at | DATETIME(3) | yes | NULL | |
+
+## backup_runs
+
+One row per backup attempt, scheduled or manual (028). Pruned files keep their row (`file_deleted = 1`).
+
+| Column | Type | Nullable | Default | Key |
+|---|---|---|---|---|
+| id | CHAR(36) | no | — | PK |
+| started_at | DATETIME(3) | no | — | idx_backup_runs_started |
+| finished_at | DATETIME(3) | no | — | |
+| trigger_type | ENUM('SCHEDULED','MANUAL') | no | — | |
+| triggered_by | VARCHAR(255) | yes | NULL | Admin email, NULL for scheduled runs |
+| status | ENUM('SUCCESS','FAILED') | no | — | |
+| file_name | VARCHAR(255) | yes | NULL | Under BACKUP_DIR |
+| size_bytes | BIGINT | yes | NULL | |
+| sha256 | CHAR(64) | yes | NULL | SHA-256 of the file as written |
+| encrypted | TINYINT(1) | no | 0 | AES-256-GCM (BACKUP_ENCRYPTION_KEY) |
+| duration_ms | INT | no | — | |
+| error | VARCHAR(1000) | yes | NULL | |
+| file_deleted | TINYINT(1) | no | 0 | Removed by retention |
+
+`audit_logs.resource_type` gains `'BACKUP'` and `audit_logs.operation` gains `'DOWNLOAD'` in 028 (appended to the ENUMs as they stand in the live database).

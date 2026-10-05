@@ -647,6 +647,56 @@ gunzip < backups/dsf_allowlist_YYYYMMDD_HHMMSS.sql.gz | \
   docker compose exec -T db mysql -u root -p${DB_ROOT_PASSWORD} dsf_allowlist
 ```
 
+## Backup und Wiederherstellung
+
+Zusätzlich zum MySQL-Dump (`scripts/backup-db.sh`, siehe oben) sichert das Portal seinen gesamten Anwendungsstand selbst als JSON. Ein Admin stellt den Zeitplan unter **Admin > Backups** (`/app/admin/backups`) ein; das Einspielen erfolgt bewusst manuell auf dem Server.
+
+### Was gesichert wird
+
+- Jede Tabelle des MySQL-Schemas (die Liste kommt zur Laufzeit aus `information_schema`, neue Tabellen sind automatisch dabei), inklusive `audit_logs`, `users`, Zertifikate (öffentliche PEM), Kontakte, Bundle-Versionen und die Backup-Einstellungen selbst. Es gibt keine Migrations-Buchführungstabelle im Schema (Migrationen werden von Hand angewendet, `.migrations-applied` liegt außerhalb der Datenbank); daher wird nichts ausgenommen. Generierte Spalten werden von MySQL beim Einspielen neu berechnet.
+- Format: eine Datei `dsf-allowlist-backup-<UTC-Zeit>-<id>.json.gz` mit `format`, `formatVersion`, `createdAt`, `appVersion`, `schemaVersion` (Nummer der letzten Migration), `tables` (Spalten und Zeilen, Zeitstempel mit Millisekunden, JSON-Spalten als JSON, Binärdaten als base64), `counts` und `sha256` (über den `tables`-Teil). Die Tabellen werden in einem einzigen konsistenten Snapshot gelesen, die Datei wird gestreamt und gzip-komprimiert.
+- Nicht gesichert wird Redis (OTP-Codes, Refresh-Tokens, Rate-Limits). Nach einer Wiederherstellung sind daher alle Sitzungen ungültig und alle müssen sich neu anmelden.
+
+### Wo die Dateien liegen
+
+- Verzeichnis im Backend-Container: `BACKUP_DIR` (Standard `/backups`), in den Compose-Dateien als benanntes Volume `backup-data` eingebunden. Es wird kein Port veröffentlicht. Dateien haben Modus `0600`, das Verzeichnis `0700`; geschrieben wird erst in eine Temp-Datei, dann atomar umbenannt.
+- Zeitplan (Admin-Seite): aktiv/inaktiv; alle 6 Stunden, alle 12 Stunden oder täglich zu einer Uhrzeit (Europe/Berlin), nie seltener als täglich; Aufbewahrung 7 bis 365 Dateien (Standard 14). Standard nach der Migration: täglich 02:30, 14 Dateien. Das Backend prüft jede Minute, ob ein Backup fällig ist (ein ausgefallener Termin wird nachgeholt); ein Redis-Lock (`backup:lock`) verhindert parallele Läufe. Ein fehlgeschlagener Lauf wird nach 15 Minuten wiederholt und auf der Admin-Seite deutlich angezeigt.
+- Jeder Lauf (Zeit, Datei, Größe, SHA-256, Dauer, Status, Fehler) steht in der Tabelle `backup_runs` und im Audit-Log (`BACKUP`: `CREATE` für Läufe, `UPDATE` für Einstellungen, `DOWNLOAD`).
+
+### Verschlüsselung (optional)
+
+Ist `BACKUP_ENCRYPTION_KEY` (64 Hex-Zeichen, z. B. `openssl rand -hex 32`) in `.env.prod` gesetzt, werden neue Dateien mit AES-256-GCM verschlüsselt (`*.json.gz.enc`). Den Schlüssel getrennt von den Dateien aufbewahren (Passwortmanager): ohne ihn ist ein verschlüsseltes Backup unbrauchbar, und beim Wiederherstellen muss derselbe Schlüssel im Backend gesetzt sein. Ohne Schlüssel enthalten die Dateien Kontaktdaten, verschlüsselte TOTP-Secrets und bcrypt-Hashes der Backup-Codes im Klartext (öffentliche Zertifikate, nie private Schlüssel): wie ein Geheimnis behandeln.
+
+### Dateien vom Server holen
+
+```bash
+# Liste im Volume
+docker compose exec backend ls -l /backups
+# Datei auf den Host kopieren (Name aus der Admin-Seite)
+docker compose cp backend:/backups/dsf-allowlist-backup-20261005-023000-ab12cd34.json.gz .
+# Prüfsumme mit der Admin-Seite vergleichen
+sha256sum dsf-allowlist-backup-20261005-023000-ab12cd34.json.gz
+```
+
+Alternativ lädt die Admin-Seite die Datei herunter (Step-up, Audit-Eintrag). Kopien gehören auf ein anderes System, nicht nur auf denselben Server.
+
+### Wiederherstellen (manuell, Schritt für Schritt)
+
+1. Backend-Version bereitstellen, die zur Datei passt oder neuer ist. Ein Backup aus einem **neueren** Schema (`schemaVersion` größer als die der Installation) wird abgelehnt. Ein Backup aus einem **älteren** Schema wird akzeptiert, wenn jede enthaltene Tabelle und Spalte noch existiert; sonst bricht das Skript mit einer klaren Meldung ab (dann in eine Datenbank einspielen, deren Migrationsstand dem Backup entspricht). Migrationen werden vom Skript nie automatisch ausgeführt.
+2. Prüfen, ohne etwas zu ändern:
+   ```bash
+   bash scripts/restore-backup.sh dsf-allowlist-backup-20261005-023000-ab12cd34.json.gz --dry-run
+   ```
+   Eine Datei vom Host wird dazu automatisch in den Container kopiert (`/tmp`). Geprüft werden Format, Version, Zeilenzahlen und SHA-256; ausgegeben werden die Zeilen je Tabelle.
+3. Einspielen (ersetzt **alle** Anwendungsdaten der gesicherten Tabellen):
+   ```bash
+   bash scripts/restore-backup.sh dsf-allowlist-backup-20261005-023000-ab12cd34.json.gz --yes
+   ```
+   Ohne `--yes` passiert nichts (Exit-Code 2). Alles läuft in einer Transaktion mit deaktivierten Fremdschlüsselprüfungen; bei einem Fehler wird vollständig zurückgerollt. Die Trigger der betroffenen Tabellen werden kurz entfernt (damit der append-only `audit_logs` geleert werden kann: die einzige dokumentierte Ausnahme) und danach neu angelegt. Wird der Prozess dabei hart beendet, die Migrationen 013 und 015 erneut anwenden. Tabellen, die nur die Datenbank kennt (z. B. aus einer neueren Migration), bleiben unverändert.
+4. Backend neu starten (`docker compose restart backend`). Alle Sitzungen sind ungültig; alle melden sich neu an.
+
+Das Skript liest die gesamte Datei in den Speicher; bei sehr großen `audit_logs` entsprechend Arbeitsspeicher einplanen (Faustregel: das Zehnfache der `.json.gz`-Größe).
+
 ## Health Check
 
 ```bash

@@ -228,6 +228,18 @@ Mounted at `/api/v1/admin/bundle-restores`. All `requireAdmin`; the writes need 
 
 Every step (request, approve, reject, cancel) is written to the audit log (`resource_type` APPROVAL, `diff_json.action` `bundle_restore`).
 
+### Backups (admin)
+
+Mounted at `/api/v1/admin/backups`. All `requireAdmin`; writes and the download need the step-up (TOTP code, or the re-presented client certificate in certificate sessions). Restoring is not an API: it is done by hand on the server (`scripts/restore-backup.sh`, see DEPLOYMENT.md, "Backup und Wiederherstellung").
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/admin/backups/settings | requireAdmin | `{ settings: { enabled, mode (EVERY_6H, EVERY_12H, DAILY), dailyTime (HH:MM, Europe/Berlin), retentionCount, updatedBy, updatedAt }, encryptionEnabled, directory }`. |
+| PUT | /api/v1/admin/backups/settings | requireAdmin + step-up | Body `{ enabled, mode, dailyTime, retentionCount (7-365), totpCode? }` → `{ settings }`. 400 `VALIDATION`. Audited (`BACKUP` / `UPDATE`). |
+| GET | /api/v1/admin/backups/runs | requireAdmin | `{ runs }`, newest first: `id`, `startedAt`, `finishedAt`, `trigger` SCHEDULED/MANUAL, `triggeredBy`, `status` SUCCESS/FAILED, `fileName`, `sizeBytes`, `sha256` (of the file), `encrypted`, `durationMs`, `error`, `fileDeleted`. |
+| POST | /api/v1/admin/backups/run | requireAdmin + step-up | Create a backup now → `{ run }` (201). 409 `BACKUP_BUSY` (another run holds the lock), 500 `BACKUP_FAILED` (the failed run is recorded). |
+| POST | /api/v1/admin/backups/runs/:id/download | requireAdmin + step-up + rate limit (10 / 15 min) | Streams the stored file (`application/octet-stream`, attachment). POST rather than GET so the OTP step-up code can travel in the body. 404 if unknown, pruned or not a managed file name. Audited (`BACKUP` / `DOWNLOAD`). |
+
 ### Approval / Audit / Instances (admin.routes)
 
 Mounted at `/api/v1/admin`. All `requireAdmin`.

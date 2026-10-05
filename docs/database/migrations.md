@@ -28,3 +28,4 @@ All migrations are idempotent (existence-guarded) except 013–018, which run un
 | 023 | 023_approval_requests_created_at_ms.sql | approval_requests.created_at in milliseconds, so the latest request of an instance is unambiguous | — |
 | 024 | 024_bundle_versions_input.sql | bundle_versions.input_json: the builder input of each version, so receiver views and restores can be rebuilt (older versions stay NULL and are not restorable) | Nullable LONGTEXT column |
 | 025 | 025_bundle_restore_requests.sql | Create bundle_restore_requests: four-eyes requests to restore an old bundle version (a unique key on a generated column allows one PENDING request at a time) | FK to bundle_versions (ON DELETE CASCADE) |
+| 028 | 028_backup_settings.sql | Create backup_settings (single-row schedule) and backup_runs (history of backup attempts); append 'BACKUP' to audit_logs.resource_type and 'DOWNLOAD' to audit_logs.operation, preserving the values already in the live ENUMs | — |
