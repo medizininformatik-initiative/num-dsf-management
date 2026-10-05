@@ -1,0 +1,94 @@
+/*
+ * brand-mark.css – motion of the BrandMark glyph. Every animation is declared
+ * inside prefers-reduced-motion: no-preference, so under Reduce Motion the
+ * mark simply sits there, fully drawn.
+ * Intro (once, on mount): the four links draw out from the centre node, the
+ * arm nodes pop in one after another on the spring curve, then a soft sheen
+ * sweeps across the glyph. Hover: the nodes breathe once in sequence and the
+ * sheen sweeps again. No loop.
+ */
+.brand-mark .bm-node,
+.brand-mark .bm-core,
+.brand-mark .bm-breathe {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* At rest the sheen waits outside the glyph. */
+.brand-mark .bm-sheen {
+  transform: translateX(40px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .brand-mark .bm-link {
+    stroke-dasharray: 1;
+    animation: bm-draw var(--duration-long) var(--ease-standard) calc(var(--bm-i, 0) * 60ms + 80ms)
+      both;
+  }
+  .brand-mark .bm-ring {
+    animation: bm-fade var(--duration-long) var(--ease-standard) 360ms both;
+  }
+  .brand-mark .bm-core {
+    animation: bm-pop var(--duration-medium) var(--ease-spring-bouncy) both;
+  }
+  .brand-mark .bm-node {
+    animation: bm-pop var(--duration-medium) var(--ease-spring-bouncy)
+      calc(var(--bm-i, 0) * 60ms + 160ms) both;
+  }
+  .brand-mark .bm-sheen {
+    animation: bm-sweep calc(var(--duration-long) * 2) var(--ease-standard) 720ms both;
+  }
+  .brand-mark:hover .bm-breathe {
+    animation: bm-breathe var(--duration-long) var(--ease-standard) calc(var(--bm-i, 0) * 70ms);
+  }
+  .brand-mark:hover .bm-sheen-hover {
+    animation: bm-sweep-back calc(var(--duration-long) * 2) var(--ease-standard);
+  }
+}
+
+@keyframes bm-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes bm-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes bm-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+@keyframes bm-breathe {
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+/* The sheen rect travels from left of the glyph to its resting place right
+   of it; on hover its wrapper carries it back to the left and across again. */
+@keyframes bm-sweep {
+  from {
+    transform: translateX(-40px);
+  }
+  to {
+    transform: translateX(40px);
+  }
+}
+
+@keyframes bm-sweep-back {
+  from {
+    transform: translateX(-80px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
