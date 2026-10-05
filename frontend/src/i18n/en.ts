@@ -1363,8 +1363,6 @@ export const en = {
   ariaDeleteContact: 'Delete contact',
   ariaNotifications: 'Notifications',
   ariaClearNotifications: 'Clear all notifications',
-  ariaGoBack: 'Go back',
-  ariaGoForward: 'Go forward',
   ariaToggleTheme: 'Toggle theme',
   ariaToggleLanguage: 'Toggle language',
 

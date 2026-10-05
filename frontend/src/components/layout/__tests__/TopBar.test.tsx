@@ -1,5 +1,5 @@
 /**
- * TopBar.test.tsx — navigation controls without a duplicate product title
+ * TopBar.test.tsx — no history arrows and no duplicate product title
  * or environment badge (both live in the sidebar), and the instance actions: one primary CTA that is
  * disabled and relabelled "Waiting for approval" while the active instance has
  * a PENDING request. Entity and approval hooks are stubbed.
@@ -29,9 +29,10 @@ beforeEach(() => {
 });
 
 describe('TopBar', () => {
-  it('renders navigation controls without instance actions', () => {
+  it('renders without history arrows or instance actions', () => {
     renderWithProviders(<TopBar onDownload={vi.fn()} onApproval={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /go back|go forward/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument();
     // Instance-only actions hidden by default, and no approval query for them.
     expect(screen.queryByRole('button', { name: /send for approval/i })).not.toBeInTheDocument();
     expect(useApprovalStatus).toHaveBeenCalledWith(null);

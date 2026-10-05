@@ -1,8 +1,7 @@
 /**
  * TopBar.tsx – Canvas top bar on the chrome glass material, as tall as the
- * sidebar header (56 px): history navigation, search, theme and language
- * toggles, notifications and the instance actions with one primary CTA. The
- * product name and the environment live in the sidebar header only (no
+ * sidebar header (56 px): search, theme and language toggles, notifications
+ * and the instance actions with one primary CTA. The product name and the environment live in the sidebar header only (no
  * duplicate title or environment badge here). The approval CTA follows the
  * active instance's latest request: while one is PENDING it is disabled and
  * reads "Waiting for approval". Fits a 1024 px wide bar: below xl the
@@ -10,7 +9,6 @@
  * Dependencies: SearchBar, NotificationCenter, Button, Icon, canvas.store,
  * useApproval, theme.store, i18n.store
  */
-import { useNavigate } from 'react-router-dom';
 import { SearchBar } from './SearchBar';
 import { NotificationCenter } from './NotificationCenter';
 import { Button } from '../ui/Button';
@@ -31,7 +29,6 @@ export function TopBar({
 }) {
   const { t, lang, setLang } = useI18n();
   const { dark, toggleTheme } = useThemeStore();
-  const navigate = useNavigate();
   const activeInstanceId = useCanvasStore((s) => s.activeInstanceId);
   const { data } = useApprovalStatus(showInstanceActions ? activeInstanceId : null);
   const approval: ApprovalStatus | null | undefined = data;
@@ -39,28 +36,7 @@ export function TopBar({
 
   return (
     <div className="glass-chrome relative z-40 flex h-14 flex-shrink-0 items-center justify-between gap-3 px-4 xl:px-6">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(-1)}
-          className="hidden px-1.5 sm:inline-flex"
-          title={t('ariaGoBack')}
-          aria-label={t('ariaGoBack')}
-        >
-          <Icon name="arrow_back" size={20} />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(1)}
-          className="hidden px-1.5 sm:inline-flex"
-          title={t('ariaGoForward')}
-          aria-label={t('ariaGoForward')}
-        >
-          <Icon name="arrow_forward" size={20} />
-        </Button>
-      </div>
+      <div className="min-w-0" />
 
       {showInstanceActions && (
         <div className="hidden lg:block">

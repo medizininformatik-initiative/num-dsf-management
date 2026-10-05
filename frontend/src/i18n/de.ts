@@ -1390,8 +1390,6 @@ export const de: Record<TranslationKey, string> = {
   ariaDeleteContact: 'Kontakt löschen',
   ariaNotifications: 'Benachrichtigungen',
   ariaClearNotifications: 'Alle Benachrichtigungen löschen',
-  ariaGoBack: 'Zurück',
-  ariaGoForward: 'Vorwärts',
   ariaToggleTheme: 'Design umschalten',
   ariaToggleLanguage: 'Sprache umschalten',
 
