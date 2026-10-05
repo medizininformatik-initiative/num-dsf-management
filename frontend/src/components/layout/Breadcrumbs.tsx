@@ -1,7 +1,10 @@
 /**
- * Breadcrumbs.tsx – Shows the navigation path for sub-routes: translated
- * segment labels, parent links in the brand colour and the current page
- * marked with aria-current (WAI-ARIA breadcrumb pattern).
+ * Breadcrumbs.tsx – Shows the way up from nested routes (/app/x/y): translated
+ * ancestor links in the accent colour. The current page stays in the trail
+ * for assistive tech (aria-current, WAI-ARIA breadcrumb pattern) but is
+ * visually hidden, because the page header right below already names it.
+ * One level deep (/app/x) there is nothing to show beyond the sidebar's
+ * current item and that header, so it renders nothing.
  * Dependencies: react-router-dom, i18n.store
  */
 import { Link, useLocation } from 'react-router-dom';
@@ -28,13 +31,13 @@ export function Breadcrumbs() {
   const location = useLocation();
   const segments = location.pathname.split('/').filter(Boolean);
 
-  // Only show on sub-routes (not on /app itself)
-  if (segments.length <= 1) return null;
+  // Only nested routes have an ancestor besides the dashboard.
+  if (segments.length <= 2) return null;
 
   return (
     <nav
       aria-label={t('shellBreadcrumb')}
-      className="bg-[color:var(--bg-card)] px-[30px] py-2 text-xs text-[color:var(--text-muted)]"
+      className="px-6 pt-3 text-xs text-[color:var(--text-muted)]"
     >
       <ol className="flex flex-wrap items-center gap-1.5">
         {segments.map((seg, i) => {
@@ -43,8 +46,8 @@ export function Breadcrumbs() {
           const isLast = i === segments.length - 1;
 
           return (
-            <li key={path} className="flex items-center gap-1.5">
-              {i > 0 && (
+            <li key={path} className={isLast ? 'sr-only' : 'flex items-center gap-1.5'}>
+              {i > 0 && !isLast && (
                 <span aria-hidden="true" className="text-[color:var(--border-strong)]">
                   /
                 </span>
@@ -59,7 +62,7 @@ export function Breadcrumbs() {
               ) : (
                 <Link
                   to={path}
-                  className="font-medium text-brand-700 underline-offset-2 hover:underline focus-visible:underline dark:text-brand-400"
+                  className="rounded-sm font-medium text-[color:var(--primary)] underline-offset-2 hover:underline focus-visible:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
                 >
                   {label}
                 </Link>

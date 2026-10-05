@@ -9,20 +9,19 @@ describe('Breadcrumbs', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('renders a labelled trail on a sub-route', () => {
-    renderWithProviders(<Breadcrumbs />, { route: '/app/audit' });
-    expect(screen.getByRole('navigation')).toBeInTheDocument();
-    // First segment ("app") is a link, last segment ("audit") is plain text.
-    const link = screen.getByRole('link', { name: /dashboard/i });
-    expect(link).toHaveAttribute('href', '/app');
-    expect(screen.getByText(/audit log/i)).toBeInTheDocument();
+  it('renders nothing one level deep, where the sidebar and page header suffice', () => {
+    const { container } = renderWithProviders(<Breadcrumbs />, { route: '/app/audit' });
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('names the trail and marks the current page', () => {
     renderWithProviders(<Breadcrumbs />, { route: '/app/admin/users' });
     const nav = screen.getByRole('navigation', { name: 'Breadcrumb' });
     expect(nav.querySelectorAll('li')).toHaveLength(3);
-    expect(screen.getByText('User management')).toHaveAttribute('aria-current', 'page');
+    // The page header names the current page; the trail keeps it for screen readers only.
+    const current = screen.getByText('User management');
+    expect(current).toHaveAttribute('aria-current', 'page');
+    expect(current.closest('li')).toHaveClass('sr-only');
     expect(screen.getByRole('link', { name: 'Approval Review' })).toHaveAttribute(
       'href',
       '/app/admin',

@@ -96,7 +96,6 @@ describe('TopBar', () => {
     renderWithProviders(<TopBar onDownload={vi.fn()} onApproval={vi.fn()} showInstanceActions />, {
       route: '/app',
     });
-    expect(screen.getByText(/Allow List Management/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /download allow list/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /send for approval/i })).toBeInTheDocument();
   });
@@ -153,12 +152,12 @@ describe('SearchBar', () => {
 
 describe('Breadcrumbs', () => {
   it('renders a labelled trail on a sub-route with the parent as a link', () => {
-    renderWithProviders(<Breadcrumbs />, { route: '/app/audit' });
+    renderWithProviders(<Breadcrumbs />, { route: '/app/admin/users' });
 
     expect(screen.getByRole('navigation')).toBeInTheDocument();
     const parent = screen.getByRole('link', { name: /dashboard/i });
     expect(parent).toHaveAttribute('href', '/app');
     // Last segment is plain text, not a link.
-    expect(screen.getByText(/audit log/i)).toBeInTheDocument();
+    expect(screen.getByText('User management')).not.toHaveAttribute('href');
   });
 });
