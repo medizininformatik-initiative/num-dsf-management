@@ -1,22 +1,31 @@
 /**
  * statusColors.ts – Single source of truth for status colours.
- * - STATUS_COLOR: the certificate-status color quartet shared across the map
- *   (pins, clusters, filters, detail panel), keyed by MapOrganization's
- *   cert_status enum.
+ * - CERT_STATUS_TONE / certStatusColor: the certificate status of a map
+ *   organization expressed in the shared status tones, so pins, clusters,
+ *   filters and the detail panel use the same AA-contrast colours as
+ *   StatusPill in light and dark mode.
  * - TONE_CLASS: the status tones (StatusPill and other status UI) as Tailwind
  *   classes on the --tone-* scale in src/index.css, AA-contrast in light and
  *   dark mode.
  */
 import type { MapOrganization } from '../api/network.api';
 
-export const STATUS_COLOR: Record<MapOrganization['cert_status'], string> = {
-  VALID: '#22c55e',
-  EXPIRING: '#f5a623',
-  EXPIRED: '#ef4444',
-  NONE: '#94a3b8',
+export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+
+export type CertStatus = MapOrganization['cert_status'];
+
+/** Tone of each certificate status of a map organization. */
+export const CERT_STATUS_TONE: Record<CertStatus, StatusTone> = {
+  VALID: 'success',
+  EXPIRING: 'warning',
+  EXPIRED: 'danger',
+  NONE: 'neutral',
 };
 
-export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+/** CSS colour (the tone's foreground) for a certificate status. */
+export function certStatusColor(status: CertStatus): string {
+  return `var(--tone-${CERT_STATUS_TONE[status]}-fg)`;
+}
 
 /** Surface, hairline border and text colour for each tone. */
 export const TONE_CLASS: Record<StatusTone, string> = {
