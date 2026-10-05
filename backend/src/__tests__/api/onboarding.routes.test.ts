@@ -291,5 +291,81 @@ describe('POST /api/v1/admin/onboarding/import', () => {
       expect(await db('organizations').where({ identifier: idNew }).first()).toBeUndefined();
       expect(await db('audit_logs').where({ resource_id: idNew }).first()).toBeUndefined();
     });
+
+    it('dryRun=true flags a repeated identifier in one payload as DUPLICATE_IDENTIFIER', async () => {
+      const token = getTestToken(adminEmail, adminUserId);
+      const id = `dry-dup-${uuidv4().slice(0, 8)}.example.de`;
+      const email = `dry-dup-${uuidv4().slice(0, 8)}@example.de`;
+      identifiers.push(id);
+      emails.push(email);
+
+      const res = await request(app)
+        .post('/api/v1/admin/onboarding/import?dryRun=true')
+        .set('Authorization', `Bearer ${token}`)
+        .set('Content-Type', 'text/csv')
+        .send(csvOf([`${id},Org,${email},${FP_A}`, `${id},Org again,${email},${FP_A}`]));
+
+      expect(res.status).toBe(200);
+      expect(
+        res.body.data.rows.map((r: { action: string; issue?: string }) => [r.action, r.issue]),
+      ).toEqual([
+        ['created', undefined],
+        ['failed', 'DUPLICATE_IDENTIFIER'],
+      ]);
+    });
+  });
+
+  describe('POST /parse', () => {
+    it('returns the validated rows and parse errors without writing anything', async () => {
+      const token = getTestToken(adminEmail, adminUserId);
+      const id = `parse-${uuidv4().slice(0, 8)}.example.de`;
+      identifiers.push(id);
+
+      const res = await request(app)
+        .post('/api/v1/admin/onboarding/parse')
+        .set('Authorization', `Bearer ${token}`)
+        .set('Content-Type', 'text/csv')
+        .send(
+          csvOf([`${id},Parse Org,p@parse.example.de,${FP_A}`, `bad,Bad,x@y.example.de,${FP_A}`]),
+        );
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.rows).toEqual([
+        expect.objectContaining({
+          organizationIdentifier: id,
+          organizationName: 'Parse Org',
+          contactEmail: 'p@parse.example.de',
+          clientCertFingerprint: FP_A,
+          row: 1,
+        }),
+      ]);
+      expect(res.body.data.parseErrors).toEqual([{ row: 2, issue: 'Must be a valid FQDN' }]);
+      expect(await db('organizations').where({ identifier: id }).first()).toBeUndefined();
+    });
+
+    it('rejects a PEM, an empty body and non-admins', async () => {
+      const token = getTestToken(adminEmail, adminUserId);
+      const pem = await request(app)
+        .post('/api/v1/admin/onboarding/parse')
+        .set('Authorization', `Bearer ${token}`)
+        .set('Content-Type', 'text/csv').send(`${HEADER}
+-----BEGIN PRIVATE KEY-----`);
+      expect(pem.status).toBe(400);
+      expect(pem.body.error.code).toBe('PEM_NOT_ALLOWED');
+
+      const empty = await request(app)
+        .post('/api/v1/admin/onboarding/parse')
+        .set('Authorization', `Bearer ${token}`)
+        .set('Content-Type', 'text/csv');
+      expect(empty.status).toBe(400);
+      expect(empty.body.error.code).toBe('EMPTY_BODY');
+
+      const nonAdmin = await request(app)
+        .post('/api/v1/admin/onboarding/parse')
+        .set('Authorization', `Bearer ${getTestToken(nonAdminEmail, nonAdminUserId)}`)
+        .set('Content-Type', 'text/csv')
+        .send(csvOf([]));
+      expect(nonAdmin.status).toBe(403);
+    });
   });
 });

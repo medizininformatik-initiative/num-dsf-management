@@ -260,6 +260,22 @@ describe('importSites', () => {
     expect(instances).toHaveLength(1);
   });
 
+  it('fails a repeated identifier in one payload with DUPLICATE_IDENTIFIER and writes only the first', async () => {
+    const row = track(importRow());
+    const again = { ...row, organizationName: 'Renamed in a second file' };
+
+    const result = await importSites([row, again], ACTOR_EMAIL, IP);
+
+    expect(result.rows[0]).toMatchObject({ action: 'created', ok: true });
+    expect(result.rows[1]).toMatchObject({
+      action: 'failed',
+      ok: false,
+      issue: 'DUPLICATE_IDENTIFIER',
+    });
+    const org = await db('organizations').where({ identifier: row.organizationIdentifier }).first();
+    expect(org.name).toBe(row.organizationName);
+  });
+
   it("fails the second row with FINGERPRINT_IN_USE when it reuses another identifier's fingerprint, first row stays ok", async () => {
     const sharedFp = 'd'.repeat(128);
     const rowA = track(importRow({ clientCertFingerprint: sharedFp }));

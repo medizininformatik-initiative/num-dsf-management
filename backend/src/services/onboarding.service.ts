@@ -222,8 +222,9 @@ export function parseOnboardingFile(
 /**
  * Dry run of importSites: reports per row what an import would do (created /
  * updated / failed) without writing anything. Mirrors the import's checks,
- * including conflicts between rows of the same file (a later row that reuses
- * an earlier row's fingerprint under another identifier would fail).
+ * including conflicts between rows of the same payload (a later row that reuses
+ * an earlier row's identifier, or its fingerprint under another identifier,
+ * would fail).
  */
 export async function previewSites(rows: OnboardingRow[]): Promise<ImportResult> {
   const results: ImportRowResult[] = [];
@@ -237,14 +238,17 @@ export async function previewSites(rows: OnboardingRow[]): Promise<ImportResult>
       .where({ client_cert_fingerprint: fp })
       .whereNot({ identifier })
       .first();
+    if (seenIds.has(identifier)) {
+      results.push({ identifier, action: 'failed', ok: false, issue: 'DUPLICATE_IDENTIFIER' });
+      continue;
+    }
     const fileOwner = fileFingerprintOwner.get(fp);
     if (owner || (fileOwner && fileOwner !== identifier)) {
       results.push({ identifier, action: 'failed', ok: false, issue: 'FINGERPRINT_IN_USE' });
       continue;
     }
     fileFingerprintOwner.set(fp, identifier);
-    const exists =
-      seenIds.has(identifier) || !!(await db('organizations').where({ identifier }).first());
+    const exists = !!(await db('organizations').where({ identifier }).first());
     seenIds.add(identifier);
     results.push({ identifier, action: exists ? 'updated' : 'created', ok: true });
   }
@@ -294,9 +298,17 @@ export async function importSites(
   ip: string,
 ): Promise<ImportResult> {
   const rowResults: ImportRowResult[] = [];
+  const seenIds = new Set<string>();
 
   for (const row of rows) {
     const identifier = row.organizationIdentifier;
+    // The same site twice in one payload (e.g. two files) is a conflict, not
+    // an update: only the first occurrence is written.
+    if (seenIds.has(identifier)) {
+      rowResults.push({ identifier, action: 'failed', ok: false, issue: 'DUPLICATE_IDENTIFIER' });
+      continue;
+    }
+    seenIds.add(identifier);
     try {
       const action = await db.transaction(async (trx) => {
         // 1. The fingerprint must not already belong to a different org.

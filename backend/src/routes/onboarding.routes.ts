@@ -5,7 +5,8 @@
  * onboarding.service can apply its own file-level guards — size, PEM content,
  * row count — before anything is parsed as structured data), then hands the
  * validated rows to importSites for per-row transactional import.
- * `?dryRun=true` validates and reports what would happen without writing
+ * `POST /parse` only parses and validates a file (no DB, no write) so many
+ * files can be merged client-side. `?dryRun=true` validates and reports what would happen without writing
  * anything; as it changes nothing it skips the certificate step-up and the
  * import rate limit.
  * Dependencies: auth.middleware, admin.middleware, rateLimit.middleware,
@@ -82,35 +83,56 @@ const rawBody = express.raw({
   limit: '1mb',
 });
 
+// Parses the raw body into validated rows; on a file-level problem it sends
+// the error response itself and returns null.
+async function parseUpload(
+  req: Request,
+  res: Response,
+): Promise<Awaited<ReturnType<typeof parseOnboardingXlsx>> | null> {
+  const buf = req.body as Buffer;
+  if (!Buffer.isBuffer(buf) || buf.length === 0) {
+    res.status(400).json({ error: { code: 'EMPTY_BODY', message: 'Request body is empty.' } });
+    return null;
+  }
+  try {
+    const contentType = req.headers['content-type'];
+    return isXlsxUpload(buf, contentType)
+      ? await parseOnboardingXlsx(buf)
+      : parseOnboardingFile(buf, contentType);
+  } catch (err: unknown) {
+    const code = errMessage(err);
+    const status = PARSE_ERROR_STATUS[code] ?? 400;
+    res.status(status).json({
+      error: {
+        code: code || 'INVALID_FILE',
+        message: PARSE_ERROR_MESSAGE[code] || 'Invalid upload.',
+      },
+    });
+    return null;
+  }
+}
+
+// Parse only (no DB access, nothing written): the multi-file upload reads each
+// file through here and merges the rows client-side before one check / import.
+onboardingRouter.post(
+  '/parse',
+  rawBody,
+  asyncHandler(async (req, res) => {
+    const parsed = await parseUpload(req, res);
+    if (!parsed) return;
+    const rows = parsed.valid.map((r, i) => ({ ...r, row: parsed.validRows[i] }));
+    res.json({ data: { rows, parseErrors: parsed.errors } });
+  }),
+);
+
 onboardingRouter.post(
   '/import',
   ...importLimit,
   unlessDryRun(requireCertStepUp),
   rawBody,
   asyncHandler(async (req, res) => {
-    const buf = req.body as Buffer;
-    if (!Buffer.isBuffer(buf) || buf.length === 0) {
-      res.status(400).json({ error: { code: 'EMPTY_BODY', message: 'Request body is empty.' } });
-      return;
-    }
-
-    let parsed: Awaited<ReturnType<typeof parseOnboardingXlsx>>;
-    try {
-      const contentType = req.headers['content-type'];
-      parsed = isXlsxUpload(buf, contentType)
-        ? await parseOnboardingXlsx(buf)
-        : parseOnboardingFile(buf, contentType);
-    } catch (err: unknown) {
-      const code = errMessage(err);
-      const status = PARSE_ERROR_STATUS[code] ?? 400;
-      res.status(status).json({
-        error: {
-          code: code || 'INVALID_FILE',
-          message: PARSE_ERROR_MESSAGE[code] || 'Invalid upload.',
-        },
-      });
-      return;
-    }
+    const parsed = await parseUpload(req, res);
+    if (!parsed) return;
 
     const dryRun = isDryRun(req);
     const result = dryRun
