@@ -39,9 +39,11 @@ What this script does, in order:
   2. Infers \$DSF_ROOT/.migrations-applied from the current migrations
      directory if it does not exist yet (one-time baseline, recorded on a
      real run; a --dry-run never writes it).
-  3. Copies NEW_TREE over \$DSF_ROOT with 'rsync -a' (no --delete),
-     preserving .env.prod, .env, docker-compose.apache.yml, hackathon/,
-     .migrations-applied, certs/, node_modules/ and .git/.
+  3. Copies NEW_TREE over \$DSF_ROOT with 'rsync -a' (no --delete at the top
+     level), preserving .env.prod, .env, docker-compose.apache.yml, hackathon/,
+     .migrations-applied, certs/, node_modules/ and .git/. The pure source
+     directories backend/src and frontend/src are then mirrored exactly
+     (--delete), so files removed in the repository cannot break the build.
   4. Applies any db/migrations/*.sql not yet recorded in
      .migrations-applied, in filename order, stopping at the first failure.
   5. Rebuilds and restarts the backend and frontend containers.
@@ -179,8 +181,13 @@ RSYNC_EXCLUDES=(
   --exclude .git/
 )
 
+# Pure source directories: nothing server-local lives here, and a file removed
+# in the repository must disappear on the server too, or tsc still compiles it
+# (2026-10-06: removed pages broke the frontend build).
+MIRROR_DIRS=(backend/src frontend/src)
+
 if [ "$DRY_RUN" = true ]; then
-  log "dry-run: previewing changes rsync would make (nothing is copied, no --delete is ever used)"
+  log "dry-run: previewing changes rsync would make (nothing is copied or deleted)"
   RSYNC_OUT="$(rsync -a -n --itemize-changes "${RSYNC_EXCLUDES[@]}" "$NEW_TREE/" "$DSF_ROOT/")"
   CHANGES=()
   if [ -n "$RSYNC_OUT" ]; then
@@ -188,6 +195,11 @@ if [ "$DRY_RUN" = true ]; then
       CHANGES+=("$line")
     done <<< "$RSYNC_OUT"
   fi
+  for d in "${MIRROR_DIRS[@]}"; do
+    while IFS= read -r line; do
+      case "$line" in *deleting*) CHANGES+=("$d/: $line") ;; esac
+    done < <(rsync -a -n --delete --itemize-changes "$NEW_TREE/$d/" "$DSF_ROOT/$d/")
+  done
   if [ "${#CHANGES[@]}" -eq 0 ]; then
     log "No files would change"
   else
@@ -199,6 +211,9 @@ if [ "$DRY_RUN" = true ]; then
   fi
 else
   rsync -a "${RSYNC_EXCLUDES[@]}" "$NEW_TREE/" "$DSF_ROOT/"
+  for d in "${MIRROR_DIRS[@]}"; do
+    rsync -a --delete "$NEW_TREE/$d/" "$DSF_ROOT/$d/"
+  done
   # Guard against exclude patterns that silently match nested paths (see the
   # note above RSYNC_EXCLUDES): every source directory must exist in the target.
   while IFS= read -r d; do
