@@ -75,6 +75,10 @@ services:
       # Certificate-only backend: OTP/TOTP routes answer 403, every session is
       # bound to the presented client certificate on each request.
       AUTH_MODE: cert
+    volumes:
+      # Application backups (JSON dumps written by the backend). A named volume,
+      # no published port; copy files off the host with docker cp / the admin page.
+      - backup-data:/backups
     depends_on:
       db:
         condition: service_healthy
@@ -200,6 +204,7 @@ services:
 volumes:
   mysql-data:
   redis-data:
+  backup-data:
 
 networks:
   frontend-net:
