@@ -1,8 +1,8 @@
 /**
- * DownloadModal.tsx — download dialog of the allow list. Leads with the link DSF
- * itself uses (the current allow list of the selected endpoint, fetched with the
- * site's client certificate) with a button that opens the draft Task of the
- * downloadAllowList process on the site's own DSF FHIR server (DsfTaskStart),
+ * DownloadModal.tsx — download dialog of the allow list. Leads with "Variant 1:
+ * DSF web UI" (DsfTaskStart): plugin, the draft Task of the downloadAllowList
+ * process on the site's own DSF FHIR server and the download URL of the selected
+ * endpoint (fetched by DSF with the site's client certificate). Then
  * lists the published versions with their DSF
  * history link and a signed GUI download, and keeps the network-wide bundle,
  * the IP address list (IMI admins only) and the content preview under a
@@ -26,7 +26,6 @@ import { saveBlob, toBlob, headerValue, sha256Hex } from '../../lib/downloadBlob
 import { BundlePreview } from './BundlePreview';
 import { DownloadVersionList } from './DownloadVersionList';
 import { DsfTaskStart } from './DsfTaskStart';
-import { SharedAllowListLink } from './SharedAllowListLink';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { Skeleton } from '../ui/Skeleton';
@@ -242,36 +241,6 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
           </select>
         </div>
 
-        <SharedAllowListLink url={sharedUrl} onCopy={(text) => void copy(text)} />
-
-        <section className="glass-thin rounded-2xl p-4" aria-labelledby={`${uid}-link`}>
-          <h3 id={`${uid}-link`} className={sectionTitle}>
-            {t('dlDsfLinkTitle')}
-          </h3>
-          <p className={`mt-1 ${helpText}`}>{t('dlDsfLinkHelp')}</p>
-          {bundleBase ? (
-            <div className="mt-3 flex items-start gap-2">
-              <code className={`${codeBox} text-xs`} data-testid="dsf-link">
-                {bundleBase}
-              </code>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => void copy(bundleBase)}
-                aria-label={t('dlCopyLink')}
-                data-testid="copy-dsf-link"
-              >
-                <Icon name="content_copy" size={16} />
-                {t('dlCopyLink')}
-              </Button>
-            </div>
-          ) : (
-            <p className="mt-3 text-xs italic text-[color:var(--text-muted)]">
-              {t('dlDsfLinkPick')}
-            </p>
-          )}
-        </section>
-
         <DsfTaskStart
           fhirBase={
             selectedEndpoint
@@ -279,7 +248,8 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
                   ?.address ?? '')
               : undefined
           }
-          allowListUrl={sharedUrl}
+          endpointUrl={bundleBase}
+          sharedUrl={sharedUrl}
           onCopy={(text) => void copy(text)}
         />
 

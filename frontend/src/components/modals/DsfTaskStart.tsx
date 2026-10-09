@@ -1,23 +1,28 @@
 /**
- * DsfTaskStart.tsx — "Start it in your DSF" section of the download dialog.
- * For the selected endpoint it builds the link to the draft Task of the
- * downloadAllowList process on the site's own DSF FHIR server (the endpoint's
- * FHIR base address), opened in a new tab, and puts the allow-list link to
- * paste next to it, with a three-step guide: open the Task, paste the link into
- * the "allow_list" input, start the process. Only http(s) bases give a link.
- * Dependencies: Button, Icon, lib/dsfTaskLink, i18n store.
+ * DsfTaskStart.tsx — "Variant 1: DSF web UI (recommended)" of the download
+ * dialog, in the structure of the previous allow-list tool: (1) intro,
+ * (2) install the DSF allow list plugin (releases link), (3) open the draft
+ * Task of the downloadAllowList process on the site's own DSF FHIR server (the
+ * endpoint's FHIR base address; button plus the readable URL), (4) enter the
+ * download URL of the selected endpoint into the Task. The shared
+ * /fhir/Bundle/mine link follows as a secondary hint. Only http(s) bases give
+ * a Task link.
+ * Dependencies: Button, Icon, SharedAllowListLink, lib/dsfTaskLink, i18n store.
  */
 import { useId, type ReactNode } from 'react';
-import { dsfTaskSearchUrl } from '../../lib/dsfTaskLink';
+import { PLUGIN_RELEASES_URL, dsfTaskDisplayUrl, dsfTaskSearchUrl } from '../../lib/dsfTaskLink';
 import { useI18n } from '../../stores/i18n.store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
+import { SharedAllowListLink } from './SharedAllowListLink';
 
 interface Props {
   /** FHIR base address of the selected endpoint; undefined while none is selected. */
   fhirBase: string | undefined;
-  /** Allow-list link to paste (the current bundle of the endpoint); '' without one. */
-  allowListUrl: string;
+  /** Download URL of the selected endpoint (https://<portal>/fhir/Bundle/<id>); '' without one. */
+  endpointUrl: string;
+  /** Shared https://<portal>/fhir/Bundle/mine link. */
+  sharedUrl: string;
   onCopy: (text: string) => void;
 }
 
@@ -38,10 +43,36 @@ function StepRow({ n, children }: { n: number; children: ReactNode }) {
   );
 }
 
-export function DsfTaskStart({ fhirBase, allowListUrl, onCopy }: Props) {
+function CopyButton({
+  label,
+  value,
+  onCopy,
+  testId,
+}: {
+  label: string;
+  value: string;
+  onCopy: (text: string) => void;
+  testId?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onCopy(value)}
+      aria-label={label}
+      title={label}
+      data-testid={testId}
+      className="press-effect inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+    >
+      <Icon name="content_copy" size={18} />
+    </button>
+  );
+}
+
+export function DsfTaskStart({ fhirBase, endpointUrl, sharedUrl, onCopy }: Props) {
   const { t } = useI18n();
   const uid = useId();
-  const taskUrl = dsfTaskSearchUrl(fhirBase);
+  const taskHref = dsfTaskSearchUrl(fhirBase);
+  const taskText = dsfTaskDisplayUrl(fhirBase);
   const title = 'text-xs font-bold text-[color:var(--text-primary)]';
 
   return (
@@ -49,62 +80,78 @@ export function DsfTaskStart({ fhirBase, allowListUrl, onCopy }: Props) {
       <h3 id={`${uid}-task`} className="text-sm font-bold text-[color:var(--text-primary)]">
         {t('dsfTaskTitle')}
       </h3>
-      <p className="mt-1 text-xs leading-relaxed text-[color:var(--text-muted)]">
-        {t('dsfTaskHelp')}
-      </p>
 
       {fhirBase === undefined ? (
         <p className="mt-3 text-xs italic text-[color:var(--text-muted)]">{t('dsfTaskPick')}</p>
-      ) : !taskUrl ? (
+      ) : !taskHref || !taskText ? (
         <p role="alert" className="mt-3 text-xs font-medium text-warning-fg">
           {t('dsfTaskInvalidBase')}
         </p>
       ) : (
-        <ol className="mt-3 space-y-4" data-testid="dsf-task-steps">
-          <StepRow n={1}>
-            <p className={title}>{t('dsfTaskStep1')}</p>
-            <div className="flex flex-wrap items-center gap-2">
+        <>
+          <ol className="mt-3 space-y-4" data-testid="dsf-task-steps">
+            <StepRow n={1}>
+              <p className="text-xs leading-relaxed text-[color:var(--text-secondary)]">
+                {t('dsfTaskHelp')}
+              </p>
+            </StepRow>
+            <StepRow n={2}>
+              <p className={title}>{t('dsfTaskStep1')}</p>
               <a
-                href={taskUrl}
+                href={PLUGIN_RELEASES_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                data-testid="dsf-task-open"
-                className="btn press-effect btn-md btn-primary"
+                data-testid="dsf-plugin-link"
+                className="inline-flex items-center gap-1 break-all text-xs font-semibold text-[color:var(--accent)] underline"
               >
-                <Icon name="open_in_new" size={16} />
-                {t('dsfTaskOpen')}
+                {PLUGIN_RELEASES_URL}
+                <Icon name="open_in_new" size={14} />
               </a>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => onCopy(taskUrl)}
-                data-testid="dsf-task-copy"
-              >
-                <Icon name="content_copy" size={16} />
-                {t('dsfTaskCopy')}
-              </Button>
-            </div>
-          </StepRow>
-          <StepRow n={2}>
-            <p className={title}>{t('dsfTaskStep2')}</p>
-            <div className="flex items-start gap-2">
-              <code className={codeBox} data-testid="dsf-task-allowlist-url">
-                {allowListUrl}
+            </StepRow>
+            <StepRow n={3}>
+              <p className={title}>{t('dsfTaskStep2')}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={taskHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="dsf-task-open"
+                  className="btn press-effect btn-md btn-primary"
+                >
+                  <Icon name="open_in_new" size={16} />
+                  {t('dsfTaskOpen')}
+                </a>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onCopy(taskHref)}
+                  data-testid="dsf-task-copy"
+                >
+                  <Icon name="content_copy" size={16} />
+                  {t('dsfTaskCopy')}
+                </Button>
+              </div>
+              <code className={`${codeBox} block`} data-testid="dsf-task-url">
+                {taskText}
               </code>
-              <button
-                type="button"
-                onClick={() => onCopy(allowListUrl)}
-                aria-label={t('dsfTaskCopyAllowList')}
-                className="press-effect inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
-              >
-                <Icon name="content_copy" size={18} />
-              </button>
-            </div>
-          </StepRow>
-          <StepRow n={3}>
-            <p className={title}>{t('dsfTaskStep3')}</p>
-          </StepRow>
-        </ol>
+            </StepRow>
+            <StepRow n={4}>
+              <p className={title}>{t('dsfTaskStep3')}</p>
+              <div className="flex items-start gap-2">
+                <code className={codeBox} data-testid="dsf-link">
+                  {endpointUrl}
+                </code>
+                <CopyButton
+                  label={t('dsfTaskCopyAllowList')}
+                  value={endpointUrl}
+                  onCopy={onCopy}
+                  testId="copy-dsf-link"
+                />
+              </div>
+            </StepRow>
+          </ol>
+          <SharedAllowListLink url={sharedUrl} onCopy={onCopy} />
+        </>
       )}
     </section>
   );

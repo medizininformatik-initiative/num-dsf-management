@@ -432,9 +432,6 @@ export const en = {
   loginFingerprintSourceAdmin: 'Added by an admin',
   loginFingerprintRemove: 'Remove',
   loginFingerprintRemoveAria: 'Remove login fingerprint {prefix}',
-  dlSharedLinkTitle: 'Link for downloadAllowList',
-  dlSharedLinkHelp:
-    'The same link for every site: your DSF identifies you by its client certificate and receives the allow list of your endpoint. Enter it as the Task input "allow_list".',
   dlSharedLinkCopy: 'Copy shared link',
 
   // CertificatesCard
@@ -733,18 +730,24 @@ export const en = {
   approvalStateWithdrawn: 'Withdrawn',
   approvalBannerWithdrawn: 'You withdrew this request.',
   approvalBannerWithdrawnAt: 'Withdrawn {date}',
-  dsfTaskTitle: 'Start the download in your DSF',
+  dsfTaskTitle: 'Variant 1: DSF web UI (recommended)',
   dsfTaskHelp:
-    'The process downloadAllowList waits as a draft Task on your own DSF FHIR server. Open it there, enter the link below and start it.',
+    'If you have access to the DSF FHIR server web UI from your machine, you can use it to update your allow list.',
   dsfTaskPick: 'Select an endpoint to get the Task link of your DSF server.',
   dsfTaskInvalidBase:
     'The address of this endpoint is not a valid http(s) URL, so no Task link can be built.',
-  dsfTaskStep1: 'Open the Task in your FHIR server',
-  dsfTaskOpen: 'Open Task in your FHIR server',
+  dsfTaskStep1: 'Please make sure the DSF allow list plugin is installed:',
+  dsfTaskOpen: 'Open Task',
   dsfTaskCopy: 'Copy Task link',
-  dsfTaskStep2: 'Paste this link into the input "allow_list"',
-  dsfTaskCopyAllowList: 'Copy allow-list link',
-  dsfTaskStep3: 'Start the process',
+  dsfTaskStep2: 'Open the web UI of your DSF FHIR server:',
+  dsfTaskCopyAllowList: 'Copy download URL',
+  dsfTaskStep3:
+    'Click the task "dsf.dev | downloadAllowList | 1.x", enter the following URL and click "Submit":',
+
+  // Download dialog: legacy-style variant 1
+  dsfTaskPluginLink: 'DSF allow list plugin releases',
+  dsfTaskSharedHint:
+    'Alternatively, for sites with exactly one FHIR endpoint, the same link works for every site:',
 
   // InstanceCreateModal
   instanceCreateTitle: 'Add New Instance',
@@ -1397,10 +1400,6 @@ export const en = {
   historyRestoreSuccess: 'Version {n} restored as version {m}.',
   historyRestoreNotRestorable: 'This version can no longer be restored.',
   historyRestoreFailed: 'The version could not be restored.',
-  dlDsfLinkTitle: 'Link per endpoint (sites with several endpoints)',
-  dlDsfLinkHelp:
-    'Your DSF server downloads the current allow list from this address with its client certificate. Enter it as the Task input "http://dsf.dev/fhir/CodeSystem/allow-list|allow_list".',
-  dlDsfLinkPick: 'Select an endpoint to see its link.',
   dlCopyLink: 'Copy link',
   dlCopied: 'Copied.',
   dlHistoryTitle: 'Published versions',
@@ -1906,10 +1905,11 @@ export const en = {
   helpS_dsfImport_0:
     'The DSF imports the allow list with the process downloadAllowList of dsf-process-allow-list:',
   helpS_dsfImport_1_0:
-    'Open the Download dialog, select your endpoint and use "Open Task in your FHIR server": it opens the draft Task of the process on your own DSF FHIR server.',
+    'Make sure the DSF allow list plugin (dsf-process-allow-list) is installed on your DSF.',
   helpS_dsfImport_1_1:
-    'Paste the shared link /fhir/Bundle/mine shown next to it into the input "allow_list". Optionally verify the bundle first: compare its SHA-256 with the content hash shown in the dialog.',
-  helpS_dsfImport_1_2: 'Start the process downloadAllowList in your DSF.',
+    'Open the Download dialog, select your endpoint and use "Open Task" under "Variant 1: DSF web UI": it opens the draft Task of the process on your own DSF FHIR server.',
+  helpS_dsfImport_1_2:
+    'Click the Task "dsf.dev | downloadAllowList | 1.x", enter the download URL shown in the dialog (/fhir/Bundle/<endpoint identifier>) and click "Submit". Optionally verify the bundle first: compare its SHA-256 with the content hash shown in the dialog.',
   helpS_dsfImport_2:
     'The allow list is a recommendation of the network. Check its content and signature before you deploy it.',
   helpS_renewal_title: 'Certificate renewal and expiry warnings',

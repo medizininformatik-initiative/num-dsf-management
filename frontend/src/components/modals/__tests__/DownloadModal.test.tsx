@@ -114,7 +114,7 @@ afterEach(() => {
 describe('DownloadModal – DSF link and history', () => {
   it('asks for an endpoint before showing a link', () => {
     renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
-    expect(screen.getByText('Select an endpoint to see its link.')).toBeInTheDocument();
+    expect(screen.getByText(/select an endpoint to get the task link/i)).toBeInTheDocument();
     expect(screen.queryByTestId('dsf-link')).toBeNull();
     expect(getBundleHistory).not.toHaveBeenCalled();
   });
@@ -301,43 +301,49 @@ describe('DownloadModal – guide, IP list and gate', () => {
   });
 });
 
-describe('DownloadModal – start the Task in your own DSF', () => {
+describe('DownloadModal – Variant 1: DSF web UI', () => {
   const SHARED = `${window.location.origin}/fhir/Bundle/mine`;
+  const TASK_TEXT =
+    'https://fhir.klinik.example.de/fhir/Task?identifier=http://dsf.dev/sid/task-identifier|http://dsf.dev/bpe/Process/downloadAllowList/1.0/task-download-allow-list&status=draft';
   const TASK_HREF =
-    'https://fhir.klinik.example.de/fhir/Task?_profile=http%3A%2F%2Fdsf.dev%2Ffhir%2FStructureDefinition%2Ftask-download-allow-list&status=draft';
+    'https://fhir.klinik.example.de/fhir/Task?identifier=http%3A%2F%2Fdsf.dev%2Fsid%2Ftask-identifier%7Chttp%3A%2F%2Fdsf.dev%2Fbpe%2FProcess%2FdownloadAllowList%2F1.0%2Ftask-download-allow-list&status=draft';
 
-  it('shows the shared allow-list link without selecting an endpoint and copies it', async () => {
-    const user = userEvent.setup();
-    vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+  it('asks for an endpoint before offering the steps and the shared link', () => {
     renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
-    expect(screen.getByTestId('shared-link')).toHaveTextContent(SHARED);
-    await user.click(screen.getByTestId('copy-shared-link'));
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(SHARED);
-  });
-
-  it('asks for an endpoint before offering the Task link', () => {
-    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    expect(screen.getByRole('heading', { name: /variant 1: dsf web ui/i })).toBeInTheDocument();
     expect(screen.getByText(/select an endpoint to get the task link/i)).toBeInTheDocument();
     expect(screen.queryByTestId('dsf-task-open')).toBeNull();
+    expect(screen.queryByTestId('shared-link')).toBeNull();
   });
 
-  it('opens the draft Task on the endpoint’s own FHIR server in a new tab', async () => {
+  it('shows the four steps: plugin link, Task link and the per-endpoint download URL', async () => {
     await openWithEndpoint();
+    const steps = within(screen.getByTestId('dsf-task-steps'));
+    expect(steps.getAllByRole('listitem')).toHaveLength(4);
+    const plugin = screen.getByTestId('dsf-plugin-link');
+    expect(plugin).toHaveAttribute(
+      'href',
+      'https://github.com/datasharingframework/dsf-process-allow-list/releases',
+    );
+    expect(plugin).toHaveAttribute('target', '_blank');
+    expect(plugin).toHaveAttribute('rel', 'noopener noreferrer');
     const open = screen.getByTestId('dsf-task-open');
     expect(open).toHaveAttribute('href', TASK_HREF);
     expect(open).toHaveAttribute('target', '_blank');
     expect(open).toHaveAttribute('rel', 'noopener noreferrer');
-    const steps = within(screen.getByTestId('dsf-task-steps'));
-    expect(steps.getAllByRole('listitem')).toHaveLength(3);
-    expect(screen.getByTestId('dsf-task-allowlist-url')).toHaveTextContent(SHARED);
+    expect(screen.getByTestId('dsf-task-url')).toHaveTextContent(TASK_TEXT);
+    expect(screen.getByTestId('dsf-link')).toHaveTextContent(BASE);
   });
 
-  it('copies the Task link and the allow-list link', async () => {
+  it('keeps the shared /mine link as a secondary hint and copies every value', async () => {
     const user = await openWithEndpoint();
+    expect(screen.getByTestId('shared-link')).toHaveTextContent(SHARED);
+    await user.click(screen.getByTestId('copy-shared-link'));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(SHARED);
     await user.click(screen.getByTestId('dsf-task-copy'));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(TASK_HREF);
-    await user.click(screen.getByRole('button', { name: 'Copy allow-list link' }));
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(SHARED);
+    await user.click(screen.getByTestId('copy-dsf-link'));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(BASE);
   });
 
   it('shows a hint instead of a link for a non-http(s) endpoint address', async () => {

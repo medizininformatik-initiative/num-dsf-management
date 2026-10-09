@@ -440,9 +440,6 @@ export const de: Record<TranslationKey, string> = {
   loginFingerprintSourceAdmin: 'Von einem Admin hinzugefügt',
   loginFingerprintRemove: 'Entfernen',
   loginFingerprintRemoveAria: 'Login-Fingerabdruck {prefix} entfernen',
-  dlSharedLinkTitle: 'Link für downloadAllowList',
-  dlSharedLinkHelp:
-    'Derselbe Link für jeden Standort: Ihr DSF weist sich mit seinem Client-Zertifikat aus und erhält die Allow List Ihres Endpunkts. Tragen Sie ihn als Task-Eingabe "allow_list" ein.',
   dlSharedLinkCopy: 'Gemeinsamen Link kopieren',
 
   // CertificatesCard
@@ -743,18 +740,24 @@ export const de: Record<TranslationKey, string> = {
   approvalStateWithdrawn: 'Zurückgezogen',
   approvalBannerWithdrawn: 'Sie haben diesen Antrag zurückgezogen.',
   approvalBannerWithdrawnAt: 'Zurückgezogen {date}',
-  dsfTaskTitle: 'Download im eigenen DSF starten',
+  dsfTaskTitle: 'Variante 1: DSF-Web-UI (empfohlen)',
   dsfTaskHelp:
-    'Der Prozess downloadAllowList liegt als Entwurf-Task auf Ihrem eigenen DSF-FHIR-Server. Öffnen Sie ihn dort, tragen Sie den Link unten ein und starten Sie ihn.',
+    'Wenn Sie von Ihrem Rechner aus Zugriff auf die Web-UI Ihres DSF-FHIR-Servers haben, können Sie damit Ihre Allow List aktualisieren.',
   dsfTaskPick: 'Wählen Sie einen Endpoint, um den Task-Link Ihres DSF-Servers zu erhalten.',
   dsfTaskInvalidBase:
     'Die Adresse dieses Endpoints ist keine gültige http(s)-URL, daher kann kein Task-Link erzeugt werden.',
-  dsfTaskStep1: 'Task im eigenen FHIR-Server öffnen',
-  dsfTaskOpen: 'Task im eigenen FHIR-Server öffnen',
+  dsfTaskStep1: 'Stellen Sie sicher, dass das DSF-Allow-List-Plugin installiert ist:',
+  dsfTaskOpen: 'Task öffnen',
   dsfTaskCopy: 'Task-Link kopieren',
-  dsfTaskStep2: 'Diesen Link in das Eingabefeld „allow_list“ einfügen',
-  dsfTaskCopyAllowList: 'Allow-List-Link kopieren',
-  dsfTaskStep3: 'Prozess starten',
+  dsfTaskStep2: 'Öffnen Sie die Web-UI Ihres DSF-FHIR-Servers:',
+  dsfTaskCopyAllowList: 'Download-URL kopieren',
+  dsfTaskStep3:
+    'Klicken Sie auf den Task „dsf.dev | downloadAllowList | 1.x“, tragen Sie folgende URL ein und klicken Sie auf „Submit“:',
+
+  // Download dialog: legacy-style variant 1
+  dsfTaskPluginLink: 'Releases des DSF-Allow-List-Plugins',
+  dsfTaskSharedHint:
+    'Alternativ, für Standorte mit genau einem FHIR-Endpunkt, funktioniert derselbe Link für jeden Standort:',
 
   // InstanceCreateModal
   instanceCreateTitle: 'Neue Instanz hinzufügen',
@@ -1423,10 +1426,6 @@ export const de: Record<TranslationKey, string> = {
   historyRestoreSuccess: 'Version {n} als Version {m} wiederhergestellt.',
   historyRestoreNotRestorable: 'Diese Version kann nicht mehr wiederhergestellt werden.',
   historyRestoreFailed: 'Die Version konnte nicht wiederhergestellt werden.',
-  dlDsfLinkTitle: 'Link pro Endpunkt (Standorte mit mehreren Endpunkten)',
-  dlDsfLinkHelp:
-    'Ihr DSF-Server lädt die aktuelle Allow List unter dieser Adresse mit seinem Client-Zertifikat herunter. Tragen Sie sie als Task-Eingabe "http://dsf.dev/fhir/CodeSystem/allow-list|allow_list" ein.',
-  dlDsfLinkPick: 'Wählen Sie einen Endpoint, um dessen Link zu sehen.',
   dlCopyLink: 'Link kopieren',
   dlCopied: 'Kopiert.',
   dlHistoryTitle: 'Veröffentlichte Versionen',
@@ -1946,10 +1945,11 @@ export const de: Record<TranslationKey, string> = {
   helpS_dsfImport_0:
     'Das DSF importiert die Allow-List mit dem Prozess downloadAllowList aus dsf-process-allow-list:',
   helpS_dsfImport_1_0:
-    'Öffnen Sie den Download-Dialog, wählen Sie Ihren Endpunkt und nutzen Sie „Task im eigenen FHIR-Server öffnen“: Das öffnet den Entwurf-Task des Prozesses auf Ihrem eigenen DSF-FHIR-Server.',
+    'Stellen Sie sicher, dass das DSF-Allow-List-Plugin (dsf-process-allow-list) in Ihrem DSF installiert ist.',
   helpS_dsfImport_1_1:
-    'Fügen Sie den daneben angezeigten gemeinsamen Link /fhir/Bundle/mine in das Eingabefeld „allow_list“ ein. Prüfen Sie das Bundle vorher optional: Vergleichen Sie seinen SHA-256 mit dem im Dialog angezeigten Content-Hash.',
-  helpS_dsfImport_1_2: 'Starten Sie den Prozess downloadAllowList in Ihrem DSF.',
+    'Öffnen Sie den Download-Dialog, wählen Sie Ihren Endpunkt und nutzen Sie unter „Variante 1: DSF-Web-UI“ die Schaltfläche „Task öffnen“: Das öffnet den Entwurf-Task des Prozesses auf Ihrem eigenen DSF-FHIR-Server.',
+  helpS_dsfImport_1_2:
+    'Klicken Sie auf den Task „dsf.dev | downloadAllowList | 1.x“, tragen Sie die im Dialog angezeigte Download-URL (/fhir/Bundle/<Endpunkt-Identifier>) ein und klicken Sie auf „Submit“. Prüfen Sie das Bundle vorher optional: Vergleichen Sie seinen SHA-256 mit dem im Dialog angezeigten Content-Hash.',
   helpS_dsfImport_2:
     'Die Allow-List ist eine Empfehlung des Netzwerks. Prüfen Sie Inhalt und Signatur, bevor Sie sie einspielen.',
   helpS_renewal_title: 'Zertifikatserneuerung und Ablaufwarnungen',
