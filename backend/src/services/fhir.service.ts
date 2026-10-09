@@ -38,16 +38,8 @@ import {
   warnUnusableSnapshot,
   type ApprovedSite,
 } from './approved-snapshot.service';
+import { KNOWN_PARENT_NAMES } from '../lib/knownParents';
 import { fullViewInput, receiverViewInput, type StoredAllowListInput } from '../lib/allowListInput';
-
-// Display names of the parent organizations offered in the membership form,
-// as the legacy allow-list portal publishes them. A parent that is registered
-// as an organization in this tool uses its stored name instead.
-const KNOWN_PARENT_NAMES: Readonly<Record<string, string>> = {
-  'medizininformatik-initiative.de': 'Medizininformatik-Initiative',
-  'netzwerk-universitaetsmedizin.de': 'Netzwerk Universitätsmedizin',
-  'eyematics.org': 'Eyematics',
-};
 
 interface OrgSummary {
   identifier: string;
