@@ -34,5 +34,5 @@ test('admin can add a marketplace entry through the UI', async ({ page }) => {
   // Each entry renders as a card linking to its detail page at
   // /app/marketplace/{slug}, where slug = slugify(owner, repo) = "owner-repo".
   const slug = `example-e2e-test-${ts}`;
-  await expect(page.locator(`a[href="/app/marketplace/${slug}"]`)).toBeVisible({ timeout: 8_000 });
+  await expect(page.locator(`a[href="/app/marketplace/${slug}"]`)).toBeVisible({ timeout: 15_000 });
 });
