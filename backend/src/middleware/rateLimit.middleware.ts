@@ -17,6 +17,7 @@ import { RedisStore } from 'rate-limit-redis';
 import { redis } from '../services/redis.service';
 import { verifyAccessToken } from '../services/auth.service';
 import { auditedLimitHandler } from './rateLimitAudit';
+import { extractClientCert } from '../lib/clientCert';
 
 function createRedisStore(prefix: string) {
   return new RedisStore({
@@ -34,6 +35,26 @@ export const otpRateLimit = rateLimit({
   legacyHeaders: false,
   message: {
     error: { code: 'RATE_LIMITED', message: 'Too many requests. Please wait 15 minutes.' },
+  },
+});
+
+// /auth/client-cert-login: the SPA calls it on every reload and new tab in cert
+// mode, so it must not share the tight per-IP OTP bucket (everyone behind one
+// NAT would lock each other out). Keyed by the presented certificate's SHA-512
+// fingerprint (the proxy-verified one), falling back to the IP, and generous.
+export const certLoginRateLimit = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_CERT_LOGIN_WINDOW_MS || '900000'),
+  max: parseInt(process.env.RATE_LIMIT_CERT_LOGIN_MAX || '120'),
+  store: createRedisStore('cert-login'),
+  handler: auditedLimitHandler('cert-login'),
+  keyGenerator: (req) => {
+    const fp = extractClientCert(req)?.fingerprint;
+    return fp ? `cert:${fp}` : req.ip || 'unknown';
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: { code: 'RATE_LIMITED', message: 'Too many login attempts. Please wait a moment.' },
   },
 });
 

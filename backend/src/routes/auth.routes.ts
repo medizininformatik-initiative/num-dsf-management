@@ -13,7 +13,11 @@
  */
 import { Router, Request, Response, NextFunction } from 'express';
 import { isCertAuthMode } from '../lib/authMode';
-import { otpRateLimit, refreshRateLimit } from '../middleware/rateLimit.middleware';
+import {
+  otpRateLimit,
+  refreshRateLimit,
+  certLoginRateLimit,
+} from '../middleware/rateLimit.middleware';
 import { REFRESH_TOKEN_TTL_MS } from '../lib/time';
 import { logger } from '../lib/logger';
 import {
@@ -73,6 +77,9 @@ const isDevAutoLogin = isDevEnv() && process.env.DEV_AUTO_LOGIN === 'true';
 const verifyLimiter = isTest ? [] : [otpRateLimit];
 const devEntryLimiter = isTest || isDevAutoLogin ? [] : [otpRateLimit];
 const refreshLimiter = isTest ? [] : [refreshRateLimit];
+// Certificate login has its own generous per-certificate bucket (see
+// rateLimit.middleware.certLoginRateLimit), not the tight OTP one.
+const certLoginLimiter = isTest ? [] : [certLoginRateLimit];
 
 // Certificate-only deployment (AUTH_MODE=cert): the e-mail login family is
 // refused by the backend itself, not just hidden in the UI or blocked at the
@@ -290,7 +297,7 @@ if (isDevEnv() && process.env.DEV_AUTO_LOGIN === 'true') {
 // fingerprint (admins first, then organizations — see resolveCertLogin)
 authRouter.post(
   '/client-cert-login',
-  ...verifyLimiter,
+  ...certLoginLimiter,
   asyncHandler(async (req: Request, res: Response) => {
     // Defense-in-depth: only an nginx-verified mTLS handshake may authenticate
     // here. extractClientCert already enforces X-Client-Verify === 'SUCCESS',
@@ -320,7 +327,7 @@ authRouter.post(
       res.status(401).json({
         error: {
           code: 'CERT_NOT_REGISTERED',
-          message: 'Certificate is not registered for any organization.',
+          message: 'Certificate is not enabled for login.',
         },
       });
       return;
@@ -341,11 +348,14 @@ authRouter.post(
       return;
     }
 
+    // An organization login certificate yields a session scoped to that
+    // organization's instance (and never admin); an admin certificate is unscoped.
     const { accessToken, refreshToken } = await createTokenPair({
       id: user.id,
       email: user.email,
       totpEnabled: true,
       authMethod: 'cert',
+      scopeInstanceId: resolved.kind === 'org' ? instanceId : undefined,
     });
     res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
 
