@@ -34,7 +34,7 @@ describe('AuthBootstrap (cert mode)', () => {
         <div>APP CONTENT</div>
       </AuthBootstrap>,
     );
-    await waitFor(() => expect(screen.getByText(/not in the allow-list/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/not enabled for sign-in/i)).toBeInTheDocument());
     expect(screen.queryByText('APP CONTENT')).not.toBeInTheDocument();
   });
 
