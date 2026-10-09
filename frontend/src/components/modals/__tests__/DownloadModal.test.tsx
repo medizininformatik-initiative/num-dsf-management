@@ -302,8 +302,18 @@ describe('DownloadModal – guide, IP list and gate', () => {
 });
 
 describe('DownloadModal – start the Task in your own DSF', () => {
+  const SHARED = `${window.location.origin}/fhir/Bundle/mine`;
   const TASK_HREF =
     'https://fhir.klinik.example.de/fhir/Task?_profile=http%3A%2F%2Fdsf.dev%2Ffhir%2FStructureDefinition%2Ftask-download-allow-list&status=draft';
+
+  it('shows the shared allow-list link without selecting an endpoint and copies it', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    expect(screen.getByTestId('shared-link')).toHaveTextContent(SHARED);
+    await user.click(screen.getByTestId('copy-shared-link'));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(SHARED);
+  });
 
   it('asks for an endpoint before offering the Task link', () => {
     renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
@@ -319,7 +329,7 @@ describe('DownloadModal – start the Task in your own DSF', () => {
     expect(open).toHaveAttribute('rel', 'noopener noreferrer');
     const steps = within(screen.getByTestId('dsf-task-steps'));
     expect(steps.getAllByRole('listitem')).toHaveLength(3);
-    expect(screen.getByTestId('dsf-task-allowlist-url')).toHaveTextContent(BASE);
+    expect(screen.getByTestId('dsf-task-allowlist-url')).toHaveTextContent(SHARED);
   });
 
   it('copies the Task link and the allow-list link', async () => {
@@ -327,7 +337,7 @@ describe('DownloadModal – start the Task in your own DSF', () => {
     await user.click(screen.getByTestId('dsf-task-copy'));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(TASK_HREF);
     await user.click(screen.getByRole('button', { name: 'Copy allow-list link' }));
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(BASE);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(SHARED);
   });
 
   it('shows a hint instead of a link for a non-http(s) endpoint address', async () => {

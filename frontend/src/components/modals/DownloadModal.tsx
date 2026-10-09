@@ -26,6 +26,7 @@ import { saveBlob, toBlob, headerValue, sha256Hex } from '../../lib/downloadBlob
 import { BundlePreview } from './BundlePreview';
 import { DownloadVersionList } from './DownloadVersionList';
 import { DsfTaskStart } from './DsfTaskStart';
+import { SharedAllowListLink } from './SharedAllowListLink';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { Skeleton } from '../ui/Skeleton';
@@ -123,6 +124,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
   const bundleBase = selectedEndpoint
     ? `${window.location.origin}/fhir/Bundle/${encodeURIComponent(selectedEndpoint)}`
     : '';
+  const sharedUrl = `${window.location.origin}/fhir/Bundle/mine`;
   const networkUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'}/download/full-bundle`;
 
   async function copy(text: string) {
@@ -240,6 +242,8 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
           </select>
         </div>
 
+        <SharedAllowListLink url={sharedUrl} onCopy={(text) => void copy(text)} />
+
         <section className="glass-thin rounded-2xl p-4" aria-labelledby={`${uid}-link`}>
           <h3 id={`${uid}-link`} className={sectionTitle}>
             {t('dlDsfLinkTitle')}
@@ -275,7 +279,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
                   ?.address ?? '')
               : undefined
           }
-          allowListUrl={bundleBase}
+          allowListUrl={sharedUrl}
           onCopy={(text) => void copy(text)}
         />
 
