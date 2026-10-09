@@ -83,7 +83,7 @@ describe('TopBar', () => {
     const download = screen.getByTestId('topbar-download');
     expect(download).toHaveAccessibleName(/download allow list/i);
     expect(download).not.toHaveClass('btn-primary');
-    const label = download.querySelector('span');
+    const label = screen.getByText('Download Allow List', { selector: 'span' });
     expect(label).toHaveClass('sm:not-sr-only');
     expect(label).not.toHaveClass('xl:not-sr-only');
   });
