@@ -40,6 +40,7 @@ All configuration flows through env vars (no hardcoded secrets). Copy `.env.exam
 **Rate limiting (Redis-backed):**
 - `RATE_LIMIT_OTP_MAX` (default 5), `RATE_LIMIT_OTP_WINDOW_MS` (default 900000)
 - `RATE_LIMIT_API_MAX` (default 100), `RATE_LIMIT_API_WINDOW_MS` (default 60000)
+- `RATE_LIMIT_CERT_LOGIN_MAX` (default 120), `RATE_LIMIT_CERT_LOGIN_WINDOW_MS` (default 900000). Limit of `POST /auth/client-cert-login` per presented certificate (SHA-512 fingerprint, the IP when there is none). Separate from the tight OTP bucket because the single-page app logs in on every reload and new tab.
 
 **Admin team:**
 - `IMI_ADMIN_EMAILS` — comma-separated list. Each admin's email **domain** is treated as their "site" for the 4-eyes approval rule.
@@ -200,7 +201,9 @@ The portal supports two passwordless authentication paths:
 
 Two distinct certificate hashes are in play; do not confuse them:
 
-- **Human sign-in** matches the client cert's **SHA-512 fingerprint** against `admin_cert_fingerprints` (admins are checked first) and then `organizations.client_cert_fingerprint` (per site). This is the allow-list gate for logging in.
+- **Human sign-in** matches the client cert's **SHA-512 fingerprint** against `admin_cert_fingerprints` (admins are checked first) and then `org_login_certificates` (per site, migration 029). This is the allow-list gate for logging in. `organizations.client_cert_fingerprint` is deprecated and no longer read for login.
+
+**Login certificates and scoped sessions.** An admin certificate gives an unscoped admin session. A certificate listed in `org_login_certificates` gives a session scoped to exactly that organization's instance: the access token carries `kind: org` and `inst`, the session sees and changes only that instance (other instances of the same owner answer 403/404, creating instances is refused), and it is never admin, even if the instance owner holds an admin grant. Refresh needs the same certificate, and with `AUTH_MODE=cert` every request re-checks that the presented certificate still maps to the token's instance, so removing a login certificate ends the session on its next request. Admins decide which certificates may log in: in the certificates card of an organization (switch "Für Login freigeben", `Login` badge) or through `/api/v1/admin/organizations/:identifier/login-certificates`. The onboarding import writes its fingerprint there (source `ONBOARDING`); migration 029 copied the existing `client_cert_fingerprint` values (source `MIGRATED`). When the import re-onboards an existing site that an admin created in the GUI, the instance moves to the site's contact user, so the admin's instance switcher stops listing the clinic. Renewing a certificate removes its login entry with the old certificate; an admin enables the new one again. A certificate that is not enabled gets `CERT_NOT_REGISTERED` ("not enabled for sign-in").
 - **FHIR bundle download** by a DSF process resolves the machine cert by the SHA-512 login fingerprint, then the legacy SHA-256 `organizations.client_cert_thumbprint`, then a certificate registered in the organization's certificate list (the DSF client certificate a BPE presents). See "Allow-list bundle download" below.
 
 A third, separate hash lives in the allow-list bundle content itself: each Organization's `extension-certificate-thumbprint` extension carries the **SHA-512** DSF thumbprint required by DSF's `dsf-extension-certificate-thumbprint-2.0.0` StructureDefinition (the `hex-128-length` constraint: 128 lower-case hex characters), computed from the stored certificate PEM. The `certificates.thumbprint` database column stays SHA-256; it is used only for the FHIR mTLS match above, not for the bundle content.
@@ -490,8 +493,10 @@ The portal generates the DSF allow list in the format of the legacy allow-list p
 A site starts the process locally on its own DSF FHIR server (requester `LOCAL_ALL` or a `DSF_ADMIN` practitioner) and sets the Task input `http://dsf.dev/fhir/CodeSystem/allow-list|allow_list` to:
 
 ```
-https://dsf-management.imi.uni-muenster.de/fhir/Bundle/<endpoint identifier>
+https://dsf-management.imi.uni-muenster.de/fhir/Bundle/mine
 ```
+
+`/fhir/Bundle/mine` is the same address for every site: the portal derives the endpoint from the organization of the presented DSF client certificate (its only endpoint; with several endpoints the single one whose identifier starts with `fhir.`; otherwise `409` with an `AMBIGUOUS_ENDPOINT` OperationOutcome listing the endpoint identifiers). Sites with several endpoints then use the per-endpoint address `https://dsf-management.imi.uni-muenster.de/fhir/Bundle/<endpoint identifier>`, which returns the same body.
 
 The BPE reads that URL with `GET {base}/Bundle/{id}` and `Accept: application/fhir+json`, using the site's DSF client certificate. It then checks the bundle (`checkAllowList`) and posts it as a transaction to its own FHIR server (`insertAllowList`).
 
@@ -511,6 +516,7 @@ Older versions stay readable with the same client certificate and the same endpo
 
 | Request | Result |
 |---------|--------|
+| `GET /fhir/Bundle/mine` | Current version, receiver view, for the endpoint derived from the certificate's organization (see above). |
 | `GET /fhir/Bundle/<endpoint>` | Current version, receiver view. |
 | `GET /fhir/Bundle/<endpoint>/_history` | FHIR `Bundle` of type `history`, newest first, one entry per version without the resource (`fullUrl`, `request`, `response.etag`, `response.lastModified`). `?_count=` limits the list (default 50, maximum 200). |
 | `GET /fhir/Bundle/<endpoint>/_history/<version>` | The receiver view of that version, `meta.versionId` set. `404` for an unknown version or a version created before migration 024. |

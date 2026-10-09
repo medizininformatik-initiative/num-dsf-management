@@ -386,6 +386,19 @@ Four-eyes requests to publish an old bundle version again (025). A second admin 
 
 FKs: `source_version_id` → `bundle_versions.id` ON DELETE CASCADE (fk_brr_source).
 
+## org_login_certificates
+
+Which client certificates may log in as an organization (029). A login through an entry yields a session scoped to the organization's instance. Managed by admins; `organizations.client_cert_fingerprint` is deprecated and no longer read.
+
+| Column | Type | Null | Default | Notes |
+|--------|------|------|---------|-------|
+| fingerprint | CHAR(128) | no | — | PK; SHA-512 of the certificate DER, lower-case hex. One certificate logs in for at most one organization |
+| organization_id | VARCHAR(255) | no | — | FK → organizations.identifier ON DELETE CASCADE |
+| certificate_id | CHAR(36) | yes | NULL | FK → certificates.id ON DELETE CASCADE; NULL for fingerprint-only entries |
+| source | ENUM | no | — | ONBOARDING, ADMIN, MIGRATED |
+| created_by | VARCHAR(255) | yes | NULL | |
+| created_at | DATETIME(3) | no | — | |
+
 ## backup_settings
 
 Schedule of the application backups (028). A single row, `id = 1` (CHECK), seeded with the defaults.

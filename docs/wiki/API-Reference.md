@@ -203,6 +203,17 @@ Mounted at `/api/v1/admin/ca-whitelist`. All `requireAdmin`; writes need the ste
 
 Adding a whitelisted CA to the blacklist returns `409 CA_WHITELISTED`. Certificates returned by `/api/v1/instances/:id/certificates` carry `issuerDn` and `issuerTrusted`.
 
+### Login Certificates
+
+Mounted at `/api/v1/admin/organizations`. All `requireAdmin`; writes need the step-up (TOTP code, or the re-presented client certificate in certificate sessions). Every change is audited as `ORGANIZATION`/`UPDATE` with `diff_json.action = 'login_certificate'`. A login through an enabled certificate yields a session scoped to that organization's instance (never admin).
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/admin/organizations/:identifier/login-certificates | requireAdmin | Login certificates of the organization: `[{ fingerprint, certificateId, source, createdBy, createdAt }]`. |
+| POST | /api/v1/admin/organizations/:identifier/login-certificates | requireAdmin + step-up | Enable an uploaded certificate of the organization as login certificate. Body `{ certificateId, totpCode? }` (SHA-512 computed server-side) → 201. `409 ADMIN_CERTIFICATE` for an admin certificate, `409 FINGERPRINT_IN_USE` if another organization uses it, `404` for an unknown organization or certificate. |
+| DELETE | /api/v1/admin/organizations/:identifier/login-certificates/:fingerprint | requireAdmin + step-up | Remove a login entry (also fingerprint-only entries from onboarding) → `{ deleted: true }`. |
+| GET | /api/v1/instances/:id/certificates/login-certificates | requireAuth + instance | Read-only view of the same list for the instance's users (badges in the certificates card). |
+
 ### Bundle Versions
 
 Mounted at `/api/v1/admin/bundle-versions`. All `requireAdmin`.
@@ -341,6 +352,7 @@ Mounted at `/fhir`. Machine-to-machine; authenticated by client-certificate thum
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
+| GET | /fhir/Bundle/mine | mTLS | The same as `/fhir/Bundle/:endpointId` for the endpoint derived from the calling cert's organization: its only endpoint, else the single one whose identifier starts with `fhir.`; otherwise `409` OperationOutcome `AMBIGUOUS_ENDPOINT` listing the endpoint identifiers (use the per-endpoint URL), `404` without endpoints. Same body, headers, `ETag`/`304` and audit entry. |
 | GET | /fhir/Bundle/:endpointId | mTLS | The current allow list for one endpoint owned by the calling cert's org: receiver view of the latest bundle version. `Bundle.meta.versionId` / `lastUpdated`, `ETag: W/"<version>"`, `Last-Modified`; 304 on a matching `If-None-Match`. Falls back to the approved state (computed on the fly) while no version has a stored input. |
 | GET | /fhir/Bundle/:endpointId/_history | mTLS | FHIR `Bundle` of type `history`, newest first, one entry per version (`fullUrl`, `request`, `response.etag`, `response.lastModified`, no resource). `?_count=` (default 50, max 200). |
 | GET | /fhir/Bundle/:endpointId/_history/:vid | mTLS | Receiver view of one version. 404 for an unknown version or one without stored input. |
