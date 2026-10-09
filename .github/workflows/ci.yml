@@ -229,6 +229,7 @@ jobs:
           path: |
             frontend/test-results/
             frontend/playwright-report/
+          retention-days: 7
 
   frontend-contract:
     needs: frontend-lint
@@ -327,6 +328,9 @@ jobs:
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITLEAKS_CONFIG: .gitleaks.toml
+          # Findings are in the job log; the SARIF artifact only used up the
+          # Actions storage quota (an upload failure failed a clean scan).
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
 
   build:
     name: Docker Image (build + downloadable bundle)
@@ -375,5 +379,6 @@ jobs:
           path: |
             dsf-allowlist-images-${{ env.SHA }}.tar.gz
             dsf-allowlist-images-${{ env.SHA }}.tar.gz.sha256
-          retention-days: 30
+          # One image bundle per push to main; 30 days filled the storage quota.
+          retention-days: 7
           if-no-files-found: error
