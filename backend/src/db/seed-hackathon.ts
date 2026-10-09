@@ -180,6 +180,15 @@ export async function seedUser(
     const site = buildSiteRows(user, parentOrganization);
     const organizationRow = { ...site.organization, instance_id: newInstanceId };
     await trx('organizations').insert(organizationRow);
+    // Login certificate (migration 029): the site's certificate logs in as the site.
+    await trx('org_login_certificates').insert({
+      fingerprint: user.fingerprintSha512,
+      organization_id: user.orgIdentifier,
+      certificate_id: null,
+      source: 'ONBOARDING',
+      created_by: SEEDED_BY,
+      created_at: now,
+    });
     await trx('contacts').insert(site.contacts);
     await trx('endpoints').insert(site.endpoints);
     await trx('endpoint_ips').insert(site.endpointIps);

@@ -20,6 +20,7 @@ import { normalizeFingerprint, isValidSha512Fingerprint } from '../lib/certFinge
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
 import { errCode, errMessage } from '../lib/errMessage';
+import { isAdminEmail } from '../lib/isAdmin';
 
 const MAX_FILE_BYTES = 1_000_000;
 const MAX_ROWS = 1000;
@@ -234,9 +235,9 @@ export async function previewSites(rows: OnboardingRow[]): Promise<ImportResult>
   for (const row of rows) {
     const identifier = row.organizationIdentifier;
     const fp = row.clientCertFingerprint;
-    const owner = await db('organizations')
-      .where({ client_cert_fingerprint: fp })
-      .whereNot({ identifier })
+    const owner = await db('org_login_certificates')
+      .where({ fingerprint: fp })
+      .whereNot({ organization_id: identifier })
       .first();
     if (seenIds.has(identifier)) {
       results.push({ identifier, action: 'failed', ok: false, issue: 'DUPLICATE_IDENTIFIER' });
@@ -314,9 +315,9 @@ export async function importSites(
         // 1. The fingerprint must not already belong to a different org.
         // The uq_org_cert_fp unique index enforces this too; the insert/
         // update below catches that race as a backstop.
-        const fingerprintOwner = await trx('organizations')
-          .where({ client_cert_fingerprint: row.clientCertFingerprint })
-          .whereNot({ identifier })
+        const fingerprintOwner = await trx('org_login_certificates')
+          .where({ fingerprint: row.clientCertFingerprint })
+          .whereNot({ organization_id: identifier })
           .first();
         if (fingerprintOwner) throw new Error('FINGERPRINT_IN_USE');
 
@@ -391,6 +392,60 @@ export async function importSites(
         } catch (err: unknown) {
           if (errCode(err) === 'ER_DUP_ENTRY') throw new Error('FINGERPRINT_IN_USE');
           throw err;
+        }
+
+        // 4b. The login certificate: onboarding owns exactly one ONBOARDING
+        // entry per organization (a re-import replaces the previous one);
+        // entries an admin added stay. Logins through it are scoped to this
+        // organization's instance, so the instance owner no longer matters
+        // for the clinic. organizations.client_cert_fingerprint (deprecated,
+        // no longer read) is still mirrored above for rollback.
+        try {
+          await trx('org_login_certificates')
+            .where({ organization_id: identifier, source: 'ONBOARDING' })
+            .whereNot({ fingerprint: row.clientCertFingerprint })
+            .del();
+          await trx('org_login_certificates')
+            .insert({
+              fingerprint: row.clientCertFingerprint,
+              organization_id: identifier,
+              certificate_id: null,
+              source: 'ONBOARDING',
+              created_by: actorEmail,
+              created_at: now,
+            })
+            .onConflict('fingerprint')
+            .ignore();
+        } catch (err: unknown) {
+          if (errCode(err) === 'ER_DUP_ENTRY') throw new Error('FINGERPRINT_IN_USE');
+          throw err;
+        }
+
+        // 4c. Re-onboarding an existing site that an admin created in the GUI:
+        // move the instance to the site's contact user, so the admin's
+        // instance switcher stops listing the clinic and the clinic's own
+        // account owns it. Skipped when the owner is not an admin.
+        if (existingOrg) {
+          const instance = await trx('instances').where({ id: instanceId }).first();
+          if (instance && instance.user_id !== user.id) {
+            const previousOwner = await trx('users').where({ id: instance.user_id }).first();
+            if (await isAdminEmail(previousOwner?.email)) {
+              await trx('instances').where({ id: instanceId }).update({ user_id: user.id });
+              await writeAuditLog({
+                userEmail: actorEmail,
+                instanceId,
+                resourceType: 'ORGANIZATION',
+                resourceId: identifier,
+                operation: 'UPDATE',
+                diffJson: {
+                  action: 'instance_owner_transfer',
+                  from: previousOwner?.email ?? null,
+                  to: row.contactEmail,
+                },
+                ipAddress: ip,
+              });
+            }
+          }
         }
 
         // 5. Audit — only a fingerprint prefix is logged, never the full value.
