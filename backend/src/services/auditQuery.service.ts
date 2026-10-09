@@ -223,14 +223,17 @@ export function listInstanceAudit(
 
 /**
  * Page through audit logs joined with instance/organization labels (newest first).
- * Admins see all rows; non-admins are scoped to instances they own (instances.user_id = userId).
+ * Admins see all rows; non-admins are scoped to instances they own (instances.user_id = userId);
+ * an org-scoped session (scopeInstanceId) sees only that one instance.
  * @returns The enriched rows and the total count for the caller's scope.
  */
 export function listCrossInstanceAudit(
   userId: string,
   isAdmin: boolean,
   params: AuditQueryParams,
+  scopeInstanceId?: string,
 ): Promise<AuditPage<CrossInstanceAuditRow>> {
+  if (scopeInstanceId) return queryAudit({ kind: 'instance', instanceId: scopeInstanceId }, params);
   return queryAudit(isAdmin ? { kind: 'all' } : { kind: 'user', userId }, params);
 }
 

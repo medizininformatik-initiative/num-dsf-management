@@ -24,13 +24,20 @@ instancesRouter.use(requireAuth);
 instancesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    res.json({ data: await svc.listForUser(req.user!.id, req.user!.email) });
+    res.json({
+      data: await svc.listForUser(req.user!.id, req.user!.email, req.user!.scopeInstanceId),
+    });
   }),
 );
 
 instancesRouter.post(
   '/',
   asyncHandler(async (req, res) => {
+    if (req.user!.scopeInstanceId) {
+      return res.status(403).json({
+        error: { code: 'FORBIDDEN', message: 'A site login cannot create instances' },
+      });
+    }
     const instance = await svc.createInstance(req.user!.id, req.user!.email, req.ip || 'unknown');
     res.status(201).json({ data: instance });
   }),
@@ -39,7 +46,11 @@ instancesRouter.post(
 instancesRouter.get(
   '/:id',
   asyncHandler(async (req, res) => {
-    const instance = await svc.getInstance(req.params.id, req.user!.email);
+    const instance = await svc.getInstance(
+      req.params.id,
+      req.user!.email,
+      req.user!.scopeInstanceId,
+    );
     if (!instance)
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Instance not found' } });
     res.json({ data: instance });
@@ -76,6 +87,9 @@ instancesRouter.put(
       return res.status(400).json({
         error: { code: 'VALIDATION', message: parsed.error.errors[0]?.message || 'Invalid label' },
       });
+    }
+    if (req.user!.scopeInstanceId && req.user!.scopeInstanceId !== req.params.id) {
+      return res.status(403).json({ error: { code: 'FORBIDDEN' } });
     }
     const updated = await svc.renameInstance(req.params.id, req.user!.id, parsed.data.label);
     if (!updated) return res.status(403).json({ error: { code: 'FORBIDDEN' } });

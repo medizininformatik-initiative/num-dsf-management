@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { getNetworkMap } from '../services/network.service';
-import { isAdminEmail } from '../lib/isAdmin';
+import { isAdminCaller } from '../lib/isAdmin';
 import { asyncHandler } from '../lib/asyncHandler';
 
 export const networkRouter = Router();
@@ -14,7 +14,7 @@ networkRouter.get(
   '/map',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const isAdmin = await isAdminEmail(req.user!.email);
+    const isAdmin = await isAdminCaller(req.user);
     const data = await getNetworkMap({ isAdmin });
     res.json({ data, meta: { isAdmin } });
   }),

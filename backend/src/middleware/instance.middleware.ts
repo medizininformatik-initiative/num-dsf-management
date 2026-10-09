@@ -9,7 +9,7 @@
  */
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../db/connection';
-import { isAdminEmail } from '../lib/isAdmin';
+import { isAdminCaller } from '../lib/isAdmin';
 import { writeAuditLog } from '../services/audit.service';
 
 declare global {
@@ -31,9 +31,18 @@ export async function requireInstanceOwnership(
     return;
   }
 
-  const isAdmin = await isAdminEmail(req.user?.email);
+  // An org-scoped session may touch exactly its own instance, whoever owns it.
+  const scope = req.user?.scopeInstanceId;
+  if (scope && scope !== instanceId) {
+    res
+      .status(403)
+      .json({ error: { code: 'FORBIDDEN', message: 'Instance not found or access denied' } });
+    return;
+  }
+
+  const isAdmin = await isAdminCaller(req.user);
   const query = db('instances').where({ id: instanceId });
-  if (!isAdmin) {
+  if (!isAdmin && !scope) {
     query.andWhere({ user_id: req.user!.id });
   }
   const instance = await query.first();

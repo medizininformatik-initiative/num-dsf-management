@@ -4,7 +4,7 @@
  */
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
-import { isAdminEmail } from '../lib/isAdmin';
+import { isAdminCaller } from '../lib/isAdmin';
 import { asyncHandler } from '../lib/asyncHandler';
 
 export const meRouter = Router();
@@ -16,7 +16,7 @@ meRouter.get(
     res.json({
       data: {
         email: req.user!.email,
-        isAdmin: await isAdminEmail(req.user!.email),
+        isAdmin: await isAdminCaller(req.user),
       },
     });
   }),

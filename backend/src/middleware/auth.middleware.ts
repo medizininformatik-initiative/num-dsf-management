@@ -6,11 +6,14 @@
  *
  * With AUTH_MODE=cert (certificate-only deployment) the bearer token alone is
  * never enough, see certSessionValid below.
- * Dependencies: auth.service (verifyAccessToken, findCertUserId), lib/authMode,
+ * An org-scoped session (token claims kind:'org' + inst, issued for an
+ * organization login certificate) carries req.user.scopeInstanceId: it may
+ * only use that one instance and is never admin (lib/isAdmin.isAdminCaller).
+ * Dependencies: auth.service (verifyAccessToken, findCertBinding), lib/authMode,
  * lib/clientCert, db/connection
  */
 import { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken, findCertUserId } from '../services/auth.service';
+import { verifyAccessToken, findCertBinding } from '../services/auth.service';
 import { redis } from '../services/redis.service';
 import { isCertAuthMode } from '../lib/authMode';
 import { extractClientCert } from '../lib/clientCert';
@@ -20,7 +23,13 @@ import { db } from '../db/connection';
 declare global {
   namespace Express {
     interface Request {
-      user?: { id: string; email: string; authMethod: 'otp' | 'cert' };
+      user?: {
+        id: string;
+        email: string;
+        authMethod: 'otp' | 'cert';
+        /** Set for an org-scoped session: the only instance it may access. */
+        scopeInstanceId?: string;
+      };
     }
   }
 }
@@ -28,20 +37,29 @@ declare global {
 /**
  * Certificate-only deployment: the session must be a cert session (amr), the
  * request must carry the client certificate the proxy verified, that
- * certificate must still resolve to the token's user (a revoked or removed
- * certificate ends the session on the very next request) and the account must
- * not be locked or de-whitelisted.
+ * certificate must still resolve to the token's user AND scope (a revoked or
+ * removed login certificate ends the session on the very next request; an
+ * org-scoped token needs an organization certificate of the same instance, an
+ * unscoped token an admin certificate) and the account must not be locked or
+ * de-whitelisted.
  */
 async function certSessionValid(
   req: Request,
   sub: string,
   email: string,
   amr: string,
+  scopeInstanceId: string | undefined,
 ): Promise<boolean> {
   if (amr !== 'cert') return false;
   const fingerprint = extractClientCert(req)?.fingerprint;
   if (!fingerprint) return false;
-  if ((await findCertUserId(fingerprint)) !== sub) return false;
+  const binding = await findCertBinding(fingerprint);
+  if (!binding || binding.userId !== sub) return false;
+  if (scopeInstanceId) {
+    if (binding.kind !== 'org' || binding.instanceId !== scopeInstanceId) return false;
+  } else if (binding.kind !== 'admin') {
+    return false;
+  }
   const wl = await db('email_whitelist').where({ email: email.toLowerCase().trim() }).first();
   return !!wl && !wl.locked_at;
 }
@@ -61,10 +79,23 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
+  // kind:'org' without an instance is malformed; never fall back to unscoped.
+  if (payload.kind === 'org' && !payload.inst) {
+    res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' } });
+    return;
+  }
+  const scopeInstanceId = payload.kind === 'org' ? payload.inst : undefined;
+
   if (isCertAuthMode()) {
     let ok = false;
     try {
-      ok = await certSessionValid(req, payload.sub, payload.email, payload.amr ?? 'otp');
+      ok = await certSessionValid(
+        req,
+        payload.sub,
+        payload.email,
+        payload.amr ?? 'otp',
+        scopeInstanceId,
+      );
     } catch {
       ok = false;
     }
@@ -79,7 +110,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     }
   }
 
-  req.user = { id: payload.sub, email: payload.email, authMethod: payload.amr ?? 'otp' };
+  req.user = {
+    id: payload.sub,
+    email: payload.email,
+    authMethod: payload.amr ?? 'otp',
+    ...(scopeInstanceId ? { scopeInstanceId } : {}),
+  };
   // Update activity timestamp for idle timeout (fire-and-forget, non-blocking)
   const idleTimeout = parseInt(process.env.IDLE_TIMEOUT_MS || '1800000', 10);
   redis

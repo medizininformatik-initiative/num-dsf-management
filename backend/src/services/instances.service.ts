@@ -8,7 +8,7 @@
  */
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
-import { isAdminEmail } from '../lib/isAdmin';
+import { isAdminCaller } from '../lib/isAdmin';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface InstanceRow {
@@ -35,10 +35,15 @@ export interface EnrichedInstanceRow extends InstanceRow {
 export async function listForUser(
   userId: string,
   callerEmail?: string,
+  scopeInstanceId?: string,
 ): Promise<EnrichedInstanceRow[]> {
-  const isAdmin = await isAdminEmail(callerEmail);
+  const isAdmin = await isAdminCaller(
+    callerEmail ? { email: callerEmail, scopeInstanceId } : undefined,
+  );
   const query = db<InstanceRow>('instances').orderBy('created_at', 'asc');
-  if (!isAdmin) query.where({ user_id: userId });
+  // An org-scoped session sees exactly its own instance, whoever owns it.
+  if (scopeInstanceId) query.where({ id: scopeInstanceId });
+  else if (!isAdmin) query.where({ user_id: userId });
   const instances = await query;
 
   // Single fetch of the orgs that belong to these instances — replaces an
@@ -93,12 +98,14 @@ export async function createInstance(
 export async function getInstance(
   id: string,
   callerEmail: string,
+  scopeInstanceId?: string,
 ): Promise<EnrichedInstanceRow | null> {
-  const isAdmin = await isAdminEmail(callerEmail);
+  if (scopeInstanceId && scopeInstanceId !== id) return null;
+  const isAdmin = await isAdminCaller({ email: callerEmail, scopeInstanceId });
   // We need the caller's user_id for the non-admin path. Look it up by email.
   const caller = await db('users').where({ email: callerEmail }).select('id').first();
   const q = db<InstanceRow>('instances').where({ id });
-  if (!isAdmin) {
+  if (!isAdmin && !scopeInstanceId) {
     if (!caller) return null;
     q.andWhere({ user_id: caller.id });
   }

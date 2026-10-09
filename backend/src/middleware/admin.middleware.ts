@@ -7,14 +7,14 @@
  * the admin_grants table with signature verification (migration 006).
  */
 import { Request, Response, NextFunction } from 'express';
-import { isAdminEmail } from '../lib/isAdmin';
+import { isAdminCaller } from '../lib/isAdmin';
 
 export async function requireImiAdmin(
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  if (!(await isAdminEmail(req.user?.email))) {
+  if (!(await isAdminCaller(req.user))) {
     res.status(403).json({ error: { code: 'FORBIDDEN', message: 'IMI admin access required' } });
     return;
   }

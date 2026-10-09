@@ -19,7 +19,7 @@ import { requireInstanceOwnership } from '../middleware/instance.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { asyncHandler } from '../lib/asyncHandler';
 import { auditExportQuerySchema, auditQuerySchema } from '../schemas/query.schema';
-import { isAdminEmail } from '../lib/isAdmin';
+import { isAdminCaller } from '../lib/isAdmin';
 import * as svc from '../services/auditQuery.service';
 import { writeAuditLog } from '../services/audit.service';
 import { EXPORT_ROW_CAP, exportFilename, streamAuditExport } from '../services/auditExport.service';
@@ -110,13 +110,14 @@ crossInstanceAuditRouter.get(
   requireAuth,
   validate(auditQuerySchema, 'query'),
   asyncHandler(async (req, res) => {
-    const isAdmin = await isAdminEmail(req.user!.email);
+    const isAdmin = await isAdminCaller(req.user);
     const params = req.query as unknown as svc.AuditQueryParams;
 
     const { rows, total, summary } = await svc.listCrossInstanceAudit(
       req.user!.id,
       isAdmin,
       params,
+      req.user!.scopeInstanceId,
     );
 
     res.json({
@@ -140,7 +141,7 @@ crossInstanceAuditRouter.get(
   requireAuth,
   validate(auditExportQuerySchema, 'query'),
   asyncHandler(async (req, res) => {
-    if (!(await isAdminEmail(req.user!.email))) {
+    if (!(await isAdminCaller(req.user))) {
       res.status(403).json({
         error: {
           code: 'FORBIDDEN',

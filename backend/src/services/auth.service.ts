@@ -12,7 +12,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { createAndStoreOtp, verifyOtp } from './otp.service';
 import { verifyTotpCode, verifyBackupCode, generateBackupCodes } from './totp.service';
 import { sendOtpEmail } from './mail.service';
-import { setRefreshToken, deleteRefreshToken, getRefreshToken, redis } from './redis.service';
+import {
+  setRefreshToken,
+  deleteRefreshToken,
+  getRefreshToken,
+  setRefreshScope,
+  getRefreshScope,
+  redis,
+} from './redis.service';
 import { writeAuditLog } from './audit.service';
 import type { AuthUser, JwtPayload, TempTokenPayload } from '../types/auth.types';
 import { REFRESH_TOKEN_TTL_SEC as REFRESH_TTL_SEC } from '../lib/time';
@@ -33,10 +40,12 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 
 function signAccessToken(user: AuthUser): string {
   return jwt.sign(
-    { sub: user.id, email: user.email, amr: user.authMethod ?? 'otp' } as Omit<
-      JwtPayload,
-      'iat' | 'exp'
-    >,
+    {
+      sub: user.id,
+      email: user.email,
+      amr: user.authMethod ?? 'otp',
+      ...(user.scopeInstanceId ? { kind: 'org', inst: user.scopeInstanceId } : {}),
+    } as Omit<JwtPayload, 'iat' | 'exp'>,
     JWT_PRIVATE_KEY,
     { algorithm: 'RS256', expiresIn: JWT_EXPIRES_IN } as any,
   );
@@ -248,6 +257,9 @@ export async function createTokenPair(
   const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
 
   await setRefreshToken(refreshTokenHash, user.id, REFRESH_TTL_SEC);
+  if (user.scopeInstanceId) {
+    await setRefreshScope(refreshTokenHash, user.scopeInstanceId, REFRESH_TTL_SEC);
+  }
   return { accessToken, refreshToken };
 }
 
@@ -318,11 +330,28 @@ export async function refreshAccessToken(
   // presented a fingerprint on THIS request that still resolves to THIS user.
   // A cert session that refreshes without its cert (or with someone else's)
   // degrades to 'otp' rather than silently keeping the cert claim forever.
+  //
+  // An org-scoped session (organization login certificate) keeps its scope:
+  // it is only renewed when the re-presented certificate still logs in for
+  // exactly that instance. It never degrades to an unscoped owner session,
+  // and the token is NOT deleted on failure (a stolen cookie cannot burn the
+  // real session).
+  const scopeInstanceId = await getRefreshScope(hash);
   let authMethod: 'otp' | 'cert' = 'otp';
   const fp = opts?.certFingerprint;
-  if (fp && isValidSha512Fingerprint(fp)) {
-    const resolved = await resolveCertLogin(fp);
-    if (resolved?.user.id === user.id) authMethod = 'cert';
+  const resolved = fp && isValidSha512Fingerprint(fp) ? await resolveCertLogin(fp) : null;
+  if (scopeInstanceId) {
+    if (
+      !resolved ||
+      resolved.kind !== 'org' ||
+      resolved.instanceId !== scopeInstanceId ||
+      resolved.user.id !== user.id
+    ) {
+      throw new Error('CERT_REQUIRED');
+    }
+    authMethod = 'cert';
+  } else if (resolved && resolved.kind === 'admin' && resolved.user.id === user.id) {
+    authMethod = 'cert';
   }
   // Certificate-only deployment: a refresh cookie is worthless without the
   // client certificate it was issued for. The token is NOT deleted here, so
@@ -340,24 +369,27 @@ export async function refreshAccessToken(
     email: user.email,
     totpEnabled: user.totp_enabled,
     authMethod,
+    scopeInstanceId: scopeInstanceId ?? undefined,
   });
 }
 
 /**
  * Resolve a caller authenticated via client certificate: match the SHA-512
- * fingerprint against admins first, then organizations.
+ * fingerprint against admins first, then organization login certificates.
  *
  * Admin path: the fingerprint is pre-registered in admin_cert_fingerprints
  * (out of band, by an existing admin). Ensures the users + email_whitelist
  * rows exist for that email — the same idempotent bootstrap dev-login uses —
  * so a first-time admin cert can log in without a prior OTP signup.
  * Admin-ness itself comes from admin_grants (seeded separately); this
- * function does not grant it.
+ * function does not grant it. The session is unscoped.
  *
- * Org path: mirrors the previous thumbprint-based org-login resolution
- * (organizations → instances → users), now keyed by client_cert_fingerprint.
+ * Org path: the fingerprint is listed in org_login_certificates (managed by
+ * admins). The result carries the organization's instance; the session minted
+ * from it is scoped to exactly that instance and is never admin, whoever owns
+ * the instance.
  *
- * @returns null if the fingerprint matches neither an admin nor an organization.
+ * @returns null if the fingerprint matches neither an admin nor a login certificate.
  */
 export async function resolveCertLogin(fingerprint: string): Promise<{
   kind: 'admin' | 'org';
@@ -379,36 +411,52 @@ export async function resolveCertLogin(fingerprint: string): Promise<{
     if (!user) return null;
     return { kind: 'admin', user: { id: user.id, email: user.email } };
   }
+  return resolveOrgLogin(fingerprint);
+}
 
-  const org = await db('organizations').where({ client_cert_fingerprint: fingerprint }).first();
-  if (!org) return null;
-  const instance = await db('instances').where({ id: org.instance_id }).first();
-  if (!instance) return null;
-  const user = await db('users').where({ id: instance.user_id }).first();
-  if (!user) return null;
-  return { kind: 'org', user: { id: user.id, email: user.email }, instanceId: instance.id };
+async function resolveOrgLogin(fingerprint: string): Promise<{
+  kind: 'org';
+  user: { id: string; email: string };
+  instanceId: string;
+} | null> {
+  const row = await db('org_login_certificates as l')
+    .join('organizations as o', 'o.identifier', 'l.organization_id')
+    .join('instances as i', 'i.id', 'o.instance_id')
+    .join('users as u', 'u.id', 'i.user_id')
+    .where('l.fingerprint', fingerprint)
+    .select('i.id as instance_id', 'u.id as user_id', 'u.email as user_email')
+    .first();
+  if (!row) return null;
+  return {
+    kind: 'org',
+    user: { id: row.user_id, email: row.user_email },
+    instanceId: row.instance_id,
+  };
 }
 
 /**
- * Read-only counterpart of resolveCertLogin for per-request session binding:
- * returns the id of the user a SHA-512 fingerprint maps to (admin cert table
- * first, then the organization login fingerprint) or null when the
- * certificate is not (or no longer) registered. Never creates rows.
+ * What a SHA-512 fingerprint is bound to, for per-request session binding:
+ * the user plus, for an organization login certificate, the one instance the
+ * session may use. Read-only; null when the certificate is not (or no longer)
+ * registered.
  */
-export async function findCertUserId(fingerprint: string): Promise<string | null> {
+export async function findCertBinding(
+  fingerprint: string,
+): Promise<{ userId: string; kind: 'admin' | 'org'; instanceId?: string } | null> {
   const adminCert = await db('admin_cert_fingerprints').where({ fingerprint }).first();
   if (adminCert) {
     const user = await db('users')
       .where({ email: String(adminCert.email).toLowerCase().trim() })
       .first();
-    return user?.id ?? null;
+    return user ? { userId: user.id, kind: 'admin' } : null;
   }
-  const org = await db('organizations').where({ client_cert_fingerprint: fingerprint }).first();
-  if (!org) return null;
-  const instance = await db('instances').where({ id: org.instance_id }).first();
-  if (!instance) return null;
-  const user = await db('users').where({ id: instance.user_id }).first();
-  return user?.id ?? null;
+  const org = await resolveOrgLogin(fingerprint);
+  return org ? { userId: org.user.id, kind: 'org', instanceId: org.instanceId } : null;
+}
+
+/** User id a SHA-512 fingerprint maps to, or null (see findCertBinding). */
+export async function findCertUserId(fingerprint: string): Promise<string | null> {
+  return (await findCertBinding(fingerprint))?.userId ?? null;
 }
 
 // Logout: revoke refresh token
