@@ -109,7 +109,7 @@ describe('EntityCanvas layout', () => {
     expect(container.querySelector('[style*="grid-template-columns"]')).toBeNull();
   });
 
-  it('staggers the entrance by card index and lets Organization span two rows', () => {
+  it('staggers the entrance by card index and keeps Organization first', () => {
     const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
     const cells = Array.from(container.querySelectorAll<HTMLElement>('.entity-canvas-cell'));
     expect(cells).toHaveLength(5);
@@ -118,9 +118,41 @@ describe('EntityCanvas layout', () => {
       expect(cell.style.getPropertyValue('--stagger-index')).toBe(String(i));
     });
     expect(cells[0]).toHaveAttribute('data-canvas-cell', 'organization');
-    expect(cells[0]).toHaveClass('entity-canvas-cell--lead');
-    expect(cells.slice(1).some((c) => c.classList.contains('entity-canvas-cell--lead'))).toBe(
-      false,
+    // Masonry: no fixed row spans, the hook sizes every cell from its card.
+    cells.forEach((cell) => expect(cell.className).not.toContain('--lead'));
+    cells.forEach((cell) => expect(cell.style.gridRowEnd).toMatch(/^span \d+$/));
+  });
+
+  it('re-spans a cell when its card grows', () => {
+    const observers: Array<() => void> = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(cb: () => void) {
+          observers.push(cb);
+        }
+        observe() {}
+        disconnect() {}
+      },
     );
+    const heights = new Map<Element, number>();
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return { height: heights.get(this) ?? 0 } as DOMRect;
+    });
+    const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
+    const org = container.querySelector<HTMLElement>('[data-canvas-cell="organization"]')!;
+    expect(org.style.gridRowEnd).toBe('span 1');
+
+    heights.set(org, 100);
+    act(() => observers.forEach((cb) => cb()));
+    expect(org.style.gridRowEnd).toBe('span 50');
+
+    heights.set(org, 301);
+    act(() => observers.forEach((cb) => cb()));
+    expect(org.style.gridRowEnd).toBe('span 151');
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 });
