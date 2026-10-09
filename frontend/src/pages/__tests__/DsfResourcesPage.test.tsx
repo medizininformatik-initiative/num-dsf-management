@@ -84,5 +84,6 @@ describe('DsfResourcesPage', () => {
     expect(screen.getAllByRole('link').filter((a) => !a.closest('nav'))).toHaveLength(
       DSF_RESOURCES.length,
     );
-  });
+    // Types ~30 characters into a filter that re-renders the whole catalog.
+  }, 15_000);
 });

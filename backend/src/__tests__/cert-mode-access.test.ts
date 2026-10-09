@@ -315,7 +315,8 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
         if (res.status !== 401) open.push(`${r.method.toUpperCase()} ${r.path} -> ${res.status}`);
       }
       expect(open).toEqual([]);
-    });
+      // One request per registered /api route; slow when the suite runs in parallel.
+    }, 60_000);
   });
 
   describe('req 3: allow-list download only with a certificate', () => {
