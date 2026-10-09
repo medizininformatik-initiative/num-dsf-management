@@ -32,6 +32,7 @@ import { downloadRouter } from './routes/download.routes';
 import { auditRouter, crossInstanceAuditRouter } from './routes/audit.routes';
 import { fhirRouter } from './routes/fhir.routes';
 import { networkRouter } from './routes/network.routes';
+import { parentOrganizationsRouter } from './routes/parent-organizations.routes';
 import { marketplaceRouter } from './routes/marketplace.routes';
 import { adminMarketplaceRouter } from './routes/admin-marketplace.routes';
 import { apiRateLimit } from './middleware/rateLimit.middleware';
@@ -130,6 +131,9 @@ app.use('/api/v1/audit', crossInstanceAuditRouter);
 
 // Cross-instance allow-list network map (all authenticated users)
 app.use('/api/v1/network', networkRouter);
+
+// Parent organizations for the membership form (all authenticated users)
+app.use('/api/v1/parent-organizations', parentOrganizationsRouter);
 
 // Admin routes
 app.use('/api/v1/admin/approval', adminApprovalRouter);
