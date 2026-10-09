@@ -32,7 +32,7 @@ import { useI18n } from '../stores/i18n.store';
 import { useInstances } from '../hooks/useInstance';
 import { useModals } from '../hooks/useModals';
 import { useOrganization } from '../hooks/useOrganization';
-import { useApprovalHistory, useApprovalStatus } from '../hooks/useApproval';
+import { useApprovalHistory, useApprovalStatus, type ApprovalRequest } from '../hooks/useApproval';
 import { usePresence } from '../hooks/usePresence';
 import { useScrollEdges } from '../hooks/useScrollEdges';
 import { MOTION_MS } from '../lib/motion';
@@ -134,7 +134,7 @@ export function AppPage() {
     (approvalStatus.isError ||
       approvalHistory.isError ||
       (!!approvalStatus.data && approvalStatus.data.status !== 'DRAFT') ||
-      (approvalHistory.data ?? []).some((r) => r.status !== 'DRAFT'));
+      (approvalHistory.data ?? []).some((r: ApprovalRequest) => r.status !== 'DRAFT'));
 
   const orgDefaults = useMemo(
     () =>
