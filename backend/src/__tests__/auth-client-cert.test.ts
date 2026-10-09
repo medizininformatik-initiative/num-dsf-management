@@ -100,9 +100,16 @@ describe('POST /auth/client-cert-login', () => {
       email: 'a@b.de',
       active: true,
       client_cert_thumbprint: tp,
-      client_cert_fingerprint: sha512FingerprintFromPem(SAMPLE_PEM),
       created_at: new Date(),
       updated_at: new Date(),
+    });
+    await db('org_login_certificates').insert({
+      fingerprint: sha512FingerprintFromPem(SAMPLE_PEM),
+      organization_id: orgIdentifier,
+      certificate_id: null,
+      source: 'ADMIN',
+      created_by: 'test',
+      created_at: new Date(),
     });
   });
 
@@ -205,9 +212,16 @@ describe('POST /auth/client-cert-login — SHA-512 fingerprint resolution', () =
       name: 'CertFpOrg',
       email: 'b@c.de',
       active: true,
-      client_cert_fingerprint: orgFingerprint,
       created_at: new Date(),
       updated_at: new Date(),
+    });
+    await db('org_login_certificates').insert({
+      fingerprint: orgFingerprint,
+      organization_id: orgIdentifier,
+      certificate_id: null,
+      source: 'ADMIN',
+      created_by: 'test',
+      created_at: new Date(),
     });
   });
 
@@ -232,7 +246,7 @@ describe('POST /auth/client-cert-login — SHA-512 fingerprint resolution', () =
     expect(res.body.data.email).toBe(adminEmail);
   });
 
-  it('200 with a session for the org owner when the fingerprint matches organizations.client_cert_fingerprint', async () => {
+  it('200 with a session for the org owner when the fingerprint is an org login certificate', async () => {
     const res = await request(appWith())
       .post('/auth/client-cert-login')
       .set('x-client-verify', 'SUCCESS')

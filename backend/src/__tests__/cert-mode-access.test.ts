@@ -59,9 +59,16 @@ const certHeaders = (pem: string) => ({
   'x-client-cert': encodeURIComponent(pem),
 });
 
-async function certToken(userId: string, email: string): Promise<string> {
-  return (await createTokenPair({ id: userId, email, totpEnabled: true, authMethod: 'cert' }))
-    .accessToken;
+async function certToken(userId: string, email: string, scopeInstanceId?: string): Promise<string> {
+  return (
+    await createTokenPair({
+      id: userId,
+      email,
+      totpEnabled: true,
+      authMethod: 'cert',
+      scopeInstanceId,
+    })
+  ).accessToken;
 }
 
 describe('certificate-only mode (AUTH_MODE=cert)', () => {
@@ -88,9 +95,16 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
         name: org,
         email: 'a@b.de',
         active: true,
-        client_cert_fingerprint: sha512FingerprintFromPem(pem),
         created_at: new Date(),
         updated_at: new Date(),
+      });
+      await db('org_login_certificates').insert({
+        fingerprint: sha512FingerprintFromPem(pem),
+        organization_id: org,
+        certificate_id: null,
+        source: 'ADMIN',
+        created_by: 'test',
+        created_at: new Date(),
       });
     }
     await db('admin_cert_fingerprints').insert({
@@ -162,7 +176,7 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
     });
 
     it('a stolen cert token without the certificate is rejected', async () => {
-      const token = await certToken(siteUserId, siteEmail);
+      const token = await certToken(siteUserId, siteEmail, siteInstanceId);
       const res = await request(app)
         .get('/api/v1/instances')
         .set('Authorization', `Bearer ${token}`);
@@ -171,7 +185,7 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
     });
 
     it('a spoofed X-Client-Cert without a verified handshake is rejected', async () => {
-      const token = await certToken(siteUserId, siteEmail);
+      const token = await certToken(siteUserId, siteEmail, siteInstanceId);
       const res = await request(app)
         .get('/api/v1/instances')
         .set('Authorization', `Bearer ${token}`)
@@ -180,7 +194,7 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
     });
 
     it('a token presented with another site certificate is rejected', async () => {
-      const token = await certToken(siteUserId, siteEmail);
+      const token = await certToken(siteUserId, siteEmail, siteInstanceId);
       const res = await request(app)
         .get('/api/v1/instances')
         .set('Authorization', `Bearer ${token}`)
@@ -189,7 +203,7 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
     });
 
     it('the token plus its own certificate works', async () => {
-      const token = await certToken(siteUserId, siteEmail);
+      const token = await certToken(siteUserId, siteEmail, siteInstanceId);
       const res = await request(app)
         .get('/api/v1/instances')
         .set('Authorization', `Bearer ${token}`)
@@ -198,27 +212,30 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
     });
 
     it('revoking the certificate ends the session on the next request', async () => {
-      const token = await certToken(otherUserId, otherEmail);
+      const token = await certToken(otherUserId, otherEmail, otherInstanceId);
       const ok = await request(app)
         .get('/api/v1/instances')
         .set('Authorization', `Bearer ${token}`)
         .set(certHeaders(OTHER_PEM));
       expect(ok.status).toBe(200);
-      await db('organizations').where({ identifier: otherOrg }).update({
-        client_cert_fingerprint: null,
-      });
+      await db('org_login_certificates').where({ organization_id: otherOrg }).del();
       const after = await request(app)
         .get('/api/v1/instances')
         .set('Authorization', `Bearer ${token}`)
         .set(certHeaders(OTHER_PEM));
       expect(after.status).toBe(401);
-      await db('organizations')
-        .where({ identifier: otherOrg })
-        .update({ client_cert_fingerprint: sha512FingerprintFromPem(OTHER_PEM) });
+      await db('org_login_certificates').insert({
+        fingerprint: sha512FingerprintFromPem(OTHER_PEM),
+        organization_id: otherOrg,
+        certificate_id: null,
+        source: 'ADMIN',
+        created_by: 'test',
+        created_at: new Date(),
+      });
     });
 
     it('a locked account is cut off even with its certificate', async () => {
-      const token = await certToken(otherUserId, otherEmail);
+      const token = await certToken(otherUserId, otherEmail, otherInstanceId);
       await db('email_whitelist').where({ email: otherEmail }).update({ locked_at: new Date() });
       const res = await request(app)
         .get('/api/v1/instances')
@@ -234,6 +251,7 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
         email: siteEmail,
         totpEnabled: true,
         authMethod: 'cert',
+        scopeInstanceId: siteInstanceId,
       });
       const bare = await request(app)
         .post('/auth/refresh')
@@ -302,7 +320,7 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
 
   describe('req 3: allow-list download only with a certificate', () => {
     it('GUI full bundle needs a cert-bound session', async () => {
-      const token = await certToken(siteUserId, siteEmail);
+      const token = await certToken(siteUserId, siteEmail, siteInstanceId);
       const bare = await request(app)
         .get('/api/v1/download/full-bundle')
         .set('Authorization', `Bearer ${token}`);
@@ -315,7 +333,7 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
     });
 
     it('instance bundle: a site cannot download another site (403) and needs the cert', async () => {
-      const token = await certToken(siteUserId, siteEmail);
+      const token = await certToken(siteUserId, siteEmail, siteInstanceId);
       const bare = await request(app)
         .get(`/api/v1/instances/${siteInstanceId}/download/bundle?endpointId=e`)
         .set('Authorization', `Bearer ${token}`);
@@ -351,7 +369,7 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
     });
 
     it('the Excel IP list is admin only', async () => {
-      const token = await certToken(siteUserId, siteEmail);
+      const token = await certToken(siteUserId, siteEmail, siteInstanceId);
       const res = await request(app)
         .get('/api/v1/download/ip-address-list')
         .set('Authorization', `Bearer ${token}`)
@@ -380,7 +398,7 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
     ];
 
     it.each(adminRoutes)('a site user (non-admin) gets 403 on %s %s', async (method, path) => {
-      const token = await certToken(siteUserId, siteEmail);
+      const token = await certToken(siteUserId, siteEmail, siteInstanceId);
       const agent = request(app) as unknown as Record<string, (p: string) => request.Test>;
       const res = await agent[method](path)
         .set('Authorization', `Bearer ${token}`)

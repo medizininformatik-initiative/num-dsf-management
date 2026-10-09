@@ -87,11 +87,20 @@ export async function seedSite(spec: SiteSpec): Promise<Site> {
     email,
     city: 'Muenster',
     country_code: 'DE',
-    client_cert_fingerprint: loginCertPem ? sha512FingerprintFromPem(loginCertPem) : null,
     client_cert_thumbprint: loginCertPem ? sha256Thumbprint(loginCertPem) : null,
     created_at: now,
     updated_at: now,
   });
+  if (loginCertPem) {
+    await db('org_login_certificates').insert({
+      fingerprint: sha512FingerprintFromPem(loginCertPem),
+      organization_id: orgId,
+      certificate_id: null,
+      source: 'ADMIN',
+      created_by: 'test',
+      created_at: now,
+    });
+  }
   await db('endpoints').insert(
     endpointIds.map((identifier, i) => ({
       identifier,

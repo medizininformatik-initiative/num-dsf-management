@@ -523,9 +523,16 @@ describe('GET /fhir/Bundle/:endpointId (SHA-512 fingerprint match, SHA-256 fallb
       name: 'FP Match Org',
       active: true,
       email: 'fp-match@example.de',
-      client_cert_fingerprint: fpFingerprint,
       created_at: new Date(),
       updated_at: new Date(),
+    });
+    await db('org_login_certificates').insert({
+      fingerprint: fpFingerprint,
+      organization_id: fpOrgId,
+      certificate_id: null,
+      source: 'ADMIN',
+      created_by: 'test',
+      created_at: new Date(),
     });
     await db('endpoints').insert({
       identifier: fpEndpointId,
@@ -577,7 +584,7 @@ describe('GET /fhir/Bundle/:endpointId (SHA-512 fingerprint match, SHA-256 fallb
     await db('users').where({ id: thumbUserId }).del();
   });
 
-  it('200 when the cert SHA-512 matches organizations.client_cert_fingerprint', async () => {
+  it('200 when the cert SHA-512 matches org_login_certificates', async () => {
     const res = await request(app)
       .get(`/fhir/Bundle/${fpEndpointId}`)
       .set('x-client-verify', 'SUCCESS')
