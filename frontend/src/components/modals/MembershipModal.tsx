@@ -1,12 +1,13 @@
 /**
  * MembershipModal.tsx — add/edit modal for a membership (parent org, endpoint, roles).
  * React Hook Form + membershipSchema; create/update through useMemberships behind the cross-user guard.
- * Roles are a labelled checkbox group with translated descriptions; unsaved input asks before the
+ * The parent organization is chosen from the known Verbünde and the parents already in use, or
+ * entered as a new identifier. Roles are a labelled checkbox group with translated descriptions; unsaved input asks before the
  * dialog is dismissed.
  * Dependencies: Modal, FormField (FormField, FormFieldGroup, CheckboxCards), useMemberships,
- *               useEndpoints, useCrossUserGuard, i18n store.
+ *               useEndpoints, useParentOrganizations, useCrossUserGuard, i18n store.
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -16,6 +17,7 @@ import {
   FormField,
   FormFieldGroup,
   selectClass,
+  inputClass,
   ModalFooter,
   type CheckboxCardOption,
 } from './FormField';
@@ -27,17 +29,41 @@ import {
   useMemberships,
 } from '../../hooks/useMemberships';
 import { useEndpoints } from '../../hooks/useEndpoints';
+import { useParentOrganizations } from '../../hooks/useParentOrganizations';
+import type { ParentOrganizationOption } from '../../api/parentOrganizations.api';
 import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
 import { useI18n } from '../../stores/i18n.store';
 import { getErrorMessage } from '../../lib/getErrorMessage';
 import type { TranslationKey } from '../../i18n/en';
 
-const PARENT_ORGS = [
-  'medizininformatik-initiative.de',
-  'netzwerk-universitaetsmedizin.de',
-  'eyematics.org',
-  'dktk.dkfz.de',
+const OTHER = '__other__';
+
+/** Shown when the parent-organization list cannot be loaded. */
+const FALLBACK_PARENTS: ParentOrganizationOption[] = [
+  {
+    identifier: 'medizininformatik-initiative.de',
+    name: 'Medizininformatik-Initiative',
+    known: true,
+    usedBy: 0,
+  },
+  {
+    identifier: 'netzwerk-universitaetsmedizin.de',
+    name: 'Netzwerk Universitätsmedizin',
+    known: true,
+    usedBy: 0,
+  },
+  { identifier: 'eyematics.org', name: 'Eyematics', known: true, usedBy: 0 },
+  {
+    identifier: 'dktk.dkfz.de',
+    name: 'Deutsches Konsortium für Translationale Krebsforschung',
+    known: true,
+    usedBy: 0,
+  },
 ];
+
+function parentLabel(p: ParentOrganizationOption): string {
+  return p.name === p.identifier ? p.identifier : `${p.name} (${p.identifier})`;
+}
 
 type Role = MembershipFormData['roles'][number];
 
@@ -82,7 +108,8 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
     control,
     reset,
     watch,
-    formState: { errors, isDirty },
+    setValue,
+    formState: { errors, isDirty, isSubmitted },
   } = useForm<MembershipFormData>({
     resolver: zodResolver(membershipSchema),
     defaultValues: { roles: [], ...defaultValues },
@@ -95,8 +122,23 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
 
   const { data: memberships = [] } = useMemberships(instanceId);
   const currentParent = watch('parentOrganization');
+  const parentsQuery = useParentOrganizations();
+  const [customParent, setCustomParent] = useState(false);
+  const parents = parentsQuery.isError ? FALLBACK_PARENTS : (parentsQuery.data ?? []);
+  const knownParents = parents.filter((p) => p.known);
+  const usedParents = parents.filter((p) => !p.known);
+  const currentInList = parents.some((p) => p.identifier === currentParent);
+
+  function onParentSelect(value: string) {
+    setCustomParent(value === OTHER);
+    setValue('parentOrganization', value === OTHER ? '' : value, {
+      shouldDirty: true,
+      shouldValidate: isSubmitted,
+    });
+  }
 
   useEffect(() => {
+    if (open) setCustomParent(false);
     if (open && membershipId) {
       const ms = (memberships as MembershipRow[]).find((m) => m.id === membershipId);
       if (ms) {
@@ -157,21 +199,61 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
         <FormField
           label={t('membershipModalFieldParent')}
           required
-          error={errors.parentOrganization?.message}
+          error={customParent ? undefined : errors.parentOrganization?.message}
+          hint={parentsQuery.isError ? t('membershipParentLoadFailed') : undefined}
           infoKey="glossaryParentOrg"
         >
-          <select {...register('parentOrganization')} className={selectClass}>
-            <option value="">{t('membershipModalFieldParentPlaceholder')}</option>
-            {currentParent && !PARENT_ORGS.includes(currentParent) && (
+          <select
+            value={customParent ? OTHER : (currentParent ?? '')}
+            onChange={(e) => onParentSelect(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">
+              {parentsQuery.isLoading
+                ? t('membershipParentLoading')
+                : t('membershipModalFieldParentPlaceholder')}
+            </option>
+            {currentParent && !currentInList && !customParent && (
               <option value={currentParent}>{currentParent}</option>
             )}
-            {PARENT_ORGS.map((org) => (
-              <option key={org} value={org}>
-                {org}
-              </option>
-            ))}
+            {knownParents.length > 0 && (
+              <optgroup label={t('membershipParentGroupKnown')}>
+                {knownParents.map((p) => (
+                  <option key={p.identifier} value={p.identifier}>
+                    {parentLabel(p)}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {usedParents.length > 0 && (
+              <optgroup label={t('membershipParentGroupUsed')}>
+                {usedParents.map((p) => (
+                  <option key={p.identifier} value={p.identifier}>
+                    {parentLabel(p)}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <option value={OTHER}>{t('membershipParentOther')}</option>
           </select>
         </FormField>
+        {customParent && (
+          <FormField
+            label={t('membershipParentCustomLabel')}
+            required
+            error={errors.parentOrganization?.message}
+            hint={t('membershipParentCustomHint')}
+          >
+            <input
+              {...register('parentOrganization')}
+              className={`${inputClass} font-mono`}
+              placeholder={t('membershipParentCustomPlaceholder')}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+            />
+          </FormField>
+        )}
         <FormField
           label={t('membershipModalFieldEndpoint')}
           required

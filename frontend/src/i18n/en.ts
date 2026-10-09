@@ -591,6 +591,19 @@ export const en = {
   certModalPrivateKeyDetected:
     'Private key detected. Remove the private key and paste only the certificate.',
 
+  // Membership parent organization picker
+  membershipParentGroupKnown: 'Networks',
+  membershipParentGroupUsed: 'Used in the network',
+  membershipParentOther: 'Other organization …',
+  membershipParentLoading: 'Loading organizations…',
+  membershipParentLoadFailed:
+    'The list of organizations could not be loaded. Only the known networks are offered; use "Other organization" for any other.',
+  membershipParentCustomLabel: 'Identifier of the parent organization',
+  membershipParentCustomHint: 'Lower-case domain name, for example hub.example.de',
+  membershipParentCustomPlaceholder: 'hub.example.de',
+  membershipParentInvalid:
+    'Enter a lower-case identifier such as hub.example.de (letters, digits, hyphens, dots)',
+
   // MembershipModal
   membershipModalTitleAdd: 'Add New Membership',
   membershipModalTitleEdit: 'Edit Membership',

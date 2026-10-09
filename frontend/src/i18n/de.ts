@@ -600,6 +600,19 @@ export const de: Record<TranslationKey, string> = {
   certModalPrivateKeyDetected:
     'Privater Schlüssel erkannt. Entfernen Sie den privaten Schlüssel und fügen Sie nur das Zertifikat ein.',
 
+  // Membership parent organization picker
+  membershipParentGroupKnown: 'Verbünde',
+  membershipParentGroupUsed: 'Im Verbund verwendet',
+  membershipParentOther: 'Andere Organisation …',
+  membershipParentLoading: 'Organisationen werden geladen…',
+  membershipParentLoadFailed:
+    'Die Liste der Organisationen konnte nicht geladen werden. Es werden nur die bekannten Verbünde angeboten; nutzen Sie „Andere Organisation“ für jede weitere.',
+  membershipParentCustomLabel: 'Identifier der übergeordneten Organisation',
+  membershipParentCustomHint: 'Domainname in Kleinbuchstaben, zum Beispiel hub.example.de',
+  membershipParentCustomPlaceholder: 'hub.example.de',
+  membershipParentInvalid:
+    'Geben Sie einen Identifier in Kleinbuchstaben ein, zum Beispiel hub.example.de (Buchstaben, Ziffern, Bindestriche, Punkte)',
+
   // MembershipModal
   membershipModalTitleAdd: 'Neue Mitgliedschaft hinzufügen',
   membershipModalTitleEdit: 'Mitgliedschaft bearbeiten',
