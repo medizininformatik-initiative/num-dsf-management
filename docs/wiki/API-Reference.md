@@ -284,6 +284,18 @@ Mounted at `/api/v1/network`. `requireAuth`.
 
 ---
 
+## Parent organizations
+
+Mounted at `/api/v1/parent-organizations`. `requireAuth` (any logged-in user).
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/parent-organizations | requireAuth | Parent organizations selectable in the membership form: the known Verbünde plus every parent used by a live membership. Returns `{ data: [{ identifier, name, known, usedBy }] }`, known first, then by name. `name` comes from the known list, else the stored organization name, else the identifier; `usedBy` counts live memberships (deleted ones are ignored). |
+
+Membership create/update accept `parentOrganization` as a lower-case identifier (`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$`, max 255); the value is trimmed and lower-cased before validation.
+
+---
+
 ## Audit (cross-instance)
 
 Mounted at `/api/v1/audit` (per-instance audit lives under each instance — see below).
