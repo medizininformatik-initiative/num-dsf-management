@@ -5,12 +5,16 @@
  * referenced in its start Task with the site's DSF client certificate:
  *   GET {base}/Bundle/{id}   Accept: application/fhir+json
  * so the reference https://<host>/fhir/Bundle/<endpoint-identifier> yields
- * the allow list scoped to that endpoint of the caller's organization. That is
+ * the allow list scoped to that endpoint of the caller's organization.
+ * https://<host>/fhir/Bundle/mine is the same for every site: the endpoint is
+ * derived from the certificate's organization (its only endpoint, else the
+ * only one whose identifier starts with "fhir."; otherwise 409 and the site
+ * uses the per-endpoint URL). That is
  * always the CURRENT bundle version (Bundle.meta.versionId, ETag, Last-Modified);
  * _history lists all versions and _history/{vid} reads an old one.
  *
  * Authentication is mTLS only (no JWT). The certificate is resolved to an
- * organization by, in order: the SHA-512 login fingerprint, the legacy
+ * organization by, in order: the SHA-512 login certificate (org_login_certificates), the legacy
  * SHA-256 login thumbprint, or a certificate registered in the
  * organization's certificate list (the DSF client certificate whose
  * thumbprint the allow list publishes).
@@ -56,8 +60,10 @@ function sendOutcome(res: Response, status: number, code: string, diagnostics: s
 
 async function findOrgByClientCert(cert: ClientCertInfo): Promise<ResolvedOrg | null> {
   if (cert.fingerprint) {
-    const byFingerprint = await db('organizations')
-      .where({ client_cert_fingerprint: cert.fingerprint })
+    const byFingerprint = await db('organizations as o')
+      .join('org_login_certificates as l', 'l.organization_id', 'o.identifier')
+      .where('l.fingerprint', cert.fingerprint)
+      .select('o.*')
       .first();
     if (byFingerprint) return { org: byFingerprint, match: 'sha512' };
   }
@@ -121,12 +127,17 @@ function setVersionHeaders(res: Response, version: { number: number; createdAt: 
 
 /** Non-blocking audit; the caller is a certificate, not a user, so only a
  * masked identifier prefix is recorded and never the certificate itself. */
-function auditRead(req: Request, resolved: ResolvedOrg, extra: Record<string, unknown> = {}) {
+function auditRead(
+  req: Request,
+  resolved: ResolvedOrg,
+  extra: Record<string, unknown> = {},
+  endpointId: string = req.params.endpointId,
+) {
   const cert = extractClientCert(req)!;
   writeAuditLog({
     instanceId: resolved.org.instance_id,
     resourceType: 'CERTIFICATE',
-    resourceId: req.params.endpointId,
+    resourceId: endpointId,
     operation: 'CREATE',
     diffJson: {
       authMethod: 'client_cert',
@@ -141,6 +152,49 @@ function auditRead(req: Request, resolved: ResolvedOrg, extra: Record<string, un
 // Scoped to the caller's own instance: the endpoint is only found among the
 // organization's endpoints, so a certificate of org A cannot read a bundle
 // addressed to org B's endpoint (404).
+
+// GET /fhir/Bundle/mine — the same as /Bundle/<endpoint> for the endpoint derived
+// from the certificate's organization: its only endpoint, else the only one
+// whose identifier starts with "fhir."; otherwise 409 AMBIGUOUS_ENDPOINT.
+// Registered before /Bundle/:endpointId so "mine" is not an endpoint id.
+fhirRouter.get('/Bundle/mine', async (req: Request, res: Response) => {
+  try {
+    const resolved = await authenticate(req, res);
+    if (!resolved) return;
+    const rows: Array<{ identifier: string }> = await db('endpoints')
+      .where({ organization_id: resolved.org.identifier })
+      .orderBy('identifier')
+      .select('identifier');
+    const ids = rows.map((r) => r.identifier);
+    if (ids.length === 0) {
+      return sendOutcome(res, 404, 'not-found', 'ENDPOINT_NOT_FOUND');
+    }
+    const fhirIds = ids.filter((id) => id.startsWith('fhir.'));
+    const endpointId = ids.length === 1 ? ids[0] : fhirIds.length === 1 ? fhirIds[0] : null;
+    if (!endpointId) {
+      return sendOutcome(
+        res,
+        409,
+        'conflict',
+        `AMBIGUOUS_ENDPOINT: use /fhir/Bundle/<endpoint>, one of: ${ids.join(', ')}`,
+      );
+    }
+    const { bundle, version } = await getPublishedReceiverBundle(
+      resolved.org.instance_id,
+      endpointId,
+    );
+    auditRead(
+      req,
+      resolved,
+      { ...(version ? { version: version.number } : {}), mine: true },
+      endpointId,
+    );
+    setVersionHeaders(res, version);
+    return res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
+  } catch (err: unknown) {
+    return handleError(res, err);
+  }
+});
 
 // GET /fhir/Bundle/:endpointId — the CURRENT allow list for one endpoint of the
 // caller's organization: the receiver view of the latest bundle version.
