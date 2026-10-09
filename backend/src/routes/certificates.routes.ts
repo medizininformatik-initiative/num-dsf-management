@@ -11,6 +11,7 @@ import { requireInstanceOwnership } from '../middleware/instance.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { createCertificateSchema, renewCertificateSchema } from '../schemas/certificate.schema';
 import * as svc from '../services/certificate.service';
+import { listForInstance as listLoginCertificates } from '../services/org-login-certificates.service';
 import { db } from '../db/connection';
 import { sanitizeError } from '../lib/sanitizeError';
 import { asyncHandler } from '../lib/asyncHandler';
@@ -39,6 +40,15 @@ certificatesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     res.json({ data: await svc.getCertificates(req.instance!.id) });
+  }),
+);
+
+// Which certificates may log in as the organization (read-only; admins change
+// this via /api/v1/admin/organizations/:identifier/login-certificates).
+certificatesRouter.get(
+  '/login-certificates',
+  asyncHandler(async (req, res) => {
+    res.json({ data: await listLoginCertificates(req.instance!.id) });
   }),
 );
 

@@ -27,6 +27,7 @@ import { adminBundleVersionsRouter } from './routes/admin-bundle-versions.routes
 import { adminBundleRestoresRouter } from './routes/admin-bundle-restores.routes';
 import { onboardingRouter } from './routes/onboarding.routes';
 import { adminBackupsRouter } from './routes/admin-backups.routes';
+import { adminLoginCertificatesRouter } from './routes/admin-login-certificates.routes';
 import { adminRouter } from './routes/admin.routes';
 import { downloadRouter } from './routes/download.routes';
 import { auditRouter, crossInstanceAuditRouter } from './routes/audit.routes';
@@ -145,6 +146,7 @@ app.use('/api/v1/admin/ca-whitelist', adminCaWhitelistRouter);
 app.use('/api/v1/admin/bundle-versions', adminBundleVersionsRouter);
 app.use('/api/v1/admin/bundle-restores', adminBundleRestoresRouter);
 app.use('/api/v1/admin/backups', adminBackupsRouter);
+app.use('/api/v1/admin/organizations', adminLoginCertificatesRouter);
 app.use('/api/v1/admin', adminRouter);
 
 // Marketplace (read, auth required)
