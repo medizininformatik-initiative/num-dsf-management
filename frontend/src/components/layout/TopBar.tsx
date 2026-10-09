@@ -5,8 +5,9 @@
  * duplicate title or environment badge here). The approval CTA follows the
  * active instance's latest request: while one is PENDING it turns into a
  * "Request running" pill that opens the running request (with its withdraw
- * action) instead of a second submit. Fits a 1024 px wide bar: below xl the
- * download action shows its icon only.
+ * action) instead of a second submit. The download action is an accent
+ * outlined button with a visible label from sm up (icon only on phones), so it
+ * stays distinct from the filled submit CTA but is hard to overlook.
  * Dependencies: SearchBar, NotificationCenter, Button, Icon, canvas.store,
  * useApproval, theme.store, i18n.store
  */
@@ -75,11 +76,12 @@ export function TopBar({
               variant="secondary"
               size="sm"
               onClick={onDownload}
-              className="ml-1"
+              className="ml-1 border-[color:var(--accent)] bg-[color:var(--accent-surface)] font-semibold text-[color:var(--accent)]"
               title={t('downloadAllowList')}
+              data-testid="topbar-download"
             >
               <Icon name="download" size={16} />
-              <span className="sr-only xl:not-sr-only">{t('downloadAllowList')}</span>
+              <span className="sr-only sm:not-sr-only">{t('downloadAllowList')}</span>
             </Button>
             {pending ? (
               <Button

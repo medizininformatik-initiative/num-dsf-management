@@ -78,6 +78,16 @@ describe('TopBar', () => {
     expect(onApproval).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the download label visible from sm up, distinct from the filled submit CTA', () => {
+    renderWithProviders(<TopBar onDownload={vi.fn()} onApproval={vi.fn()} showInstanceActions />);
+    const download = screen.getByTestId('topbar-download');
+    expect(download).toHaveAccessibleName(/download allow list/i);
+    expect(download).not.toHaveClass('btn-primary');
+    const label = download.querySelector('span');
+    expect(label).toHaveClass('sm:not-sr-only');
+    expect(label).not.toHaveClass('xl:not-sr-only');
+  });
+
   it('offers the approval action again after a rejection', () => {
     approval.data = { status: 'REJECTED' };
     renderWithProviders(<TopBar onDownload={vi.fn()} onApproval={vi.fn()} showInstanceActions />);
