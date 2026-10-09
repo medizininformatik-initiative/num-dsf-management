@@ -149,9 +149,8 @@ describe('AppPage render', () => {
     expect(document.getElementById('card-contacts')).toBeNull();
     expect(document.getElementById('card-certificates')).toBeNull();
 
-    // The right panel still mounts for the canvas route (it shows empty counts),
-    // so its approval-status heading remains present.
-    expect(screen.getByRole('heading', { name: /approval status/i })).toBeInTheDocument();
+    // Without an instance there is no request either, so the status panel stays away.
+    expect(screen.queryByRole('heading', { name: /approval status/i })).toBeNull();
   });
 
   it('renders a translated loading skeleton while the instances load', () => {

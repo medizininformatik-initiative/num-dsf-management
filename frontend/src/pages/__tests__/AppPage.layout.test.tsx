@@ -25,6 +25,14 @@ vi.mock('../../hooks/useInstance', () => ({
 vi.mock('../../hooks/useMe', () => ({
   useMe: () => ({ data: { email: 'op@imi-test.example.de', isAdmin: false }, isLoading: false }),
 }));
+const approval = vi.hoisted(() => ({
+  status: { data: { status: 'APPROVED' } as { status: string } | null, isPending: false },
+  history: { data: [] as { status: string }[], isPending: false },
+}));
+vi.mock('../../hooks/useApproval', () => ({
+  useApprovalStatus: () => ({ ...approval.status, isError: false }),
+  useApprovalHistory: () => ({ ...approval.history, isError: false }),
+}));
 vi.mock('../../hooks/useOrganization', () => ({
   useOrganization: () => ({ data: undefined }),
 }));
@@ -69,6 +77,8 @@ const sidebarColumn = () => document.getElementById('app-sidebar') as HTMLElemen
 const statusColumn = () => document.getElementById('app-status-panel');
 
 beforeEach(() => {
+  approval.status = { data: { status: 'APPROVED' }, isPending: false };
+  approval.history = { data: [], isPending: false };
   act(() => {
     useCanvasStore.setState({ activeInstanceId: 'inst-1' });
     useAuthStore.getState().setTokens('tok', { id: 'u1', email: 'op@imi-test.example.de' });
@@ -77,6 +87,42 @@ beforeEach(() => {
 
 afterEach(() => {
   media.uninstall();
+});
+
+describe('AppPage status panel before the first request', () => {
+  it('hides the column and its buttons while the instance never had a request', () => {
+    approval.status = { data: null, isPending: false };
+    renderShell(true);
+    expect(statusColumn()).toBeNull();
+    expect(screen.queryByText('status panel')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /instance status/i })).not.toBeInTheDocument();
+  });
+
+  it('hides the narrow-layout rail and drawer too', () => {
+    approval.status = { data: null, isPending: false };
+    renderShell(false);
+    expect(statusColumn()).toBeNull();
+    expect(screen.queryByRole('button', { name: /instance status/i })).not.toBeInTheDocument();
+  });
+
+  it('shows nothing while the approval data is loading', () => {
+    approval.status = { data: null, isPending: true };
+    renderShell(true);
+    expect(statusColumn()).toBeNull();
+  });
+
+  it('shows the panel once the history has a request, even without a current status', () => {
+    approval.status = { data: null, isPending: false };
+    approval.history = { data: [{ status: 'WITHDRAWN' }], isPending: false };
+    renderShell(true);
+    expect(screen.getByRole('complementary', { name: 'Approval status' })).toBeInTheDocument();
+  });
+
+  it('does not count a draft as a request', () => {
+    approval.status = { data: { status: 'DRAFT' }, isPending: false };
+    renderShell(true);
+    expect(statusColumn()).toBeNull();
+  });
 });
 
 describe('AppPage wide layout (>= 1200 px)', () => {

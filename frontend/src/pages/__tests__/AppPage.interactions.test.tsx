@@ -19,6 +19,10 @@ import { useCanvasStore } from '../../stores/canvas.store';
 vi.mock('../../hooks/useInstance', () => ({
   useInstances: vi.fn(() => ({ data: [], isLoading: false })),
 }));
+vi.mock('../../hooks/useApproval', () => ({
+  useApprovalStatus: () => ({ data: null, isPending: false, isError: false }),
+  useApprovalHistory: () => ({ data: [], isPending: false, isError: false }),
+}));
 const useOrganizationMock = vi.fn((_id: string | null) => ({ data: undefined }));
 vi.mock('../../hooks/useOrganization', () => ({
   useOrganization: (id: string | null) => useOrganizationMock(id),

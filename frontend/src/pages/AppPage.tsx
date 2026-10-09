@@ -4,6 +4,9 @@
  * the canvas route, the instance status panel (RightPanel) in a column that
  * starts below the TopBar, so it never covers the TopBar's actions.
  *
+ * The status column (and its rail or drawer) stays away until the instance has
+ * had its first approval request, so a fresh instance starts calm.
+ *
  * Wide layout (>= 1200 px): both panels are persistent columns the user can
  * collapse to a rail and expand again. The collapse is choreographed: labels
  * slide and fade out first, then the width follows on the spring curve;
@@ -29,6 +32,7 @@ import { useI18n } from '../stores/i18n.store';
 import { useInstances } from '../hooks/useInstance';
 import { useModals } from '../hooks/useModals';
 import { useOrganization } from '../hooks/useOrganization';
+import { useApprovalHistory, useApprovalStatus } from '../hooks/useApproval';
 import { usePresence } from '../hooks/usePresence';
 import { useScrollEdges } from '../hooks/useScrollEdges';
 import { MOTION_MS } from '../lib/motion';
@@ -115,6 +119,22 @@ export function AppPage() {
 
   const { open, editId, openModal, closeModal } = useModals();
   const { data: org } = useOrganization(activeInstanceId);
+
+  // Calm first start: the status column (and its rail or drawer button) only
+  // exists once the instance has had a request. While that is unknown nothing
+  // is shown, so the column never flashes in and out; a failed query shows it,
+  // because its error state lives there.
+  const approvalStatus = useApprovalStatus(isCanvasRoute ? activeInstanceId : null);
+  const approvalHistory = useApprovalHistory(isCanvasRoute ? activeInstanceId : null);
+  const showStatusPanel =
+    isCanvasRoute &&
+    !!activeInstanceId &&
+    !approvalStatus.isPending &&
+    !approvalHistory.isPending &&
+    (approvalStatus.isError ||
+      approvalHistory.isError ||
+      (!!approvalStatus.data && approvalStatus.data.status !== 'DRAFT') ||
+      (approvalHistory.data ?? []).some((r) => r.status !== 'DRAFT'));
 
   const orgDefaults = useMemo(
     () =>
@@ -258,7 +278,7 @@ export function AppPage() {
             <AppFooter>{isCanvasRoute && <ActivityFeed />}</AppFooter>
           </div>
 
-          {isCanvasRoute && statusColumn}
+          {showStatusPanel && statusColumn}
         </div>
       </div>
 
@@ -280,7 +300,7 @@ export function AppPage() {
         />
       </Drawer>
 
-      {isCanvasRoute && (
+      {showStatusPanel && (
         <Drawer
           id={PANEL_DRAWER_ID}
           side="right"
