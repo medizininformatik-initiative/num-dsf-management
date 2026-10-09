@@ -63,9 +63,7 @@ describe('HelpPage', () => {
     expect(
       screen.getByText('certtool --fingerprint --hash=sha512 --infile=client_certificate.pem'),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(`${window.location.origin}/fhir/Bundle/<endpoint>`),
-    ).toBeInTheDocument();
+    expect(screen.getByText(`${window.location.origin}/fhir/Bundle/mine`)).toBeInTheDocument();
     expect(screen.getAllByText(/MEDIC role/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/downloadAllowList/).length).toBeGreaterThan(0);
   });

@@ -415,6 +415,36 @@ export const de: Record<TranslationKey, string> = {
   contactVerificationSent: 'Bestätigungs-E-Mail gesendet.',
   contactVerificationFailed: 'Bestätigungs-E-Mail konnte nicht gesendet werden.',
 
+  // Certificate login ("Login" flag), shared allow-list link
+  loginCertBadge: 'Login',
+  loginCertBadgeHint: 'Dieses Zertifikat darf sich als Ihre Organisation anmelden.',
+  loginCertSwitchLabel: 'Für Login freigeben',
+  loginCertSwitchAria: 'Zertifikat {name} für Login freigeben',
+  loginCertEnableTitle: 'Zertifikat für Login freigeben?',
+  loginCertEnableMessage:
+    'Das Zertifikat kann sich als Organisation {org} anmelden. Die Sitzung sieht nur diese Organisation.',
+  loginCertEnableConfirm: 'Für Login freigeben',
+  loginCertDisableTitle: 'Login-Freigabe entziehen?',
+  loginCertDisableMessage: 'Das Zertifikat kann sich nicht mehr als Organisation {org} anmelden.',
+  loginCertDisableConsequence: 'Sitzungen mit diesem Zertifikat enden mit ihrer nächsten Anfrage.',
+  loginCertDisableConfirm: 'Freigabe entziehen',
+  loginCertEnabledToast: 'Zertifikat für den Login freigegeben.',
+  loginCertDisabledToast: 'Login-Freigabe entzogen.',
+  loginCertChangeFailed: 'Die Login-Freigabe konnte nicht geändert werden.',
+  loginCertErrAdminCert:
+    'Dies ist ein Admin-Zertifikat und kann nicht als Organisations-Login dienen.',
+  loginCertErrInUse: 'Dieses Zertifikat meldet bereits eine andere Organisation an.',
+  loginFingerprintTitle: 'Login-Fingerabdruck (aus Onboarding)',
+  loginFingerprintSourceOnboarding: 'Aus dem Onboarding-Import',
+  loginFingerprintSourceMigrated: 'Aus der Vorversion übernommen',
+  loginFingerprintSourceAdmin: 'Von einem Admin hinzugefügt',
+  loginFingerprintRemove: 'Entfernen',
+  loginFingerprintRemoveAria: 'Login-Fingerabdruck {prefix} entfernen',
+  dlSharedLinkTitle: 'Link für downloadAllowList',
+  dlSharedLinkHelp:
+    'Derselbe Link für jeden Standort: Ihr DSF weist sich mit seinem Client-Zertifikat aus und erhält die Allow List Ihres Endpunkts. Tragen Sie ihn als Task-Eingabe "allow_list" ein.',
+  dlSharedLinkCopy: 'Gemeinsamen Link kopieren',
+
   // CertificatesCard
   certRenewBtn: 'Erneuern',
   certDaysLeft: '{n}T verbleibend',
@@ -523,9 +553,9 @@ export const de: Record<TranslationKey, string> = {
   orgModalFieldCityPlaceholder: 'z.B. Münster',
   orgModalFieldCountry: 'Länderkennzeichen',
   orgModalFieldCountryHint: 'ISO 3166-1 alpha-2',
-  orgModalFieldThumbprint: 'Client-Zertifikat Thumbprint (SHA-256)',
+  orgModalFieldThumbprint: 'SHA-256-Thumbprint (nur DSF-Download, veraltet)',
   orgModalFieldThumbprintHint:
-    'Für mTLS-Authentifizierung — der DSF-Prozess verwendet dies beim Herunterladen des Allow-List-Bundles',
+    'Wird nur verwendet, wenn der DSF-Prozess die Allow List herunterlädt. Es erlaubt keine Anmeldung: Ein Admin gibt ein Zertifikat in der Zertifikatskarte für den Login frei.',
   orgModalFieldThumbprintPlaceholder: 'z.B. a1b2c3d4e5f6...',
   orgModalThumbprintTotpLabel: 'TOTP-Code (zum Ändern des Cert-Thumbprints erforderlich)',
   orgModalThumbprintTotpHint: 'Sie ändern den Cert-Thumbprint. Mit Authenticator-Code bestätigen.',
@@ -1393,7 +1423,7 @@ export const de: Record<TranslationKey, string> = {
   historyRestoreSuccess: 'Version {n} als Version {m} wiederhergestellt.',
   historyRestoreNotRestorable: 'Diese Version kann nicht mehr wiederhergestellt werden.',
   historyRestoreFailed: 'Die Version konnte nicht wiederhergestellt werden.',
-  dlDsfLinkTitle: 'Link für DSF',
+  dlDsfLinkTitle: 'Link pro Endpunkt (Standorte mit mehreren Endpunkten)',
   dlDsfLinkHelp:
     'Ihr DSF-Server lädt die aktuelle Allow List unter dieser Adresse mit seinem Client-Zertifikat herunter. Tragen Sie sie als Task-Eingabe "http://dsf.dev/fhir/CodeSystem/allow-list|allow_list" ein.',
   dlDsfLinkPick: 'Wählen Sie einen Endpoint, um dessen Link zu sehen.',
@@ -1680,7 +1710,7 @@ export const de: Record<TranslationKey, string> = {
   certStatusNoCert:
     'Es wurde kein Client-Zertifikat vorgelegt. Installieren Sie Ihr Zertifikat im Browser und laden Sie die Seite neu.',
   certStatusNotRegistered:
-    'Ihr Zertifikat ist nicht in der Allow-List. Bitten Sie den IMI-Betreiber, es für Ihre Organisation zu registrieren.',
+    'Ihr Zertifikat ist für keine Anmeldung freigegeben. Bitten Sie einen IMI-Admin, es in der Zertifikatskarte Ihrer Organisation für den Login freizugeben.',
   certStatusNoInstance:
     'Diesem Zertifikat ist kein Arbeitsbereich zugeordnet. Wenden Sie sich an den IMI-Betreiber.',
   certStatusLocked: 'Dieses Konto ist gesperrt. Wenden Sie sich an den IMI-Betreiber.',
@@ -1882,6 +1912,8 @@ export const de: Record<TranslationKey, string> = {
     'Vor dem Speichern zeigt das Portal Subject, Ablaufdatum, Aussteller und den SHA-512-Thumbprint des Zertifikats. Das ist derselbe Wert wie in der DSF-Konfiguration: der SHA-512-Thumbprint des lokalen Organisations-Client-Zertifikats. Sie können ihn mit dem Wert vergleichen, den certtool berechnet:',
   helpS_certificates_3_0:
     'Der Thumbprint ist eine zusammenhängende Zeichenkette aus 128 Hex-Zeichen in Kleinbuchstaben, ohne Trennzeichen.',
+  helpS_certificates_login:
+    'Die Anmeldung per Zertifikat funktioniert nur mit Zertifikaten, die ein IMI-Admin für den Login freigegeben hat (Schalter „Für Login freigeben“ in der Zertifikatskarte, erkennbar am Badge „Login“). Eine solche Anmeldung sieht nur Ihre eigene Organisation und endet, sobald die Freigabe entzogen wird.',
   helpS_certificates_3_1:
     'Ein als „DSF-CA“ gekennzeichneter Aussteller wird vom Produktiv-DSF akzeptiert; andere Aussteller führen zu einer Warnung.',
   helpS_memberships_title: 'Mitgliedschaften',
@@ -1904,7 +1936,7 @@ export const de: Record<TranslationKey, string> = {
   helpS_afterApproval_0:
     'Jede Genehmigung veröffentlicht eine neue, nummerierte Version der Allow-List. Ältere Versionen bleiben verfügbar, sodass Sie jederzeit nachvollziehen können, was zu einem bestimmten Zeitpunkt galt.',
   helpS_afterApproval_1:
-    'Ihr DSF holt die aktuelle Allow-List über diesen Link des Portals (ersetzen Sie <endpoint> durch den Identifier Ihres Endpunkts):',
+    'Ihr DSF holt die aktuelle Allow-List über diesen Link des Portals; es erkennt Ihre Organisation am DSF-Client-Zertifikat. Standorte mit mehreren Endpunkten verwenden stattdessen /fhir/Bundle/<endpoint> (Identifier des Endpunkts):',
   helpS_afterApproval_3_0:
     'Der Download-Dialog zeigt diesen Link kopierfertig, dazu den Verlauf aller Versionen mit ihren History-Links.',
   helpS_afterApproval_3_1:
@@ -1916,7 +1948,7 @@ export const de: Record<TranslationKey, string> = {
   helpS_dsfImport_1_0:
     'Öffnen Sie den Download-Dialog, wählen Sie Ihren Endpunkt und nutzen Sie „Task im eigenen FHIR-Server öffnen“: Das öffnet den Entwurf-Task des Prozesses auf Ihrem eigenen DSF-FHIR-Server.',
   helpS_dsfImport_1_1:
-    'Fügen Sie den daneben angezeigten Link /fhir/Bundle/<endpoint> in das Eingabefeld „allow_list“ ein. Prüfen Sie das Bundle vorher optional: Vergleichen Sie seinen SHA-256 mit dem im Dialog angezeigten Content-Hash.',
+    'Fügen Sie den daneben angezeigten gemeinsamen Link /fhir/Bundle/mine in das Eingabefeld „allow_list“ ein. Prüfen Sie das Bundle vorher optional: Vergleichen Sie seinen SHA-256 mit dem im Dialog angezeigten Content-Hash.',
   helpS_dsfImport_1_2: 'Starten Sie den Prozess downloadAllowList in Ihrem DSF.',
   helpS_dsfImport_2:
     'Die Allow-List ist eine Empfehlung des Netzwerks. Prüfen Sie Inhalt und Signatur, bevor Sie sie einspielen.',

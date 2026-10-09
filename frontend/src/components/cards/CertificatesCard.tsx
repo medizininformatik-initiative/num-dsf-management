@@ -7,12 +7,19 @@
  * data-entity-row="certificates:<id>" for relation targets, and the body shows a skeleton or
  * an error with retry while the query loads or fails. Supports renew/add (via useModals) and
  * confirmed, cross-user-guarded deletion that warns before the last valid certificate goes.
- * Dependencies: useCertificates, useOrganization, lib/certStatus, lib/dateUtils, confirmDelete,
+ * A certificate that may log in as the organization carries a "Login" badge; admins get a
+ * switch to allow/withdraw it (step-up dialog), and login fingerprints without an uploaded
+ * certificate (onboarding/migration) are listed below the certificates.
+ * Dependencies: useCertificates, useLoginCertificates, useMe, useOrganization, lib/certStatus, lib/dateUtils, confirmDelete,
  * EntityCard, FkLink, CertificateFingerprint, StatusPill, Button, Icon.
  */
 import { useId, useState, type CSSProperties } from 'react';
 import { useCertificates, useDeleteCertificate } from '../../hooks/useCertificates';
 import { useOrganization } from '../../hooks/useOrganization';
+import { useLoginCertificates } from '../../hooks/useLoginCertificates';
+import { useMe } from '../../hooks/useMe';
+import { LoginBadge, LoginFingerprintEntries, LoginSwitch } from './LoginCertificateControls';
+import { useLoginCertificateActions } from './useLoginCertificateActions';
 import { EntityCard } from './EntityCard';
 import { FkLink } from './FkLink';
 import { CertificateFingerprint, CERTTOOL_COMMAND } from './CertificateFingerprint';
@@ -28,6 +35,7 @@ import {
 import { useI18n } from '../../stores/i18n.store';
 import type { TranslationKey } from '../../i18n/en';
 import type { ApiCertificate } from '../../api/entities.api';
+import type { LoginCertificate } from '../../api/loginCertificates.api';
 import { useConfirmDelete } from '../../lib/confirmDelete';
 import { StatusPill } from '../ui/StatusPill';
 import { Button } from '../ui/Button';
@@ -87,6 +95,17 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
   const { data, isLoading, isError, refetch } = useCertificates(instanceId);
   const certs: CertRow[] = data ?? [];
   const { data: org } = useOrganization(instanceId);
+  const isAdmin = useMe().data?.isAdmin === true;
+  const loginEntries: LoginCertificate[] = useLoginCertificates(instanceId).data ?? [];
+  const loginActions = useLoginCertificateActions(instanceId, org?.identifier);
+  const loginOf = (cert: CertRow) =>
+    loginEntries.find(
+      (e) => e.certificateId === cert.id || e.fingerprint === cert.thumbprintSha512,
+    );
+  // Login entries that no listed certificate explains (onboarding / migration).
+  const fingerprintOnly = loginEntries.filter(
+    (e) => !certs.some((c) => e.certificateId === c.id || e.fingerprint === c.thumbprintSha512),
+  );
   const deleteMut = useDeleteCertificate(instanceId);
   const confirmDelete = useConfirmDelete();
 
@@ -161,20 +180,55 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
 
       {certs.length > 0 ? (
         <ul className="mt-3 flex flex-col gap-3">
-          {certs.map((cert, index) => (
-            <CertificateItem
-              key={cert.id}
-              cert={cert}
-              index={index}
-              onRemove={() => requestDelete(cert)}
-            />
-          ))}
+          {certs.map((cert, index) => {
+            const login = loginOf(cert);
+            return (
+              <CertificateItem
+                key={cert.id}
+                cert={cert}
+                index={index}
+                isLogin={!!login}
+                canManageLogin={isAdmin && !!org}
+                onToggleLogin={() =>
+                  loginActions.request(
+                    login
+                      ? {
+                          kind: 'disable',
+                          fingerprint: login.fingerprint,
+                          name: cert.subject || t('certCardFallbackName'),
+                        }
+                      : {
+                          kind: 'enable',
+                          certificateId: cert.id,
+                          name: cert.subject || t('certCardFallbackName'),
+                        },
+                  )
+                }
+                onRemove={() => requestDelete(cert)}
+              />
+            );
+          })}
         </ul>
       ) : (
-        <p className="py-4 text-center text-xs text-[color:var(--text-muted)]">
-          {t('emptyCertificatesHint')}
-        </p>
+        fingerprintOnly.length === 0 && (
+          <p className="py-4 text-center text-xs text-[color:var(--text-muted)]">
+            {t('emptyCertificatesHint')}
+          </p>
+        )
       )}
+
+      <LoginFingerprintEntries
+        entries={fingerprintOnly}
+        isAdmin={isAdmin && !!org}
+        onRemove={(entry) =>
+          loginActions.request({
+            kind: 'disable',
+            fingerprint: entry.fingerprint,
+            name: `${entry.fingerprint.slice(0, 16)}…`,
+          })
+        }
+      />
+      {loginActions.dialog}
     </EntityCard>
   );
 }
@@ -182,10 +236,16 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
 function CertificateItem({
   cert,
   index,
+  isLogin,
+  canManageLogin,
+  onToggleLogin,
   onRemove,
 }: {
   cert: CertRow;
   index: number;
+  isLogin: boolean;
+  canManageLogin: boolean;
+  onToggleLogin: () => void;
   onRemove: () => void;
 }) {
   const { t, lang } = useI18n();
@@ -209,9 +269,12 @@ function CertificateItem({
             {t('certCardValidUntil', { date: formatDate(cert.valid_until, lang) })}
           </p>
         </div>
-        <StatusPill tone={tone} icon={STATE_ICON[state]} className="shrink-0">
-          {t(STATE_LABEL[state])}
-        </StatusPill>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <StatusPill tone={tone} icon={STATE_ICON[state]}>
+            {t(STATE_LABEL[state])}
+          </StatusPill>
+          {isLogin && <LoginBadge />}
+        </div>
       </div>
 
       <div className="mt-3 flex items-center gap-2">
@@ -261,7 +324,12 @@ function CertificateItem({
         />
       </details>
 
-      <div className="mt-2 flex justify-end">
+      <div className="mt-2 flex items-center justify-between gap-2">
+        {canManageLogin ? (
+          <LoginSwitch checked={isLogin} name={name} onToggle={onToggleLogin} />
+        ) : (
+          <span />
+        )}
         <Button
           variant="ghost"
           size="sm"

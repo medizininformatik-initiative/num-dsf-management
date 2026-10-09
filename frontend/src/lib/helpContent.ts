@@ -91,6 +91,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         text: 'certtool --fingerprint --hash=sha512 --infile=client_certificate.pem',
       },
       { kind: 'ul', keys: ['helpS_certificates_3_0', 'helpS_certificates_3_1'] },
+      { kind: 'p', key: 'helpS_certificates_login' },
     ],
   },
   {
@@ -121,7 +122,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     blocks: [
       { kind: 'p', key: 'helpS_afterApproval_0' },
       { kind: 'p', key: 'helpS_afterApproval_1' },
-      { kind: 'code', text: '/fhir/Bundle/<endpoint>' },
+      { kind: 'code', text: '/fhir/Bundle/mine' },
       { kind: 'ul', keys: ['helpS_afterApproval_3_0', 'helpS_afterApproval_3_1'] },
     ],
   },

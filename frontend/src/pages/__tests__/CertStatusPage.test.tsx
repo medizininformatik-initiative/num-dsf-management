@@ -14,7 +14,9 @@ describe('CertStatusPage', () => {
   it('announces the not-registered message for CERT_NOT_REGISTERED with a retry', () => {
     renderWithProviders(<CertStatusPage code="CERT_NOT_REGISTERED" />);
     expect(screen.getByRole('heading', { name: 'Certificate sign-in' })).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent(/not in the allow-list/i);
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /not enabled for sign-in.*IMI admin.*certificates card/i,
+    );
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
     expect(screen.queryByTestId('cert-checking')).not.toBeInTheDocument();
   });

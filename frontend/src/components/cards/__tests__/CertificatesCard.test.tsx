@@ -33,6 +33,24 @@ vi.mock('../../../hooks/useCertificates', () => ({
   useCertificates: () => ({ data: rows, isLoading: false, isError, refetch }),
   useDeleteCertificate: () => ({ mutate: vi.fn(), mutateAsync: deleteCertificate }),
 }));
+const enableLogin = vi.hoisted(() => vi.fn());
+const removeLogin = vi.hoisted(() => vi.fn());
+let loginEntries: Array<{
+  fingerprint: string;
+  certificateId: string | null;
+  source: 'ONBOARDING' | 'ADMIN' | 'MIGRATED';
+  createdBy: string | null;
+  createdAt: string;
+}> = [];
+let isAdmin = false;
+vi.mock('../../../hooks/useMe', () => ({
+  useMe: () => ({ data: { email: 'a@b.de', isAdmin } }),
+}));
+vi.mock('../../../hooks/useLoginCertificates', () => ({
+  useLoginCertificates: () => ({ data: loginEntries }),
+  useEnableLoginCertificate: () => ({ mutate: enableLogin, isPending: false }),
+  useRemoveLoginCertificate: () => ({ mutate: removeLogin, isPending: false }),
+}));
 vi.mock('../../../hooks/useOrganization', () => ({
   useOrganization: () => ({ data: { identifier: 'ukm.de' }, isLoading: false }),
 }));
@@ -53,6 +71,10 @@ beforeEach(() => {
   rows = [cert];
   isError = false;
   refetch.mockReset();
+  loginEntries = [];
+  isAdmin = false;
+  enableLogin.mockReset();
+  removeLogin.mockReset();
   deleteCertificate.mockReset().mockResolvedValue(undefined);
 });
 
@@ -232,5 +254,89 @@ describe('CertificatesCard removal', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
     expect(deleteCertificate).not.toHaveBeenCalled();
+  });
+});
+
+describe('CertificatesCard login certificates', () => {
+  const entry = (over: Partial<(typeof loginEntries)[number]> = {}) => ({
+    fingerprint: THUMBPRINT_SHA512,
+    certificateId: 'cert1',
+    source: 'ADMIN' as const,
+    createdBy: 'admin@imi.example.de',
+    createdAt: '2026-10-01T10:00:00.000Z',
+    ...over,
+  });
+
+  it('marks a login certificate with a Login badge and shows it read-only to non-admins', () => {
+    loginEntries = [entry()];
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.getByText('Login')).toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+  });
+
+  it('shows no badge on a certificate that is not a login certificate', () => {
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.queryByText('Login')).not.toBeInTheDocument();
+  });
+
+  it('lets an admin allow a certificate for login after the authenticator step-up', async () => {
+    isAdmin = true;
+    const user = userEvent.setup();
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    const toggle = screen.getByRole('switch', { name: /Allow certificate CN=ukm.de for login/ });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await user.click(toggle);
+    const dialog = await screen.findByRole('dialog');
+    const confirm = within(dialog).getByRole('button', { name: 'Allow for login' });
+    expect(confirm).toBeDisabled();
+    await user.type(within(dialog).getByLabelText('TOTP Code'), '123456');
+    await user.click(confirm);
+    expect(enableLogin).toHaveBeenCalledWith(
+      { certificateId: 'cert1', totpCode: '123456' },
+      expect.any(Object),
+    );
+  });
+
+  it('lets an admin withdraw the login permission of a login certificate', async () => {
+    isAdmin = true;
+    loginEntries = [entry()];
+    const user = userEvent.setup();
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    const toggle = screen.getByRole('switch');
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await user.click(toggle);
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('TOTP Code'), '654321');
+    await user.click(within(dialog).getByRole('button', { name: 'Withdraw permission' }));
+    expect(removeLogin).toHaveBeenCalledWith(
+      { fingerprint: THUMBPRINT_SHA512, totpCode: '654321' },
+      expect.any(Object),
+    );
+  });
+
+  it('lists a fingerprint-only login entry with the contiguous 128-hex value', () => {
+    const fp = 'c3'.repeat(64);
+    loginEntries = [entry({ fingerprint: fp, certificateId: null, source: 'ONBOARDING' })];
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    const list = screen.getByTestId('login-fingerprint-entries');
+    expect(within(list).getByText('Login fingerprint (from onboarding)')).toBeInTheDocument();
+    expect(within(list).getByTestId('thumbprint-value').textContent).toBe(fp);
+    expect(within(list).queryByRole('button', { name: /Remove login fingerprint/ })).toBeNull();
+  });
+
+  it('lets an admin remove a fingerprint-only login entry', async () => {
+    isAdmin = true;
+    const fp = 'c3'.repeat(64);
+    loginEntries = [entry({ fingerprint: fp, certificateId: null, source: 'MIGRATED' })];
+    const user = userEvent.setup();
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    await user.click(screen.getByRole('button', { name: /Remove login fingerprint c3c3c3c3c3c3/ }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('TOTP Code'), '111111');
+    await user.click(within(dialog).getByRole('button', { name: 'Withdraw permission' }));
+    expect(removeLogin).toHaveBeenCalledWith(
+      { fingerprint: fp, totpCode: '111111' },
+      expect.any(Object),
+    );
   });
 });

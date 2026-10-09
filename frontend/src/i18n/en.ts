@@ -406,6 +406,37 @@ export const en = {
   contactVerificationSent: 'Verification email sent.',
   contactVerificationFailed: 'Failed to send verification email.',
 
+  // Certificate login ("Login" flag), shared allow-list link
+  loginCertBadge: 'Login',
+  loginCertBadgeHint: 'This certificate may sign in as your organization.',
+  loginCertSwitchLabel: 'Allow for login',
+  loginCertSwitchAria: 'Allow certificate {name} for login',
+  loginCertEnableTitle: 'Allow certificate for login?',
+  loginCertEnableMessage:
+    'The certificate will be able to sign in as organization {org}. The session only sees this organization.',
+  loginCertEnableConfirm: 'Allow for login',
+  loginCertDisableTitle: 'Withdraw login permission?',
+  loginCertDisableMessage:
+    'The certificate will no longer be able to sign in as organization {org}.',
+  loginCertDisableConsequence: 'Sessions that use this certificate end with their next request.',
+  loginCertDisableConfirm: 'Withdraw permission',
+  loginCertEnabledToast: 'Certificate allowed for login.',
+  loginCertDisabledToast: 'Login permission withdrawn.',
+  loginCertChangeFailed: 'The login permission could not be changed.',
+  loginCertErrAdminCert:
+    'This is an admin certificate and cannot be used as an organization login.',
+  loginCertErrInUse: 'This certificate already signs in for another organization.',
+  loginFingerprintTitle: 'Login fingerprint (from onboarding)',
+  loginFingerprintSourceOnboarding: 'From the onboarding import',
+  loginFingerprintSourceMigrated: 'Migrated from the previous version',
+  loginFingerprintSourceAdmin: 'Added by an admin',
+  loginFingerprintRemove: 'Remove',
+  loginFingerprintRemoveAria: 'Remove login fingerprint {prefix}',
+  dlSharedLinkTitle: 'Link for downloadAllowList',
+  dlSharedLinkHelp:
+    'The same link for every site: your DSF identifies you by its client certificate and receives the allow list of your endpoint. Enter it as the Task input "allow_list".',
+  dlSharedLinkCopy: 'Copy shared link',
+
   // CertificatesCard
   certRenewBtn: 'Renew',
   certDaysLeft: '{n}d left',
@@ -513,9 +544,9 @@ export const en = {
   orgModalFieldCityPlaceholder: 'e.g. Münster',
   orgModalFieldCountry: 'Country Code',
   orgModalFieldCountryHint: 'ISO 3166-1 alpha-2',
-  orgModalFieldThumbprint: 'Client Certificate Thumbprint (SHA-256)',
+  orgModalFieldThumbprint: 'SHA-256 thumbprint (DSF download only, deprecated)',
   orgModalFieldThumbprintHint:
-    'For mTLS authentication — the DSF process uses this to authenticate when downloading the Allow List Bundle',
+    'Only used when the DSF process downloads the allow list. It does not allow sign-in: an admin allows a certificate for login in the certificates card.',
   orgModalFieldThumbprintPlaceholder: 'e.g. a1b2c3d4e5f6...',
   orgModalThumbprintTotpLabel: 'TOTP code (required to change cert thumbprint)',
   orgModalThumbprintTotpHint:
@@ -1366,7 +1397,7 @@ export const en = {
   historyRestoreSuccess: 'Version {n} restored as version {m}.',
   historyRestoreNotRestorable: 'This version can no longer be restored.',
   historyRestoreFailed: 'The version could not be restored.',
-  dlDsfLinkTitle: 'Link for DSF',
+  dlDsfLinkTitle: 'Link per endpoint (sites with several endpoints)',
   dlDsfLinkHelp:
     'Your DSF server downloads the current allow list from this address with its client certificate. Enter it as the Task input "http://dsf.dev/fhir/CodeSystem/allow-list|allow_list".',
   dlDsfLinkPick: 'Select an endpoint to see its link.',
@@ -1647,7 +1678,7 @@ export const en = {
   certStatusNoCert:
     'No client certificate was presented. Install your certificate in the browser and reload.',
   certStatusNotRegistered:
-    'Your certificate is not in the allow-list. Ask the IMI operator to register it for your organization.',
+    'Your certificate is not enabled for sign-in. Ask an IMI admin to allow it for login in the certificates card of your organization.',
   certStatusNoInstance: 'No workspace is linked to this certificate. Contact the IMI operator.',
   certStatusLocked: 'This account is locked. Contact the IMI operator.',
   certStatusGeneric: 'Sign-in with your certificate failed. Contact the IMI operator.',
@@ -1841,6 +1872,8 @@ export const en = {
     'Before you save, the portal shows the subject, the expiry date, the issuer and the SHA-512 thumbprint of the certificate. This is the same value as in the DSF configuration: the SHA-512 thumbprint of the local organization client certificate. You can compare it with the value that certtool calculates:',
   helpS_certificates_3_0:
     'The thumbprint is one continuous string of 128 lower-case hex characters, without separators.',
+  helpS_certificates_login:
+    'Signing in with a certificate works only for certificates an IMI admin allowed for login (switch "Allow for login" in the certificates card, shown as a "Login" badge). Such a login sees only your own organization, and a session ends as soon as the permission is withdrawn.',
   helpS_certificates_3_1:
     'An issuer marked "DSF-CA" is accepted by the production DSF; other issuers produce a warning.',
   helpS_memberships_title: 'Memberships',
@@ -1863,7 +1896,7 @@ export const en = {
   helpS_afterApproval_0:
     'Every approval publishes a new, numbered version of the allow list. Older versions stay available, so you can always see what was valid at a given time.',
   helpS_afterApproval_1:
-    'Your DSF fetches the current allow list from this link of the portal (replace <endpoint> with the identifier of your endpoint):',
+    'Your DSF fetches the current allow list from this link of the portal; it recognizes your organization by the DSF client certificate. Sites with several endpoints use /fhir/Bundle/<endpoint> (identifier of the endpoint) instead:',
   helpS_afterApproval_3_0:
     'The Download dialog shows this link ready to copy, together with the history of all versions and their history links.',
   helpS_afterApproval_3_1:
@@ -1875,7 +1908,7 @@ export const en = {
   helpS_dsfImport_1_0:
     'Open the Download dialog, select your endpoint and use "Open Task in your FHIR server": it opens the draft Task of the process on your own DSF FHIR server.',
   helpS_dsfImport_1_1:
-    'Paste the link /fhir/Bundle/<endpoint> shown next to it into the input "allow_list". Optionally verify the bundle first: compare its SHA-256 with the content hash shown in the dialog.',
+    'Paste the shared link /fhir/Bundle/mine shown next to it into the input "allow_list". Optionally verify the bundle first: compare its SHA-256 with the content hash shown in the dialog.',
   helpS_dsfImport_1_2: 'Start the process downloadAllowList in your DSF.',
   helpS_dsfImport_2:
     'The allow list is a recommendation of the network. Check its content and signature before you deploy it.',
