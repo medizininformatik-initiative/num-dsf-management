@@ -16,6 +16,7 @@ import { db } from '../db/connection';
 import { sanitizeError } from '../lib/sanitizeError';
 import { asyncHandler } from '../lib/asyncHandler';
 import { writeAuditLog } from '../services/audit.service';
+import { isAdminCaller } from '../lib/isAdmin';
 
 const DENIAL_REASONS = new Set(['PRIVATE_KEY_REJECTED', 'CA_BLACKLISTED', 'CA_NOT_WHITELISTED']);
 
@@ -74,6 +75,7 @@ certificatesRouter.post('/', validate(createCertificateSchema), async (req, res)
       req.body.pem,
       req.user!.email,
       req.ip || 'unknown',
+      await isAdminCaller(req.user),
     );
     res.status(201).json({ data: cert });
   } catch (err: unknown) {
@@ -126,6 +128,7 @@ certificatesRouter.post('/:cid/renew', validate(renewCertificateSchema), async (
       req.body,
       req.user!.email,
       req.ip || 'unknown',
+      await isAdminCaller(req.user),
     );
     res.json({ data: cert });
   } catch (err: unknown) {

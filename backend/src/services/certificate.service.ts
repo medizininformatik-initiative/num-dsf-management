@@ -27,6 +27,7 @@ interface CertificateRow {
   valid_until: Date | string | null;
   created_at: Date | string;
   pem: string;
+  uploaded_by_admin?: number | null;
 }
 
 // Match BEGIN/END markers for any private-key variant, case-insensitive.
@@ -103,15 +104,25 @@ function issuerOf(pem: string): string {
  * production (CA whitelist), are derived from the stored PEM; the PEM itself
  * is stripped, the certificates API never returns raw PEM content.
  */
-async function toApiCertificates<T extends { pem: string }>(
+async function toApiCertificates<T extends { pem: string; uploaded_by_admin?: number | null }>(
   rows: T[],
 ): Promise<
-  Array<Omit<T, 'pem'> & { thumbprintSha512: string; issuerDn: string; issuerTrusted: boolean }>
+  Array<
+    Omit<T, 'pem' | 'uploaded_by_admin'> & {
+      thumbprintSha512: string;
+      issuerDn: string;
+      issuerTrusted: boolean;
+      uploadedByClinic: boolean;
+    }
+  >
 > {
   const issuers = rows.map((r) => issuerOf(r.pem));
   const trusted = await whitelistedIssuers(issuers.filter(Boolean));
-  return rows.map(({ pem, ...rest }, i) => ({
+  return rows.map(({ pem, uploaded_by_admin, ...rest }, i) => ({
     ...rest,
+    // Only a certificate the clinic itself uploaded may become a login
+    // certificate; unknown (NULL) counts as not uploaded by the clinic.
+    uploadedByClinic: uploaded_by_admin === 0,
     // One unreadable row must not take the whole list down; the allow-list
     // bundle still refuses it (CERTIFICATE_PEM_INVALID).
     thumbprintSha512: thumbprintOf(pem),
@@ -164,13 +175,24 @@ export async function getCertificates(instanceId: string) {
   if (!org) return [];
   const rows: CertificateRow[] = await db('certificates')
     .where({ organization_id: org.identifier })
-    .select('id', 'organization_id', 'subject', 'thumbprint', 'valid_until', 'created_at', 'pem')
+    .select(
+      'id',
+      'organization_id',
+      'subject',
+      'thumbprint',
+      'valid_until',
+      'created_at',
+      'pem',
+      'uploaded_by_admin',
+    )
     .orderBy('created_at', 'desc');
   return toApiCertificates(rows);
 }
 
 /**
  * Validate and store a certificate for the instance's organization.
+ * `uploadedByAdmin` records whether an admin session uploaded it (default true = unknown,
+ * not eligible as login certificate; the clinic itself passes false).
  * Side-effects: inserts a certificates row and writes a CREATE audit log.
  * @throws PRIVATE_KEY_REJECTED / INVALID_PEM on a bad PEM.
  * @throws ORGANIZATION_NOT_FOUND if the instance has no organization.
@@ -182,6 +204,7 @@ export async function createCertificate(
   pem: string,
   userEmail: string,
   ipAddress: string,
+  uploadedByAdmin = true,
 ) {
   rejectPrivateKey(pem);
   const org = await db('organizations').where({ instance_id: instanceId }).first();
@@ -200,6 +223,8 @@ export async function createCertificate(
     thumbprint,
     valid_until: validUntil,
     created_at: new Date(),
+    uploaded_by: userEmail,
+    uploaded_by_admin: uploadedByAdmin ? 1 : 0,
   });
   await writeAuditLog({
     userEmail,
@@ -212,7 +237,16 @@ export async function createCertificate(
   });
   const row: CertificateRow = await db('certificates')
     .where({ id })
-    .select('id', 'organization_id', 'subject', 'thumbprint', 'valid_until', 'created_at', 'pem')
+    .select(
+      'id',
+      'organization_id',
+      'subject',
+      'thumbprint',
+      'valid_until',
+      'created_at',
+      'pem',
+      'uploaded_by_admin',
+    )
     .first();
   return (await toApiCertificates([row]))[0];
 }
@@ -254,6 +288,7 @@ export async function renewCertificate(
   body: { pem: string },
   userEmail: string,
   ipAddress: string,
+  uploadedByAdmin = true,
 ) {
   rejectPrivateKey(body.pem);
   const { subject, thumbprint, validUntil, issuerDn } = parseCertificate(body.pem.trim());
@@ -283,6 +318,8 @@ export async function renewCertificate(
       thumbprint,
       valid_until: validUntil,
       created_at: new Date(),
+      uploaded_by: userEmail,
+      uploaded_by_admin: uploadedByAdmin ? 1 : 0,
     });
 
     // Delete old cert
@@ -310,7 +347,16 @@ export async function renewCertificate(
 
     const row: CertificateRow = await trx('certificates')
       .where({ id: newId })
-      .select('id', 'organization_id', 'subject', 'thumbprint', 'valid_until', 'created_at', 'pem')
+      .select(
+        'id',
+        'organization_id',
+        'subject',
+        'thumbprint',
+        'valid_until',
+        'created_at',
+        'pem',
+        'uploaded_by_admin',
+      )
       .first();
     return row;
   });
