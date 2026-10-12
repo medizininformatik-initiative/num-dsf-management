@@ -229,6 +229,7 @@ export function Sidebar({
   const adminLinks: LinkItem[] = [
     { to: '/app/admin', icon: 'task_alt', label: t('approvalReview'), end: true },
     { to: '/app/admin/users', icon: 'group', label: t('sidebarUserManagement') },
+    { to: '/app/admin/certificates', icon: 'badge', label: t('adminCertTitle') },
     { to: '/app/admin/promotions', icon: 'verified_user', label: t('sidebarPromotions') },
     { to: '/app/admin/ca-blacklist', icon: 'block', label: t('caBlacklistNavLabel') },
     { to: '/app/admin/bundle-versions', icon: 'history', label: t('bundleVersionsNavLabel') },

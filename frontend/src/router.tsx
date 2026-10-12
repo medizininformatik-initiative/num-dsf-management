@@ -14,6 +14,8 @@ import { AdminPage } from './pages/AdminPage';
 import { AdminHelpPage } from './pages/AdminHelpPage';
 import { HelpPage } from './pages/HelpPage';
 import { AdminUsersPage } from './pages/AdminUsersPage';
+import { AdminCertificatesPage } from './pages/AdminCertificatesPage';
+import { AdminCertExpiryBanner } from './components/layout/AdminCertExpiryBanner';
 import { AdminPromotionsPage } from './pages/AdminPromotionsPage';
 import { AdminCaBlacklistPage } from './pages/AdminCaBlacklistPage';
 import { AdminBundleVersionsPage } from './pages/AdminBundleVersionsPage';
@@ -57,6 +59,7 @@ export const router = createBrowserRouter([
       <RequireAuth>
         <CrossUserGuardProvider>
           <AppPage />
+          <AdminCertExpiryBanner />
         </CrossUserGuardProvider>
       </RequireAuth>
     ),
@@ -66,6 +69,7 @@ export const router = createBrowserRouter([
       { path: 'admin', element: <AdminPage /> },
       { path: 'admin/help', element: <AdminHelpPage /> },
       { path: 'admin/users', element: <AdminUsersPage /> },
+      { path: 'admin/certificates', element: <AdminCertificatesPage /> },
       { path: 'admin/promotions', element: <AdminPromotionsPage /> },
       { path: 'admin/ca-blacklist', element: <AdminCaBlacklistPage /> },
       { path: 'admin/bundle-versions', element: <AdminBundleVersionsPage /> },

@@ -1119,6 +1119,71 @@ export const en = {
   adminHelpSupportTitle: 'Support',
   adminHelpSupportP1: 'For operational issues, please reach out to the IMI operator team.',
 
+  // Admin certificate lifecycle
+  adminCertTitle: 'My admin certificates',
+  adminCertSubtitle: 'Login certificates of your admin account, with expiry.',
+  adminCertExplain:
+    'An expired certificate cannot sign in at all. Register a successor while the current one is still valid; a colleague admin can do it for you afterwards.',
+  adminCertAddButton: 'Register successor certificate',
+  adminCertEmpty: 'No admin certificate is registered for your account.',
+  adminCertUnnamed: 'Admin certificate',
+  adminCertCurrent: 'In use now',
+  adminCertLastUsed: 'Last used {when}',
+  adminCertNeverUsed: 'Not used yet',
+  adminCertAddedBy: 'added by {by}',
+  adminCertValidUntil: 'Valid until {date}',
+  adminCertExpiredOn: 'Expired {date}',
+  adminCertExpiryUnknown: 'Expiry unknown until first use',
+  adminCertRename: 'Rename',
+  adminCertSave: 'Save',
+  adminCertClose: 'Close',
+  adminCertRemove: 'Remove',
+  adminCertCannotRemoveCurrent: 'The certificate of this session cannot be removed.',
+  adminCertRemoveTitle: 'Remove admin certificate',
+  adminCertRemoveBody:
+    'This certificate can no longer sign in. Make sure another valid certificate is registered.',
+  adminCertRemovedToast: 'Admin certificate removed.',
+  adminCertRenamedToast: 'Label saved.',
+  adminCertAddedToast: 'Admin certificate registered.',
+  adminCertAddTitle: 'Register successor certificate',
+  adminCertAddForTitle: 'Register certificate for an admin',
+  adminCertAddIntro:
+    'Paste or drop the public certificate (PEM). It must be valid now and not used elsewhere. Never upload a private key.',
+  adminCertAddForIntro:
+    'Registers a certificate for this admin, for example because theirs expired. They are notified by e-mail.',
+  adminCertLabelField: 'Label (optional)',
+  adminCertLabelPlaceholder: 'e.g. Laptop 2027',
+  adminCertAddSubmit: 'Register certificate',
+  adminCertErr_PRIVATE_KEY_REJECTED:
+    'The text contains a private key. Provide the public certificate only.',
+  adminCertErr_INVALID_PEM: 'This is not a readable X.509 certificate in PEM format.',
+  adminCertErr_CERTIFICATE_EXPIRED: 'The certificate has already expired.',
+  adminCertErr_CERTIFICATE_NOT_YET_VALID: 'The certificate is not valid yet.',
+  adminCertErr_CA_BLACKLISTED: 'The issuing CA is blacklisted.',
+  adminCertErr_CA_NOT_WHITELISTED: 'The issuing CA is not on the CA whitelist.',
+  adminCertErr_ADMIN_CERTIFICATE_IN_USE:
+    'This certificate is already registered as an admin certificate.',
+  adminCertErr_ORG_LOGIN_CERTIFICATE_IN_USE:
+    'This certificate is already an organization login certificate.',
+  adminCertErr_NOT_AN_ADMIN: 'This account is not an admin.',
+  adminCertErr_USE_SELF_SERVICE: 'For your own account use "My admin certificates".',
+  adminCertUserTitle: 'Admin certificates',
+  adminCertUserIntro:
+    'Remove a lost or compromised certificate, or register a new one if theirs expired. Both are audited and the admin is notified.',
+  adminCertUserNone: 'No certificate registered.',
+  adminCertUserAdd: 'Register certificate',
+  adminCertUserRemoveBody:
+    'The admin can no longer sign in with this certificate and is notified by e-mail.',
+  adminCertBannerTitle: 'Admin certificate expires soon',
+  adminCertBannerBody: 'Your admin certificate expires in {n} days. Register a successor now.',
+  adminCertBannerExpired: 'Your admin certificate has expired.',
+  adminCertBannerLink: 'My admin certificates',
+  adminCertBannerDismiss: 'Hide until tomorrow',
+  adminUsersColCertificates: 'Admin certificates',
+  adminUsersNoCerts: 'none',
+  adminUsersCertCount: '{n} registered',
+  adminUsersCertificates: 'Certificates',
+
   // AdminUsersPage
   adminUsersTitle: 'User management',
   adminUsersSubtitle: 'Manage email whitelist and admin role assignments.',

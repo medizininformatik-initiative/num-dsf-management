@@ -1136,6 +1136,72 @@ export const de: Record<TranslationKey, string> = {
   adminHelpSupportTitle: 'Support',
   adminHelpSupportP1: 'Bei betrieblichen Problemen wenden Sie sich bitte an das IMI-Betriebsteam.',
 
+  // Admin certificate lifecycle
+  adminCertTitle: 'Meine Admin-Zertifikate',
+  adminCertSubtitle: 'Login-Zertifikate Ihres Admin-Kontos mit Ablaufdatum.',
+  adminCertExplain:
+    'Mit einem abgelaufenen Zertifikat ist keine Anmeldung möglich. Hinterlegen Sie ein Nachfolge-Zertifikat, solange das aktuelle noch gültig ist; danach kann es nur noch ein Kollege für Sie tun.',
+  adminCertAddButton: 'Nachfolge-Zertifikat hinterlegen',
+  adminCertEmpty: 'Für Ihr Konto ist kein Admin-Zertifikat hinterlegt.',
+  adminCertUnnamed: 'Admin-Zertifikat',
+  adminCertCurrent: 'Aktuell in Benutzung',
+  adminCertLastUsed: 'Zuletzt benutzt {when}',
+  adminCertNeverUsed: 'Noch nicht benutzt',
+  adminCertAddedBy: 'hinterlegt von {by}',
+  adminCertValidUntil: 'Gültig bis {date}',
+  adminCertExpiredOn: 'Abgelaufen am {date}',
+  adminCertExpiryUnknown: 'Ablauf bis zur ersten Nutzung unbekannt',
+  adminCertRename: 'Umbenennen',
+  adminCertSave: 'Speichern',
+  adminCertClose: 'Schließen',
+  adminCertRemove: 'Entfernen',
+  adminCertCannotRemoveCurrent: 'Das Zertifikat dieser Sitzung kann nicht entfernt werden.',
+  adminCertRemoveTitle: 'Admin-Zertifikat entfernen',
+  adminCertRemoveBody:
+    'Mit diesem Zertifikat ist keine Anmeldung mehr möglich. Stellen Sie sicher, dass ein anderes gültiges Zertifikat hinterlegt ist.',
+  adminCertRemovedToast: 'Admin-Zertifikat entfernt.',
+  adminCertRenamedToast: 'Bezeichnung gespeichert.',
+  adminCertAddedToast: 'Admin-Zertifikat hinterlegt.',
+  adminCertAddTitle: 'Nachfolge-Zertifikat hinterlegen',
+  adminCertAddForTitle: 'Zertifikat für einen Admin hinterlegen',
+  adminCertAddIntro:
+    'Fügen Sie das öffentliche Zertifikat (PEM) ein oder ziehen Sie die Datei hierher. Es muss jetzt gültig sein und darf nicht anderweitig verwendet werden. Laden Sie niemals einen privaten Schlüssel hoch.',
+  adminCertAddForIntro:
+    'Hinterlegt ein Zertifikat für diesen Admin, zum Beispiel weil dessen Zertifikat abgelaufen ist. Die Person wird per E-Mail benachrichtigt.',
+  adminCertLabelField: 'Bezeichnung (optional)',
+  adminCertLabelPlaceholder: 'z. B. Laptop 2027',
+  adminCertAddSubmit: 'Zertifikat hinterlegen',
+  adminCertErr_PRIVATE_KEY_REJECTED:
+    'Der Text enthält einen privaten Schlüssel. Geben Sie nur das öffentliche Zertifikat an.',
+  adminCertErr_INVALID_PEM: 'Das ist kein lesbares X.509-Zertifikat im PEM-Format.',
+  adminCertErr_CERTIFICATE_EXPIRED: 'Das Zertifikat ist bereits abgelaufen.',
+  adminCertErr_CERTIFICATE_NOT_YET_VALID: 'Das Zertifikat ist noch nicht gültig.',
+  adminCertErr_CA_BLACKLISTED: 'Die ausstellende CA steht auf der Blacklist.',
+  adminCertErr_CA_NOT_WHITELISTED: 'Die ausstellende CA steht nicht auf der CA-Whitelist.',
+  adminCertErr_ADMIN_CERTIFICATE_IN_USE:
+    'Dieses Zertifikat ist bereits als Admin-Zertifikat hinterlegt.',
+  adminCertErr_ORG_LOGIN_CERTIFICATE_IN_USE:
+    'Dieses Zertifikat ist bereits ein Login-Zertifikat einer Organisation.',
+  adminCertErr_NOT_AN_ADMIN: 'Dieses Konto ist kein Admin.',
+  adminCertErr_USE_SELF_SERVICE: 'Für Ihr eigenes Konto nutzen Sie „Meine Admin-Zertifikate“.',
+  adminCertUserTitle: 'Admin-Zertifikate',
+  adminCertUserIntro:
+    'Entfernen Sie ein verlorenes oder kompromittiertes Zertifikat oder hinterlegen Sie ein neues, falls das bisherige abgelaufen ist. Beides wird protokolliert und der Admin wird benachrichtigt.',
+  adminCertUserNone: 'Kein Zertifikat hinterlegt.',
+  adminCertUserAdd: 'Zertifikat hinterlegen',
+  adminCertUserRemoveBody:
+    'Der Admin kann sich mit diesem Zertifikat nicht mehr anmelden und wird per E-Mail benachrichtigt.',
+  adminCertBannerTitle: 'Admin-Zertifikat läuft bald ab',
+  adminCertBannerBody:
+    'Ihr Admin-Zertifikat läuft in {n} Tagen ab. Hinterlegen Sie jetzt ein Nachfolge-Zertifikat.',
+  adminCertBannerExpired: 'Ihr Admin-Zertifikat ist abgelaufen.',
+  adminCertBannerLink: 'Meine Admin-Zertifikate',
+  adminCertBannerDismiss: 'Bis morgen ausblenden',
+  adminUsersColCertificates: 'Admin-Zertifikate',
+  adminUsersNoCerts: 'keine',
+  adminUsersCertCount: '{n} hinterlegt',
+  adminUsersCertificates: 'Zertifikate',
+
   // AdminUsersPage
   adminUsersTitle: 'Benutzerverwaltung',
   adminUsersSubtitle: 'E-Mail-Whitelist und Admin-Rollen verwalten.',

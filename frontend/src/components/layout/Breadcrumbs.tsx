@@ -18,6 +18,7 @@ const ROUTES = {
   admin: { label: 'approvalReview' },
   'admin/help': { label: 'adminHelpLink', parent: 'admin' },
   'admin/users': { label: 'sidebarUserManagement' },
+  'admin/certificates': { label: 'adminCertTitle' },
   'admin/promotions': { label: 'sidebarPromotions' },
   'admin/ca-blacklist': { label: 'caBlacklistNavLabel' },
   'admin/bundle-versions': { label: 'bundleVersionsNavLabel' },
