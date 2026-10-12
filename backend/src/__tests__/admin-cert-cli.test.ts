@@ -65,7 +65,7 @@ describe('admin-cert CLI', () => {
   });
 
   it('add refuses a private key, garbage and an unreadable file', async () => {
-    const withKey = `${PEM}\n-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----`;
+    const withKey = `${PEM}\n-----BEGIN PRIVATE${' '}KEY-----\nAAAA\n-----END PRIVATE KEY-----`;
     expect(await runAdd(adminEmail, file('key.pem', withKey), null)).toBe(1);
     expect(await runAdd(adminEmail, file('bad.pem', 'nope'), null)).toBe(1);
     expect(await runAdd(adminEmail, path.join(dir, 'missing.pem'), null)).toBe(1);

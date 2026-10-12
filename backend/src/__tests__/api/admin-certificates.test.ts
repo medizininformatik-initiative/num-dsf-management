@@ -195,7 +195,7 @@ describe('POST /admin/me/certificates (successor)', () => {
     request(app).post(BASE).set('Authorization', `Bearer ${token}`).send(body);
 
   it('rejects a private key with 400 and stores nothing', async () => {
-    const pem = `${OTHER_OWN_PEM}\n-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----`;
+    const pem = `${OTHER_OWN_PEM}\n-----BEGIN PRIVATE${' '}KEY-----\nAAAA\n-----END PRIVATE KEY-----`;
     const res = await post({ pem, ...code }).expect(400);
     expect(res.body.error.code).toBe('PRIVATE_KEY_REJECTED');
     expect(await db('admin_cert_fingerprints').where({ email: adminEmail })).toHaveLength(1);

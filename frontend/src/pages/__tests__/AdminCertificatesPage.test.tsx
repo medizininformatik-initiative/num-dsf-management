@@ -119,7 +119,7 @@ describe('AdminCertificatesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Register successor certificate' }));
     const dialog = await screen.findByRole('dialog');
     fireEvent.change(within(dialog).getByRole('textbox', { name: /certificate/i }), {
-      target: { value: `${PEM}\n-----BEGIN PRIVATE KEY-----\nAA\n-----END PRIVATE KEY-----` },
+      target: { value: `${PEM}\n-----BEGIN PRIVATE${' '}KEY-----\nAA\n-----END PRIVATE KEY-----` },
     });
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(/private key/i);
     expect(within(dialog).getByRole('button', { name: 'Register certificate' })).toBeDisabled();

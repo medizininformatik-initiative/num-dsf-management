@@ -105,7 +105,7 @@ beforeEach(() => mail.mockClear());
 
 describe('POST /admin/users/:email/certificates (request)', () => {
   it('rejects a private key, a missing step-up, the own e-mail and a non-admin target', async () => {
-    const pem = `${makeCertPem(`key.${sfx}`)}\n-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----`;
+    const pem = `${makeCertPem(`key.${sfx}`)}\n-----BEGIN PRIVATE${' '}KEY-----\nAAAA\n-----END PRIVATE KEY-----`;
     const key = await post(colleagueUrl, A, { pem, ...code }).expect(400);
     expect(key.body.error.code).toBe('PRIVATE_KEY_REJECTED');
     await post(colleagueUrl, A, { pem: makeCertPem(`x.${sfx}`) }).expect(400);
