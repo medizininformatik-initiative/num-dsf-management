@@ -246,6 +246,23 @@ What the code cannot do and the proxy must: with `SSLVerifyClient optional_no_ca
 
 **Accepted residual risk:** sensitive admin writes (approving a request, editing another org's data) still require step-up re-verification, but on this stack that step-up is a re-presented client certificate instead of a typed TOTP code. Certificate step-up is non-interactive: the browser attaches the certificate to every request on its own, so it does not prove the admin intended this particular action the way entering a fresh TOTP code does. Script running inside the page, for example from an XSS bug or a malicious browser extension, could perform an admin write under this guard the same way a genuine click would. The Content-Security-Policy and the same-origin session cookie are the controls for this path, so admins using the cert profile should keep browser extensions to a minimum.
 
+### Admin-Zertifikat abgelaufen oder verloren
+
+Apache weist abgelaufene Client-Zertifikate ab; mit einem abgelaufenen Admin-Zertifikat erreicht man die Anwendung nicht mehr. Vorbeugung und Wiederherstellung, in dieser Reihenfolge:
+
+0. **Vorbeugen.** Das Portal speichert Ablaufdatum und letzte Nutzung jedes Admin-Zertifikats (Migration 030). Ab 30 Tagen vor Ablauf erscheint ein Hinweis im Portal (ab 7 Tagen rot), und der tägliche Zertifikatscheck (08:00 UTC) schickt Mails 30, 14, 7, 3 und 1 Tag vorher, sofern kein anderes, länger gültiges Admin-Zertifikat hinterlegt ist. Ein Nachfolge-Zertifikat hinterlegen Sie unter **Admin > Meine Admin-Zertifikate** (PEM, solange das aktuelle noch gültig ist).
+1. **Kollege im Portal.** Ein anderer Admin öffnet **Admin > Benutzerverwaltung**, wählt bei der betroffenen Person **Zertifikate** und hinterlegt das neue Zertifikat (oder entfernt ein verlorenes). Beides braucht den Step-up, wird im Audit-Log protokolliert (Hinweis „Admin geändert“) und der betroffene Admin erhält eine Mail.
+2. **Server-CLI.** Sind alle Admins ausgesperrt, hinterlegt der Serverbetreiber ein Zertifikat direkt auf dem Server. Das funktioniert nur für eine E-Mail mit gültiger Admin-Berechtigung; Admin-Rechte zu vergeben bleibt das Vier-Augen-Verfahren im Portal.
+
+   ```bash
+   scripts/admin-cert.sh add admin@imi.uni-muenster.de /pfad/neues-zertifikat.pem --label "Notfall"
+   scripts/admin-cert.sh list                 # alle Admin-Zertifikate mit Ablauf
+   scripts/admin-cert.sh remove <fingerprint-prefix> --yes
+   ```
+
+   Das Skript nutzt dieselben Umgebungsvariablen wie `restore-backup.sh` (`DSF_ROOT`, `DSF_COMPOSE`), kopiert die Datei in den Backend-Container und prüft wie das Portal: kein privater Schlüssel, gültig, CA-Regeln, nicht bereits als Admin- oder Organisations-Login-Zertifikat vergeben. Der Eintrag erhält `created_by = server-cli` und einen Audit-Eintrag.
+3. **Legacy.** `IMI_ADMIN_CERT_FINGERPRINTS` in `.env.prod` ergänzen und das Backend neu erstellen (wird bei jedem Start eingelesen). Ablaufdatum und Name werden bei der ersten Anmeldung ergänzt. Nur nutzen, wenn 1 und 2 nicht möglich sind.
+
 ### Debian install, step by step (cert-auth variant)
 
 First-time install on a fresh Debian host that already has Docker Engine and the Compose plugin, plus the server TLS certificate and key. This brings up the login-screen-free stack, bootstraps the first admin by certificate, and leaves you ready to onboard sites.
