@@ -377,6 +377,14 @@ export const en = {
   notFoundMessage: "The page you're looking for doesn't exist.",
   notFoundBackBtn: 'Back to App',
 
+  // Simple / detailed view of the entity cards
+  viewSwitchLabel: 'View',
+  viewSimple: 'Simple',
+  viewDetailed: 'Detailed',
+  cardShowDetails: 'Show details',
+  cardHideDetails: 'Hide details',
+  ipDiffCompact: 'IP changes',
+
   // EntityCard (shared card states)
   cardLoadError: 'Could not load this data.',
   cardRetry: 'Try again',

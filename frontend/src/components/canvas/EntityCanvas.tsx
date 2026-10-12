@@ -12,6 +12,7 @@
  */
 import { useCallback, useRef, type ComponentType, type CSSProperties } from 'react';
 import { OnboardingWizard } from './OnboardingWizard';
+import { CanvasViewSwitch } from './CanvasViewSwitch';
 import { HighlightRing } from './HighlightRing';
 import { RelationOverlay } from './RelationOverlay';
 import { OrganizationCard } from '../cards/OrganizationCard';
@@ -56,6 +57,7 @@ export function EntityCanvas({ instanceId }: EntityCanvasProps) {
       className="scroll-edges entity-canvas relative min-h-0 flex-1 overflow-y-auto p-4"
     >
       <OnboardingWizard instanceId={instanceId} />
+      <CanvasViewSwitch />
       <div ref={gridRef} className="entity-canvas-grid">
         {CARDS.map(({ id, Card }, index) => (
           <div

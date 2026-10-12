@@ -12,6 +12,7 @@ import { renderWithProviders } from '../../../test/renderWithProviders';
 import { useCanvasStore } from '../../../stores/canvas.store';
 
 vi.mock('../OnboardingWizard', () => ({ OnboardingWizard: () => null }));
+vi.mock('../CanvasViewSwitch', () => ({ CanvasViewSwitch: () => null }));
 vi.mock('../../cards/OrganizationCard', () => ({
   OrganizationCard: () => (
     <section id="card-organization" tabIndex={-1} aria-label="Organization">

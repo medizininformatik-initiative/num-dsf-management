@@ -386,6 +386,14 @@ export const de: Record<TranslationKey, string> = {
   notFoundMessage: 'Die gesuchte Seite existiert nicht.',
   notFoundBackBtn: 'Zurück zur App',
 
+  // Einfache / detaillierte Ansicht der Entitätskarten
+  viewSwitchLabel: 'Ansicht',
+  viewSimple: 'Einfach',
+  viewDetailed: 'Details',
+  cardShowDetails: 'Details anzeigen',
+  cardHideDetails: 'Details ausblenden',
+  ipDiffCompact: 'IP-Änderungen',
+
   // EntityCard (shared card states)
   cardLoadError: 'Die Daten konnten nicht geladen werden.',
   cardRetry: 'Erneut versuchen',
