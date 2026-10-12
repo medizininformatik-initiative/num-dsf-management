@@ -7,9 +7,11 @@
  * "Request running" pill that opens the running request (with its withdraw
  * action) instead of a second submit. The download action is an accent
  * outlined button with a visible label from sm up (icon only on phones), so it
- * stays distinct from the filled submit CTA but is hard to overlook.
+ * stays distinct from the filled submit CTA but is hard to overlook. While a
+ * newer allow-list version exists than the site has obtained, it shimmers softly
+ * and carries a red dot with a hint (nothing while loading or up to date).
  * Dependencies: SearchBar, NotificationCenter, Button, Icon, canvas.store,
- * useApproval, theme.store, i18n.store
+ * useApproval, useAllowListFreshness, theme.store, i18n.store
  */
 import { SearchBar } from './SearchBar';
 import { NotificationCenter } from './NotificationCenter';
@@ -17,6 +19,7 @@ import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { StatusPill } from '../ui/StatusPill';
 import { useApprovalStatus, type ApprovalStatus } from '../../hooks/useApproval';
+import { useAllowListFreshness } from '../../hooks/useAllowListFreshness';
 import { useCanvasStore } from '../../stores/canvas.store';
 import { useI18n } from '../../stores/i18n.store';
 import { useThemeStore } from '../../stores/theme.store';
@@ -36,6 +39,9 @@ export function TopBar({
   const { data } = useApprovalStatus(showInstanceActions ? activeInstanceId : null);
   const approval: ApprovalStatus | null | undefined = data;
   const pending = approval?.status === 'PENDING';
+  const { data: freshness } = useAllowListFreshness(showInstanceActions ? activeInstanceId : null);
+  const newVersion = freshness?.outdated ? freshness.currentVersion : null;
+  const nudgeHint = newVersion === null ? '' : t('allowListNewHint', { n: newVersion });
 
   return (
     <div className="glass-chrome relative z-40 flex h-14 flex-shrink-0 items-center justify-between gap-3 px-4 xl:px-6">
@@ -76,12 +82,25 @@ export function TopBar({
               variant="secondary"
               size="sm"
               onClick={onDownload}
-              className="ml-1 border-[color:var(--accent)] bg-[color:var(--accent-surface)] font-semibold text-[color:var(--accent)]"
-              title={t('downloadAllowList')}
+              className={`ml-1 border-[color:var(--accent)] bg-[color:var(--accent-surface)] font-semibold text-[color:var(--accent)]${
+                nudgeHint ? ' download-nudge' : ''
+              }`}
+              title={nudgeHint || t('downloadAllowList')}
               data-testid="topbar-download"
+              data-nudge={nudgeHint ? 'true' : undefined}
             >
               <Icon name="download" size={16} />
               <span className="sr-only sm:not-sr-only">{t('downloadAllowList')}</span>
+              {nudgeHint && (
+                <>
+                  <span className="sr-only"> – {nudgeHint}</span>
+                  <span
+                    aria-hidden="true"
+                    data-testid="topbar-download-dot"
+                    className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[color:var(--bg-card)] bg-danger-fg"
+                  />
+                </>
+              )}
             </Button>
             {pending ? (
               <Button
