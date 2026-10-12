@@ -399,6 +399,17 @@ Which client certificates may log in as an organization (029). A login through a
 | created_by | VARCHAR(255) | yes | NULL | |
 | created_at | DATETIME(3) | no | — | |
 
+## allowlist_fetches
+
+The newest allow-list version each site (instance) has obtained (032). One row per instance, upserted when the site's DSF fetches its receiver bundle over mTLS (200, or 304 with a matching ETag) or when someone downloads the bundle for that instance in the portal. The version number never decreases. The portal compares it with the current `bundle_versions` row to show the "new allow list available" nudge. No personal data.
+
+| Column | Type | Null | Default | Notes |
+|--------|------|------|---------|-------|
+| instance_id | CHAR(36) | no | — | PK; FK → instances.id ON DELETE CASCADE |
+| version_number | INT | no | — | `bundle_versions.version_number` of the newest obtained version |
+| via | ENUM | no | — | DSF (mTLS fetch), PORTAL (download in the GUI) |
+| fetched_at | DATETIME(3) | no | — | When that version was last obtained |
+
 ## backup_settings
 
 Schedule of the application backups (028). A single row, `id = 1` (CHECK), seeded with the defaults.

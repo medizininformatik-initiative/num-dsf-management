@@ -142,6 +142,12 @@ Mounted at `/api/v1/instances/:instanceId/approval`. All endpoints `requireOwner
 | GET | /api/v1/instances/:instanceId/approval/status | requireOwner | Current approval status. |
 | GET | /api/v1/instances/:instanceId/approval/history | requireOwner | Approval-request history. |
 
+### Allow-list freshness
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/instances/:instanceId/allow-list/freshness | requireOwner (an org-scoped session: its own instance only) | Has the site obtained the current allow-list version? → `{ data: { currentVersion, currentPublishedAt, lastObtainedVersion, lastObtainedAt, via, outdated } }`. `via` is `DSF` (the site's DSF fetched `/fhir/Bundle/...` over mTLS, 200 or 304 with a matching ETag) or `PORTAL` (downloaded in the GUI); the version never decreases. `outdated` is true when a version is published, the instance has an approved request and at least one endpoint, and the site never obtained a version or only an older one. Drives the shimmer and red dot on the download button. |
+
 ---
 
 ## Admin
