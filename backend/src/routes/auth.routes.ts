@@ -34,6 +34,7 @@ import {
 import { generateTotpSetup, saveTotpSecret } from '../services/totp.service';
 import { writeAuditLog } from '../services/audit.service';
 import { extractClientCert } from '../lib/clientCert';
+import { recordAdminCertUse } from '../services/admin-certificates.service';
 import { isDevEnv } from '../lib/isDevEnv';
 import { db } from '../db/connection';
 import { v4 as uuidv4 } from 'uuid';
@@ -358,6 +359,9 @@ authRouter.post(
       scopeInstanceId: resolved.kind === 'org' ? instanceId : undefined,
     });
     res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
+
+    // Remember expiry + last use of an admin certificate (drives the expiry warnings).
+    if (resolved.kind === 'admin') await recordAdminCertUse(cert.fingerprint, cert.pem, true);
 
     writeAuditLog({
       userEmail: user.email,

@@ -432,3 +432,80 @@ export async function sendAdminPromotionResultEmail(
   );
   await transporter.sendMail({ from: FROM, to: recipients.join(','), subject, text, html });
 }
+
+const portalUrl = (): string => process.env.FRONTEND_URL || 'http://localhost:5173';
+
+/** Expiry warning for an admin login certificate (German first, English below). */
+export async function sendAdminCertExpiryWarning(
+  to: string,
+  opts: { daysLeft: number; validUntil: string; subject: string },
+): Promise<void> {
+  if (IS_TEST) return;
+  const link = `${portalUrl()}/app/admin/certificates`;
+  const tage = `${opts.daysLeft} Tag${opts.daysLeft === 1 ? '' : 'en'}`;
+  const days = `${opts.daysLeft} day${opts.daysLeft === 1 ? '' : 's'}`;
+  const text = [
+    `DSF Management Tool – ${ENV}`,
+    ``,
+    `Ihr Admin-Zertifikat für das DSF Management Tool läuft am ${opts.validUntil} ab (in ${tage}).`,
+    `Hinterlegen Sie rechtzeitig ein Nachfolge-Zertifikat unter ${link}.`,
+    `Nach Ablauf ist keine Anmeldung mehr möglich; dann kann nur noch ein Kollege oder der Serverbetreiber ein neues Zertifikat hinterlegen.`,
+    ``,
+    `Your admin certificate for the DSF Management Tool expires on ${opts.validUntil} (in ${days}).`,
+    `Please register a successor certificate at ${link} in time.`,
+    `Certificate: ${opts.subject}`,
+  ].join('\n');
+  const html = baseHtml(
+    'Admin-Zertifikat läuft ab / Admin certificate expiring',
+    `
+    <p>Ihr Admin-Zertifikat <span style="font-family:monospace;font-size:12px;">${esc(opts.subject)}</span>
+       läuft am <strong>${esc(opts.validUntil)}</strong> ab (in ${tage}).
+       Hinterlegen Sie rechtzeitig ein Nachfolge-Zertifikat.</p>
+    <p style="color:#666;">Your admin certificate expires on ${esc(opts.validUntil)} (in ${days}).
+       Please register a successor certificate in time.</p>
+    <p style="margin-top:20px;"><a href="${link}"
+       style="display:inline-block;padding:10px 20px;background:${BRAND};color:#fff;border-radius:6px;text-decoration:none;font-weight:bold;">
+       Meine Admin-Zertifikate</a></p>
+  `,
+  );
+  await transporter.sendMail({
+    from: FROM,
+    to,
+    subject: `[DSF Management Tool – ${ENV}] Admin-Zertifikat läuft in ${tage} ab`,
+    text,
+    html,
+  });
+}
+
+/** Notice to an admin that a colleague added or removed a certificate of their account. */
+export async function sendAdminCertChangedEmail(
+  to: string,
+  opts: { change: 'add' | 'remove'; byAdmin: string; fingerprintPrefix: string },
+): Promise<void> {
+  if (IS_TEST) return;
+  const added = opts.change === 'add';
+  const de = added
+    ? `Für Ihr Admin-Konto wurde von ${opts.byAdmin} ein neues Zertifikat hinterlegt (Fingerabdruck ${opts.fingerprintPrefix}…).`
+    : `Von Ihrem Admin-Konto wurde durch ${opts.byAdmin} ein Zertifikat entfernt (Fingerabdruck ${opts.fingerprintPrefix}…).`;
+  const en = added
+    ? `${opts.byAdmin} registered a new certificate for your admin account (fingerprint ${opts.fingerprintPrefix}…).`
+    : `${opts.byAdmin} removed a certificate from your admin account (fingerprint ${opts.fingerprintPrefix}…).`;
+  const warn =
+    'Wenn Sie das nicht veranlasst haben, melden Sie sich sofort beim IMI-Betrieb. / If you did not ask for this, contact the IMI operators immediately.';
+  const text = [`DSF Management Tool – ${ENV}`, ``, de, ``, en, ``, warn].join('\n');
+  const html = baseHtml(
+    added ? 'Admin-Zertifikat hinterlegt' : 'Admin-Zertifikat entfernt',
+    `
+    <p>${esc(de)}</p>
+    <p style="color:#666;">${esc(en)}</p>
+    <p style="font-weight:bold;color:${COLOR_REJECTED};">${esc(warn)}</p>
+  `,
+  );
+  await transporter.sendMail({
+    from: FROM,
+    to,
+    subject: `[DSF Management Tool – ${ENV}] ${added ? 'Neues Admin-Zertifikat hinterlegt' : 'Admin-Zertifikat entfernt'}`,
+    text,
+    html,
+  });
+}

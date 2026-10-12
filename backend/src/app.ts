@@ -28,6 +28,7 @@ import { adminBundleRestoresRouter } from './routes/admin-bundle-restores.routes
 import { onboardingRouter } from './routes/onboarding.routes';
 import { adminBackupsRouter } from './routes/admin-backups.routes';
 import { adminLoginCertificatesRouter } from './routes/admin-login-certificates.routes';
+import { adminCertificatesRouter } from './routes/admin-certificates.routes';
 import { adminRouter } from './routes/admin.routes';
 import { downloadRouter } from './routes/download.routes';
 import { auditRouter, crossInstanceAuditRouter } from './routes/audit.routes';
@@ -138,6 +139,7 @@ app.use('/api/v1/parent-organizations', parentOrganizationsRouter);
 
 // Admin routes
 app.use('/api/v1/admin/approval', adminApprovalRouter);
+app.use('/api/v1/admin', adminCertificatesRouter);
 app.use('/api/v1/admin/users', adminUsersRouter);
 app.use('/api/v1/admin/promotions', adminPromotionsRouter);
 app.use('/api/v1/admin/marketplace', adminMarketplaceRouter);

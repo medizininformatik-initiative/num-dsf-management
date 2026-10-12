@@ -238,6 +238,15 @@ export function computeAnomalyFlags(rows: AnomalyRow[]): Map<string, AnomalyFlag
       });
     }
 
+    // Admin login certificates: a colleague (or the server CLI) changing them is
+    // a warning, an admin maintaining their own certificates is informational.
+    if (diff.action === 'admin_certificate') {
+      push(flags, r.id, {
+        code: 'ADMIN_CHANGE',
+        severity: diff.self === true ? 'info' : 'warning',
+      });
+    }
+
     const mutating = r.operation !== 'LOGIN' && r.operation !== 'LOGOUT';
     if (mutating && isAdminAction(r) && isOffHours(r.timestamp)) {
       push(flags, r.id, { code: 'OFF_HOURS_ADMIN', severity: 'info' });
