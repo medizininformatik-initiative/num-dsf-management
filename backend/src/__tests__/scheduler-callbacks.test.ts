@@ -25,6 +25,7 @@ const flushPendingNotifications = jest.fn<Promise<void>, []>().mockResolvedValue
 const runApprovalReminders = jest.fn<Promise<void>, []>().mockResolvedValue(undefined);
 const runSilentConsentSweep = jest.fn<Promise<number>, []>().mockResolvedValue(0);
 const runCertExpiryCheck = jest.fn<Promise<void>, []>().mockResolvedValue(undefined);
+const runAdminCertExpiryCheck = jest.fn<Promise<number>, []>().mockResolvedValue(0);
 const runMembershipCleanup = jest.fn<Promise<number>, []>().mockResolvedValue(0);
 const syncMarketplaceAll = jest
   .fn<Promise<{ ok: number; failed: number; rateLimited: boolean }>, []>()
@@ -36,6 +37,7 @@ jest.mock('../services/approval-reminder.service', () => ({
 }));
 jest.mock('../services/approval-silent-consent.service', () => ({ runSilentConsentSweep }));
 jest.mock('../services/cert-monitor.service', () => ({ runCertExpiryCheck }));
+jest.mock('../services/admin-cert-expiry.service', () => ({ runAdminCertExpiryCheck }));
 jest.mock('../services/membership-cleanup.service', () => ({ runMembershipCleanup }));
 jest.mock('../services/marketplace-sync.service', () => ({ syncAll: syncMarketplaceAll }));
 
@@ -70,6 +72,7 @@ beforeEach(() => {
   runApprovalReminders.mockClear().mockResolvedValue(undefined);
   runSilentConsentSweep.mockClear().mockResolvedValue(0);
   runCertExpiryCheck.mockClear().mockResolvedValue(undefined);
+  runAdminCertExpiryCheck.mockClear().mockResolvedValue(0);
   runMembershipCleanup.mockClear().mockResolvedValue(0);
   syncMarketplaceAll.mockClear().mockResolvedValue({ ok: 0, failed: 0, rateLimited: false });
   warn.mockClear();
@@ -99,6 +102,15 @@ describe('scheduler job callbacks drive their services', () => {
     const jobs = loadAndRegister();
     await jobs.get('0 8 * * *')!();
     expect(runCertExpiryCheck).toHaveBeenCalledTimes(1);
+    expect(runAdminCertExpiryCheck).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failing organization cert check does not stop the admin cert check', async () => {
+    runCertExpiryCheck.mockRejectedValueOnce(new Error('boom'));
+    const jobs = loadAndRegister();
+    await jobs.get('0 8 * * *')!();
+    expect(runAdminCertExpiryCheck).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledTimes(1);
   });
 
   it('the 09:00 job runs membership cleanup', async () => {
