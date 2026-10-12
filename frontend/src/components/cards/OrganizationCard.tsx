@@ -31,6 +31,8 @@ import { useI18n } from '../../stores/i18n.store';
 import type { TranslationKey } from '../../i18n/en';
 import type { StatusTone } from '../../lib/statusColors';
 import { EntityCard } from './EntityCard';
+import { Details, DetailsToggle } from './CardDetails';
+import { useCardDetails } from '../../hooks/useCardDetails';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { StatusPill } from '../ui/StatusPill';
@@ -84,6 +86,7 @@ export function OrganizationCard({ instanceId }: Props) {
   const { data: approval } = useApprovalStatus(instanceId);
   const updateMut = useUpdateOrganization(instanceId);
   const sharedWithId = useId();
+  const details = useCardDetails();
 
   const card = {
     id: 'organization',
@@ -149,7 +152,7 @@ export function OrganizationCard({ instanceId }: Props) {
 
   return (
     <EntityCard {...card} onAdd={openOrganizationModal} addLabel={t('edit')}>
-      {sharedWith.length > 0 && (
+      <Details show={details.detailed && sharedWith.length > 0}>
         <div className="mb-3">
           <p
             id={sharedWithId}
@@ -170,14 +173,12 @@ export function OrganizationCard({ instanceId }: Props) {
             ))}
           </ul>
         </div>
-      )}
+      </Details>
 
       <dl className="mb-4 text-xs">
         <Row label={t('orgCardIdentifier')}>
           <span className="font-mono text-primary dark:text-brand-400">{org.identifier}</span>
         </Row>
-        <Row label={t('orgCardCity')}>{`${org.city || '—'} · ${org.country_code || '—'}`}</Row>
-        <Row label={t('orgCardAddress')}>{org.address_line || '—'}</Row>
         <InlineField
           label={t('orgCardName')}
           value={org.name}
@@ -185,19 +186,28 @@ export function OrganizationCard({ instanceId }: Props) {
           emphasis
           onSave={(next) => saveField('name', next)}
         />
-        <InlineField
-          label={t('orgCardEmail')}
-          value={org.email}
-          type="email"
-          schema={organizationSchema.shape.email}
-          onSave={(next) => saveField('email', next)}
-        />
         <Row label={t('orgCardStatus')}>
           <StatusPill tone={active ? 'success' : 'danger'} icon={active ? 'check_circle' : 'block'}>
             {active ? t('orgCardActive') : t('orgCardInactive')}
           </StatusPill>
         </Row>
       </dl>
+
+      <Details show={details.detailed}>
+        <dl className="mb-4 text-xs">
+          <Row label={t('orgCardCity')}>{`${org.city || '—'} · ${org.country_code || '—'}`}</Row>
+          <Row label={t('orgCardAddress')}>{org.address_line || '—'}</Row>
+          <InlineField
+            label={t('orgCardEmail')}
+            value={org.email}
+            type="email"
+            schema={organizationSchema.shape.email}
+            onSave={(next) => saveField('email', next)}
+          />
+        </dl>
+      </Details>
+
+      <DetailsToggle details={details} />
 
       {/* Pinned to the bottom when the grid stretches the card. */}
       <div className="mt-auto flex items-center justify-between gap-3 pt-3 text-xs">

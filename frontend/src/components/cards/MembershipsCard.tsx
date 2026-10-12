@@ -12,6 +12,8 @@ import { useMemberships, useDeleteMembership } from '../../hooks/useMemberships'
 import { useOrganization } from '../../hooks/useOrganization';
 import { EntityCard } from './EntityCard';
 import { FkLink } from './FkLink';
+import { Details, DetailsToggle } from './CardDetails';
+import { useCardDetails } from '../../hooks/useCardDetails';
 import { parseJsonArray } from '../../lib/parseJsonArray';
 import { useModals } from '../../hooks/useModals';
 import { useI18n } from '../../stores/i18n.store';
@@ -35,6 +37,7 @@ export function MembershipsCard({ instanceId }: { instanceId: string }) {
   const { data: org } = useOrganization(instanceId);
   const deleteMut = useDeleteMembership(instanceId);
   const confirmDelete = useConfirmDelete();
+  const details = useCardDetails();
 
   function requestDelete(ms: MembershipRow) {
     const parent = ms.parent_organization;
@@ -91,16 +94,16 @@ export function MembershipsCard({ instanceId }: { instanceId: string }) {
                       </StatusPill>
                     ))}
                   </div>
-                  {ms.endpoint_id && (
+                  <Details show={details.detailed && !!ms.endpoint_id}>
                     <div className="mt-2">
                       <FkLink
                         label={t('membershipCardFkEndpoint')}
                         targetEntity="endpoints"
-                        value={ms.endpoint_id}
+                        value={ms.endpoint_id ?? ''}
                         targetKey={ms.endpoint_id}
                       />
                     </div>
-                  )}
+                  </Details>
                 </div>
                 <div className="flex shrink-0 flex-col gap-1">
                   <Button
@@ -131,6 +134,7 @@ export function MembershipsCard({ instanceId }: { instanceId: string }) {
           {t('emptyMembershipsHint')}
         </p>
       )}
+      <DetailsToggle details={details} />
     </EntityCard>
   );
 }

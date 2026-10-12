@@ -22,6 +22,8 @@ import { LoginBadge, LoginFingerprintEntries, LoginSwitch } from './LoginCertifi
 import { useLoginCertificateActions } from './useLoginCertificateActions';
 import { EntityCard } from './EntityCard';
 import { FkLink } from './FkLink';
+import { Details, DetailsToggle } from './CardDetails';
+import { useCardDetails } from '../../hooks/useCardDetails';
 import { CertificateFingerprint, CERTTOOL_COMMAND } from './CertificateFingerprint';
 import { useModals } from '../../hooks/useModals';
 import { formatDate } from '../../lib/dateUtils';
@@ -108,6 +110,7 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
   );
   const deleteMut = useDeleteCertificate(instanceId);
   const confirmDelete = useConfirmDelete();
+  const details = useCardDetails();
 
   const worst = certs.reduce<CertState | null>((acc, cert) => {
     const { state } = certValidity(cert.valid_until);
@@ -187,6 +190,7 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
                 key={cert.id}
                 cert={cert}
                 index={index}
+                detailed={details.detailed}
                 isLogin={!!login}
                 canManageLogin={isAdmin && !!org}
                 onToggleLogin={() =>
@@ -217,17 +221,20 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
         )
       )}
 
-      <LoginFingerprintEntries
-        entries={fingerprintOnly}
-        isAdmin={isAdmin && !!org}
-        onRemove={(entry) =>
-          loginActions.request({
-            kind: 'disable',
-            fingerprint: entry.fingerprint,
-            name: `${entry.fingerprint.slice(0, 16)}…`,
-          })
-        }
-      />
+      <Details show={details.detailed}>
+        <LoginFingerprintEntries
+          entries={fingerprintOnly}
+          isAdmin={isAdmin && !!org}
+          onRemove={(entry) =>
+            loginActions.request({
+              kind: 'disable',
+              fingerprint: entry.fingerprint,
+              name: `${entry.fingerprint.slice(0, 16)}…`,
+            })
+          }
+        />
+      </Details>
+      <DetailsToggle details={details} />
       {loginActions.dialog}
     </EntityCard>
   );
@@ -236,6 +243,7 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
 function CertificateItem({
   cert,
   index,
+  detailed,
   isLogin,
   canManageLogin,
   onToggleLogin,
@@ -243,6 +251,7 @@ function CertificateItem({
 }: {
   cert: CertRow;
   index: number;
+  detailed: boolean;
   isLogin: boolean;
   canManageLogin: boolean;
   onToggleLogin: () => void;
@@ -277,22 +286,61 @@ function CertificateItem({
         </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
-        <div
-          aria-hidden="true"
-          className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border)]"
-        >
-          <div className={`h-full rounded-full ${TONE_FILL[tone]}`} style={{ width: `${pct}%` }} />
+      {!detailed && !cert.issuerTrusted && (
+        // The simplified view drops the explanation but keeps the warning.
+        <StatusPill tone="warning" icon="gpp_maybe" className="mt-2">
+          {t('certCardIssuerUntrusted')}
+        </StatusPill>
+      )}
+
+      <Details show={detailed}>
+        <div className="mt-3 flex items-center gap-2">
+          <div
+            aria-hidden="true"
+            className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--border)]"
+          >
+            <div
+              className={`h-full rounded-full ${TONE_FILL[tone]}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <span className={`text-[11px] font-bold ${TONE_TEXT[tone]}`}>
+            {state === 'expired'
+              ? t('certCardExpiredDaysAgo', { n: -days })
+              : t('certDaysLeft', { n: days })}
+          </span>
         </div>
-        <span className={`text-[11px] font-bold ${TONE_TEXT[tone]}`}>
-          {state === 'expired'
-            ? t('certCardExpiredDaysAgo', { n: -days })
-            : t('certDaysLeft', { n: days })}
-        </span>
+
+        <CertificateIssuer issuerDn={cert.issuerDn} trusted={cert.issuerTrusted} />
+
+        <CertificateFingerprints cert={cert} />
+      </Details>
+
+      <div className="mt-2 flex items-center justify-between gap-2">
+        {detailed && canManageLogin ? (
+          <LoginSwitch checked={isLogin} name={name} onToggle={onToggleLogin} />
+        ) : (
+          <span />
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={t('certCardRemoveAria', { name })}
+          onClick={onRemove}
+          className="text-danger-fg hover:!bg-danger-surface hover:!text-danger-fg"
+        >
+          <Icon name="delete" size={16} />
+          {t('certRemoveBtn')}
+        </Button>
       </div>
+    </li>
+  );
+}
 
-      <CertificateIssuer issuerDn={cert.issuerDn} trusted={cert.issuerTrusted} />
-
+function CertificateFingerprints({ cert }: { cert: CertRow }) {
+  const { t } = useI18n();
+  return (
+    <>
       <CertificateFingerprint
         className="mt-3"
         label={t('certCardDsfThumbprintLabel')}
@@ -323,25 +371,7 @@ function CertificateItem({
           copiedMessage={t('certCardSha256Copied')}
         />
       </details>
-
-      <div className="mt-2 flex items-center justify-between gap-2">
-        {canManageLogin ? (
-          <LoginSwitch checked={isLogin} name={name} onToggle={onToggleLogin} />
-        ) : (
-          <span />
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={t('certCardRemoveAria', { name })}
-          onClick={onRemove}
-          className="text-danger-fg hover:!bg-danger-surface hover:!text-danger-fg"
-        >
-          <Icon name="delete" size={16} />
-          {t('certRemoveBtn')}
-        </Button>
-      </div>
-    </li>
+    </>
   );
 }
 

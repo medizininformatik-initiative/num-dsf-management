@@ -12,6 +12,8 @@ import { useState, type CSSProperties, type MouseEvent } from 'react';
 import { useContacts, useDeleteContact } from '../../hooks/useContacts';
 import { EntityCard } from './EntityCard';
 import { FkLink } from './FkLink';
+import { Details, DetailsToggle } from './CardDetails';
+import { useCardDetails } from '../../hooks/useCardDetails';
 import { useOrganization } from '../../hooks/useOrganization';
 import { useModals } from '../../hooks/useModals';
 import { parseJsonArray } from '../../lib/parseJsonArray';
@@ -53,6 +55,7 @@ export function ContactsCard({ instanceId }: { instanceId: string }) {
   const deleteMut = useDeleteContact(instanceId);
   const confirmDelete = useConfirmDelete();
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const details = useCardDetails();
 
   function requestDelete(c: ContactRow) {
     const name = c.name || c.email;
@@ -124,29 +127,40 @@ export function ContactsCard({ instanceId }: { instanceId: string }) {
                   {name[0]?.toUpperCase()}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-[color:var(--text-primary)]">
-                    {name}
+                  <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[color:var(--text-primary)]">
+                    <span className="truncate">{name}</span>
+                    {!details.detailed && !c.email_validated && (
+                      // The simplified view hides the pills but never the problem.
+                      <Icon
+                        name="mark_email_unread"
+                        size={16}
+                        label={t('contactCardEmailUnverified')}
+                        title={t('contactCardEmailUnverified')}
+                        className="shrink-0 text-warning-fg"
+                      />
+                    )}
                   </p>
-                  {c.name && (
+                  <Details show={details.detailed && !!c.name}>
                     <p className="truncate text-xs text-[color:var(--text-muted)]">{c.email}</p>
-                  )}
+                  </Details>
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {parseJsonArray(c.types).map((type) => (
                       <StatusPill key={type} tone="neutral" icon={CONTACT_TYPE[type]?.icon}>
                         {CONTACT_TYPE[type] ? t(CONTACT_TYPE[type].label) : type}
                       </StatusPill>
                     ))}
-                    {c.email_validated ? (
-                      <StatusPill tone="success" icon="mark_email_read">
-                        {t('contactCardEmailVerified')}
-                      </StatusPill>
-                    ) : (
-                      <StatusPill tone="warning" icon="mark_email_unread">
-                        {t('contactCardEmailUnverified')}
-                      </StatusPill>
-                    )}
+                    {details.detailed &&
+                      (c.email_validated ? (
+                        <StatusPill tone="success" icon="mark_email_read">
+                          {t('contactCardEmailVerified')}
+                        </StatusPill>
+                      ) : (
+                        <StatusPill tone="warning" icon="mark_email_unread">
+                          {t('contactCardEmailUnverified')}
+                        </StatusPill>
+                      ))}
                   </div>
-                  {!c.email_validated && (
+                  <Details show={details.detailed && !c.email_validated}>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -157,7 +171,7 @@ export function ContactsCard({ instanceId }: { instanceId: string }) {
                       <Icon name="forward_to_inbox" size={16} />
                       {t('contactResendVerification')}
                     </Button>
-                  )}
+                  </Details>
                 </div>
                 <div className="flex shrink-0 flex-col gap-1">
                   <Button
@@ -188,6 +202,7 @@ export function ContactsCard({ instanceId }: { instanceId: string }) {
           {t('emptyContactsHint')}
         </p>
       )}
+      <DetailsToggle details={details} />
     </EntityCard>
   );
 }

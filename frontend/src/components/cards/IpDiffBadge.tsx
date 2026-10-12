@@ -9,9 +9,12 @@ import { useApprovalHistory } from '../../hooks/useApproval';
 import { useEndpoints } from '../../hooks/useEndpoints';
 import { useI18n } from '../../stores/i18n.store';
 import { Icon } from '../ui/Icon';
+import { StatusPill } from '../ui/StatusPill';
 
 interface Props {
   instanceId: string;
+  /** Only a warning pill that says there are changes (the simplified view). */
+  compact?: boolean;
 }
 
 interface ApprovalHistoryRow {
@@ -29,7 +32,7 @@ interface EndpointRow {
 
 const CHIP = 'mono-id rounded-md border px-2 py-0.5 text-[11px]';
 
-export function IpDiffBadge({ instanceId }: Props) {
+export function IpDiffBadge({ instanceId, compact = false }: Props) {
   const { t } = useI18n();
   const { data: history = [] } = useApprovalHistory(instanceId);
   const { data: endpoints = [] } = useEndpoints(instanceId);
@@ -72,6 +75,14 @@ export function IpDiffBadge({ instanceId }: Props) {
   const removed = [...previousIps].filter((ip) => !currentIps.has(ip));
 
   if (added.length === 0 && removed.length === 0) return null;
+
+  if (compact) {
+    return (
+      <StatusPill tone="warning" icon="difference" className="mt-2 self-start">
+        {t('ipDiffCompact')}
+      </StatusPill>
+    );
+  }
 
   return (
     <div className="mt-2 animate-fade-in rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] px-3.5 py-2.5">

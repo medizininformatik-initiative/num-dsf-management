@@ -14,6 +14,8 @@ import { useMemberships } from '../../hooks/useMemberships';
 import { useOrganization } from '../../hooks/useOrganization';
 import { EntityCard } from './EntityCard';
 import { FkLink } from './FkLink';
+import { Details, DetailsToggle } from './CardDetails';
+import { useCardDetails } from '../../hooks/useCardDetails';
 import { useModals } from '../../hooks/useModals';
 import { IpDiffBadge } from './IpDiffBadge';
 import { useI18n } from '../../stores/i18n.store';
@@ -74,6 +76,7 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
   const { data: memberships = [] } = useMemberships(instanceId);
   const deleteMut = useDeleteEndpoint(instanceId);
   const confirmDelete = useConfirmDelete();
+  const details = useCardDetails();
 
   const hasFlags = endpoints.some((ep) =>
     (ep.ipAddresses ?? []).some((ip) => ip.isFhir || ip.isBpe),
@@ -170,13 +173,15 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
                       {ep.identifier}
                     </p>
                   )}
-                  <p
-                    title={ep.address}
-                    className="mt-0.5 truncate text-xs text-[color:var(--text-muted)]"
-                  >
-                    {ep.address}
-                  </p>
-                  {ips.length > 0 && renderIps(ips)}
+                  <Details show={details.detailed}>
+                    <p
+                      title={ep.address}
+                      className="mt-0.5 truncate text-xs text-[color:var(--text-muted)]"
+                    >
+                      {ep.address}
+                    </p>
+                    {ips.length > 0 && renderIps(ips)}
+                  </Details>
                 </div>
                 <div className="flex shrink-0 flex-col gap-1">
                   <Button
@@ -208,8 +213,8 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
         </p>
       )}
 
-      {hasFlags && (
-        // Visual key only: every flag already carries its meaning for screen readers.
+      <Details show={details.detailed && hasFlags}>
+        {/* Visual key only: every flag already carries its meaning for screen readers. */}
         <p
           aria-hidden="true"
           className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[color:var(--text-muted)]"
@@ -223,8 +228,9 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
             {t('endpointCardFlagBpe')}
           </span>
         </p>
-      )}
-      <IpDiffBadge instanceId={instanceId} />
+      </Details>
+      <IpDiffBadge instanceId={instanceId} compact={!details.detailed} />
+      <DetailsToggle details={details} />
     </EntityCard>
   );
 }
