@@ -193,6 +193,15 @@ export function OrganizationCard({ instanceId }: Props) {
         </Row>
       </dl>
 
+      {/* The approval state belongs to the always-visible facts, above the
+          details toggle, so the toggle stays the last element of the card. */}
+      <div className="mb-4 flex items-center justify-between gap-3 text-xs">
+        <span className="text-[color:var(--text-muted)]">{t('orgCardApproval')}</span>
+        <StatusPill tone={approvalPill.tone} icon={approvalPill.icon}>
+          {t(approvalPill.label)}
+        </StatusPill>
+      </div>
+
       <Details show={details.detailed}>
         <dl className="mb-4 text-xs">
           <Row label={t('orgCardCity')}>{`${org.city || '—'} · ${org.country_code || '—'}`}</Row>
@@ -208,14 +217,6 @@ export function OrganizationCard({ instanceId }: Props) {
       </Details>
 
       <DetailsToggle details={details} />
-
-      {/* Pinned to the bottom when the grid stretches the card. */}
-      <div className="mt-auto flex items-center justify-between gap-3 pt-3 text-xs">
-        <span className="text-[color:var(--text-muted)]">{t('orgCardApproval')}</span>
-        <StatusPill tone={approvalPill.tone} icon={approvalPill.icon}>
-          {t(approvalPill.label)}
-        </StatusPill>
-      </div>
     </EntityCard>
   );
 }
