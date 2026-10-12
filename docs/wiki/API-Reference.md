@@ -209,9 +209,14 @@ Mounted at `/api/v1/admin/organizations`. All `requireAdmin`; writes need the st
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /api/v1/admin/organizations/:identifier/login-certificates | requireAdmin | Login certificates of the organization: `[{ fingerprint, certificateId, source, createdBy, createdAt }]`. |
-| POST | /api/v1/admin/organizations/:identifier/login-certificates | requireAdmin + step-up | Enable an uploaded certificate of the organization as login certificate. Body `{ certificateId, totpCode? }` (SHA-512 computed server-side) → 201. `409 ADMIN_CERTIFICATE` for an admin certificate, `409 FINGERPRINT_IN_USE` if another organization uses it, `404` for an unknown organization or certificate. |
+| GET | /api/v1/admin/organizations/:identifier/login-certificates | requireAdmin | Login certificates of the organization: `[{ fingerprint, certificateId, source, createdBy, createdAt, uploadedByClinic }]`. |
+| POST | /api/v1/admin/organizations/:identifier/login-certificates | requireAdmin + step-up | Enable an uploaded certificate of the organization as login certificate. Body `{ certificateId, totpCode? }` (SHA-512 computed server-side) → 201. `409 NOT_CLINIC_UPLOADED` unless the clinic itself uploaded the certificate (an admin upload or unknown origin never qualifies), `409 ADMIN_CERTIFICATE` for an admin certificate, `409 FINGERPRINT_IN_USE` if another organization uses it, `404` for an unknown organization or certificate. |
 | DELETE | /api/v1/admin/organizations/:identifier/login-certificates/:fingerprint | requireAdmin + step-up | Remove a login entry (also fingerprint-only entries from onboarding) → `{ deleted: true }`. |
+| POST | /api/v1/admin/users/:email/certificates | requireAdmin + step-up | Four-eyes: REQUEST an admin certificate for a colleague. Body `{ pem, label?, totpCode? }` → 201 `{ id, status: "PENDING" }`; nothing becomes active. Same validation as an upload plus `409 REQUEST_ALREADY_PENDING`. |
+| GET | /api/v1/admin/admin-cert-requests | requireAdmin | Pending and recently decided certificate requests (never the PEM). |
+| POST | /api/v1/admin/admin-cert-requests/:id/approve | requireAdmin + step-up | Third admin from a different site than the requester activates the certificate. `403 SELF_APPROVE` / `TARGET_APPROVE` / `SAME_SITE`, `409 NOT_PENDING` (first decision wins), validation errors if the certificate went stale. |
+| POST | /api/v1/admin/admin-cert-requests/:id/reject | requireAdmin + step-up | Body `{ comment, totpCode? }`. |
+| POST | /api/v1/admin/admin-cert-requests/:id/cancel | requireAdmin + step-up | Requester withdraws the request. Pending requests expire after 7 days. |
 | GET | /api/v1/instances/:id/certificates/login-certificates | requireAuth + instance | Read-only view of the same list for the instance's users (badges in the certificates card). |
 
 ### Bundle Versions

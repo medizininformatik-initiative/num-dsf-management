@@ -251,7 +251,7 @@ What the code cannot do and the proxy must: with `SSLVerifyClient optional_no_ca
 Apache weist abgelaufene Client-Zertifikate ab; mit einem abgelaufenen Admin-Zertifikat erreicht man die Anwendung nicht mehr. Vorbeugung und Wiederherstellung, in dieser Reihenfolge:
 
 0. **Vorbeugen.** Das Portal speichert Ablaufdatum und letzte Nutzung jedes Admin-Zertifikats (Migration 030). Ab 30 Tagen vor Ablauf erscheint ein Hinweis im Portal (ab 7 Tagen rot), und der tägliche Zertifikatscheck (08:00 UTC) schickt Mails 30, 14, 7, 3 und 1 Tag vorher, sofern kein anderes, länger gültiges Admin-Zertifikat hinterlegt ist. Ein Nachfolge-Zertifikat hinterlegen Sie unter **Admin > Meine Admin-Zertifikate** (PEM, solange das aktuelle noch gültig ist).
-1. **Kollege im Portal.** Ein anderer Admin öffnet **Admin > Benutzerverwaltung**, wählt bei der betroffenen Person **Zertifikate** und hinterlegt das neue Zertifikat (oder entfernt ein verlorenes). Beides braucht den Step-up, wird im Audit-Log protokolliert (Hinweis „Admin geändert“) und der betroffene Admin erhält eine Mail.
+1. **Kollege im Portal (Vier-Augen).** Ein anderer Admin öffnet **Admin > Benutzerverwaltung**, wählt bei der betroffenen Person **Zertifikate** und **beantragt** das neue Zertifikat. Es wird erst aktiv, wenn ein dritter Admin eines anderen Standorts (E-Mail-Domain) unter **Offene Zertifikatsanträge** zustimmt; weder die antragstellende Person noch die betroffene Person können zustimmen. Anträge verfallen nach 7 Tagen. Ein verlorenes oder kompromittiertes Zertifikat entfernen Sie dagegen sofort (das verringert nur den Zugriff). Alles braucht den Step-up, wird im Audit-Log protokolliert (Hinweis „Admin geändert“) und die betroffene Person erhält eine Mail.
 2. **Server-CLI.** Sind alle Admins ausgesperrt, hinterlegt der Serverbetreiber ein Zertifikat direkt auf dem Server. Das funktioniert nur für eine E-Mail mit gültiger Admin-Berechtigung; Admin-Rechte zu vergeben bleibt das Vier-Augen-Verfahren im Portal.
 
    ```bash
@@ -260,7 +260,7 @@ Apache weist abgelaufene Client-Zertifikate ab; mit einem abgelaufenen Admin-Zer
    scripts/admin-cert.sh remove <fingerprint-prefix> --yes
    ```
 
-   Das Skript nutzt dieselben Umgebungsvariablen wie `restore-backup.sh` (`DSF_ROOT`, `DSF_COMPOSE`), kopiert die Datei in den Backend-Container und prüft wie das Portal: kein privater Schlüssel, gültig, CA-Regeln, nicht bereits als Admin- oder Organisations-Login-Zertifikat vergeben. Der Eintrag erhält `created_by = server-cli` und einen Audit-Eintrag.
+   Das Skript nutzt dieselben Umgebungsvariablen wie `restore-backup.sh` (`DSF_ROOT`, `DSF_COMPOSE`), kopiert die Datei in den Backend-Container und prüft wie das Portal: kein privater Schlüssel, gültig, CA-Regeln, nicht bereits als Admin- oder Organisations-Login-Zertifikat vergeben. Der Eintrag erhält `created_by = server-cli` und einen Audit-Eintrag. Die CLI umgeht bewusst das Vier-Augen-Verfahren aus Schritt 1: Root auf dem Server ist der Vertrauensanker.
 3. **Legacy.** `IMI_ADMIN_CERT_FINGERPRINTS` in `.env.prod` ergänzen und das Backend neu erstellen (wird bei jedem Start eingelesen). Ablaufdatum und Name werden bei der ersten Anmeldung ergänzt. Nur nutzen, wenn 1 und 2 nicht möglich sind.
 
 ### Debian install, step by step (cert-auth variant)
