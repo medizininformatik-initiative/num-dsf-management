@@ -41,7 +41,10 @@ export function useMasonryGrid(gridRef: RefObject<HTMLElement>, cellSelector: st
       const gap = pixels(style.columnGap, 0);
       const unit = pixels(style.gridAutoRows, ROW_UNIT);
       grid!.querySelectorAll<HTMLElement>(`:scope > ${cellSelector}`).forEach((cell) => {
-        const span = `span ${masonrySpan(cell.getBoundingClientRect().height, gap, unit)}`;
+        // offsetHeight is the layout height. getBoundingClientRect() would
+        // include the entrance animation's scale, and since a transform never
+        // triggers the ResizeObserver, that shrunken size would stick.
+        const span = `span ${masonrySpan(cell.offsetHeight, gap, unit)}`;
         if (cell.style.gridRowEnd !== span) cell.style.gridRowEnd = span;
       });
     }
@@ -59,11 +62,25 @@ export function useMasonryGrid(gridRef: RefObject<HTMLElement>, cellSelector: st
       layout();
       frame = requestAnimationFrame(layout);
     });
+    // Cells mount after the data loads (and re-mount when the instance
+    // changes), so observe every cell that appears, not only the first ones;
+    // otherwise a card that shrinks later keeps its stale span and leaves a hole.
+    const observeCells = () =>
+      grid.querySelectorAll(`:scope > ${cellSelector}`).forEach((cell) => observer.observe(cell));
     observer.observe(grid);
-    grid.querySelectorAll(`:scope > ${cellSelector}`).forEach((cell) => observer.observe(cell));
+    observeCells();
+    const mutations =
+      typeof MutationObserver === 'undefined'
+        ? null
+        : new MutationObserver(() => {
+            observeCells();
+            layout();
+          });
+    mutations?.observe(grid, { childList: true });
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      mutations?.disconnect();
     };
   }, [gridRef, cellSelector]);
 }
