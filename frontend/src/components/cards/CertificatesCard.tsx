@@ -52,6 +52,7 @@ type CertRow = Pick<
   | 'thumbprintSha512'
   | 'issuerDn'
   | 'issuerTrusted'
+  | 'uploadedByClinic'
 >;
 
 type CertTone = (typeof CERT_STATE_TONE)[CertState];
@@ -318,7 +319,12 @@ function CertificateItem({
 
       <div className="mt-2 flex items-center justify-between gap-2">
         {detailed && canManageLogin ? (
-          <LoginSwitch checked={isLogin} name={name} onToggle={onToggleLogin} />
+          <LoginSwitch
+            checked={isLogin}
+            name={name}
+            onToggle={onToggleLogin}
+            eligible={cert.uploadedByClinic === true}
+          />
         ) : (
           <span />
         )}

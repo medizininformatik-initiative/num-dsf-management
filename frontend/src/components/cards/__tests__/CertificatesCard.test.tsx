@@ -22,6 +22,7 @@ interface Row {
   valid_until: string;
   issuerDn: string;
   issuerTrusted: boolean;
+  uploadedByClinic?: boolean;
 }
 
 const deleteCertificate = vi.hoisted(() => vi.fn());
@@ -281,6 +282,8 @@ describe('CertificatesCard login certificates', () => {
 
   it('lets an admin allow a certificate for login after the authenticator step-up', async () => {
     isAdmin = true;
+    // Only clinic-uploaded certificates are eligible; an unknown origin is not.
+    rows = [{ ...cert, uploadedByClinic: true }];
     const user = userEvent.setup();
     renderWithProviders(<CertificatesCard instanceId="i1" />);
     const toggle = screen.getByRole('switch', { name: /Allow certificate CN=ukm.de for login/ });
@@ -295,6 +298,33 @@ describe('CertificatesCard login certificates', () => {
       { certificateId: 'cert1', totpCode: '123456' },
       expect.any(Object),
     );
+  });
+
+  it('disables the login switch with a hint for a certificate the clinic did not upload', async () => {
+    isAdmin = true;
+    rows = [{ ...cert, uploadedByClinic: false }];
+    const user = userEvent.setup();
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    const toggle = screen.getByRole('switch');
+    expect(toggle).toBeDisabled();
+    const hint = 'Only certificates uploaded by the clinic itself can be allowed for login.';
+    expect(screen.getByText(hint)).toBeInTheDocument();
+    expect(toggle).toHaveAccessibleDescription(hint);
+    await user.click(toggle);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('keeps the switch usable for a clinic-uploaded certificate and for withdrawing', () => {
+    isAdmin = true;
+    rows = [{ ...cert, uploadedByClinic: true }];
+    const { unmount } = renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.getByRole('switch')).toBeEnabled();
+    unmount();
+    // an admin-uploaded certificate that is already a login entry can still be withdrawn
+    rows = [{ ...cert, uploadedByClinic: false }];
+    loginEntries = [entry()];
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.getByRole('switch')).toBeEnabled();
   });
 
   it('lets an admin withdraw the login permission of a login certificate', async () => {

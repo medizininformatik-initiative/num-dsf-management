@@ -6,7 +6,7 @@
  * onboarding import: the full 128-hex SHA-512, copyable, with an admin remove action).
  * Dependencies: StatusPill, Button, Icon, CertificateFingerprint, lib/dateUtils, i18n store.
  */
-import type { CSSProperties } from 'react';
+import { useId, type CSSProperties } from 'react';
 import { CertificateFingerprint } from './CertificateFingerprint';
 import { StatusPill } from '../ui/StatusPill';
 import { Button } from '../ui/Button';
@@ -30,21 +30,29 @@ export function LoginSwitch({
   checked,
   name,
   onToggle,
+  eligible = true,
 }: {
   checked: boolean;
   name: string;
   onToggle: () => void;
+  /** False when the clinic did not upload this certificate itself: it cannot be enabled. */
+  eligible?: boolean;
 }) {
   const { t } = useI18n();
+  const hintId = useId();
+  // An already enabled certificate can always be withdrawn.
+  const blocked = !checked && !eligible;
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <button
         type="button"
         role="switch"
         aria-checked={checked}
         aria-label={t('loginCertSwitchAria', { name })}
+        aria-describedby={blocked ? hintId : undefined}
+        disabled={blocked}
         onClick={onToggle}
-        className={`press-effect relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-[color:var(--border)] transition-colors duration-short ease-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
+        className={`press-effect disabled:cursor-not-allowed disabled:opacity-60 relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-[color:var(--border)] transition-colors duration-short ease-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
           checked ? 'bg-[color:var(--accent-solid)]' : 'bg-[color:var(--bg-card)]'
         }`}
       >
@@ -58,6 +66,11 @@ export function LoginSwitch({
       <span aria-hidden="true" className="text-[11px] text-[color:var(--text-secondary)]">
         {t('loginCertSwitchLabel')}
       </span>
+      {blocked && (
+        <p id={hintId} className="basis-full text-[11px] text-[color:var(--text-secondary)]">
+          {t('loginCertNotClinicHint')}
+        </p>
+      )}
     </div>
   );
 }

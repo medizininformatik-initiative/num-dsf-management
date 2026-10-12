@@ -31,6 +31,8 @@ export interface ApiCertificate {
   issuerDn: string;
   /** True when the issuer is a CA the DSF accepts in production (CA whitelist). */
   issuerTrusted: boolean;
+  /** Uploaded by the clinic itself (not an admin): only such certificates may be allowed for login. */
+  uploadedByClinic?: boolean;
 }
 
 /** What an upload would register, from POST /certificates/preview (nothing is stored). */
