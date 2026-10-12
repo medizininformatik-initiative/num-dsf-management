@@ -13,6 +13,7 @@ const downloadBundle = vi.hoisted(() => vi.fn());
 const downloadIpList = vi.hoisted(() => vi.fn());
 const getBundleHistory = vi.hoisted(() => vi.fn());
 const downloadFull = vi.hoisted(() => vi.fn());
+const getAllowListFreshness = vi.hoisted(() => vi.fn());
 const me = vi.hoisted(() => ({ isAdmin: false }));
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 
@@ -35,7 +36,7 @@ vi.mock('../../../hooks/useEndpoints', () => ({
 }));
 vi.mock('../BundlePreview', () => ({ BundlePreview: () => null }));
 vi.mock('../../../api/entities.api', () => ({
-  api: () => ({ downloadBundle, getBundleHistory, downloadIpList }),
+  api: () => ({ downloadBundle, getBundleHistory, downloadIpList, getAllowListFreshness }),
   downloadFullAllowListBundle: downloadFull,
 }));
 
@@ -64,6 +65,14 @@ const HISTORY = [
     isCurrent: false,
   },
 ];
+const FRESH_UNKNOWN = {
+  currentVersion: null,
+  currentPublishedAt: null,
+  lastObtainedVersion: null,
+  lastObtainedAt: null,
+  via: null,
+  outdated: false,
+};
 const BASE = `${window.location.origin}/fhir/Bundle/dsf.klinik.example.de`;
 const HASH = 'ab'.repeat(32);
 const JWT = 'eyJhbGciOiJSUzI1NiJ9.eyJjb250ZW50SGFzaCI6ImFiIn0.c2ln';
@@ -98,6 +107,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   me.isAdmin = false;
   getBundleHistory.mockResolvedValue({ data: { data: HISTORY } });
+  getAllowListFreshness.mockResolvedValue({ data: { data: FRESH_UNKNOWN } });
   downloadBundle.mockResolvedValue(
     bundleResponse({ 'x-content-hash': HASH, 'x-bundle-signature': JWT }),
   );
@@ -352,5 +362,48 @@ describe('DownloadModal – Variant 1: DSF web UI', () => {
     await user.selectOptions(screen.getByLabelText('Endpoint'), 'broken.example.de');
     expect(screen.getByRole('alert')).toHaveTextContent(/not a valid http\(s\) url/i);
     expect(screen.queryByTestId('dsf-task-open')).toBeNull();
+  });
+});
+
+describe('DownloadModal – new allow-list banner', () => {
+  const outdated = {
+    currentVersion: 3,
+    currentPublishedAt: new Date(Date.now() - 3 * 3600_000).toISOString(),
+    lastObtainedVersion: 2,
+    lastObtainedAt: new Date(Date.now() - 2 * 86400_000).toISOString(),
+    via: 'DSF',
+    outdated: true,
+  };
+
+  it('shows the info banner at the top while a newer version is waiting', async () => {
+    getAllowListFreshness.mockResolvedValue({ data: { data: outdated } });
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    expect(await screen.findByTestId('freshness-banner')).toHaveTextContent(
+      'Version 3 is new (published 3h ago). Your DSF last fetched version 2 (2d ago).',
+    );
+  });
+
+  it('shows the success line when the DSF is current', async () => {
+    getAllowListFreshness.mockResolvedValue({
+      data: { data: { ...outdated, lastObtainedVersion: 3, outdated: false } },
+    });
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    expect(await screen.findByTestId('freshness-current')).toHaveTextContent(
+      'Your DSF is up to date (version 3, fetched 2d ago).',
+    );
+    expect(screen.queryByTestId('freshness-banner')).toBeNull();
+  });
+
+  it('shows neither while nothing is known', async () => {
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    await waitFor(() => expect(getAllowListFreshness).toHaveBeenCalled());
+    expect(screen.queryByTestId('freshness-banner')).toBeNull();
+    expect(screen.queryByTestId('freshness-current')).toBeNull();
+  });
+
+  it('refreshes the freshness after a version download', async () => {
+    getAllowListFreshness.mockResolvedValue({ data: { data: outdated } });
+    await downloadVersion3();
+    await waitFor(() => expect(getAllowListFreshness.mock.calls.length).toBeGreaterThanOrEqual(2));
   });
 });

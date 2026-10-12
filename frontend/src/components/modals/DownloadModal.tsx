@@ -11,7 +11,9 @@
  * download shows its content hash (compared with the SHA-256 the browser
  * computes of the received bytes) and signature, followed by a three-step guide
  * to verify and import it with the DSF process downloadAllowList.
- * Dependencies: Modal, useEndpoints, useBundleHistory, useMe, entities API,
+ * A calm banner at the top says whether the site's DSF obtained the current
+ * version (useAllowListFreshness); a download refreshes it.
+ * Dependencies: Modal, useEndpoints, useBundleHistory, useAllowListFreshness, useMe, entities API,
  * DownloadVersionList, BundlePreview, lib/fingerprint, i18n store, sonner.
  */
 import { useId, useState, type ReactNode } from 'react';
@@ -19,13 +21,19 @@ import { toast } from 'sonner';
 import { Modal } from './Modal';
 import { useEndpoints } from '../../hooks/useEndpoints';
 import { useBundleHistory } from '../../hooks/useBundleHistory';
+import {
+  useAllowListFreshness,
+  useRefreshAllowListFreshness,
+} from '../../hooks/useAllowListFreshness';
 import { useMe } from '../../hooks/useMe';
 import { api, downloadFullAllowListBundle } from '../../api/entities.api';
 import { fingerprintGroups } from '../../lib/fingerprint';
+
 import { saveBlob, toBlob, headerValue, sha256Hex } from '../../lib/downloadBlob';
 import { BundlePreview } from './BundlePreview';
 import { DownloadVersionList } from './DownloadVersionList';
 import { DsfTaskStart } from './DsfTaskStart';
+import { FreshnessBanner } from './FreshnessBanner';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { Skeleton } from '../ui/Skeleton';
@@ -120,6 +128,8 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
   const [verification, setVerification] = useState<Verification | null>(null);
 
   const history = useBundleHistory(instanceId, selectedEndpoint);
+  const { data: freshness } = useAllowListFreshness(open ? instanceId : null);
+  const refreshFreshness = useRefreshAllowListFreshness(instanceId);
   const bundleBase = selectedEndpoint
     ? `${window.location.origin}/fhir/Bundle/${encodeURIComponent(selectedEndpoint)}`
     : '';
@@ -156,6 +166,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
     try {
       const res = await api(instanceId).downloadBundle(selectedEndpoint, version);
       await finishBundleDownload(res, `dsf-allow-list-v${version}.json`);
+      void refreshFreshness();
     } catch {
       toast.error(t('bundleDownloadFailed'));
     } finally {
@@ -203,6 +214,8 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
   return (
     <Modal open={open} onClose={onClose} title={t('downloadModalTitle')} width="max-w-2xl">
       <div className="space-y-4">
+        <FreshnessBanner freshness={freshness} />
+
         <div className="glass-thin rounded-2xl px-4 py-3" data-testid="bundle-disclaimer">
           <p className="flex items-start gap-2 text-xs text-[color:var(--text-secondary)]">
             <Icon name="info" size={16} className="mt-px shrink-0 text-info-fg" />
