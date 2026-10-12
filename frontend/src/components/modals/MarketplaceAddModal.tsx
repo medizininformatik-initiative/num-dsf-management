@@ -34,8 +34,10 @@ export function MarketplaceAddModal({ open, onClose }: Props) {
     defaultValues: { gitUrl: '', status: 'APPROVED', totpCode: '' },
   });
 
+  // Reset when the dialog closes, not when it opens: an effect on open runs
+  // after the form is already on screen and wipes whatever was typed first.
   useEffect(() => {
-    if (open) reset({ gitUrl: '', status: 'APPROVED', totpCode: '' });
+    if (!open) reset({ gitUrl: '', status: 'APPROVED', totpCode: '' });
   }, [open, reset]);
 
   async function onSubmit(data: MarketplaceAddForm) {
