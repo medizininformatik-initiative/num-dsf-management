@@ -12,6 +12,11 @@ jest.mock('../../services/totp.service', () => ({
   verifyTotpCode: jest.fn().mockResolvedValue(true),
 }));
 
+jest.mock('../../services/notification.service', () => ({
+  ...jest.requireActual('../../services/notification.service'),
+  sendOrgLoginCertificateChangedEmail: jest.fn().mockResolvedValue(undefined),
+}));
+
 import request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
 import { app } from '../../app';
@@ -21,6 +26,7 @@ import { signGrant } from '../../lib/adminGrants';
 import { sha512FingerprintFromPem } from '../../lib/certFingerprint';
 import { makeCertPem } from '../helpers/allowListSites';
 import { importSites, onboardingRowSchema } from '../../services/onboarding.service';
+import { sendOrgLoginCertificateChangedEmail } from '../../services/notification.service';
 
 const sfx = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 const adminEmail = `lc-admin-${sfx}@imi-test.example.de`;
@@ -37,6 +43,11 @@ const adminCertPem = makeCertPem(`admin-cert.${sfx}`);
 const certIdA = uuidv4();
 const certIdB = uuidv4();
 const certIdAdmin = uuidv4();
+const certIdByAdmin = uuidv4();
+const certIdUnknown = uuidv4();
+const byAdminPem = makeCertPem(`by-admin.${orgA}`);
+const unknownPem = makeCertPem(`unknown.${orgA}`);
+const clinicContact = `lc-contact-${sfx}@example.de`;
 const fpA = sha512FingerprintFromPem(certPemA);
 
 const adminToken = () => getTestToken(adminEmail, adminId);
@@ -87,6 +98,8 @@ beforeAll(async () => {
     subject: org,
     thumbprint: 'a'.repeat(64),
     valid_until: '2099-01-01',
+    uploaded_by: siteEmail,
+    uploaded_by_admin: 0,
     created_at: new Date(),
   });
   await db('certificates').insert([
@@ -94,6 +107,19 @@ beforeAll(async () => {
     certRow(certIdB, orgB, certPemB),
     certRow(certIdAdmin, orgA, adminCertPem),
   ]);
+  await db('certificates').insert([
+    { ...certRow(certIdByAdmin, orgA, byAdminPem), uploaded_by: adminEmail, uploaded_by_admin: 1 },
+    { ...certRow(certIdUnknown, orgA, unknownPem), uploaded_by: null, uploaded_by_admin: null },
+  ]);
+  await db('contacts').insert({
+    id: uuidv4(),
+    organization_id: orgA,
+    types: JSON.stringify(['DSF_ADMIN']),
+    name: 'Clinic Admin',
+    email: clinicContact,
+    created_at: new Date(),
+    updated_at: new Date(),
+  });
   await db('admin_cert_fingerprints').insert({
     id: uuidv4(),
     email: `other-admin-${sfx}@imi-test.example.de`,
@@ -204,6 +230,8 @@ describe('admin login-certificates API', () => {
       subject: orgB,
       thumbprint: 'b'.repeat(64),
       valid_until: '2099-01-01',
+      uploaded_by: siteEmail,
+      uploaded_by_admin: 0,
       created_at: new Date(),
     });
     const res = await request(app)
@@ -226,6 +254,97 @@ describe('admin login-certificates API', () => {
       .send({ totpCode: '123456' });
     expect(del.status).toBe(200);
     expect(await db('org_login_certificates').where({ fingerprint: fpA }).first()).toBeUndefined();
+  });
+
+  it('refuses a certificate an admin uploaded or of unknown origin (409 NOT_CLINIC_UPLOADED)', async () => {
+    for (const id of [certIdByAdmin, certIdUnknown]) {
+      const res = await request(app)
+        .post(base(orgA))
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .send({ certificateId: id, totpCode: '123456' });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('NOT_CLINIC_UPLOADED');
+    }
+    expect(
+      await db('org_login_certificates').where({
+        fingerprint: sha512FingerprintFromPem(byAdminPem),
+      }),
+    ).toHaveLength(0);
+  });
+
+  it('flags uploadedByClinic per login entry', async () => {
+    await request(app)
+      .post(base(orgA))
+      .set('Authorization', `Bearer ${adminToken()}`)
+      .send({ certificateId: certIdA, totpCode: '123456' })
+      .expect(201);
+    const res = await request(app)
+      .get(`/api/v1/instances/${instA}/certificates/login-certificates`)
+      .set('Authorization', `Bearer ${siteToken()}`);
+    expect(res.body.data[0]).toMatchObject({ fingerprint: fpA, uploadedByClinic: true });
+    const certs = await request(app)
+      .get(`/api/v1/instances/${instA}/certificates`)
+      .set('Authorization', `Bearer ${siteToken()}`);
+    const byId = new Map(
+      (certs.body.data as Array<{ id: string; uploadedByClinic: boolean }>).map((c) => [
+        c.id,
+        c.uploadedByClinic,
+      ]),
+    );
+    expect(byId.get(certIdA)).toBe(true);
+    expect(byId.get(certIdByAdmin)).toBe(false);
+    expect(byId.get(certIdUnknown)).toBe(false);
+    await request(app)
+      .delete(`${base(orgA)}/${fpA}`)
+      .set('Authorization', `Bearer ${adminToken()}`)
+      .send({ totpCode: '123456' })
+      .expect(200);
+  });
+
+  it('mails the DSF_ADMIN contact on enable and removal, the organization e-mail as fallback', async () => {
+    const mail = sendOrgLoginCertificateChangedEmail as jest.Mock;
+    mail.mockClear();
+    await request(app)
+      .post(base(orgA))
+      .set('Authorization', `Bearer ${adminToken()}`)
+      .send({ certificateId: certIdA, totpCode: '123456' })
+      .expect(201);
+    expect(mail).toHaveBeenLastCalledWith(
+      [clinicContact],
+      expect.objectContaining({ change: 'enable', byAdmin: adminEmail }),
+    );
+    await request(app)
+      .delete(`${base(orgA)}/${fpA}`)
+      .set('Authorization', `Bearer ${adminToken()}`)
+      .send({ totpCode: '123456' })
+      .expect(200);
+    expect(mail).toHaveBeenLastCalledWith(
+      [clinicContact],
+      expect.objectContaining({ change: 'disable' }),
+    );
+
+    // organization without any DSF_ADMIN contact: fallback to the organization e-mail
+    const fallbackCert = uuidv4();
+    await db('certificates').insert({
+      id: fallbackCert,
+      organization_id: orgB,
+      pem: makeCertPem(`fallback.${orgB}`),
+      subject: orgB,
+      thumbprint: 'c'.repeat(64),
+      valid_until: '2099-01-01',
+      created_at: new Date(),
+      uploaded_by: siteEmail,
+      uploaded_by_admin: 0,
+    });
+    await request(app)
+      .post(base(orgB))
+      .set('Authorization', `Bearer ${adminToken()}`)
+      .send({ certificateId: fallbackCert, totpCode: '123456' })
+      .expect(201);
+    expect(mail).toHaveBeenLastCalledWith(
+      ['a@b.de'],
+      expect.objectContaining({ change: 'enable' }),
+    );
   });
 
   it('deleting the uploaded certificate removes its login entry', async () => {

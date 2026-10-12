@@ -32,6 +32,7 @@ const STATUS: Record<string, number> = {
   INVALID_CERTIFICATE: 400,
   ADMIN_CERTIFICATE: 409,
   FINGERPRINT_IN_USE: 409,
+  NOT_CLINIC_UPLOADED: 409,
 };
 
 function fail(res: Response, err: unknown): boolean {

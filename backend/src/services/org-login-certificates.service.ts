@@ -8,11 +8,21 @@
  * of the organization. Only admins change them; every change is audited as
  * ORGANIZATION/UPDATE with diff_json.action = 'login_certificate'.
  *
- * Dependencies: db/connection, audit.service, lib/certFingerprint
+ * An admin may only enable a certificate the clinic itself uploaded
+ * (certificates.uploaded_by_admin = 0, migration 031); otherwise an admin could
+ * upload a certificate whose key he holds and sign in as that clinic. The
+ * organization's DSF_ADMIN contacts (fallback: the organization e-mail) get a
+ * mail whenever a login certificate is enabled or removed.
+ *
+ * Dependencies: db/connection, audit.service, notification.service,
+ *               lib/certFingerprint, lib/jsonColumn, lib/logger
  */
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
+import { sendOrgLoginCertificateChangedEmail } from './notification.service';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
+import { parseJsonStringArray } from '../lib/jsonColumn';
+import { logger } from '../lib/logger';
 
 export interface LoginCertificate {
   fingerprint: string;
@@ -20,47 +30,94 @@ export interface LoginCertificate {
   source: 'ONBOARDING' | 'ADMIN' | 'MIGRATED';
   createdBy: string | null;
   createdAt: Date;
+  /** The linked certificate was uploaded by the clinic itself (false for fingerprint-only entries). */
+  uploadedByClinic: boolean;
 }
 
-function toApi(r: {
+interface LoginRow {
   fingerprint: string;
   certificate_id: string | null;
   source: LoginCertificate['source'];
   created_by: string | null;
   created_at: Date;
-}): LoginCertificate {
+  uploaded_by_admin?: number | null;
+}
+
+interface OrgRow {
+  identifier: string;
+  instance_id: string;
+  name: string;
+  email: string | null;
+}
+
+function toApi(r: LoginRow): LoginCertificate {
   return {
     fingerprint: r.fingerprint,
     certificateId: r.certificate_id,
     source: r.source,
     createdBy: r.created_by,
     createdAt: r.created_at,
+    uploadedByClinic: r.certificate_id !== null && r.uploaded_by_admin === 0,
   };
 }
 
-async function requireOrg(identifier: string) {
+/** Login entries of an organization joined with the uploader flag of the linked certificate. */
+function entriesOf(identifier: string): Promise<LoginRow[]> {
+  return db('org_login_certificates as l')
+    .leftJoin('certificates as c', 'c.id', 'l.certificate_id')
+    .where('l.organization_id', identifier)
+    .orderBy('l.created_at', 'asc')
+    .select('l.*', 'c.uploaded_by_admin');
+}
+
+async function requireOrg(identifier: string): Promise<OrgRow> {
   const org = await db('organizations').where({ identifier }).first();
   if (!org) throw new Error('ORGANIZATION_NOT_FOUND');
-  return org as { identifier: string; instance_id: string };
+  return org as OrgRow;
 }
 
 /** Login certificates of an organization, oldest first. */
 export async function listForOrganization(identifier: string): Promise<LoginCertificate[]> {
   await requireOrg(identifier);
-  const rows = await db('org_login_certificates')
-    .where({ organization_id: identifier })
-    .orderBy('created_at', 'asc');
-  return rows.map(toApi);
+  return (await entriesOf(identifier)).map(toApi);
 }
 
 /** Login certificates of the organization that belongs to an instance (read-only view). */
 export async function listForInstance(instanceId: string): Promise<LoginCertificate[]> {
   const org = await db('organizations').where({ instance_id: instanceId }).first();
   if (!org) return [];
-  const rows = await db('org_login_certificates')
+  return (await entriesOf(org.identifier)).map(toApi);
+}
+
+/** DSF_ADMIN contacts of the organization; falls back to the organization e-mail. */
+async function noticeRecipients(org: OrgRow): Promise<string[]> {
+  const contacts: Array<{ email: string; types: unknown }> = await db('contacts')
     .where({ organization_id: org.identifier })
-    .orderBy('created_at', 'asc');
-  return rows.map(toApi);
+    .select('email', 'types');
+  const admins = contacts
+    .filter((c) => c.email && parseJsonStringArray(c.types).includes('DSF_ADMIN'))
+    .map((c) => c.email.toLowerCase().trim());
+  const list = admins.length > 0 ? admins : org.email ? [org.email.toLowerCase().trim()] : [];
+  return [...new Set(list)];
+}
+
+/** Tell the clinic about the change; a failing mail never undoes it. */
+async function notifyOrganization(
+  org: OrgRow,
+  change: 'enable' | 'disable',
+  byAdmin: string,
+  fingerprint: string,
+): Promise<void> {
+  try {
+    await sendOrgLoginCertificateChangedEmail(await noticeRecipients(org), {
+      change,
+      orgName: org.name || org.identifier,
+      byAdmin,
+      fingerprintPrefix: fingerprint.slice(0, 16),
+    });
+  } catch (err) {
+    logger.error({ err }, '[OrgLoginCertificates] notification mail failed');
+  }
 }
 
 /**
@@ -69,6 +126,8 @@ export async function listForInstance(instanceId: string): Promise<LoginCertific
  * Idempotent for the same organization (links the certificate to a
  * fingerprint-only entry).
  * @throws ORGANIZATION_NOT_FOUND / CERTIFICATE_NOT_FOUND / INVALID_CERTIFICATE
+ * @throws NOT_CLINIC_UPLOADED unless the clinic itself uploaded the certificate
+ *   (an admin upload, or an upload of unknown origin, never qualifies).
  * @throws ADMIN_CERTIFICATE if the fingerprint is an admin certificate.
  * @throws FINGERPRINT_IN_USE if another organization already uses it.
  */
@@ -83,6 +142,7 @@ export async function enable(
     .where({ id: certificateId, organization_id: identifier })
     .first();
   if (!cert) throw new Error('CERTIFICATE_NOT_FOUND');
+  if (cert.uploaded_by_admin !== 0) throw new Error('NOT_CLINIC_UPLOADED');
   let fingerprint: string;
   try {
     fingerprint = sha512FingerprintFromPem(String(cert.pem));
@@ -114,7 +174,13 @@ export async function enable(
     fingerprintPrefix: fingerprint.slice(0, 16),
     certificateId,
   });
-  return toApi(await db('org_login_certificates').where({ fingerprint }).first());
+  await notifyOrganization(org, 'enable', actorEmail, fingerprint);
+  const row: LoginRow = await db('org_login_certificates as l')
+    .leftJoin('certificates as c', 'c.id', 'l.certificate_id')
+    .where('l.fingerprint', fingerprint)
+    .select('l.*', 'c.uploaded_by_admin')
+    .first();
+  return toApi(row);
 }
 
 /**
@@ -141,10 +207,11 @@ export async function remove(
     change: 'disable',
     fingerprintPrefix: fingerprint.slice(0, 16),
   });
+  await notifyOrganization(org, 'disable', actorEmail, fingerprint);
 }
 
 async function audit(
-  org: { identifier: string; instance_id: string },
+  org: OrgRow,
   actorEmail: string,
   ip: string,
   diffJson: Record<string, unknown>,
