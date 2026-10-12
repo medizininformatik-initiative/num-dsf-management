@@ -26,10 +26,17 @@ test('admin can add a marketplace entry through the UI', async ({ page }) => {
 
   // The modal footer's primary button reuses the marketplaceAdd label. Scope
   // the click to the dialog so we don't re-click the page-level "Add process".
+  // Wait for the create call itself, so a failure reports the server's answer
+  // instead of only "card not found".
+  const created = page.waitForResponse(
+    (r) => r.request().method() === 'POST' && /\/api\/v1\/admin\/marketplace\/?$/.test(r.url()),
+  );
   await page
     .getByRole('dialog')
     .getByRole('button', { name: /add process|prozess hinzufügen/i })
     .click();
+  const response = await created;
+  expect(response.status(), await response.text()).toBe(201);
 
   // Each entry renders as a card linking to its detail page at
   // /app/marketplace/{slug}, where slug = slugify(owner, repo) = "owner-repo".
