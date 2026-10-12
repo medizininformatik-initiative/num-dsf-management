@@ -135,11 +135,12 @@ describe('EntityCanvas layout', () => {
         disconnect() {}
       },
     );
+    // The hook reads the layout height (offsetHeight), not the transformed rect.
     const heights = new Map<Element, number>();
-    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (
       this: HTMLElement,
     ) {
-      return { height: heights.get(this) ?? 0 } as DOMRect;
+      return heights.get(this) ?? 0;
     });
     const { container } = renderWithProviders(<EntityCanvas instanceId="i1" />);
     const org = container.querySelector<HTMLElement>('[data-canvas-cell="organization"]')!;
