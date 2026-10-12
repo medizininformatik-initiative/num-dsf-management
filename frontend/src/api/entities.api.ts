@@ -16,6 +16,17 @@ export interface BundleHistoryEntry {
   isCurrent: boolean;
 }
 
+/** GET /allow-list/freshness: has the site obtained the current allow-list version? */
+export interface AllowListFreshness {
+  currentVersion: number | null;
+  currentPublishedAt: string | null;
+  lastObtainedVersion: number | null;
+  lastObtainedAt: string | null;
+  via: 'DSF' | 'PORTAL' | null;
+  /** A newer version is published than the site has obtained. */
+  outdated: boolean;
+}
+
 /** A certificate as the certificates API returns it (never the PEM). */
 export interface ApiCertificate {
   id: string;
@@ -127,6 +138,10 @@ function api(instanceId: string) {
         `${base}/bundle-history?endpointId=${encodeURIComponent(endpointId)}`,
         { headers: authHeader() },
       ),
+    getAllowListFreshness: () =>
+      axios.get<{ data: AllowListFreshness }>(`${base}/allow-list/freshness`, {
+        headers: authHeader(),
+      }),
     downloadIpList: () =>
       axios.get(`${BASE}/download/ip-address-list`, {
         headers: authHeader(), responseType: 'blob',
