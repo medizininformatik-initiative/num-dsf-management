@@ -175,6 +175,10 @@ jobs:
           cp .env.example .env || true
           grep -q "DEV_AUTO_LOGIN=true" .env || echo "DEV_AUTO_LOGIN=true" >> .env
           grep -q "DEV_TOTP_BYPASS=true" .env || echo "DEV_TOTP_BYPASS=true" >> .env
+          # Every spec signs in as the same dev admin; the whole suite exceeds
+          # the 100/min per-user API limit and turns into random 429s.
+          sed -i '/^RATE_LIMIT_API_MAX=/d' .env
+          echo "RATE_LIMIT_API_MAX=10000" >> .env
           # backend/src/index.ts hard-aborts when DEV_TOTP_BYPASS=true unless
           # NODE_ENV=development AND HOST is localhost. CI satisfies both.
           grep -q "^NODE_ENV=" .env || echo "NODE_ENV=development" >> .env
@@ -244,6 +248,10 @@ jobs:
           cp .env.example .env || true
           grep -q "DEV_AUTO_LOGIN=true" .env || echo "DEV_AUTO_LOGIN=true" >> .env
           grep -q "DEV_TOTP_BYPASS=true" .env || echo "DEV_TOTP_BYPASS=true" >> .env
+          # Every spec signs in as the same dev admin; the whole suite exceeds
+          # the 100/min per-user API limit and turns into random 429s.
+          sed -i '/^RATE_LIMIT_API_MAX=/d' .env
+          echo "RATE_LIMIT_API_MAX=10000" >> .env
           # backend/src/index.ts hard-aborts when DEV_TOTP_BYPASS=true unless
           # NODE_ENV=development AND HOST is localhost. CI satisfies both.
           grep -q "^NODE_ENV=" .env || echo "NODE_ENV=development" >> .env
