@@ -37,6 +37,14 @@ vi.mock('../../api/admin.api', () => ({
   },
 }));
 
+const certApi = vi.hoisted(() => ({
+  all: vi.fn(),
+  preview: vi.fn(),
+  addFor: vi.fn(),
+  removeFor: vi.fn(),
+}));
+vi.mock('../../api/adminCertificates.api', () => ({ adminCertificatesApi: certApi }));
+
 import { AdminUsersPage } from '../AdminUsersPage';
 
 function users(): WhitelistEntry[] {
@@ -77,6 +85,8 @@ describe('AdminUsersPage', () => {
     removeMock.mockReset();
     removeMock.mockResolvedValue({});
     lockMock.mockClear();
+    Object.values(certApi).forEach((f) => f.mockReset());
+    certApi.all.mockResolvedValue([]);
     useMe.mockReturnValue({ data: { email: 'me@imi-a.example.de', isAdmin: true } });
   });
 
@@ -180,5 +190,47 @@ describe('AdminUsersPage', () => {
     await waitFor(() => expect(removeMock).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(code).toHaveValue(''));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('shows admin certificate counts and lets an admin recover a colleague', async () => {
+    const colleague = { ...users()[1], email: 'carol@imi-c.example.de', is_admin: true };
+    listMock.mockResolvedValue([users()[0], colleague]);
+    certApi.all.mockResolvedValue([
+      {
+        id: 'k1',
+        email: 'carol@imi-c.example.de',
+        label: 'old',
+        subject: 'cn',
+        fingerprint: 'c'.repeat(128),
+        validUntil: new Date(Date.now() - 86_400_000).toISOString(),
+        lastUsedAt: null,
+        createdAt: new Date().toISOString(),
+        createdBy: 'bootstrap',
+      },
+    ]);
+    certApi.removeFor.mockResolvedValue({});
+    const user = userEvent.setup();
+    renderWithProviders(<AdminUsersPage />);
+
+    const row = (await screen.findByText('carol@imi-c.example.de')).closest('tr') as HTMLElement;
+    expect(within(row).getByText('1 registered')).toBeInTheDocument();
+    // No certificates action on the viewer's own row.
+    const meRow = screen.getByText('me@imi-a.example.de').closest('tr') as HTMLElement;
+    expect(within(meRow).queryByRole('button', { name: 'Certificates' })).not.toBeInTheDocument();
+
+    await user.click(within(row).getByRole('button', { name: 'Certificates' }));
+    const list = await screen.findByRole('dialog');
+    expect(within(list).getByText('old')).toBeInTheDocument();
+    await user.click(within(list).getByRole('button', { name: 'Remove' }));
+
+    const confirmDialogs = await screen.findAllByRole('dialog');
+    const confirm = confirmDialogs[confirmDialogs.length - 1];
+    fireEvent.change(within(confirm).getByPlaceholderText('000000'), {
+      target: { value: '111222' },
+    });
+    await user.click(within(confirm).getByRole('button', { name: 'Remove' }));
+    await waitFor(() =>
+      expect(certApi.removeFor).toHaveBeenCalledWith('carol@imi-c.example.de', 'k1', '111222'),
+    );
   });
 });

@@ -26,6 +26,34 @@ import { StatusPill } from '../components/ui/StatusPill';
 import { Icon } from '../components/ui/Icon';
 import { Skeleton } from '../components/ui/Skeleton';
 
+import { adminCertificatesApi, type AdminCertificate } from '../api/adminCertificates.api';
+import {
+  AdminUserCertificatesDialog,
+  ALL_ADMIN_CERTS_KEY,
+} from '../components/admin/AdminUserCertificatesDialog';
+import { certValidity, CERT_STATE_TONE } from '../lib/certStatus';
+import { formatDate } from '../lib/dateUtils';
+
+/** "2 certificates, next expiry 12.03.2027" with a tone pill for the nearest expiry. */
+function CertSummary({ certs }: { certs: AdminCertificate[] }) {
+  const { t, lang } = useI18n();
+  if (certs.length === 0) return <span className="text-warning-fg">{t('adminUsersNoCerts')}</span>;
+  const dated = certs.filter((c) => c.validUntil);
+  const next = dated.length
+    ? dated.reduce((a, b) => (new Date(a.validUntil!) <= new Date(b.validUntil!) ? a : b))
+    : null;
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <span>{t('adminUsersCertCount', { n: certs.length })}</span>
+      {next?.validUntil && (
+        <StatusPill tone={CERT_STATE_TONE[certValidity(next.validUntil).state]}>
+          {formatDate(next.validUntil, lang)}
+        </StatusPill>
+      )}
+    </span>
+  );
+}
+
 type ActionKind = 'add' | 'lock' | 'unlock' | 'demote' | 'remove' | 'promote';
 
 interface PendingAction {
@@ -75,6 +103,13 @@ export function AdminUsersPage() {
     staleTime: 15_000,
   });
 
+  const { data: adminCerts } = useQuery({
+    queryKey: ALL_ADMIN_CERTS_KEY,
+    queryFn: adminCertificatesApi.all,
+    enabled: !me || me.isAdmin,
+    staleTime: 15_000,
+  });
+  const [certsFor, setCertsFor] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [totpCode, setTotpCode] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -239,6 +274,7 @@ export function AdminUsersPage() {
                   <th className="px-4 py-2.5">{t('adminUsersColEmail')}</th>
                   <th className="px-4 py-2.5">{t('adminUsersColRole')}</th>
                   <th className="px-4 py-2.5">{t('adminUsersColStatus')}</th>
+                  <th className="px-4 py-2.5">{t('adminUsersColCertificates')}</th>
                   <th className="px-4 py-2.5">{t('adminUsersColAddedBy')}</th>
                   <th className="px-4 py-2.5">{t('adminUsersColActions')}</th>
                 </tr>
@@ -250,6 +286,10 @@ export function AdminUsersPage() {
                     u={u}
                     index={i}
                     meEmail={me?.email ?? null}
+                    certs={(adminCerts ?? []).filter(
+                      (c) => c.email.toLowerCase() === u.email.toLowerCase(),
+                    )}
+                    onCertificates={() => setCertsFor(u.email)}
                     onAction={(kind) => {
                       setTotpCode('');
                       setPending({ kind, email: u.email });
@@ -261,6 +301,8 @@ export function AdminUsersPage() {
           </div>
         )}
       </div>
+
+      <AdminUserCertificatesDialog email={certsFor} onClose={() => setCertsFor(null)} />
 
       <StepUpConfirmDialog
         open={pending !== null}
@@ -300,11 +342,15 @@ function Row({
   u,
   index,
   meEmail,
+  certs,
+  onCertificates,
   onAction,
 }: {
   u: WhitelistEntry;
   index: number;
   meEmail: string | null;
+  certs: AdminCertificate[];
+  onCertificates: () => void;
   onAction: (k: ActionKind) => void;
 }) {
   const { t } = useI18n();
@@ -344,6 +390,9 @@ function Row({
           </StatusPill>
         )}
       </td>
+      <td className="px-4 py-3 text-xs text-[color:var(--text-secondary)]">
+        {u.is_admin ? <CertSummary certs={certs} /> : '—'}
+      </td>
       <td className="px-4 py-3 font-mono text-xs text-[color:var(--text-muted)]">
         {u.created_by ?? '—'}
       </td>
@@ -362,6 +411,11 @@ function Row({
           {u.is_admin && !isMe && (
             <Button size="sm" variant="secondary" onClick={() => onAction('demote')}>
               {t('adminUsersDemote')}
+            </Button>
+          )}
+          {u.is_admin && !isMe && (
+            <Button size="sm" variant="secondary" onClick={onCertificates}>
+              {t('adminUsersCertificates')}
             </Button>
           )}
           {!u.is_admin && !isLocked && !isMe && (
