@@ -19,6 +19,7 @@ import {
 import { generateIpAddressListExcel } from '../services/excel.service';
 import { signBundle } from '../services/bundle-signing.service';
 import { writeAuditLog } from '../services/audit.service';
+import { recordAllowListFetchSafe } from '../services/allowlist-freshness.service';
 import { sanitizeError } from '../lib/sanitizeError';
 
 export const downloadRouter = Router({ mergeParams: true });
@@ -98,6 +99,8 @@ downloadRouter.get('/bundle', requireAuth, requireInstanceOwnership, async (req,
     // Send the exact bytes that were hashed and signed. res.json(bundle) would
     // re-serialize independently, risking a body that no longer matches
     // X-Content-Hash.
+    // Recorded before the answer so the dialog's freshness refetch sees it.
+    await recordAllowListFetchSafe(req.instance!.id, version?.number, 'PORTAL');
     res.type('application/fhir+json').send(json);
   } catch (err: unknown) {
     res.status(404).json({ error: sanitizeError(err) });

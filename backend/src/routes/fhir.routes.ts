@@ -29,6 +29,7 @@ import {
   listReceiverHistory,
 } from '../services/bundle-versions.service';
 import { writeAuditLog } from '../services/audit.service';
+import { recordAllowListFetchSafe } from '../services/allowlist-freshness.service';
 import { extractClientCert, type ClientCertInfo } from '../lib/clientCert';
 
 export const fhirRouter = Router();
@@ -190,7 +191,9 @@ fhirRouter.get('/Bundle/mine', async (req: Request, res: Response) => {
       endpointId,
     );
     setVersionHeaders(res, version);
-    return res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
+    res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
+    recordAllowListFetchSafe(resolved.org.instance_id, version?.number, 'DSF');
+    return;
   } catch (err: unknown) {
     return handleError(res, err);
   }
@@ -208,7 +211,11 @@ fhirRouter.get('/Bundle/:endpointId', async (req: Request, res: Response) => {
     );
     auditRead(req, resolved, version ? { version: version.number } : {});
     setVersionHeaders(res, version);
-    return res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
+    // Express answers 304 here when If-None-Match matches the ETag; either way
+    // the site holds this (current) version.
+    res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
+    recordAllowListFetchSafe(resolved.org.instance_id, version?.number, 'DSF');
+    return;
   } catch (err: unknown) {
     return handleError(res, err);
   }
@@ -266,7 +273,9 @@ fhirRouter.get('/Bundle/:endpointId/_history/:vid', async (req: Request, res: Re
     );
     auditRead(req, resolved, { version: version?.number });
     setVersionHeaders(res, version);
-    return res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
+    res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
+    recordAllowListFetchSafe(resolved.org.instance_id, version?.number, 'DSF');
+    return;
   } catch (err: unknown) {
     return handleError(res, err);
   }
