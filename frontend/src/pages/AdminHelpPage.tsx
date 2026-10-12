@@ -112,6 +112,7 @@ export function AdminHelpPage() {
 
         <Section id="download" title={t('adminHelpDownloadTitle')}>
           <p>{t('adminHelpDownloadP1')}</p>
+          <p>{t('adminHelpDownloadP2')}</p>
         </Section>
 
         <Section id="certs" title={t('adminHelpCertsTitle')}>

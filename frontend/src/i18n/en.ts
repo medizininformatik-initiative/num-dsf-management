@@ -757,6 +757,17 @@ export const en = {
   dsfTaskSharedHint:
     'Alternatively, for sites with exactly one FHIR endpoint, the same link works for every site:',
 
+  // New allow-list version nudge (download button and dialog)
+  allowListNewHint:
+    'New allow-list version {n} available – please download it or fetch it in your DSF',
+  allowListFreshOutdated:
+    'Version {current} is new (published {published}). Your DSF last fetched version {last} ({fetched}).',
+  allowListFreshNever:
+    'Version {current} is new (published {published}). Your DSF has not fetched any version yet.',
+  allowListFreshCurrent: 'Your DSF is up to date (version {n}, fetched {fetched}).',
+  adminHelpDownloadP2:
+    'A softly shimmering download button with a red dot means a new allow-list version was published that your site has not obtained yet, neither through its DSF nor through a download here. It disappears once your DSF has fetched the current version or you have downloaded it.',
+
   // InstanceCreateModal
   instanceCreateTitle: 'Add New Instance',
   instanceCreateInfo:

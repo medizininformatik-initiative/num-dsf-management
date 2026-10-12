@@ -767,6 +767,17 @@ export const de: Record<TranslationKey, string> = {
   dsfTaskSharedHint:
     'Alternativ, für Standorte mit genau einem FHIR-Endpunkt, funktioniert derselbe Link für jeden Standort:',
 
+  // New allow-list version nudge (download button and dialog)
+  allowListNewHint:
+    'Neue Allow-List-Version {n} verfügbar – bitte herunterladen bzw. im DSF abrufen',
+  allowListFreshOutdated:
+    'Version {current} ist neu (freigegeben {published}). Ihr DSF hat zuletzt Version {last} abgerufen ({fetched}).',
+  allowListFreshNever:
+    'Version {current} ist neu (freigegeben {published}). Ihr DSF hat noch keine Version abgerufen.',
+  allowListFreshCurrent: 'Ihr DSF ist auf dem neuesten Stand (Version {n}, abgerufen {fetched}).',
+  adminHelpDownloadP2:
+    'Ein leicht schimmernder Download-Button mit rotem Punkt bedeutet, dass eine neue Allow-List-Version freigegeben wurde, die Ihr Standort noch nicht bezogen hat, weder über sein DSF noch über einen Download hier. Er verschwindet, sobald Ihr DSF die aktuelle Version abgerufen oder Sie sie heruntergeladen haben.',
+
   // InstanceCreateModal
   instanceCreateTitle: 'Neue Instanz hinzufügen',
   instanceCreateInfo:
