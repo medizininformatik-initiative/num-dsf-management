@@ -5,7 +5,14 @@
  * so persisted UI state (theme, language) cannot leak between tests.
  */
 import '@testing-library/jest-dom/vitest';
-import { afterEach } from 'vitest';
+import { afterEach, beforeEach } from 'vitest';
+import { useCanvasViewStore } from './stores/canvasView.store';
+
+// The entity cards default to the detailed view in tests, which assert on all fields;
+// the simplified view has its own tests that set the choice explicitly.
+beforeEach(() => {
+  useCanvasViewStore.setState({ choice: 'detailed' });
+});
 
 afterEach(() => {
   localStorage.clear();
