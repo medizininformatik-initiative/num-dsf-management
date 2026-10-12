@@ -8,7 +8,8 @@
  *   PATCH  /me/certificates/:id { label }      rename
  *   DELETE /me/certificates/:id                remove, never the current one (step-up)
  *   GET    /admin-certificates                 all admins' certificates (overview)
- *   POST   /users/:email/certificates          add for ANOTHER admin (step-up, mail)
+ *   POST   /users/:email/certificates          REQUEST one for ANOTHER admin (four-eyes: a third
+ *                                              admin approves via /admin-cert-requests; step-up, mail)
  *   DELETE /users/:email/certificates/:id      remove one of ANOTHER admin (step-up, mail)
  *
  * Every route is admin-only (org-scoped sessions never are). The PEM is never
@@ -26,6 +27,8 @@ import { extractClientCert } from '../lib/clientCert';
 import { logger } from '../lib/logger';
 import * as svc from '../services/admin-certificates.service';
 import { AdminCertError } from '../services/admin-certificates.service';
+import * as requests from '../services/admin-cert-requests.service';
+import { CertRequestError } from '../services/admin-cert-requests.service';
 import { previewCertificate } from '../services/certificate.service';
 import { writeAuditLog } from '../services/audit.service';
 import { sendAdminCertChangedEmail } from '../services/notification.service';
@@ -218,20 +221,19 @@ adminCertificatesRouter.post(
     if (!parsed.success) return invalid(res, 'pem required');
     const target = req.params.email.toLowerCase().trim();
     try {
-      if (target === req.user!.email.toLowerCase().trim()) {
-        throw new AdminCertError('USE_SELF_SERVICE');
-      }
-      const data = await svc.addAdminCertificate({
-        email: target,
+      // Four-eyes: this only OPENS a request; a third admin activates it.
+      const data = await requests.createRequest({
+        targetEmail: target,
         pem: parsed.data.pem,
         label: parsed.data.label,
-        actor: req.user!.email,
+        requestedBy: req.user!.email,
         ip: req.ip || 'unknown',
-        self: false,
       });
-      notifyTarget(target, 'add', req.user!.email, data.fingerprint);
-      res.status(201).json({ data });
+      res.status(201).json({ data: { id: data.id, status: data.status } });
     } catch (err) {
+      if (err instanceof CertRequestError && err.code === 'REQUEST_ALREADY_PENDING') {
+        return res.status(409).json({ error: { code: err.code, message: err.code } });
+      }
       if (!fail(req, res, err)) throw err;
     }
   }),

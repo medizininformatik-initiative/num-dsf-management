@@ -26,6 +26,7 @@ const runApprovalReminders = jest.fn<Promise<void>, []>().mockResolvedValue(unde
 const runSilentConsentSweep = jest.fn<Promise<number>, []>().mockResolvedValue(0);
 const runCertExpiryCheck = jest.fn<Promise<void>, []>().mockResolvedValue(undefined);
 const runAdminCertExpiryCheck = jest.fn<Promise<number>, []>().mockResolvedValue(0);
+const expireStaleRequests = jest.fn<Promise<number>, []>().mockResolvedValue(0);
 const runMembershipCleanup = jest.fn<Promise<number>, []>().mockResolvedValue(0);
 const syncMarketplaceAll = jest
   .fn<Promise<{ ok: number; failed: number; rateLimited: boolean }>, []>()
@@ -38,6 +39,7 @@ jest.mock('../services/approval-reminder.service', () => ({
 jest.mock('../services/approval-silent-consent.service', () => ({ runSilentConsentSweep }));
 jest.mock('../services/cert-monitor.service', () => ({ runCertExpiryCheck }));
 jest.mock('../services/admin-cert-expiry.service', () => ({ runAdminCertExpiryCheck }));
+jest.mock('../services/admin-cert-requests.service', () => ({ expireStaleRequests }));
 jest.mock('../services/membership-cleanup.service', () => ({ runMembershipCleanup }));
 jest.mock('../services/marketplace-sync.service', () => ({ syncAll: syncMarketplaceAll }));
 
@@ -103,6 +105,7 @@ describe('scheduler job callbacks drive their services', () => {
     await jobs.get('0 8 * * *')!();
     expect(runCertExpiryCheck).toHaveBeenCalledTimes(1);
     expect(runAdminCertExpiryCheck).toHaveBeenCalledTimes(1);
+    expect(expireStaleRequests).toHaveBeenCalledTimes(1);
   });
 
   it('a failing organization cert check does not stop the admin cert check', async () => {

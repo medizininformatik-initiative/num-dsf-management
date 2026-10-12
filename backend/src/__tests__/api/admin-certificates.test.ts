@@ -4,7 +4,8 @@
  * upload (private key / expired / not yet valid / duplicate admin / duplicate
  * organization certificate / CA whitelist, step-up, non-admin and org-scoped
  * refused, audit), removal (never the current certificate), colleague
- * recovery (self target and non-admin target refused, mail, audit) and the
+ * recovery request (self target and non-admin target refused, audit; the four-eyes
+ * decision is covered by admin-cert-requests.test.ts) and the
  * ADMIN_CHANGE anomaly flag severities.
  * Dependencies: supertest, app, db, helpers/allowListSites, node-forge
  */
@@ -370,23 +371,23 @@ describe('colleague recovery', () => {
       .expect(403);
   });
 
-  it('adds a certificate for the colleague, mails them and audits it as non-self', async () => {
+  it('only opens a four-eyes request for the colleague (nothing becomes active)', async () => {
     const res = await request(app)
       .post(colleagueUrl(colleagueEmail))
       .set('Authorization', `Bearer ${adminToken()}`)
       .send({ pem: NEW_PEM, label: 'Ersatz', ...code })
       .expect(201);
-    expect(res.body.data).toMatchObject({ email: colleagueEmail, createdBy: adminEmail });
-    expect(sendAdminCertChangedEmail).toHaveBeenCalledWith(
-      colleagueEmail,
-      expect.objectContaining({ change: 'add', byAdmin: adminEmail }),
-    );
+    expect(res.body.data).toEqual({ id: expect.any(String), status: 'PENDING' });
+    expect(
+      await db('admin_cert_fingerprints').where({ fingerprint: sha512FingerprintFromPem(NEW_PEM) }),
+    ).toHaveLength(0);
     const audit = await db('audit_logs')
-      .where({ user_email: adminEmail, operation: 'CREATE', resource_id: colleagueEmail })
+      .where({ user_email: adminEmail, operation: 'CREATE', resource_id: res.body.data.id })
       .first();
     const diff =
       typeof audit.diff_json === 'string' ? JSON.parse(audit.diff_json) : audit.diff_json;
-    expect(diff).toMatchObject({ action: 'admin_certificate', self: false });
+    expect(diff).toMatchObject({ action: 'admin_certificate_request' });
+    await db('admin_cert_requests').where({ id: res.body.data.id }).del();
   });
 
   it('lists all admin certificates for the overview', async () => {
@@ -400,9 +401,8 @@ describe('colleague recovery', () => {
   });
 
   it('removes a colleague certificate, mails them, and 404s for a foreign id', async () => {
-    const row = await db('admin_cert_fingerprints')
-      .where({ email: colleagueEmail, fingerprint: sha512FingerprintFromPem(NEW_PEM) })
-      .first();
+    const rowId = await insertAdminCert(colleagueEmail, NEW_PEM, { label: 'Ersatz' });
+    const row = await db('admin_cert_fingerprints').where({ id: rowId }).first();
     const own = await db('admin_cert_fingerprints').where({ email: adminEmail }).first();
     await request(app)
       .delete(`${colleagueUrl(colleagueEmail)}/${own.id}`)

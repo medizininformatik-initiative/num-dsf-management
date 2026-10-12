@@ -509,3 +509,106 @@ export async function sendAdminCertChangedEmail(
     html,
   });
 }
+
+export type AdminCertRequestEvent = 'requested' | 'approved' | 'rejected' | 'cancelled';
+
+/**
+ * Four-eyes recovery of a colleague's admin certificate: the target learns that
+ * a certificate was requested for them, requester and target learn the outcome.
+ */
+export async function sendAdminCertRequestEmail(
+  to: string[],
+  opts: {
+    event: AdminCertRequestEvent;
+    targetEmail: string;
+    requestedBy: string;
+    decidedBy?: string | null;
+    fingerprintPrefix: string;
+    comment?: string | null;
+  },
+): Promise<void> {
+  if (IS_TEST || to.length === 0) return;
+  const fp = `${opts.fingerprintPrefix}…`;
+  const who = opts.decidedBy ? ` (${opts.decidedBy})` : '';
+  const copy: Record<AdminCertRequestEvent, { de: string; en: string; subject: string }> = {
+    requested: {
+      de: `${opts.requestedBy} hat für ${opts.targetEmail} ein Admin-Zertifikat beantragt (Fingerabdruck ${fp}). Das Zertifikat wird erst aktiv, wenn ein weiterer Admin eines anderen Standorts zustimmt.`,
+      en: `${opts.requestedBy} requested an admin certificate for ${opts.targetEmail} (fingerprint ${fp}). It only becomes active once another admin from a different site approves.`,
+      subject: 'Admin-Zertifikat beantragt',
+    },
+    approved: {
+      de: `Der Antrag auf ein Admin-Zertifikat für ${opts.targetEmail} (Fingerabdruck ${fp}) wurde freigegeben${who}. Das Zertifikat ist jetzt aktiv.`,
+      en: `The request for an admin certificate for ${opts.targetEmail} (fingerprint ${fp}) was approved${who}. The certificate is now active.`,
+      subject: 'Admin-Zertifikat freigegeben',
+    },
+    rejected: {
+      de: `Der Antrag auf ein Admin-Zertifikat für ${opts.targetEmail} (Fingerabdruck ${fp}) wurde abgelehnt${who}.${opts.comment ? ` Begründung: ${opts.comment}` : ''}`,
+      en: `The request for an admin certificate for ${opts.targetEmail} (fingerprint ${fp}) was rejected${who}.${opts.comment ? ` Reason: ${opts.comment}` : ''}`,
+      subject: 'Admin-Zertifikat abgelehnt',
+    },
+    cancelled: {
+      de: `Der Antrag auf ein Admin-Zertifikat für ${opts.targetEmail} (Fingerabdruck ${fp}) wurde zurückgezogen oder ist abgelaufen.`,
+      en: `The request for an admin certificate for ${opts.targetEmail} (fingerprint ${fp}) was withdrawn or expired.`,
+      subject: 'Admin-Zertifikat: Antrag beendet',
+    },
+  };
+  const c = copy[opts.event];
+  const warn =
+    'Wenn Sie das nicht erwartet haben, melden Sie sich sofort beim IMI-Betrieb. / If you did not expect this, contact the IMI operators immediately.';
+  const text = [`DSF Management Tool – ${ENV}`, ``, c.de, ``, c.en, ``, warn].join('\n');
+  const html = baseHtml(
+    c.subject,
+    `
+    <p>${esc(c.de)}</p>
+    <p style="color:#666;">${esc(c.en)}</p>
+    <p style="font-weight:bold;color:${COLOR_REJECTED};">${esc(warn)}</p>
+  `,
+  );
+  await transporter.sendMail({
+    from: FROM,
+    to,
+    subject: `[DSF Management Tool – ${ENV}] ${c.subject}`,
+    text,
+    html,
+  });
+}
+
+/** Notice to an organization's contacts that a login certificate was enabled or removed by an admin. */
+export async function sendOrgLoginCertificateChangedEmail(
+  to: string[],
+  opts: {
+    change: 'enable' | 'disable';
+    orgName: string;
+    byAdmin: string;
+    fingerprintPrefix: string;
+  },
+): Promise<void> {
+  if (IS_TEST || to.length === 0) return;
+  const enabled = opts.change === 'enable';
+  const fp = `${opts.fingerprintPrefix}…`;
+  const de = enabled
+    ? `Für Ihre Organisation ${opts.orgName} wurde ein Zertifikat für die Anmeldung freigegeben (Fingerabdruck ${fp}, durch ${opts.byAdmin}).`
+    : `Für Ihre Organisation ${opts.orgName} wurde ein Zertifikat für die Anmeldung entfernt (Fingerabdruck ${fp}, durch ${opts.byAdmin}).`;
+  const en = enabled
+    ? `A certificate was enabled for logging in as your organization ${opts.orgName} (fingerprint ${fp}, by ${opts.byAdmin}).`
+    : `A login certificate of your organization ${opts.orgName} was removed (fingerprint ${fp}, by ${opts.byAdmin}).`;
+  const warn =
+    'Wenn Sie das nicht erwartet haben, melden Sie sich beim IMI-Betrieb. / If you did not expect this, contact the IMI operators.';
+  const subject = enabled ? 'Anmelde-Zertifikat freigegeben' : 'Anmelde-Zertifikat entfernt';
+  const text = [`DSF Management Tool – ${ENV}`, ``, de, ``, en, ``, warn].join('\n');
+  const html = baseHtml(
+    subject,
+    `
+    <p>${esc(de)}</p>
+    <p style="color:#666;">${esc(en)}</p>
+    <p style="font-weight:bold;color:${COLOR_REJECTED};">${esc(warn)}</p>
+  `,
+  );
+  await transporter.sendMail({
+    from: FROM,
+    to,
+    subject: `[DSF Management Tool – ${ENV}] ${subject}`,
+    text,
+    html,
+  });
+}

@@ -247,6 +247,19 @@ export function computeAnomalyFlags(rows: AnomalyRow[]): Map<string, AnomalyFlag
       });
     }
 
+    // Four-eyes certificate requests: opening one is informational, the approval
+    // that actually activates a colleague's certificate is a warning.
+    if (diff.action === 'admin_certificate_request') {
+      push(flags, r.id, {
+        code: 'ADMIN_CHANGE',
+        severity: diff.decision === 'approve' ? 'warning' : 'info',
+      });
+    }
+    // An admin enabling a certificate as login for an organization.
+    if (diff.action === 'login_certificate' && diff.change === 'enable') {
+      push(flags, r.id, { code: 'ADMIN_CHANGE', severity: 'info' });
+    }
+
     const mutating = r.operation !== 'LOGIN' && r.operation !== 'LOGOUT';
     if (mutating && isAdminAction(r) && isOffHours(r.timestamp)) {
       push(flags, r.id, { code: 'OFF_HOURS_ADMIN', severity: 'info' });

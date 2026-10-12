@@ -11,6 +11,7 @@
 import cron from 'node-cron';
 import { runCertExpiryCheck } from './cert-monitor.service';
 import { runAdminCertExpiryCheck } from './admin-cert-expiry.service';
+import { expireStaleRequests as expireAdminCertRequests } from './admin-cert-requests.service';
 import { runApprovalReminders, flushPendingNotifications } from './approval-reminder.service';
 import { runSilentConsentSweep } from './approval-silent-consent.service';
 import { runMembershipCleanup } from './membership-cleanup.service';
@@ -73,6 +74,12 @@ export function startScheduler(): void {
         await runAdminCertExpiryCheck();
       } catch (err) {
         logger.error({ err }, '[Scheduler] AdminCertExpiryCheck failed');
+      }
+      try {
+        const n = await expireAdminCertRequests();
+        if (n > 0) logger.info(`[Scheduler] expired ${n} admin certificate request(s)`);
+      } catch (err) {
+        logger.error({ err }, '[Scheduler] AdminCertRequest expiry failed');
       }
     },
     { timezone: 'UTC' },

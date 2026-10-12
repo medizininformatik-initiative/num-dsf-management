@@ -109,7 +109,7 @@ export function parseAdminCert(pem: string): ParsedAdminCert {
  *   CA_BLACKLISTED / CA_NOT_WHITELISTED / ADMIN_CERTIFICATE_IN_USE /
  *   ORG_LOGIN_CERTIFICATE_IN_USE
  */
-async function assertAcceptable(parsed: ParsedAdminCert, now: Date): Promise<void> {
+export async function assertAcceptable(parsed: ParsedAdminCert, now: Date): Promise<void> {
   if (parsed.validUntil.getTime() <= now.getTime()) throw new AdminCertError('CERTIFICATE_EXPIRED');
   if (parsed.validFrom.getTime() > now.getTime()) {
     throw new AdminCertError('CERTIFICATE_NOT_YET_VALID');
