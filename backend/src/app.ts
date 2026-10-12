@@ -32,6 +32,7 @@ import { adminCertificatesRouter } from './routes/admin-certificates.routes';
 import { adminCertRequestsRouter } from './routes/admin-cert-requests.routes';
 import { adminRouter } from './routes/admin.routes';
 import { downloadRouter } from './routes/download.routes';
+import { allowListFreshnessRouter } from './routes/allowlist-freshness.routes';
 import { auditRouter, crossInstanceAuditRouter } from './routes/audit.routes';
 import { fhirRouter } from './routes/fhir.routes';
 import { networkRouter } from './routes/network.routes';
@@ -124,6 +125,7 @@ app.use('/api/v1/instances/:instanceId/certificates', certificatesRouter);
 app.use('/api/v1/instances/:instanceId/memberships', membershipsRouter);
 app.use('/api/v1/instances/:instanceId/approval', approvalRouter);
 app.use('/api/v1/instances/:instanceId/download', downloadRouter);
+app.use('/api/v1/instances/:instanceId/allow-list', allowListFreshnessRouter);
 app.use('/api/v1/instances/:instanceId/audit', auditRouter);
 
 // Download without instance scope (IP address list for all orgs)
