@@ -31,6 +31,7 @@ import {
   AdminUserCertificatesDialog,
   ALL_ADMIN_CERTS_KEY,
 } from '../components/admin/AdminUserCertificatesDialog';
+import { PendingCertRequestsCard } from '../components/admin/PendingCertRequestsCard';
 import { certValidity, CERT_STATE_TONE } from '../lib/certStatus';
 import { formatDate } from '../lib/dateUtils';
 
@@ -259,6 +260,8 @@ export function AdminUsersPage() {
             {t('adminUsersAdd')}
           </Button>
         </form>
+
+        <PendingCertRequestsCard meEmail={me?.email ?? null} />
 
         {isLoading && (
           <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">

@@ -1,6 +1,7 @@
 /**
  * adminCertificates.api.ts – Admin login certificates: the caller's own list
- * and successor upload, and recovery for a colleague. Writes carry the TOTP
+ * and successor upload, and recovery for a colleague (a four-eyes request that
+ * a third admin approves via adminCertRequestsApi). Writes carry the TOTP
  * step-up code in OTP sessions; cert sessions omit it (the backend re-verifies
  * the presented client certificate instead).
  * Dependencies: axios, auth.store
@@ -48,6 +49,48 @@ export interface AdminCertificatePreview {
   whitelistEnforced: boolean;
 }
 
+export type AdminCertRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+/** A four-eyes request for a colleague's admin certificate (never contains the PEM). */
+export interface AdminCertRequest {
+  id: string;
+  targetEmail: string;
+  /** SHA-512 of the certificate DER, 128 lower-case hex. */
+  fingerprint: string;
+  subject: string | null;
+  validUntil: string | null;
+  label: string | null;
+  requestedBy: string;
+  status: AdminCertRequestStatus;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  comment: string | null;
+  createdAt: string;
+}
+
+export const adminCertRequestsApi = {
+  list: async (): Promise<AdminCertRequest[]> =>
+    (
+      await axios.get<{ data: AdminCertRequest[] }>(`${BASE}/admin/admin-cert-requests`, {
+        headers: authHeader(),
+      })
+    ).data.data,
+  approve: (id: string, totpCode?: string) =>
+    axios.post(`${BASE}/admin/admin-cert-requests/${id}/approve`, withTotp(totpCode), {
+      headers: authHeader(),
+    }),
+  reject: (id: string, comment: string, totpCode?: string) =>
+    axios.post(
+      `${BASE}/admin/admin-cert-requests/${id}/reject`,
+      { comment, ...withTotp(totpCode) },
+      { headers: authHeader() },
+    ),
+  cancel: (id: string, totpCode?: string) =>
+    axios.post(`${BASE}/admin/admin-cert-requests/${id}/cancel`, withTotp(totpCode), {
+      headers: authHeader(),
+    }),
+};
+
 export const adminCertificatesApi = {
   mine: async (): Promise<MyAdminCertificate[]> =>
     (
@@ -88,8 +131,9 @@ export const adminCertificatesApi = {
       headers: authHeader(),
       data: withTotp(totpCode),
     }),
+  /** Opens a four-eyes request; the certificate only becomes active once a third admin approves. */
   addFor: (email: string, pem: string, label: string | null, totpCode?: string) =>
-    axios.post<{ data: AdminCertificate }>(
+    axios.post<{ data: { id: string; status: AdminCertRequestStatus } }>(
       `${BASE}/admin/users/${encodeURIComponent(email)}/certificates`,
       { pem, label, ...withTotp(totpCode) },
       { headers: authHeader() },

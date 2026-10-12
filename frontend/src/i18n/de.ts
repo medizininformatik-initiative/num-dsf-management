@@ -1171,11 +1171,8 @@ export const de: Record<TranslationKey, string> = {
   adminCertRenamedToast: 'Bezeichnung gespeichert.',
   adminCertAddedToast: 'Admin-Zertifikat hinterlegt.',
   adminCertAddTitle: 'Nachfolge-Zertifikat hinterlegen',
-  adminCertAddForTitle: 'Zertifikat für einen Admin hinterlegen',
   adminCertAddIntro:
     'Fügen Sie das öffentliche Zertifikat (PEM) ein oder ziehen Sie die Datei hierher. Es muss jetzt gültig sein und darf nicht anderweitig verwendet werden. Laden Sie niemals einen privaten Schlüssel hoch.',
-  adminCertAddForIntro:
-    'Hinterlegt ein Zertifikat für diesen Admin, zum Beispiel weil dessen Zertifikat abgelaufen ist. Die Person wird per E-Mail benachrichtigt.',
   adminCertLabelField: 'Bezeichnung (optional)',
   adminCertLabelPlaceholder: 'z. B. Laptop 2027',
   adminCertAddSubmit: 'Zertifikat hinterlegen',
@@ -1193,10 +1190,7 @@ export const de: Record<TranslationKey, string> = {
   adminCertErr_NOT_AN_ADMIN: 'Dieses Konto ist kein Admin.',
   adminCertErr_USE_SELF_SERVICE: 'Für Ihr eigenes Konto nutzen Sie „Meine Admin-Zertifikate“.',
   adminCertUserTitle: 'Admin-Zertifikate',
-  adminCertUserIntro:
-    'Entfernen Sie ein verlorenes oder kompromittiertes Zertifikat oder hinterlegen Sie ein neues, falls das bisherige abgelaufen ist. Beides wird protokolliert und der Admin wird benachrichtigt.',
   adminCertUserNone: 'Kein Zertifikat hinterlegt.',
-  adminCertUserAdd: 'Zertifikat hinterlegen',
   adminCertUserRemoveBody:
     'Der Admin kann sich mit diesem Zertifikat nicht mehr anmelden und wird per E-Mail benachrichtigt.',
   adminCertBannerTitle: 'Admin-Zertifikat läuft bald ab',
@@ -1245,6 +1239,49 @@ export const de: Record<TranslationKey, string> = {
   adminUsersPromoteRequestedToast: 'Beförderungsantrag erstellt — zweiter Admin muss zustimmen.',
   totpRequired: 'Geben Sie Ihren 6-stelligen TOTP-Code ein.',
   confirm: 'Bestätigen',
+
+  // Four-eyes certificate recovery and clinic-own login certificates
+  adminCertRequestTitle: 'Zertifikat für einen Admin beantragen',
+  adminCertRequestIntro:
+    'Stellt einen Antrag auf ein Zertifikat für diesen Admin, zum Beispiel weil dessen Zertifikat abgelaufen ist. Es wird erst aktiv, wenn ein weiterer Admin eines anderen Standorts zustimmt. Die Person wird per E-Mail benachrichtigt.',
+  adminCertRequestSubmit: 'Zertifikat beantragen',
+  adminCertRequestedToast:
+    'Antrag gestellt – ein weiterer Admin eines anderen Standorts muss zustimmen.',
+  adminCertUserRequest: 'Zertifikat beantragen',
+  adminCertUserRequestIntro:
+    'Entfernen Sie ein verlorenes oder kompromittiertes Zertifikat sofort oder beantragen Sie ein neues, falls das bisherige abgelaufen ist (ein weiterer Admin eines anderen Standorts muss zustimmen). Beides wird protokolliert und der Admin wird benachrichtigt.',
+  adminCertErr_REQUEST_ALREADY_PENDING: 'Für dieses Zertifikat liegt bereits ein Antrag vor.',
+  adminCertReqTitle: 'Offene Zertifikatsanträge',
+  adminCertReqHint:
+    'Ein weiterer Admin eines anderen Standorts muss zustimmen. Weder die antragstellende Person noch der betroffene Admin können das.',
+  adminCertReqFor: 'Für {who}',
+  adminCertReqMeta: 'Beantragt von {who} · {when}',
+  adminCertReqValidUntil: 'Gültig bis {date}',
+  adminCertReqApprove: 'Zustimmen',
+  adminCertReqReject: 'Ablehnen',
+  adminCertReqCancel: 'Antrag zurückziehen',
+  adminCertReqOwnHint: 'Sie haben dieses Zertifikat beantragt; ein anderer Admin muss entscheiden.',
+  adminCertReqTargetHint:
+    'Der Antrag betrifft Ihr eigenes Konto; ein anderer Admin muss entscheiden.',
+  adminCertReqSameSiteHint:
+    'Zustimmen muss ein Admin eines anderen Standorts als die antragstellende Person.',
+  adminCertReqApproveTitle: 'Zertifikatsantrag freigeben',
+  adminCertReqApproveBody:
+    'Das Zertifikat wird sofort aktiv und der Admin kann sich damit anmelden.',
+  adminCertReqRejectTitle: 'Zertifikatsantrag ablehnen',
+  adminCertReqRejectBody:
+    'Das Zertifikat wird nicht aktiviert. Antragsteller und Admin werden benachrichtigt.',
+  adminCertReqRejectReason: 'Begründung',
+  adminCertReqRejectPlaceholder: 'Warum lehnen Sie diesen Antrag ab?',
+  adminCertReqCancelTitle: 'Zertifikatsantrag zurückziehen',
+  adminCertReqCancelBody: 'Der Antrag wird zurückgezogen, das Zertifikat wird nicht aktiviert.',
+  adminCertReqApprovedToast: 'Zertifikat freigegeben und aktiviert.',
+  adminCertReqRejectedToast: 'Antrag abgelehnt.',
+  adminCertReqCancelledToast: 'Antrag zurückgezogen.',
+  loginCertNotClinicHint:
+    'Nur von der Klinik selbst hochgeladene Zertifikate können für den Login freigegeben werden.',
+  loginCertErrNotClinic:
+    'Nur von der Klinik selbst hochgeladene Zertifikate können für den Login freigegeben werden.',
 
   // AdminPromotionsPage
   adminPromotionsTitle: 'Admin-Beförderungs-Freigaben',

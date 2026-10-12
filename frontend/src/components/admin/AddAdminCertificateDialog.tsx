@@ -1,6 +1,7 @@
 /**
  * AddAdminCertificateDialog.tsx – hand in an admin login certificate, for the
- * caller's own account (successor) or for a colleague (recovery). Paste or
+ * caller's own account (successor) or REQUEST one for a colleague (recovery;
+ * four-eyes: a third admin from another site must approve). Paste or
  * drop the PEM; a debounced server preview shows subject, issuer, validity and
  * the SHA-512 fingerprint before anything is stored. Private keys are never
  * sent. Saving needs the TOTP step-up code in OTP sessions (cert sessions
@@ -45,6 +46,7 @@ const ERROR_KEY: Record<string, TranslationKey> = {
   ORG_LOGIN_CERTIFICATE_IN_USE: 'adminCertErr_ORG_LOGIN_CERTIFICATE_IN_USE',
   NOT_AN_ADMIN: 'adminCertErr_NOT_AN_ADMIN',
   USE_SELF_SERVICE: 'adminCertErr_USE_SELF_SERVICE',
+  REQUEST_ALREADY_PENDING: 'adminCertErr_REQUEST_ALREADY_PENDING',
 };
 
 export interface AddAdminCertificateDialogProps {
@@ -105,12 +107,13 @@ export function AddAdminCertificateDialog({
   }, [candidate, text, t]);
 
   const save = useMutation({
-    mutationFn: (code: string | undefined) =>
+    mutationFn: async (code: string | undefined): Promise<unknown> =>
       forEmail
-        ? adminCertificatesApi.addFor(forEmail, text, label.trim() || null, code)
-        : adminCertificatesApi.addMine(text, label.trim() || null, code),
+        ? await adminCertificatesApi.addFor(forEmail, text, label.trim() || null, code)
+        : await adminCertificatesApi.addMine(text, label.trim() || null, code),
     onSuccess: () => {
-      toast.success(t('adminCertAddedToast'));
+      // For a colleague this only opens a four-eyes request.
+      toast.success(forEmail ? t('adminCertRequestedToast') : t('adminCertAddedToast'));
       qc.invalidateQueries({ queryKey: ['admin', 'certificates'] });
       onClose();
     },
@@ -139,7 +142,7 @@ export function AddAdminCertificateDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title={forEmail ? t('adminCertAddForTitle') : t('adminCertAddTitle')}
+      title={forEmail ? t('adminCertRequestTitle') : t('adminCertAddTitle')}
       subtitle={forEmail}
       width="max-w-xl"
       isDirty={text !== ''}
@@ -153,7 +156,7 @@ export function AddAdminCertificateDialog({
         }}
       >
         <p className="text-sm text-[color:var(--text-secondary)]">
-          {forEmail ? t('adminCertAddForIntro') : t('adminCertAddIntro')}
+          {forEmail ? t('adminCertRequestIntro') : t('adminCertAddIntro')}
         </p>
         <FormField label={t('certModalFieldPem')} required hint={t('hintCertificatePem')}>
           {(control) => (
@@ -259,7 +262,7 @@ export function AddAdminCertificateDialog({
             {t('cancel')}
           </Button>
           <Button type="submit" disabled={!canSave} aria-busy={save.isPending || undefined}>
-            {t('adminCertAddSubmit')}
+            {forEmail ? t('adminCertRequestSubmit') : t('adminCertAddSubmit')}
           </Button>
         </div>
       </form>

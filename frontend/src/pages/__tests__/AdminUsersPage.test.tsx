@@ -43,7 +43,16 @@ const certApi = vi.hoisted(() => ({
   addFor: vi.fn(),
   removeFor: vi.fn(),
 }));
-vi.mock('../../api/adminCertificates.api', () => ({ adminCertificatesApi: certApi }));
+const reqApi = vi.hoisted(() => ({
+  list: vi.fn(),
+  approve: vi.fn(),
+  reject: vi.fn(),
+  cancel: vi.fn(),
+}));
+vi.mock('../../api/adminCertificates.api', () => ({
+  adminCertificatesApi: certApi,
+  adminCertRequestsApi: reqApi,
+}));
 
 import { AdminUsersPage } from '../AdminUsersPage';
 
@@ -87,6 +96,8 @@ describe('AdminUsersPage', () => {
     lockMock.mockClear();
     Object.values(certApi).forEach((f) => f.mockReset());
     certApi.all.mockResolvedValue([]);
+    Object.values(reqApi).forEach((f) => f.mockReset());
+    reqApi.list.mockResolvedValue([]);
     useMe.mockReturnValue({ data: { email: 'me@imi-a.example.de', isAdmin: true } });
   });
 
@@ -232,5 +243,125 @@ describe('AdminUsersPage', () => {
     await waitFor(() =>
       expect(certApi.removeFor).toHaveBeenCalledWith('carol@imi-c.example.de', 'k1', '111222'),
     );
+  });
+
+  it('words the colleague action as a request that another site must approve', async () => {
+    const colleague = { ...users()[1], email: 'carol@imi-c.example.de', is_admin: true };
+    listMock.mockResolvedValue([users()[0], colleague]);
+    const user = userEvent.setup();
+    renderWithProviders(<AdminUsersPage />);
+
+    const row = (await screen.findByText('carol@imi-c.example.de')).closest('tr') as HTMLElement;
+    await user.click(within(row).getByRole('button', { name: 'Certificates' }));
+    const list = await screen.findByRole('dialog');
+    expect(within(list).queryByRole('button', { name: 'Register certificate' })).toBeNull();
+    await user.click(within(list).getByRole('button', { name: 'Request certificate' }));
+
+    const dialogs = await screen.findAllByRole('dialog');
+    const add = dialogs[dialogs.length - 1];
+    expect(within(add).getByText('Request certificate for an admin')).toBeInTheDocument();
+    expect(within(add).getByText(/another admin from a different site/)).toBeInTheDocument();
+    expect(within(add).getByRole('button', { name: 'Request certificate' })).toBeDisabled();
+  });
+
+  describe('open certificate requests', () => {
+    const req = (over: Record<string, unknown>) => ({
+      id: 'r',
+      targetEmail: 'carol@imi-c.example.de',
+      fingerprint: 'a'.repeat(128),
+      subject: 'carol-new',
+      validUntil: '2030-01-01T00:00:00Z',
+      label: null,
+      requestedBy: 'dave@imi-d.example.de',
+      status: 'PENDING',
+      decidedBy: null,
+      decidedAt: null,
+      comment: null,
+      createdAt: new Date().toISOString(),
+      ...over,
+    });
+
+    it('renders nothing without pending requests', async () => {
+      reqApi.list.mockResolvedValue([req({ id: 'done', status: 'APPROVED' })]);
+      renderWithProviders(<AdminUsersPage />);
+      await screen.findByText('bob@imi-b.example.de');
+      await waitFor(() => expect(reqApi.list).toHaveBeenCalled());
+      expect(screen.queryByTestId('pending-cert-requests')).toBeNull();
+    });
+
+    it('disables approval with the reason for own request, target and same site', async () => {
+      reqApi.list.mockResolvedValue([
+        req({ id: 'own', requestedBy: 'me@imi-a.example.de', subject: 'own-cert' }),
+        req({ id: 'target', targetEmail: 'me@imi-a.example.de', subject: 'target-cert' }),
+        req({ id: 'site', requestedBy: 'zoe@imi-a.example.de', subject: 'site-cert' }),
+        req({ id: 'ok', subject: 'ok-cert' }),
+      ]);
+      renderWithProviders(<AdminUsersPage />);
+      const card = await screen.findByTestId('pending-cert-requests');
+      const rowOf = (subject: string) =>
+        within(card).getByText(new RegExp(subject)).closest('li') as HTMLElement;
+
+      const own = rowOf('own-cert');
+      expect(within(own).getByRole('button', { name: 'Approve' })).toBeDisabled();
+      expect(within(own).getByText(/You requested this certificate/)).toBeInTheDocument();
+      expect(within(own).getByRole('button', { name: 'Cancel request' })).toBeEnabled();
+      expect(within(own).queryByRole('button', { name: 'Reject' })).toBeNull();
+
+      const target = rowOf('target-cert');
+      expect(within(target).getByRole('button', { name: 'Approve' })).toBeDisabled();
+      expect(within(target).getByText(/request is for your own account/)).toBeInTheDocument();
+
+      const site = rowOf('site-cert');
+      expect(within(site).getByRole('button', { name: 'Approve' })).toBeDisabled();
+      expect(within(site).getByText(/different site than the requester/)).toBeInTheDocument();
+
+      const ok = rowOf('ok-cert');
+      expect(within(ok).getByRole('button', { name: 'Approve' })).toBeEnabled();
+    });
+
+    it('approves through the step-up dialog and rejects only with a reason', async () => {
+      reqApi.list.mockResolvedValue([req({ id: 'ok', subject: 'ok-cert' })]);
+      reqApi.approve.mockResolvedValue({});
+      reqApi.reject.mockResolvedValue({});
+      const user = userEvent.setup();
+      renderWithProviders(<AdminUsersPage />);
+      const card = await screen.findByTestId('pending-cert-requests');
+
+      await user.click(within(card).getByRole('button', { name: 'Approve' }));
+      let dialog = await screen.findByRole('dialog');
+      fireEvent.change(within(dialog).getByPlaceholderText('000000'), {
+        target: { value: '123456' },
+      });
+      await user.click(within(dialog).getByRole('button', { name: 'Approve' }));
+      await waitFor(() => expect(reqApi.approve).toHaveBeenCalledWith('ok', '123456'));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+      await user.click(within(card).getByRole('button', { name: 'Reject' }));
+      dialog = await screen.findByRole('dialog');
+      fireEvent.change(within(dialog).getByPlaceholderText('000000'), {
+        target: { value: '654321' },
+      });
+      expect(within(dialog).getByRole('button', { name: 'Reject' })).toBeDisabled();
+      fireEvent.change(within(dialog).getByLabelText('Reason'), { target: { value: 'not ok' } });
+      await user.click(within(dialog).getByRole('button', { name: 'Reject' }));
+      await waitFor(() => expect(reqApi.reject).toHaveBeenCalledWith('ok', 'not ok', '654321'));
+    });
+
+    it('lets the requester cancel', async () => {
+      reqApi.list.mockResolvedValue([
+        req({ id: 'own', requestedBy: 'me@imi-a.example.de', subject: 'own-cert' }),
+      ]);
+      reqApi.cancel.mockResolvedValue({});
+      const user = userEvent.setup();
+      renderWithProviders(<AdminUsersPage />);
+      const card = await screen.findByTestId('pending-cert-requests');
+      await user.click(within(card).getByRole('button', { name: 'Cancel request' }));
+      const dialog = await screen.findByRole('dialog');
+      fireEvent.change(within(dialog).getByPlaceholderText('000000'), {
+        target: { value: '111111' },
+      });
+      await user.click(within(dialog).getByRole('button', { name: 'Cancel request' }));
+      await waitFor(() => expect(reqApi.cancel).toHaveBeenCalledWith('own', '111111'));
+    });
   });
 });

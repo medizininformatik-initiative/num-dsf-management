@@ -1154,11 +1154,8 @@ export const en = {
   adminCertRenamedToast: 'Label saved.',
   adminCertAddedToast: 'Admin certificate registered.',
   adminCertAddTitle: 'Register successor certificate',
-  adminCertAddForTitle: 'Register certificate for an admin',
   adminCertAddIntro:
     'Paste or drop the public certificate (PEM). It must be valid now and not used elsewhere. Never upload a private key.',
-  adminCertAddForIntro:
-    'Registers a certificate for this admin, for example because theirs expired. They are notified by e-mail.',
   adminCertLabelField: 'Label (optional)',
   adminCertLabelPlaceholder: 'e.g. Laptop 2027',
   adminCertAddSubmit: 'Register certificate',
@@ -1176,10 +1173,7 @@ export const en = {
   adminCertErr_NOT_AN_ADMIN: 'This account is not an admin.',
   adminCertErr_USE_SELF_SERVICE: 'For your own account use "My admin certificates".',
   adminCertUserTitle: 'Admin certificates',
-  adminCertUserIntro:
-    'Remove a lost or compromised certificate, or register a new one if theirs expired. Both are audited and the admin is notified.',
   adminCertUserNone: 'No certificate registered.',
-  adminCertUserAdd: 'Register certificate',
   adminCertUserRemoveBody:
     'The admin can no longer sign in with this certificate and is notified by e-mail.',
   adminCertBannerTitle: 'Admin certificate expires soon',
@@ -1227,6 +1221,46 @@ export const en = {
   adminUsersPromoteRequestedToast: 'Promotion request created — second admin must approve.',
   totpRequired: 'Enter your 6-digit TOTP code.',
   confirm: 'Confirm',
+
+  // Four-eyes certificate recovery and clinic-own login certificates
+  adminCertRequestTitle: 'Request certificate for an admin',
+  adminCertRequestIntro:
+    'Submits a request for a certificate for this admin, for example because theirs expired. It only becomes active once another admin from a different site approves. The person is notified by e-mail.',
+  adminCertRequestSubmit: 'Request certificate',
+  adminCertRequestedToast:
+    'Request submitted – another admin from a different site must approve it.',
+  adminCertUserRequest: 'Request certificate',
+  adminCertUserRequestIntro:
+    'Remove a lost or compromised certificate at once, or request a new one if theirs expired (another admin from a different site must approve it). Both are audited and the admin is notified.',
+  adminCertErr_REQUEST_ALREADY_PENDING: 'A request for this certificate is already pending.',
+  adminCertReqTitle: 'Open certificate requests',
+  adminCertReqHint:
+    'Another admin from a different site must approve. Neither the requester nor the affected admin can.',
+  adminCertReqFor: 'For {who}',
+  adminCertReqMeta: 'Requested by {who} · {when}',
+  adminCertReqValidUntil: 'Valid until {date}',
+  adminCertReqApprove: 'Approve',
+  adminCertReqReject: 'Reject',
+  adminCertReqCancel: 'Cancel request',
+  adminCertReqOwnHint: 'You requested this certificate; another admin has to decide.',
+  adminCertReqTargetHint: 'The request is for your own account; another admin has to decide.',
+  adminCertReqSameSiteHint: 'The approver must be from a different site than the requester.',
+  adminCertReqApproveTitle: 'Approve certificate request',
+  adminCertReqApproveBody:
+    'The certificate becomes active immediately and the admin can sign in with it.',
+  adminCertReqRejectTitle: 'Reject certificate request',
+  adminCertReqRejectBody: 'The certificate is not activated. Requester and admin are notified.',
+  adminCertReqRejectReason: 'Reason',
+  adminCertReqRejectPlaceholder: 'Why are you rejecting this request?',
+  adminCertReqCancelTitle: 'Cancel certificate request',
+  adminCertReqCancelBody: 'The request is withdrawn and the certificate is not activated.',
+  adminCertReqApprovedToast: 'Certificate approved and activated.',
+  adminCertReqRejectedToast: 'Request rejected.',
+  adminCertReqCancelledToast: 'Request cancelled.',
+  loginCertNotClinicHint:
+    'Only certificates uploaded by the clinic itself can be allowed for login.',
+  loginCertErrNotClinic:
+    'Only certificates uploaded by the clinic itself can be allowed for login.',
 
   // AdminPromotionsPage
   adminPromotionsTitle: 'Admin promotion approvals',

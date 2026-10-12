@@ -1,7 +1,8 @@
 /**
  * AdminUserCertificatesDialog.tsx – colleague recovery: the admin certificates
- * of ANOTHER admin with a remove action each (lost or compromised certificate)
- * and "Register certificate" for when theirs expired. Both writes need the
+ * of ANOTHER admin with a remove action each (lost or compromised certificate,
+ * immediate) and "Request certificate" for when theirs expired (a four-eyes
+ * request that a third admin from another site approves). Both writes need the
  * step-up and notify the affected admin by mail (backend).
  * Dependencies: adminCertificatesApi, Modal, AdminCertificateRow,
  * AddAdminCertificateDialog, StepUpConfirmDialog, Button, i18n store.
@@ -61,7 +62,9 @@ export function AdminUserCertificatesDialog({
         width="max-w-2xl"
       >
         <div className="space-y-4">
-          <p className="text-sm text-[color:var(--text-secondary)]">{t('adminCertUserIntro')}</p>
+          <p className="text-sm text-[color:var(--text-secondary)]">
+            {t('adminCertUserRequestIntro')}
+          </p>
           {certs.length === 0 ? (
             <p className="text-sm text-[color:var(--text-muted)]">{t('adminCertUserNone')}</p>
           ) : (
@@ -91,7 +94,7 @@ export function AdminUserCertificatesDialog({
             <Button variant="secondary" onClick={onClose}>
               {t('adminCertClose')}
             </Button>
-            <Button onClick={() => setAdding(true)}>{t('adminCertUserAdd')}</Button>
+            <Button onClick={() => setAdding(true)}>{t('adminCertUserRequest')}</Button>
           </div>
         </div>
       </Modal>
