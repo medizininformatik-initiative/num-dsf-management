@@ -7,18 +7,21 @@
  */
 import nodemailer from 'nodemailer';
 import { escapeHtml as esc } from '../lib/escapeHtml';
+import { skipUndeliverableRecipients } from '../lib/mailRecipients';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'mail',
-  port: parseInt(process.env.SMTP_PORT || '1025'),
-  secure: false,
-  auth: process.env.SMTP_USER
-    ? {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      }
-    : undefined,
-});
+const transporter = skipUndeliverableRecipients(
+  nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'mail',
+    port: parseInt(process.env.SMTP_PORT || '1025'),
+    secure: false,
+    auth: process.env.SMTP_USER
+      ? {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        }
+      : undefined,
+  }),
+);
 
 export async function sendOtpEmail(to: string, code: string): Promise<void> {
   const environment = process.env.DSF_ENVIRONMENT || 'TEST';

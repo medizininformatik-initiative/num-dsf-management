@@ -9,6 +9,7 @@
  */
 import nodemailer from 'nodemailer';
 import { escapeHtml as esc } from '../lib/escapeHtml';
+import { skipUndeliverableRecipients } from '../lib/mailRecipients';
 
 function titleCase(s: string): string {
   return s.charAt(0) + s.slice(1).toLowerCase();
@@ -16,19 +17,21 @@ function titleCase(s: string): string {
 
 const IS_TEST = process.env.NODE_ENV === 'test';
 
-const transporter = nodemailer.createTransport({
-  host: IS_TEST ? 'localhost' : process.env.SMTP_HOST || 'mail',
-  port: parseInt(process.env.SMTP_PORT || '1025'),
-  secure: false,
-  // Reuse SMTP connections across the per-recipient sendMail calls instead of
-  // opening a fresh connection each time; cap concurrency so a large contact
-  // list can't exhaust the relay's connection slots.
-  pool: true,
-  maxConnections: 5,
-  auth: process.env.SMTP_USER
-    ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-    : undefined,
-});
+const transporter = skipUndeliverableRecipients(
+  nodemailer.createTransport({
+    host: IS_TEST ? 'localhost' : process.env.SMTP_HOST || 'mail',
+    port: parseInt(process.env.SMTP_PORT || '1025'),
+    secure: false,
+    // Reuse SMTP connections across the per-recipient sendMail calls instead of
+    // opening a fresh connection each time; cap concurrency so a large contact
+    // list can't exhaust the relay's connection slots.
+    pool: true,
+    maxConnections: 5,
+    auth: process.env.SMTP_USER
+      ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+      : undefined,
+  }),
+);
 
 const FROM = process.env.MAIL_FROM || 'noreply@dsf-allowlist.local';
 const ENV = process.env.DSF_ENVIRONMENT || 'TEST';
