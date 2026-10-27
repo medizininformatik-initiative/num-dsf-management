@@ -62,6 +62,12 @@ export interface AllowListMember {
   affiliations: Array<{ parent: string; endpoint: string; roles: string[] }>;
   /** Soft-deleted memberships; emitted as DELETE unless the triple is active again. */
   removedAffiliations: Array<{ parent: string; endpoint: string }>;
+  /**
+   * Endpoints removed while the organization stays on the list; emitted as
+   * DELETE after the affiliation DELETEs. Optional: stored inputs written
+   * before this field existed render exactly as before.
+   */
+  removedEndpoints?: string[];
 }
 
 export interface AllowListReceiver {
@@ -227,7 +233,12 @@ export function buildAllowListBundle(
         .filter((r) => r.parent && !active.has(`${r.parent}|${r.endpoint}`))
         .map((r) => affiliationUrl(r.parent, member.identifier, r.endpoint)),
     ).sort(byText);
-    return { member, endpoints, endpointFullUrls, affiliations, removed };
+    const removedEndpoints = unique(
+      (member.removedEndpoints ?? [])
+        .filter((id) => !endpointFullUrls.has(id))
+        .map((id) => endpointUrl(id)),
+    ).sort(byText);
+    return { member, endpoints, endpointFullUrls, affiliations, removed, removedEndpoints };
   });
 
   const receiverAffiliations = receiver
@@ -301,7 +312,7 @@ export function buildAllowListBundle(
   }
 
   const memberSection = (block: (typeof blocks)[number]): AllowListEntry[] => {
-    const { member, endpoints, endpointFullUrls, affiliations, removed } = block;
+    const { member, endpoints, endpointFullUrls, affiliations, removed, removedEndpoints } = block;
     const section: AllowListEntry[] = [];
     const memberFullUrl = memberFullUrls.get(member.identifier)!;
     section.push({
@@ -363,6 +374,7 @@ export function buildAllowListBundle(
       );
     }
     removed.forEach((url) => section.push(deleteEntry(url)));
+    removedEndpoints.forEach((url) => section.push(deleteEntry(url)));
     return section;
   };
 

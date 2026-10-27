@@ -527,6 +527,53 @@ describe('buildAllowListBundle – withdrawn organizations', () => {
   });
 });
 
+describe('buildAllowListBundle – endpoints removed from an active organization', () => {
+  const base = (removedEndpoints?: string[]): AllowListMember => ({
+    ...member(
+      'klinik-m.example.de',
+      'Klinik M',
+      1,
+      ['dsf.klinik-m.example.de'],
+      [[MII, 'dsf.klinik-m.example.de', ['DIC']]],
+      [[MII, 'dsf-alt.klinik-m.example.de']],
+    ),
+    ...(removedEndpoints ? { removedEndpoints } : {}),
+  });
+  const deletes = (b: { entry?: Entry[] }) =>
+    (b.entry ?? [])
+      .filter((e) => e.request.method === 'DELETE')
+      .map((e) => `DELETE ${e.request.url.split('?')[0]} ${e.request.url.split('|').pop()}`);
+
+  it('emits DELETE Endpoint after the affiliation DELETE', () => {
+    const bundle = buildAllowListBundle({
+      parentNames: new Map(),
+      members: [base(['dsf-alt.klinik-m.example.de'])],
+    });
+    expect(deletes(bundle)).toEqual([
+      'DELETE OrganizationAffiliation dsf-alt.klinik-m.example.de',
+      'DELETE Endpoint dsf-alt.klinik-m.example.de',
+    ]);
+    expect(dsfAllowListViolations(bundle)).toEqual([]);
+  });
+
+  it('renders a member without the field (or with an empty list) exactly as before', () => {
+    const without = buildAllowListBundle({ parentNames: new Map(), members: [base()] }, () => 'x');
+    const empty = buildAllowListBundle({ parentNames: new Map(), members: [base([])] }, () => 'x');
+    expect(empty).toEqual(without);
+    expect(deletes(without)).toEqual([
+      'DELETE OrganizationAffiliation dsf-alt.klinik-m.example.de',
+    ]);
+  });
+
+  it('never deletes an endpoint the member still publishes', () => {
+    const bundle = buildAllowListBundle({
+      parentNames: new Map(),
+      members: [base(['dsf.klinik-m.example.de'])],
+    });
+    expect(deletes(bundle).some((d) => d.startsWith('DELETE Endpoint'))).toBe(false);
+  });
+});
+
 describe('dsfAllowListViolations – rejects the shape emitted before this fix', () => {
   it('flags resource ids, inactive-less affiliations and duplicate conditional PUTs', () => {
     const oaUrl =
