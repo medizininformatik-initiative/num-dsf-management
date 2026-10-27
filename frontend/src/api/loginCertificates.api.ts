@@ -16,7 +16,7 @@ function authHeader() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export type LoginCertificateSource = 'ONBOARDING' | 'ADMIN' | 'MIGRATED';
+export type LoginCertificateSource = 'ONBOARDING' | 'ADMIN' | 'MIGRATED' | 'APPROVAL';
 
 export interface LoginCertificate {
   /** SHA-512 of the certificate DER, 128 lower-case hex. */

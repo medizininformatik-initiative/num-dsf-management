@@ -39,7 +39,7 @@ const removeLogin = vi.hoisted(() => vi.fn());
 let loginEntries: Array<{
   fingerprint: string;
   certificateId: string | null;
-  source: 'ONBOARDING' | 'ADMIN' | 'MIGRATED';
+  source: 'ONBOARDING' | 'ADMIN' | 'MIGRATED' | 'APPROVAL';
   createdBy: string | null;
   createdAt: string;
 }> = [];
@@ -307,7 +307,8 @@ describe('CertificatesCard login certificates', () => {
     renderWithProviders(<CertificatesCard instanceId="i1" />);
     const toggle = screen.getByRole('switch');
     expect(toggle).toBeDisabled();
-    const hint = 'Only certificates uploaded by the clinic itself can be allowed for login.';
+    const hint =
+      'Only certificates uploaded by the clinic itself can be allowed for login here. Every certificate becomes a login certificate automatically once its request is approved.';
     expect(screen.getByText(hint)).toBeInTheDocument();
     expect(toggle).toHaveAccessibleDescription(hint);
     await user.click(toggle);
@@ -349,9 +350,20 @@ describe('CertificatesCard login certificates', () => {
     loginEntries = [entry({ fingerprint: fp, certificateId: null, source: 'ONBOARDING' })];
     renderWithProviders(<CertificatesCard instanceId="i1" />);
     const list = screen.getByTestId('login-fingerprint-entries');
-    expect(within(list).getByText('Login fingerprint (from onboarding)')).toBeInTheDocument();
+    expect(
+      within(list).getByText('Login fingerprint (no certificate uploaded)'),
+    ).toBeInTheDocument();
     expect(within(list).getByTestId('thumbprint-value').textContent).toBe(fp);
     expect(within(list).queryByRole('button', { name: /Remove login fingerprint/ })).toBeNull();
+  });
+
+  it('labels a login entry that came from the approved allow list', () => {
+    loginEntries = [
+      entry({ fingerprint: 'd4'.repeat(64), certificateId: null, source: 'APPROVAL' }),
+    ];
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    const list = screen.getByTestId('login-fingerprint-entries');
+    expect(within(list).getByText(/^From the approved allow list ·/)).toBeInTheDocument();
   });
 
   it('lets an admin remove a fingerprint-only login entry', async () => {

@@ -434,10 +434,11 @@ export const en = {
   loginCertErrAdminCert:
     'This is an admin certificate and cannot be used as an organization login.',
   loginCertErrInUse: 'This certificate already signs in for another organization.',
-  loginFingerprintTitle: 'Login fingerprint (from onboarding)',
+  loginFingerprintTitle: 'Login fingerprint (no certificate uploaded)',
   loginFingerprintSourceOnboarding: 'From the onboarding import',
   loginFingerprintSourceMigrated: 'Migrated from the previous version',
   loginFingerprintSourceAdmin: 'Added by an admin',
+  loginFingerprintSourceApproval: 'From the approved allow list',
   loginFingerprintRemove: 'Remove',
   loginFingerprintRemoveAria: 'Remove login fingerprint {prefix}',
   dlSharedLinkCopy: 'Copy shared link',
@@ -1269,7 +1270,7 @@ export const en = {
   adminCertReqRejectedToast: 'Request rejected.',
   adminCertReqCancelledToast: 'Request cancelled.',
   loginCertNotClinicHint:
-    'Only certificates uploaded by the clinic itself can be allowed for login.',
+    'Only certificates uploaded by the clinic itself can be allowed for login here. Every certificate becomes a login certificate automatically once its request is approved.',
   loginCertErrNotClinic:
     'Only certificates uploaded by the clinic itself can be allowed for login.',
 

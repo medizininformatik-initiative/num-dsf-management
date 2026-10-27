@@ -79,6 +79,7 @@ const SOURCE_LABEL: Record<LoginCertificate['source'], TranslationKey> = {
   ONBOARDING: 'loginFingerprintSourceOnboarding',
   MIGRATED: 'loginFingerprintSourceMigrated',
   ADMIN: 'loginFingerprintSourceAdmin',
+  APPROVAL: 'loginFingerprintSourceApproval',
 };
 
 export function LoginFingerprintEntries({

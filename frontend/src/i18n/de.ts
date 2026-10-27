@@ -442,10 +442,11 @@ export const de: Record<TranslationKey, string> = {
   loginCertErrAdminCert:
     'Dies ist ein Admin-Zertifikat und kann nicht als Organisations-Login dienen.',
   loginCertErrInUse: 'Dieses Zertifikat meldet bereits eine andere Organisation an.',
-  loginFingerprintTitle: 'Login-Fingerabdruck (aus Onboarding)',
+  loginFingerprintTitle: 'Login-Fingerabdruck (ohne hochgeladenes Zertifikat)',
   loginFingerprintSourceOnboarding: 'Aus dem Onboarding-Import',
   loginFingerprintSourceMigrated: 'Aus der Vorversion übernommen',
   loginFingerprintSourceAdmin: 'Von einem Admin hinzugefügt',
+  loginFingerprintSourceApproval: 'Aus der freigegebenen Allow List',
   loginFingerprintRemove: 'Entfernen',
   loginFingerprintRemoveAria: 'Login-Fingerabdruck {prefix} entfernen',
   dlSharedLinkCopy: 'Gemeinsamen Link kopieren',
@@ -1290,7 +1291,7 @@ export const de: Record<TranslationKey, string> = {
   adminCertReqRejectedToast: 'Antrag abgelehnt.',
   adminCertReqCancelledToast: 'Antrag zurückgezogen.',
   loginCertNotClinicHint:
-    'Nur von der Klinik selbst hochgeladene Zertifikate können für den Login freigegeben werden.',
+    'Hier können nur von der Klinik selbst hochgeladene Zertifikate für den Login freigegeben werden. Mit der Freigabe des Antrags wird jedes Zertifikat automatisch zum Login-Zertifikat.',
   loginCertErrNotClinic:
     'Nur von der Klinik selbst hochgeladene Zertifikate können für den Login freigegeben werden.',
 
