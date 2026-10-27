@@ -3,13 +3,15 @@
  * Every 5 min:        flush due pending_notifications (site emails after approve/reject)
  * Daily 06:00 UTC:    approval reminders
  * Daily 07:00 UTC:    silent consent sweep
- * Daily 08:00 UTC:    cert expiry check (organization + admin login certificates)
+ * Daily 08:00 UTC:    cert expiry check (organization + admin login certificates),
+ *                     then removal of certificates expired more than 30 days ago
  * Daily 09:00 UTC:    membership cleanup
  * Daily 10:00 UTC:    marketplace GitHub metadata sync
  * Every minute:       backup due-check (backup.service, schedule from backup_settings)
  */
 import cron from 'node-cron';
 import { runCertExpiryCheck } from './cert-monitor.service';
+import { runExpiredCertificateCleanup } from './cert-cleanup.service';
 import { runAdminCertExpiryCheck } from './admin-cert-expiry.service';
 import { expireStaleRequests as expireAdminCertRequests } from './admin-cert-requests.service';
 import { runApprovalReminders, flushPendingNotifications } from './approval-reminder.service';
@@ -69,6 +71,11 @@ export function startScheduler(): void {
         await runCertExpiryCheck();
       } catch (err) {
         logger.error({ err }, '[Scheduler] CertExpiryCheck failed');
+      }
+      try {
+        await runExpiredCertificateCleanup();
+      } catch (err) {
+        logger.error({ err }, '[Scheduler] ExpiredCertificateCleanup failed');
       }
       try {
         await runAdminCertExpiryCheck();
