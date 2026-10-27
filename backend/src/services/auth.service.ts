@@ -59,7 +59,10 @@ function signTempToken(user: AuthUser, purpose: TempTokenPayload['purpose']): st
 }
 
 export function verifyAccessToken(token: string): JwtPayload {
-  return jwt.verify(token, JWT_PUBLIC_KEY, { algorithms: ['RS256'] }) as JwtPayload;
+  const payload = jwt.verify(token, JWT_PUBLIC_KEY, { algorithms: ['RS256'] }) as JwtPayload;
+  // Temp tokens share the key; one with a `purpose` must never pass as an access token.
+  if ('purpose' in payload) throw new Error('INVALID_TOKEN_TYPE');
+  return payload;
 }
 
 export function verifyTempToken(token: string): TempTokenPayload {
