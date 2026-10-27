@@ -3,7 +3,8 @@
  * Status transitions: DRAFT → PENDING (submit), PENDING → APPROVED|REJECTED (operator),
  * PENDING → WITHDRAWN (the site takes its own request back)
  * Dependencies: db/connection, audit.service, approval-reminder.service, fhir.service
- *               (loadMembers), approved-snapshot.service (types), lib/approvalState
+ *               (loadMembers), approved-snapshot.service (types), lib/approvalState,
+ *               login-certificate-sync.service
  */
 import { Knex } from 'knex';
 import { db } from '../db/connection';
@@ -16,6 +17,7 @@ import {
 } from './approval-reminder.service';
 import { siteOfEmail, validateApproval, deriveStatus, ApprovalSig } from '../lib/approvalState';
 import { loadMembers } from './fhir.service';
+import { syncLoginCertificatesAfterApproval } from './login-certificate-sync.service';
 import type { AllowListSection } from './approved-snapshot.service';
 import { errCode } from '../lib/errMessage';
 import { logger } from '../lib/logger';
@@ -333,6 +335,9 @@ export async function approveRequest(
       );
     }
   }
+
+  // The approved thumbprints may log in as the organization from now on.
+  if (result.status === 'APPROVED') await syncLoginCertificatesAfterApproval(requestId);
 
   // instanceId is internal plumbing for the post-commit work — keep the
   // response shape unchanged for the route.

@@ -27,7 +27,7 @@ import { logger } from '../lib/logger';
 export interface LoginCertificate {
   fingerprint: string;
   certificateId: string | null;
-  source: 'ONBOARDING' | 'ADMIN' | 'MIGRATED';
+  source: 'ONBOARDING' | 'ADMIN' | 'MIGRATED' | 'APPROVAL';
   createdBy: string | null;
   createdAt: Date;
   /** The linked certificate was uploaded by the clinic itself (false for fingerprint-only entries). */
@@ -121,6 +121,32 @@ async function notifyOrganization(
 }
 
 /**
+ * Audit and mail a login-certificate change made by the system (approval sync,
+ * expiry cleanup). Never throws: the change is already committed.
+ */
+export async function recordSystemLoginChange(
+  identifier: string,
+  change: 'enable' | 'disable',
+  actor: string,
+  fingerprint: string,
+  reason: 'approval' | 'expired',
+): Promise<void> {
+  try {
+    const org = await db('organizations').where({ identifier }).first();
+    if (!org) return;
+    await audit(org as OrgRow, actor, 'system', {
+      action: 'login_certificate',
+      change,
+      reason,
+      fingerprintPrefix: fingerprint.slice(0, 16),
+    });
+    await notifyOrganization(org as OrgRow, change, actor, fingerprint);
+  } catch (err) {
+    logger.error({ err }, '[OrgLoginCertificates] recording a system change failed');
+  }
+}
+
+/**
  * Enable an uploaded certificate of the organization as a login certificate.
  * The SHA-512 fingerprint is computed server-side from the stored PEM.
  * Idempotent for the same organization (links the certificate to a
@@ -157,7 +183,7 @@ export async function enable(
   if (existing) {
     await db('org_login_certificates')
       .where({ fingerprint })
-      .update({ certificate_id: certificateId });
+      .update({ certificate_id: certificateId, valid_until: cert.valid_until ?? null });
   } else {
     await db('org_login_certificates').insert({
       fingerprint,
@@ -166,6 +192,7 @@ export async function enable(
       source: 'ADMIN',
       created_by: actorEmail,
       created_at: new Date(),
+      valid_until: cert.valid_until ?? null,
     });
   }
   await audit(org, actorEmail, ip, {

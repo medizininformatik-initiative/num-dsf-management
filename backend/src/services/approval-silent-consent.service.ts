@@ -5,12 +5,14 @@
  * APPROVED. Implements "Schweigen als Zustimmung".
  *
  * Dependencies: db/connection, audit.service, approval-reminder.service,
- * approval.service, bundle-versions.service (dynamic), lib/isAdmin, lib/logger
+ * approval.service, bundle-versions.service (dynamic), login-certificate-sync.service,
+ * lib/isAdmin, lib/logger
  */
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
 import { notifySiteOnApproval } from './approval-reminder.service';
 import { getSignaturesForRequests } from './approval.service';
+import { syncLoginCertificatesAfterApproval } from './login-certificate-sync.service';
 import { isAdminEmail } from '../lib/isAdmin';
 import { logger } from '../lib/logger';
 
@@ -91,6 +93,7 @@ export async function runSilentConsentSweep(now: Date = new Date()): Promise<num
         'bundle snapshot after silent-consent promotion failed',
       );
     }
+    await syncLoginCertificatesAfterApproval(r.id);
 
     // notifySiteOnApproval signature: (requestId, instanceId, status, comment, resolvedBy)
     notifySiteOnApproval(r.id, r.instance_id, 'APPROVED', null, 'SYSTEM:silent-consent').catch(
