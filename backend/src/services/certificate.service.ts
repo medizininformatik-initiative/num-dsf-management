@@ -13,6 +13,10 @@ import {
 } from './ca-whitelist.service';
 import { errMessage } from '../lib/errMessage';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
+import {
+  linkUploadedCertificate,
+  unlinkRenewedCertificate,
+} from './login-certificate-sync.service';
 import { v4 as uuidv4 } from 'uuid';
 
 // Columns selected for the API-facing certificate row, before the
@@ -226,6 +230,7 @@ export async function createCertificate(
     uploaded_by: userEmail,
     uploaded_by_admin: uploadedByAdmin ? 1 : 0,
   });
+  await linkUploadedCertificate(db, org.identifier, id, pem.trim(), validUntil);
   await writeAuditLog({
     userEmail,
     instanceId,
@@ -322,8 +327,10 @@ export async function renewCertificate(
       uploaded_by_admin: uploadedByAdmin ? 1 : 0,
     });
 
-    // Delete old cert
+    // Delete old cert; its login entry stays until the old certificate expires
+    await unlinkRenewedCertificate(trx, oldCertId);
     await trx('certificates').where({ id: oldCertId }).delete();
+    await linkUploadedCertificate(trx, org.identifier, newId, body.pem.trim(), validUntil);
 
     // Audit both actions (outside transaction lock; failures must not block)
     await writeAuditLog({
