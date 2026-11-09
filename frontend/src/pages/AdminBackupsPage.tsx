@@ -130,7 +130,8 @@ export function AdminBackupsPage() {
             disabled={busy}
             aria-busy={runNow.isPending || undefined}
           >
-            <Icon name="backup" size={18} /> {t('backupRunNow')}
+            <Icon name="backup" size={16} />
+            {t('backupRunNow')}
           </Button>
         }
       />
@@ -146,7 +147,7 @@ export function AdminBackupsPage() {
           </div>
         )}
 
-        <div className="glass-thin flex gap-3 rounded-card p-4 text-sm">
+        <div className="surface-card flex gap-3 p-4 text-sm">
           <Icon name="info" size={20} className="mt-0.5 shrink-0 text-info-fg" />
           <div className="space-y-1">
             <p>{t('backupRestoreHint')}</p>
@@ -171,9 +172,14 @@ export function AdminBackupsPage() {
         </div>
 
         {settings.isLoading ? (
-          <Skeleton lines={4} />
+          <div className="surface-card p-5">
+            <Skeleton lines={4} />
+          </div>
         ) : settings.isError || !settings.data ? (
-          <p role="alert" className="text-sm text-danger-fg">
+          <p
+            role="alert"
+            className="rounded-card border border-danger-border bg-danger-surface p-4 text-sm text-danger-fg"
+          >
             {t('backupLoadFailed')}
           </p>
         ) : (
@@ -189,9 +195,14 @@ export function AdminBackupsPage() {
             {t('backupRunsTitle')}
           </h2>
           {runs.isLoading ? (
-            <Skeleton lines={3} />
+            <div className="surface-card p-5">
+              <Skeleton lines={3} />
+            </div>
           ) : runs.isError ? (
-            <p role="alert" className="text-sm text-danger-fg">
+            <p
+              role="alert"
+              className="rounded-card border border-danger-border bg-danger-surface p-4 text-sm text-danger-fg"
+            >
               {t('backupLoadFailed')}
             </p>
           ) : (

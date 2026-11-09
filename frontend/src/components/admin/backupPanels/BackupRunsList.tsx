@@ -33,7 +33,7 @@ function Checksum({ value }: { value: string }) {
   }
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+      <span className="text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
         SHA-256
       </span>
       <code
@@ -47,7 +47,7 @@ function Checksum({ value }: { value: string }) {
         onClick={copy}
         aria-label={t('backupCopyChecksum')}
         title={t('backupCopyChecksum')}
-        className="press-effect shrink-0 rounded-control p-1 text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+        className="press-effect inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
         <Icon name={copied ? 'check' : 'content_copy'} size={16} />
       </button>
@@ -66,9 +66,7 @@ export function BackupRunsList({ runs, downloadingId, onDownload }: BackupRunsLi
 
   if (runs.length === 0) {
     return (
-      <p className="glass-thin rounded-card p-5 text-sm text-[color:var(--text-muted)]">
-        {t('backupNoRuns')}
-      </p>
+      <p className="surface-card p-5 text-sm text-[color:var(--text-muted)]">{t('backupNoRuns')}</p>
     );
   }
 
@@ -79,7 +77,7 @@ export function BackupRunsList({ runs, downloadingId, onDownload }: BackupRunsLi
         return (
           <li
             key={run.id}
-            className="glass-thin animate-list-item-in space-y-2 rounded-card p-4"
+            className="surface-card animate-list-item-in space-y-2 p-4"
             style={{ '--stagger-index': Math.min(i, 12) } as React.CSSProperties}
             data-testid="backup-run"
           >
@@ -126,7 +124,8 @@ export function BackupRunsList({ runs, downloadingId, onDownload }: BackupRunsLi
                     aria-busy={downloadingId === run.id || undefined}
                     onClick={() => onDownload(run)}
                   >
-                    <Icon name="download" size={16} /> {t('backupDownload')}
+                    <Icon name="download" size={16} />
+                    {t('backupDownload')}
                   </Button>
                 )}
               </div>

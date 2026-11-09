@@ -3,7 +3,8 @@
  * interval (every 6 h, every 12 h, daily at a time in Europe/Berlin; never
  * less often than daily) and how many files to keep. RHF + Zod; the parent
  * runs the step-up and the save.
- * Dependencies: react-hook-form, zod schema, Button, Icon, fieldClasses, i18n store.
+ * Dependencies: react-hook-form, zod schema, Button, Icon, fieldClasses,
+ * FormField (checkbox class), i18n store.
  */
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -14,6 +15,7 @@ import {
 } from '../../../schemas/backupSettings.schema';
 import type { BackupSettings } from '../../../api/backups.api';
 import { Button } from '../../ui/Button';
+import { checkboxClass } from '../../modals/FormField';
 import { FIELD_CLASS, HINT_CLASS, LABEL_CLASS } from '../fieldClasses';
 import { useI18n } from '../../../stores/i18n.store';
 import type { TranslationKey } from '../../../i18n/en';
@@ -48,7 +50,7 @@ export function BackupSettingsForm({ settings, saving, onSave }: BackupSettingsF
     <form
       noValidate
       onSubmit={handleSubmit(onSave)}
-      className="glass-thin space-y-4 rounded-card p-5"
+      className="surface-card space-y-4 p-5"
       aria-labelledby="backup-settings-title"
       data-testid="backup-settings-form"
     >
@@ -56,7 +58,7 @@ export function BackupSettingsForm({ settings, saving, onSave }: BackupSettingsF
         {t('backupSettingsTitle')}
       </h2>
       <label className="flex items-center gap-2 text-sm font-medium">
-        <input type="checkbox" className="h-4 w-4" {...register('enabled')} />
+        <input type="checkbox" className={checkboxClass} {...register('enabled')} />
         {t('backupEnabledLabel')}
       </label>
       <div className="grid gap-4 sm:grid-cols-2">
