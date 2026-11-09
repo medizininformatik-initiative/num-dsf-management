@@ -1,7 +1,8 @@
 /**
  * login-certificate-sync.test.ts – Login certificates follow the approved allow
  * list: an approval enables the snapshot's thumbprints as login (an
- * admin-uploaded certificate only after two approvals from distinct sites), a later approval without a thumbprint removes
+ * admin-uploaded, deleted or unknown-origin certificate only after two
+ * approvals from distinct sites), a later approval without a thumbprint removes
  * its APPROVAL entry but keeps onboarding entries, admin certificates and
  * thumbprints of another organization are skipped, withdrawals change
  * nothing. Uploading links a fingerprint-only entry, renewing keeps the old
@@ -53,7 +54,12 @@ async function makeSite(label: string): Promise<Site> {
   return { instanceId, org, email };
 }
 
-async function insertCert(site: Site, pem: string, uploadedByAdmin: boolean, validUntil?: Date) {
+async function insertCert(
+  site: Site,
+  pem: string,
+  uploadedByAdmin: boolean | null,
+  validUntil?: Date,
+) {
   const id = uuidv4();
   await db('certificates').insert({
     id,
@@ -64,7 +70,7 @@ async function insertCert(site: Site, pem: string, uploadedByAdmin: boolean, val
     valid_until: validUntil ?? new Date('2035-01-01'),
     created_at: new Date(),
     uploaded_by: site.email,
-    uploaded_by_admin: uploadedByAdmin ? 1 : 0,
+    uploaded_by_admin: uploadedByAdmin === null ? null : uploadedByAdmin ? 1 : 0,
   });
   return id;
 }
@@ -153,9 +159,58 @@ describe('login certificates from the approved allow list', () => {
     expect(await entry(fp)).toBeUndefined();
   });
 
+  it('skips a certificate deleted after submit unless two sites approved', async () => {
+    const site = await makeSite('b3');
+    const fp = sha512FingerprintFromPem(makeCertPem(`gone.${site.org}`));
+    const id = await approvedRequest(site, [fp]);
+    await sign(id, `a-${sfx}@site-one.example.de`);
+
+    const res = await syncLoginCertificatesFromApproval(id);
+
+    expect(res.added).toEqual([]);
+    expect(await entry(fp)).toBeUndefined();
+
+    const id2 = await approvedRequest(site, [fp]);
+    await sign(id2, `a-${sfx}@site-one.example.de`);
+    await sign(id2, `b-${sfx}@site-two.example.de`);
+    expect((await syncLoginCertificatesFromApproval(id2)).added).toEqual([fp]);
+  });
+
+  it('skips a certificate of unknown origin (uploaded_by_admin NULL) without two sites', async () => {
+    const site = await makeSite('b4');
+    const pem = makeCertPem(`legacy.${site.org}`);
+    const fp = sha512FingerprintFromPem(pem);
+    await insertCert(site, pem, null);
+    const id = await approvedRequest(site, [fp]);
+    await sign(id, `a-${sfx}@site-one.example.de`);
+
+    const res = await syncLoginCertificatesFromApproval(id);
+
+    expect(res.added).toEqual([]);
+    expect(await entry(fp)).toBeUndefined();
+  });
+
+  it('keeps the existing login entry of a renewed certificate on a later approval', async () => {
+    const site = await makeSite('b5');
+    const fp = sha512FingerprintFromPem(makeCertPem(`renewed.${site.org}`));
+    await db('org_login_certificates').insert({
+      fingerprint: fp,
+      organization_id: site.org,
+      source: 'APPROVAL',
+      created_at: new Date(),
+    });
+
+    const res = await syncLoginCertificatesFromApproval(await approvedRequest(site, [fp]));
+
+    expect(res).toEqual({ added: [], removed: [] });
+    expect(await entry(fp)).toMatchObject({ organization_id: site.org, source: 'APPROVAL' });
+  });
+
   it('removes an APPROVAL entry the next approval no longer lists, keeps onboarding entries', async () => {
     const site = await makeSite('c');
-    const oldFp = sha512FingerprintFromPem(makeCertPem(`old.${site.org}`));
+    const oldPem = makeCertPem(`old.${site.org}`);
+    const oldFp = sha512FingerprintFromPem(oldPem);
+    await insertCert(site, oldPem, false);
     const onbFp = sha512FingerprintFromPem(makeCertPem(`onb.${site.org}`));
     await db('org_login_certificates').insert({
       fingerprint: onbFp,
@@ -165,7 +220,9 @@ describe('login certificates from the approved allow list', () => {
     });
     await syncLoginCertificatesFromApproval(await approvedRequest(site, [oldFp]));
 
-    const newFp = sha512FingerprintFromPem(makeCertPem(`new.${site.org}`));
+    const newPem = makeCertPem(`new.${site.org}`);
+    const newFp = sha512FingerprintFromPem(newPem);
+    await insertCert(site, newPem, false);
     const res = await syncLoginCertificatesFromApproval(await approvedRequest(site, [newFp]));
 
     expect(res).toEqual({ added: [newFp], removed: [oldFp] });

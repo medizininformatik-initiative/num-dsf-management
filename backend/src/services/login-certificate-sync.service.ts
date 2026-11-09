@@ -9,8 +9,10 @@
  * is removed. Entries from onboarding, the migration or an admin are never
  * removed here. Admin certificates and thumbprints that already log in for
  * another organization are skipped. A certificate an admin uploaded (e.g. one
- * a site sent by mail) logs in only after real four-eyes approval: two APPROVE
- * signatures from distinct sites; one approval plus silent consent is not enough.
+ * a site sent by mail), one deleted after submit and one of unknown origin
+ * (uploaded_by_admin NULL) log in only after real four-eyes approval: two
+ * APPROVE signatures from distinct sites; one approval plus silent consent is
+ * not enough.
  *
  * Uploading a certificate links it to an existing entry with the same
  * thumbprint (e.g. a fingerprint-only entry of the legacy import); renewing a
@@ -135,14 +137,20 @@ export async function syncLoginCertificatesFromApproval(
         continue;
       }
       const cert = certs.get(fp);
-      if (cert && Number(cert.uploaded_by_admin) === 1 && !fourEyes) {
+      const row = existing.get(fp);
+      // Only a present, clinic-uploaded certificate passes with one approval. A
+      // missing (deleted after submit) or unknown-origin one needs four eyes,
+      // unless it already logs in for this organization (renewal keeps it).
+      const clinicUploaded = cert
+        ? cert.uploaded_by_admin !== null && Number(cert.uploaded_by_admin) === 0
+        : row?.organization_id === identifier;
+      if (!clinicUploaded && !fourEyes) {
         logger.warn(
           { identifier },
-          '[LoginSync] admin-uploaded certificate lacks two approvals from distinct sites, skipped',
+          '[LoginSync] certificate not clinic-uploaded lacks two approvals from distinct sites, skipped',
         );
         continue;
       }
-      const row = existing.get(fp);
       if (row && row.organization_id !== identifier) {
         logger.warn(
           { identifier },
