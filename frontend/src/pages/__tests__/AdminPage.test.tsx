@@ -65,9 +65,9 @@ describe('AdminPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Approval review' })).toBeInTheDocument();
     expect(
-      screen.getByText('Review and action pending approval requests from DSF participants'),
+      screen.getByText('Approve or reject pending requests from DSF participants.'),
     ).toBeInTheDocument();
-    expect(screen.getByText('4-eyes approval principle')).toBeInTheDocument();
+    expect(screen.getByText('4-eyes principle')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Admin reference/ })).toHaveAttribute(
       'href',
       '/app/admin/help',
@@ -96,7 +96,7 @@ describe('AdminPage', () => {
     renderWithProviders(<AdminPage />);
 
     expect(screen.getByText('1 pending request')).toBeInTheDocument();
-    expect(screen.queryByText(/pending requests/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^\d+ pending requests$/)).not.toBeInTheDocument();
     expect(screen.getAllByTestId('request-card')).toHaveLength(1);
   });
 
@@ -144,7 +144,7 @@ describe('AdminPage', () => {
 
     // The <Navigate replace> short-circuits before any page markup renders.
     expect(screen.queryByRole('heading', { name: 'Approval review' })).not.toBeInTheDocument();
-    expect(screen.queryByText('4-eyes approval principle')).not.toBeInTheDocument();
+    expect(screen.queryByText('4-eyes principle')).not.toBeInTheDocument();
     expect(screen.queryByText('No pending requests')).not.toBeInTheDocument();
   });
 });

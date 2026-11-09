@@ -35,19 +35,19 @@ export function AdminPage() {
         actions={
           <Link
             to="/app/admin/help"
-            className="press-effect inline-flex items-center gap-1 rounded-control px-2 py-1.5 text-xs font-medium text-primary dark:text-brand-400 hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] dark:text-brand-400"
+            className="press-effect inline-flex min-h-8 items-center gap-1.5 rounded-control px-3 text-xs font-semibold text-primary hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] dark:text-brand-400"
           >
-            <Icon name="help" size={16} />
+            <Icon name="help" size={14} />
             {t('adminHelpLink')}
           </Link>
         }
       />
 
-      <div className="space-y-5 px-6 py-6 sm:px-8">
-        <div className="flex gap-3 rounded-card border border-info-border bg-info-surface px-5 py-4 text-info-fg">
-          <Icon name="shield" size={24} className="mt-0.5 shrink-0" />
-          <div className="text-[13px] leading-normal">
-            <p className="mb-1 font-bold">{t('adminFourEyesTitle')}</p>
+      <div className="space-y-4 px-6 py-6 sm:px-8">
+        <div className="flex gap-3 rounded-card border border-info-border bg-info-surface p-4 text-sm text-info-fg">
+          <Icon name="shield" size={20} className="shrink-0" />
+          <div className="space-y-0.5">
+            <p className="font-semibold">{t('adminFourEyesTitle')}</p>
             <p>{t('adminFourEyesBody')}</p>
           </div>
         </div>
@@ -56,7 +56,7 @@ export function AdminPage() {
         {error && (
           <div
             role="alert"
-            className="flex items-center gap-2.5 rounded-card border border-danger-border bg-danger-surface px-4 py-3.5 text-[13px] text-danger-fg"
+            className="flex items-start gap-3 rounded-card border border-danger-border bg-danger-surface p-4 text-sm text-danger-fg"
           >
             <Icon name="error" size={20} className="shrink-0" />
             {is403 ? t('adminAccessDenied') : t('adminLoadFailed')}
@@ -76,13 +76,13 @@ export function AdminPage() {
 
         {/* Empty state */}
         {!isLoading && !error && requests && requests.length === 0 && (
-          <div className="flex animate-fade-in flex-col items-center justify-center gap-3 py-16 text-center">
-            <Icon name="check_circle" size={48} className="text-success-fg" />
+          <div className="surface-card flex animate-fade-in flex-col items-center justify-center gap-3 px-5 py-12 text-center">
+            <Icon name="check_circle" size={40} className="text-success-fg" />
             <div>
               <div className="text-base font-semibold text-[color:var(--text-primary)]">
                 {t('adminNoPendingTitle')}
               </div>
-              <div className="mt-1 text-[13px] text-[color:var(--text-muted)]">
+              <div className="mt-1 text-sm text-[color:var(--text-muted)]">
                 {t('adminNoPendingBody')}
               </div>
             </div>
@@ -92,7 +92,7 @@ export function AdminPage() {
         {/* Request cards */}
         {!isLoading && !error && requests && requests.length > 0 && (
           <div className="flex flex-col gap-4">
-            <div className="text-[13px] text-[color:var(--text-muted)]">
+            <div className="text-xs text-[color:var(--text-muted)]">
               {requests.length === 1
                 ? t('adminPendingCount', { n: requests.length })
                 : t('adminPendingCountPlural', { n: requests.length })}

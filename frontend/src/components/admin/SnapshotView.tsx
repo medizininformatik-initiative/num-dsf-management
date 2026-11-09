@@ -3,8 +3,8 @@
  * Renders the quick change-count summary and the per-entity detail grid.
  * Extracted from RequestCard.tsx (project 500-line file limit); pure
  * presentation driven by a parsed SnapshotData. Entity colours only tint the
- * section icons and accent borders; all text uses theme tokens with AA
- * contrast in light and dark mode.
+ * section icons; all text uses theme tokens with AA contrast in light and
+ * dark mode.
  *
  * Dependencies: parseSnapshot (SnapshotData type), useI18n (translate fn type,
  * app language for dates), lib/dateUtils, StatusPill, Icon.
@@ -19,7 +19,7 @@ import { Icon } from '../ui/Icon';
 
 type TranslateFn = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
-/** Entity accent colours (icons and borders only, never text). */
+/** Entity accent colours (section icons only, never text). */
 const ACCENT = {
   organization: 'var(--accent)',
   endpoints: '#3ecfb2',
@@ -29,7 +29,7 @@ const ACCENT = {
 } as const;
 
 const CHIP_CLASS =
-  'rounded-small bg-[color:var(--bg-hover)] px-1.5 py-px font-mono text-[11px] text-[color:var(--text-secondary)]';
+  'rounded-small bg-[color:var(--bg-hover)] px-1.5 py-px font-mono text-2xs text-[color:var(--text-secondary)]';
 
 export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: TranslateFn }) {
   const { lang } = useI18n();
@@ -105,13 +105,13 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
           icon="dns"
         >
           {endpoints.length > 0 ? (
-            <div className="flex flex-col gap-2">
+            <div className="divide-y divide-[color:var(--border)]">
               {endpoints.map((ep, i) => (
-                <AccentItem key={i} color={ACCENT.endpoints}>
+                <SnapshotItem key={i}>
                   <div className="text-xs font-semibold text-[color:var(--text-primary)]">
                     {ep.name ?? ep.identifier ?? '—'}
                   </div>
-                  <div className="break-all font-mono text-[11px] text-[color:var(--text-muted)]">
+                  <div className="break-all font-mono text-2xs text-[color:var(--text-muted)]">
                     {ep.address}
                   </div>
                   {ep.ips && ep.ips.length > 0 && (
@@ -125,7 +125,7 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
                       ))}
                     </div>
                   )}
-                </AccentItem>
+                </SnapshotItem>
               ))}
             </div>
           ) : (
@@ -140,25 +140,25 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
           icon="verified_user"
         >
           {certificates.length > 0 ? (
-            <div className="flex flex-col gap-2">
+            <div className="divide-y divide-[color:var(--border)]">
               {certificates.map((cert, i) => (
-                <AccentItem key={i} color={ACCENT.certificates}>
+                <SnapshotItem key={i}>
                   <div className="break-all text-xs font-semibold text-[color:var(--text-primary)]">
                     {cert.subject ?? '—'}
                   </div>
                   {cert.thumbprint && (
-                    <div className="break-all font-mono text-[11px] text-[color:var(--text-muted)]">
+                    <div className="break-all font-mono text-2xs text-[color:var(--text-muted)]">
                       {cert.thumbprint}
                     </div>
                   )}
                   {cert.valid_until && (
-                    <div className="text-[11px] text-[color:var(--text-secondary)]">
+                    <div className="text-2xs text-[color:var(--text-secondary)]">
                       {t('adminSnapshotExpires', {
                         date: formatDate(cert.valid_until, lang) || cert.valid_until,
                       })}
                     </div>
                   )}
-                </AccentItem>
+                </SnapshotItem>
               ))}
             </div>
           ) : (
@@ -173,9 +173,9 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
           icon="group_work"
         >
           {memberships.length > 0 ? (
-            <div className="flex flex-col gap-2">
+            <div className="divide-y divide-[color:var(--border)]">
               {memberships.map((m, i) => (
-                <AccentItem key={i} color={ACCENT.memberships}>
+                <SnapshotItem key={i}>
                   <div className="text-xs font-semibold text-[color:var(--text-primary)]">
                     {m.parent_organization ?? '—'}
                   </div>
@@ -189,11 +189,11 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
                     </div>
                   )}
                   {m.endpoint_id && (
-                    <div className="mt-0.5 font-mono text-[11px] text-[color:var(--text-muted)]">
+                    <div className="mt-0.5 font-mono text-2xs text-[color:var(--text-muted)]">
                       {m.endpoint_id}
                     </div>
                   )}
-                </AccentItem>
+                </SnapshotItem>
               ))}
             </div>
           ) : (
@@ -213,14 +213,14 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
                 {contacts.map((c, i) => (
                   <div
                     key={i}
-                    className="min-w-[10rem] rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] px-2.5 py-1.5"
+                    className="min-w-[10rem] rounded-control bg-[color:var(--bg-hover)] px-2.5 py-1.5"
                   >
                     <div className="text-xs font-semibold text-[color:var(--text-primary)]">
                       {c.name ?? '—'}
                     </div>
-                    <div className="text-[11px] text-[color:var(--text-secondary)]">{c.email}</div>
+                    <div className="text-2xs text-[color:var(--text-secondary)]">{c.email}</div>
                     {c.types && c.types.length > 0 && (
-                      <div className="mt-0.5 text-[11px] text-[color:var(--text-muted)]">
+                      <div className="mt-0.5 text-2xs text-[color:var(--text-muted)]">
                         {c.types.join(', ')}
                       </div>
                     )}
@@ -247,8 +247,8 @@ function SnapshotSection({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-4 py-3.5">
-      <h3 className="mb-2.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-secondary)]">
+    <section className="rounded-control border border-[color:var(--border)] p-3">
+      <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-[color:var(--text-primary)]">
         <Icon name={icon} size={16} style={{ color }} />
         {title}
       </h3>
@@ -257,12 +257,9 @@ function SnapshotSection({
   );
 }
 
-function AccentItem({ color, children }: { color: string; children: ReactNode }) {
-  return (
-    <div className="border-l-[3px] pl-2" style={{ borderColor: color }}>
-      {children}
-    </div>
-  );
+/** One entry of a section list; entries are separated by hairlines. */
+function SnapshotItem({ children }: { children: ReactNode }) {
+  return <div className="py-2 first:pt-0 last:pb-0">{children}</div>;
 }
 
 function SnapshotField({
@@ -276,7 +273,7 @@ function SnapshotField({
 }) {
   return (
     <div className="flex items-baseline gap-1.5">
-      <span className="min-w-[3.25rem] text-[11px] text-[color:var(--text-muted)]">{label}</span>
+      <span className="min-w-[3.25rem] text-2xs text-[color:var(--text-muted)]">{label}</span>
       <span
         className={`break-all text-xs text-[color:var(--text-primary)] ${mono ? 'font-mono' : ''}`}
       >

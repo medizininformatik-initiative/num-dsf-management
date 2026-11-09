@@ -150,15 +150,12 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
   }
 
   return (
-    <article
-      aria-labelledby={titleId}
-      className="flex flex-col gap-4 rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] px-5 py-5 shadow-card-elevated sm:px-6"
-    >
+    <article aria-labelledby={titleId} className="surface-card flex flex-col gap-4 p-5">
       {/* Card header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[min(100%,16rem)] flex-1">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h2 id={titleId} className="text-[15px] font-semibold text-[color:var(--text-primary)]">
+            <h2 id={titleId} className="text-base font-semibold text-[color:var(--text-primary)]">
               {orgName}
             </h2>
             <span className="rounded-small bg-[color:var(--bg-hover)] px-2 py-0.5 font-mono text-xs text-[color:var(--text-secondary)]">
@@ -174,16 +171,16 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
             )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-semibold text-[color:var(--text-secondary)]">
+            <span className="text-2xs font-semibold text-[color:var(--text-secondary)]">
               {t('adminApprovals', { n: approvals.length })}
             </span>
             {approvals.map((s) => (
-              <StatusPill key={s.id} tone="success" icon="check" className="font-mono">
-                {s.admin_email} <span className="opacity-80">· {s.admin_site}</span>
+              <StatusPill key={s.id} tone="success" icon="check">
+                {s.admin_email} <span className="font-normal">· {s.admin_site}</span>
               </StatusPill>
             ))}
             {silentConsentDate && approvals.length === 1 && (
-              <span className="text-[11px] font-semibold text-warning-fg">
+              <span className="text-2xs font-semibold text-warning-fg">
                 {t('adminAutoApproves', {
                   date: formatDate(silentConsentDate.toISOString(), lang),
                 })}
@@ -199,7 +196,7 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
             disabled={approveDisabled}
             aria-describedby={approveBlockedReason ? disabledReasonId : undefined}
           >
-            <Icon name="check" size={18} />
+            <Icon name="check" size={16} />
             {approveMut.isPending ? t('adminApprovingBtn') : t('adminApproveBtn')}
           </Button>
           {!rejecting && (
@@ -209,7 +206,7 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
               onClick={() => setRejecting(true)}
               disabled={busy}
             >
-              <Icon name="close" size={18} />
+              <Icon name="close" size={16} />
               {t('adminRejectBtn')}
             </Button>
           )}
@@ -221,14 +218,14 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
           id={disabledReasonId}
           className="-mt-1 flex items-center gap-1.5 text-xs text-[color:var(--text-secondary)]"
         >
-          <Icon name="info" size={16} className="shrink-0" />
+          <Icon name="info" size={14} className="shrink-0" />
           {approveBlockedReason}
         </p>
       )}
 
       {/* Reject comment panel */}
       {rejecting && (
-        <div className="flex animate-fade-in flex-col gap-2.5 rounded-control border border-danger-border bg-danger-surface p-4">
+        <div className="flex animate-fade-in flex-col gap-2.5 rounded-control border border-danger-border bg-danger-surface p-3">
           <label htmlFor={commentId} className="text-xs font-semibold text-danger-fg">
             {t('adminRejectionReasonLabel')}
           </label>
@@ -277,11 +274,13 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
       )}
 
       {/* Expand toggle */}
-      <button
+      <Button
         type="button"
+        size="sm"
+        variant="secondary"
         aria-expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
-        className="press-effect inline-flex items-center gap-1.5 self-start rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2.5 py-1.5 text-xs font-medium text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+        className="self-start"
       >
         <Icon
           name="expand_more"
@@ -289,7 +288,7 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
           className={`transition-transform duration-short ease-standard ${expanded ? 'rotate-180' : ''}`}
         />
         {expanded ? t('adminHideDetails') : t('adminViewDetails')}
-      </button>
+      </Button>
 
       {/* Snapshot viewer */}
       {expanded && (

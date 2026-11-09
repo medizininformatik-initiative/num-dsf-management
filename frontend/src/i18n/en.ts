@@ -135,8 +135,8 @@ export const en = {
 
   // AdminPage
   adminPageTitle: 'Approval review',
-  adminPageSubtitle: 'Review and action pending approval requests from DSF participants',
-  adminFourEyesTitle: '4-eyes approval principle',
+  adminPageSubtitle: 'Approve or reject pending requests from DSF participants.',
+  adminFourEyesTitle: '4-eyes principle',
   adminFourEyesBody:
     'Two admins from different sites must approve before a request is finalized. After the first approval, a second admin has 7 days to reject; if no rejection arrives, the request is automatically approved.',
   adminAccessDenied: 'Access denied. You do not have admin privileges.',

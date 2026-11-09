@@ -138,7 +138,7 @@ export const de: Record<TranslationKey, string> = {
 
   // AdminPage
   adminPageTitle: 'Genehmigungen prüfen',
-  adminPageSubtitle: 'Ausstehende Genehmigungsanträge von DSF-Teilnehmern prüfen und bearbeiten',
+  adminPageSubtitle: 'Ausstehende Anträge von DSF-Teilnehmern genehmigen oder ablehnen.',
   adminFourEyesTitle: '4-Augen-Prinzip',
   adminFourEyesBody:
     'Zwei Admins von verschiedenen Standorten müssen genehmigen, bevor ein Antrag abgeschlossen wird. Nach der ersten Genehmigung hat ein zweiter Admin 7 Tage Zeit zum Ablehnen; bleibt eine Ablehnung aus, wird der Antrag automatisch genehmigt.',
