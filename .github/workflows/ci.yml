@@ -21,15 +21,11 @@ jobs:
           npm ci
           # Excluded advisories have no fix inside the current major and are not
           # reachable from this code base:
-          #  - GHSA-v53p-9fqp-m79j, GHSA-prgh-xp8r-p3m5: nodemailer addressparser slowdowns
-          #    on address values of hundreds of KB. Only outbound mail is sent, to
-          #    whitelisted or zod-validated addresses of at most 255 characters. The fix is
-          #    nodemailer 9 -> 10 (semver-major); Dependabot owns it.
           #  - GHSA-mrhx-c7xc-m3w5: zod memory exhaustion on oversized constrained
           #    collections. Every validated input is size-capped before zod sees it (JSON
           #    bodies 100 kB, onboarding files 1 MB and 1000 rows). The fix is zod 3 -> 4
           #    (semver-major); Dependabot owns it.
-          npx better-npm-audit audit --level high -x GHSA-v53p-9fqp-m79j,GHSA-prgh-xp8r-p3m5,GHSA-mrhx-c7xc-m3w5
+          npx better-npm-audit audit --level high -x GHSA-mrhx-c7xc-m3w5
       - name: Frontend audit
         working-directory: frontend
         run: |
