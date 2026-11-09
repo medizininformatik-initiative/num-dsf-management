@@ -1,10 +1,26 @@
 /// <reference types="vitest" />
-import { defineConfig, splitVendorChunkPlugin } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+const VENDOR_CHUNKS: Record<string, string> = {
+  react: 'react-vendor',
+  'react-dom': 'react-vendor',
+  scheduler: 'react-vendor',
+  'react-router': 'react-vendor',
+  'react-router-dom': 'react-vendor',
+  '@remix-run/router': 'react-vendor',
+  '@tanstack/react-query': 'query-vendor',
+  '@tanstack/query-core': 'query-vendor',
+  'react-hook-form': 'form-vendor',
+  zod: 'form-vendor',
+  '@hookform/resolvers': 'form-vendor',
+  '@standard-schema/utils': 'form-vendor',
+  sonner: 'ui-vendor',
+};
+
 export default defineConfig({
-  plugins: [react(), splitVendorChunkPlugin()],
+  plugins: [react()],
   base: process.env.VITE_DEMO === 'true' ? '/num-dsf-allowlist/' : '/',
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
@@ -13,15 +29,15 @@ export default defineConfig({
     target: 'es2020',
     outDir: 'dist',
     sourcemap: false,
-    minify: 'esbuild',
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'query-vendor': ['@tanstack/react-query'],
-          'form-vendor': ['react-hook-form', 'zod', '@hookform/resolvers'],
-          'ui-vendor': ['sonner'],
+        // Rolldown (Vite 8) takes only the function form; each entry also
+        // claims the packages the old object form pulled in as dependencies.
+        manualChunks(id: string) {
+          const pkg = /node_modules\/((?:@[^/]+\/)?[^/]+)\//.exec(id)?.[1];
+          if (!pkg) return undefined;
+          return VENDOR_CHUNKS[pkg];
         },
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
