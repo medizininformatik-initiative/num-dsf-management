@@ -227,7 +227,7 @@ jobs:
         working-directory: frontend
         run: npm run test:e2e
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-trace
           path: |
@@ -381,7 +381,7 @@ jobs:
           docker image inspect "${REPO}-backend:${SHA}" >/dev/null
           docker image inspect "${REPO}-frontend:${SHA}" >/dev/null
       - name: Upload image bundle artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dsf-allowlist-images-${{ env.SHA }}
           path: |
