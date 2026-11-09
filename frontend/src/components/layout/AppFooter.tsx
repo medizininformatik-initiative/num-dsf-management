@@ -11,7 +11,7 @@ import { useI18n } from '../../stores/i18n.store';
 export function AppFooter({ children }: { children?: ReactNode }) {
   const { t } = useI18n();
   return (
-    <footer className="glass-chrome flex shrink-0 flex-wrap items-center gap-3 border-b-0 border-t px-6 py-2 text-[11px] text-[color:var(--text-secondary)]">
+    <footer className="glass-chrome flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b-0 border-t px-6 py-2 text-[11px] text-[color:var(--text-secondary)]">
       <a
         href="https://www.medizin.uni-muenster.de/imi/das-institut.html"
         target="_blank"
@@ -28,7 +28,7 @@ export function AppFooter({ children }: { children?: ReactNode }) {
         />
       </a>
       <span>{t('footerAffiliation')}</span>
-      <span aria-hidden="true" className="text-[color:var(--text-muted)]">
+      <span aria-hidden="true" className="hidden text-[color:var(--text-muted)] sm:inline">
         ·
       </span>
       <Link
