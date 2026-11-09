@@ -26,7 +26,7 @@ export function MapZoomControls({ k, onZoomIn, onZoomOut, onReset }: ZoomProps) 
   const { t } = useI18n();
   return (
     <div
-      className="glass flex flex-col overflow-hidden rounded-xl"
+      className="glass flex flex-col overflow-hidden rounded-control"
       role="group"
       aria-label={t('mapZoomGroup')}
     >
@@ -86,12 +86,12 @@ export function MapLegend() {
       typeof window.matchMedia !== 'function' || window.matchMedia('(min-width: 1024px)').matches,
   );
   return (
-    <div className="glass max-w-[15rem] rounded-xl text-[11px] text-[color:var(--text-secondary)]">
+    <div className="glass max-w-[15rem] rounded-card text-[11px] text-[color:var(--text-secondary)]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="press-effect flex w-full items-center gap-1.5 rounded-xl px-3 py-2 font-semibold text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+        className="press-effect flex w-full items-center gap-1.5 rounded-control px-3 py-2 font-semibold text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
         <Icon name="legend_toggle" size={16} className="text-[color:var(--text-muted)]" />
         {t('mapLegendTitle')}

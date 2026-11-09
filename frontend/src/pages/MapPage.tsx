@@ -182,7 +182,7 @@ export function MapPage() {
       aria-expanded={listOpen}
       aria-controls={listId}
       aria-label={t(listOpen ? 'mapHideList' : 'mapShowList')}
-      className={`press-effect flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors duration-short ease-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
+      className={`press-effect flex h-9 w-9 shrink-0 items-center justify-center rounded-control border transition-colors duration-short ease-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
         listOpen
           ? 'border-[color:var(--primary)] bg-[color:color-mix(in_srgb,var(--primary)_12%,transparent)] text-[color:var(--text-primary)]'
           : 'border-[color:var(--border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)]'
@@ -248,7 +248,7 @@ export function MapPage() {
           )}
           {!!error && !isLoading && (
             <div className="absolute inset-0 flex items-center justify-center p-6">
-              <div className="glass flex max-w-sm animate-scale-in flex-col items-center gap-3 rounded-2xl px-6 py-5 text-center">
+              <div className="glass flex max-w-sm animate-scale-in flex-col items-center gap-3 rounded-card px-6 py-5 text-center">
                 <Icon name="cloud_off" size={28} className="text-danger-fg" />
                 <p role="alert" className="m-0 text-[13px] text-[color:var(--text-primary)]">
                   {t('mapLoadFailed')}
@@ -303,7 +303,7 @@ function InternationalStrip({
   if (intl.length === 0) return null;
   const countries = [...new Set(intl.map((o) => o.country_code ?? '?'))].sort().join(', ');
   return (
-    <div className="glass flex flex-wrap items-center gap-2 self-start rounded-xl px-3 py-1.5 text-[12px] text-[color:var(--text-secondary)]">
+    <div className="glass flex flex-wrap items-center gap-2 self-start rounded-control px-3 py-1.5 text-[12px] text-[color:var(--text-secondary)]">
       <Icon name="public" size={16} className="text-[color:var(--text-muted)]" />
       <span className="font-semibold">
         {t('mapInternationalCount', { n: intl.length, countries })}
@@ -314,7 +314,7 @@ function InternationalStrip({
           type="button"
           onClick={() => onSelect(o.identifier)}
           aria-current={selectedId === o.identifier ? 'true' : undefined}
-          className={`press-effect rounded-lg border px-2 py-0.5 text-[12px] transition-colors duration-short focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
+          className={`press-effect rounded-control border px-2 py-0.5 text-[12px] transition-colors duration-short focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
             selectedId === o.identifier
               ? 'border-[color:var(--primary)] text-[color:var(--text-primary)]'
               : 'border-[color:var(--border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)]'

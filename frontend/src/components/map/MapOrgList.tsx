@@ -130,7 +130,7 @@ export function MapOrgList({
       id={id}
       aria-label={t('mapOrgListTitle')}
       data-state={state}
-      className={`glass absolute z-[3] flex flex-col overflow-hidden rounded-2xl data-[state=closed]:pointer-events-none ${VARIANT_CLASS[variant].box} map-animate-sheet-${state === 'open' ? 'in' : 'out'}-${VARIANT_CLASS[variant].edge}`}
+      className={`glass absolute z-[3] flex flex-col overflow-hidden rounded-card data-[state=closed]:pointer-events-none ${VARIANT_CLASS[variant].box} map-animate-sheet-${state === 'open' ? 'in' : 'out'}-${VARIANT_CLASS[variant].edge}`}
     >
       <div className="flex items-start gap-2 border-b border-[color:var(--border)] px-4 pb-2.5 pt-3">
         <div className="min-w-0 flex-1">
@@ -146,7 +146,7 @@ export function MapOrgList({
             type="button"
             onClick={onClose}
             aria-label={t('mapHideList')}
-            className="press-effect -mr-1.5 flex h-8 w-8 items-center justify-center rounded-lg text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+            className="press-effect -mr-1.5 flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
           >
             <Icon name={variant === 'sheet' ? 'close' : 'left_panel_close'} size={18} />
           </button>
@@ -168,7 +168,7 @@ export function MapOrgList({
                 type="button"
                 onClick={() => toggle(g.parent)}
                 aria-expanded={!isCollapsed}
-                className="press-effect flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+                className="press-effect flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
               >
                 <span
                   aria-hidden="true"
@@ -208,7 +208,7 @@ export function MapOrgList({
                       onBlur={() => onHover?.(null)}
                       title={m.identifier}
                       style={{ '--stagger-index': index } as CSSProperties}
-                      className={`map-list-row flex w-full animate-list-item-in items-center gap-2.5 rounded-lg py-1.5 pl-6 pr-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
+                      className={`map-list-row flex w-full animate-list-item-in items-center gap-2.5 rounded-control py-1.5 pl-6 pr-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
                         isSel
                           ? 'bg-[color:color-mix(in_srgb,var(--primary)_12%,transparent)] font-semibold text-[color:var(--text-primary)] shadow-[inset_2px_0_0_var(--primary)]'
                           : isHover

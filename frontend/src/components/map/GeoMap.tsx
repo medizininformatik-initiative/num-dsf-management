@@ -188,7 +188,7 @@ export function GeoMap({
     const nothingMatches = allOrganizations.length > 0;
     return (
       <div className="flex h-full animate-fade-in flex-col items-center justify-center gap-3 p-6 text-center">
-        <span className="glass flex h-14 w-14 items-center justify-center rounded-2xl text-[color:var(--text-muted)]">
+        <span className="glass flex h-14 w-14 items-center justify-center rounded-control text-[color:var(--text-muted)]">
           <Icon name={nothingMatches ? 'filter_alt_off' : 'map'} size={28} />
         </span>
         <p className="m-0 max-w-xs text-sm text-[color:var(--text-secondary)]">

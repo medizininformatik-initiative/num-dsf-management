@@ -140,7 +140,7 @@ export function NodeDetailsPanel({
       hidden={!mounted}
       data-state={state}
       data-side={shown.side}
-      className={`glass-thick absolute z-[4] overflow-y-auto rounded-2xl data-[state=closed]:pointer-events-none ${SIDE_CLASS[shown.side]} map-animate-sheet-${state === 'open' ? 'in' : 'out'}-${shown.side}`}
+      className={`glass-thick absolute z-[4] overflow-y-auto rounded-card data-[state=closed]:pointer-events-none ${SIDE_CLASS[shown.side]} map-animate-sheet-${state === 'open' ? 'in' : 'out'}-${shown.side}`}
     >
       {mounted && shown.cluster && !shown.org && (
         <div
@@ -272,7 +272,7 @@ function OrgDetails({
 
       <div
         style={stagger(section++)}
-        className={`animate-list-item-in rounded-xl border px-3.5 py-3 ${TONE_CLASS[tone]}`}
+        className={`animate-list-item-in rounded-control border px-3.5 py-3 ${TONE_CLASS[tone]}`}
       >
         <div className="flex items-center gap-2 text-[13px] font-semibold">
           <Icon name={expired ? 'error' : warn ? 'warning' : 'verified_user'} size={18} />
@@ -334,7 +334,7 @@ function OrgDetails({
                       {adminEp.ips.map((ip, i) => (
                         <span
                           key={i}
-                          className={`rounded-md border px-1.5 font-mono text-[11px] ${TONE_CLASS.neutral}`}
+                          className={`rounded-small border px-1.5 font-mono text-[11px] ${TONE_CLASS.neutral}`}
                         >
                           {ip.ip}
                           {ip.is_fhir ? ' · FHIR' : ''}
@@ -397,7 +397,7 @@ function OrgDetails({
                       {m.roles.map((role, j) => (
                         <span
                           key={j}
-                          className={`rounded-md border px-1.5 text-[11px] font-bold ${TONE_CLASS.info}`}
+                          className={`rounded-small border px-1.5 text-[11px] font-bold ${TONE_CLASS.info}`}
                         >
                           {role}
                         </span>
@@ -453,7 +453,7 @@ function Section({
 /** iOS-style inset group: one rounded surface, hairlines between items. */
 function Group({ children }: { children: ReactNode }) {
   return (
-    <div className="divide-y divide-[color:var(--border)] overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)]">
+    <div className="divide-y divide-[color:var(--border)] overflow-hidden rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)]">
       {children}
     </div>
   );

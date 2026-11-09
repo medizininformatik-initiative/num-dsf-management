@@ -71,7 +71,7 @@ export function MapFilters({
   const modeIndex = MODES.indexOf(state.activeMode);
 
   return (
-    <div className="glass flex flex-col gap-2 rounded-2xl px-3 py-2.5">
+    <div className="glass flex flex-col gap-2 rounded-card px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
         {leading}
 
@@ -87,7 +87,7 @@ export function MapFilters({
             onChange={(e) => onChange({ ...state, query: e.target.value })}
             placeholder={t('mapFilterSearchPlaceholder')}
             aria-label={t('mapSearchLabel')}
-            className={`h-9 w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-input)] pl-9 pr-9 text-[13px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--focus-ring)] focus:outline-none [&::-webkit-search-cancel-button]:hidden`}
+            className={`h-9 w-full rounded-control border border-[color:var(--border)] bg-[color:var(--bg-input)] pl-9 pr-9 text-[13px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--focus-ring)] focus:outline-none [&::-webkit-search-cancel-button]:hidden`}
           />
           {state.query && (
             <button
@@ -104,11 +104,11 @@ export function MapFilters({
         <div
           role="group"
           aria-label={t('mapFilterActivityLabel')}
-          className="relative grid h-9 grid-cols-3 rounded-xl bg-[color:var(--bg-hover)] p-0.5"
+          className="relative grid h-9 grid-cols-3 rounded-control bg-[color:var(--bg-hover)] p-0.5"
         >
           <span
             aria-hidden="true"
-            className="map-segment-thumb absolute inset-y-0.5 left-0.5 rounded-[10px] bg-[color:var(--bg-card)] shadow-sm"
+            className="map-segment-thumb absolute inset-y-0.5 left-0.5 rounded-small bg-[color:var(--bg-card)] shadow-sm"
             style={{
               width: 'calc((100% - 4px) / 3)',
               transform: `translateX(${modeIndex * 100}%)`,
@@ -122,7 +122,7 @@ export function MapFilters({
                 type="button"
                 aria-pressed={on}
                 onClick={() => onChange({ ...state, activeMode: mode })}
-                className={`relative z-[1] rounded-[10px] px-3 text-[12px] font-semibold capitalize transition-colors duration-short ease-standard ${FOCUS} ${on ? 'text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'}`}
+                className={`relative z-[1] rounded-small px-3 text-[12px] font-semibold capitalize transition-colors duration-short ease-standard ${FOCUS} ${on ? 'text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'}`}
               >
                 {t(MODE_LABEL_KEY[mode])}
               </button>
