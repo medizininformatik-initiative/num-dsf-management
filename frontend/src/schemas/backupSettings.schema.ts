@@ -10,7 +10,7 @@ export const backupSettingsSchema = z.object({
   mode: z.enum(['EVERY_6H', 'EVERY_12H', 'DAILY']),
   dailyTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'backupTimeInvalid'),
   retentionCount: z.coerce
-    .number({ invalid_type_error: 'backupRetentionInvalid' })
+    .number({ error: 'backupRetentionInvalid' })
     .int('backupRetentionInvalid')
     .min(7, 'backupRetentionInvalid')
     .max(365, 'backupRetentionInvalid'),
