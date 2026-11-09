@@ -12,6 +12,8 @@
  * - Keyboard: Tab reaches every node; arrow keys jump to the nearest node in
  *   that direction (or pan when the map itself has focus); + / − zoom and 0
  *   shows all of Germany.
+ * - Performance: pan and zoom gestures move the zoom layer directly
+ *   (useMapViewport) and re-render nothing until the gesture ends.
  * Dependencies: GermanyOutline, GeoMapPin, GeoMapCluster, GeoMapEdges,
  * MapControls, mapGeometry, useMapViewport, usePresenceList, lib/motion,
  * lib/peerEdges, i18n.store, map.css.
@@ -37,7 +39,7 @@ import {
   type Placed,
   type PlacedCluster,
 } from './mapGeometry';
-import { useMapViewport } from './useMapViewport';
+import { useMapViewport, viewTransform } from './useMapViewport';
 import { usePresenceList } from './usePresenceList';
 import type { PeerEdge } from '../../lib/peerEdges';
 import { exitMs } from '../../lib/motion';
@@ -270,13 +272,9 @@ export function GeoMap({
           </radialGradient>
         </defs>
         <g
+          ref={viewport.layerRef}
           className="map-zoom-layer"
-          style={
-            {
-              transform: `translate(${view.tx}px, ${view.ty}px) scale(${k})`,
-              '--map-inv': 1 / ks,
-            } as CSSProperties
-          }
+          style={{ transform: viewTransform(view), '--map-inv': 1 / ks } as CSSProperties}
         >
           <GermanyOutline />
 
