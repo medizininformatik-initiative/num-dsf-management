@@ -35,7 +35,7 @@ export function PendingRestoreCard({ request, meEmail, onAction }: Props) {
     <section
       aria-labelledby={`${hintId}-title`}
       data-testid="pending-restore"
-      className="glass-thin mb-6 rounded-card p-4"
+      className="surface-card mb-6 p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
@@ -96,7 +96,7 @@ export function PendingRestoreCard({ request, meEmail, onAction }: Props) {
           id={hintId}
           className="mt-2 flex items-center gap-1.5 text-xs text-[color:var(--text-secondary)]"
         >
-          <Icon name="info" size={16} className="shrink-0" />
+          <Icon name="info" size={14} className="shrink-0" />
           {mine ? t('bundleRestoreOwnHint') : t('adminPromotionsSameSiteHint')}
         </p>
       )}

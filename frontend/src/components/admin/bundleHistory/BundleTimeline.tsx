@@ -70,7 +70,7 @@ export function BundleTimeline({
             className="animate-list-item-in"
           >
             <div
-              className={`glass-thin flex flex-wrap items-center gap-3 rounded-card p-3 ${
+              className={`surface-card flex flex-wrap items-center gap-3 p-4 ${
                 selected ? 'ring-2 ring-[color:var(--accent)]' : ''
               }`}
             >
@@ -79,14 +79,14 @@ export function BundleTimeline({
                 onClick={() => onSelect(v.id)}
                 aria-pressed={selected}
                 data-testid={`version-${v.version_number}`}
-                className="press-effect flex min-w-0 flex-1 items-start gap-3 rounded-control text-left"
+                className="press-effect flex min-w-0 flex-1 items-start gap-3 rounded-control text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-surface text-neutral-fg">
                   <Icon name={trigger.icon} size={20} />
                 </span>
                 <span className="min-w-0">
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-sm font-bold text-[color:var(--text-primary)]">
+                    <span className="font-mono text-sm font-semibold text-[color:var(--text-primary)]">
                       v{v.version_number}
                     </span>
                     {v.isCurrent && (
@@ -137,7 +137,7 @@ export function BundleTimeline({
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={t('historyDownloadVersion', { n: v.version_number })}
-                  className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+                  className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
                 >
                   <Icon name="download" size={18} />
                 </a>

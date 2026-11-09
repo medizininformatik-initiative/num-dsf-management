@@ -1437,7 +1437,7 @@ export const en = {
   bundleVersionsIntro:
     'Every approval persists a full snapshot of the federation bundle. Pick two snapshots to diff, or download any version verbatim.',
   bundleVersionsEmpty:
-    'No bundle versions yet. Snapshots are created automatically when an approval reaches APPROVED.',
+    'No bundle versions yet. A version is saved automatically each time an approval request is approved.',
   bundleVersionsNavLabel: 'Bundle versions',
   bundleVersionsColVersion: 'Version',
   createdAt: 'Created',

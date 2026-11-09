@@ -1,6 +1,6 @@
 /**
  * BundleDiffView.tsx – plain-language rendering of a bundle diff: a one-line
- * summary, then one glass card per organization with its changes (colour +
+ * summary, then one card per organization with its changes (colour +
  * icon + text, never colour alone), certificate fingerprints in short groups
  * and an expandable raw-FHIR block for experts.
  * Dependencies: diffModel, Icon, StatusPill, fingerprint helper, i18n store.
@@ -146,13 +146,13 @@ function OrgCard({ org, t }: { org: OrgDiff; t: Translate }) {
   const heading = org.id === null ? t('historyUnassigned') : org.name;
   return (
     <section
-      className="glass-thin rounded-card p-4"
+      className="surface-card p-4"
       aria-label={heading}
       data-testid="diff-org"
       data-status={org.status}
     >
       <header className="flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-bold text-[color:var(--text-primary)]">{heading}</h3>
+        <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">{heading}</h3>
         {org.id !== null && (
           <>
             <StatusPill tone={meta.tone} icon={meta.icon}>
@@ -160,7 +160,7 @@ function OrgCard({ org, t }: { org: OrgDiff; t: Translate }) {
             </StatusPill>
             {org.isParent && <StatusPill tone="neutral">{t('historyOrgParent')}</StatusPill>}
             {org.name !== org.id && (
-              <span className="font-mono text-[11px] text-[color:var(--text-muted)]">{org.id}</span>
+              <span className="font-mono text-2xs text-[color:var(--text-muted)]">{org.id}</span>
             )}
           </>
         )}
@@ -207,7 +207,7 @@ export function BundleDiffView({ model, raw }: Props) {
 
   if (model.isEmpty) {
     return (
-      <p className="glass-thin rounded-card p-4 text-sm text-[color:var(--text-secondary)]">
+      <p className="surface-card p-4 text-sm text-[color:var(--text-secondary)]">
         {t('historyNoChanges')}
       </p>
     );
@@ -216,7 +216,7 @@ export function BundleDiffView({ model, raw }: Props) {
   return (
     <div className="space-y-3" data-testid="diff-view">
       <p
-        className="text-base font-semibold text-[color:var(--text-primary)]"
+        className="text-sm font-semibold text-[color:var(--text-primary)]"
         data-testid="diff-summary"
       >
         {sentence}
@@ -229,17 +229,17 @@ export function BundleDiffView({ model, raw }: Props) {
           type="button"
           onClick={() => setShowRaw((v) => !v)}
           aria-expanded={showRaw}
-          className="press-effect inline-flex items-center gap-1 rounded-control px-2 py-1 text-xs font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+          className="press-effect inline-flex items-center gap-1 rounded-control px-2 py-1 text-xs font-semibold text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
         >
           <Icon name={showRaw ? 'expand_less' : 'code'} size={16} />
           {t('historyRawShow')}
         </button>
         {showRaw && (
           <div className="mt-2">
-            <p className="mb-1 text-[11px] text-[color:var(--text-muted)]">{t('historyRawHint')}</p>
+            <p className="mb-1 text-xs text-[color:var(--text-muted)]">{t('historyRawHint')}</p>
             <pre
               tabIndex={0}
-              className="glass-thin max-h-96 overflow-auto rounded-control p-3 text-[11px] leading-relaxed text-[color:var(--text-primary)]"
+              className="max-h-96 overflow-auto rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-3 text-2xs leading-relaxed text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
               data-testid="diff-raw"
             >
               {JSON.stringify(raw, null, 2)}

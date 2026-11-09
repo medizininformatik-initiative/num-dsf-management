@@ -111,7 +111,7 @@ export function AdminBundleVersionsPage() {
   return (
     <div className="flex-1 overflow-y-auto" data-testid="admin-bundle-versions">
       <AdminPageHeader title={t('bundleVersionsTitle')} subtitle={t('historyIntro')} />
-      <div className="p-6 md:p-8">
+      <div className="px-6 py-6 sm:px-8">
         {pendingRestore && (
           <PendingRestoreCard
             request={pendingRestore}
@@ -121,11 +121,13 @@ export function AdminBundleVersionsPage() {
         )}
 
         {list.isLoading ? (
-          <Skeleton lines={4} />
+          <div className="surface-card p-5">
+            <Skeleton lines={4} />
+          </div>
         ) : list.isError ? (
           <div
             role="alert"
-            className="glass-thin flex flex-wrap items-center gap-3 rounded-card p-4"
+            className="flex flex-wrap items-center gap-3 rounded-card border border-danger-border bg-danger-surface p-4"
           >
             <span className="text-sm text-danger-fg">{t('historyLoadFailed')}</span>
             <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
@@ -133,7 +135,7 @@ export function AdminBundleVersionsPage() {
             </Button>
           </div>
         ) : versions.length === 0 ? (
-          <p className="glass-thin rounded-card p-4 text-sm italic text-[color:var(--text-muted)]">
+          <p className="surface-card p-5 text-sm italic text-[color:var(--text-muted)]">
             {t('bundleVersionsEmpty')}
           </p>
         ) : (
@@ -151,7 +153,7 @@ export function AdminBundleVersionsPage() {
 
             <section aria-live="polite" data-testid="bundle-versions-diff" className="min-w-0">
               {to && !from ? (
-                <p className="glass-thin rounded-card p-4 text-sm text-[color:var(--text-secondary)]">
+                <p className="surface-card p-4 text-sm text-[color:var(--text-secondary)]">
                   {t('historyFirstVersion')}
                 </p>
               ) : (
@@ -172,7 +174,7 @@ export function AdminBundleVersionsPage() {
                         <select
                           value={from.id}
                           onChange={(e) => setFromId(e.target.value)}
-                          className="rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1 text-sm text-[color:var(--text-primary)]"
+                          className="rounded-control border border-[color:var(--border-strong)] bg-[color:var(--bg-input)] px-2 py-1 text-sm text-[color:var(--text-primary)] focus-visible:border-[color:var(--focus-ring)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
                         >
                           {versions
                             .filter((v) => v.id !== to.id)
@@ -185,11 +187,13 @@ export function AdminBundleVersionsPage() {
                       </label>
                     </div>
                     {diff.isLoading ? (
-                      <Skeleton lines={4} />
+                      <div className="surface-card p-5">
+                        <Skeleton lines={4} />
+                      </div>
                     ) : diff.isError ? (
                       <div
                         role="alert"
-                        className="glass-thin flex flex-wrap items-center gap-3 rounded-card p-4"
+                        className="flex flex-wrap items-center gap-3 rounded-card border border-danger-border bg-danger-surface p-4"
                       >
                         <span className="text-sm text-danger-fg">{t('historyDiffLoadFailed')}</span>
                         <Button size="sm" variant="secondary" onClick={() => void diff.refetch()}>

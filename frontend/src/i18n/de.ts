@@ -1467,7 +1467,7 @@ export const de: Record<TranslationKey, string> = {
   bundleVersionsIntro:
     'Jede Freigabe speichert einen vollständigen Snapshot des Föderations-Bundles. Wählen Sie zwei Versionen, um zu vergleichen, oder laden Sie eine beliebige Version unverändert herunter.',
   bundleVersionsEmpty:
-    'Noch keine Bundle-Versionen. Snapshots entstehen automatisch beim Übergang einer Freigabe in den Zustand APPROVED.',
+    'Noch keine Bundle-Versionen. Bei jeder genehmigten Freigabe wird automatisch eine Version gespeichert.',
   bundleVersionsNavLabel: 'Bundle-Versionen',
   bundleVersionsColVersion: 'Version',
   createdAt: 'Erstellt',
