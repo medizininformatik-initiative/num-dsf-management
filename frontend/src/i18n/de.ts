@@ -1917,6 +1917,9 @@ export const de: Record<TranslationKey, string> = {
   onbValidateFailed: 'Die Prüfung ist fehlgeschlagen.',
   onbValidateFirst: 'Prüfen Sie zuerst die Zeilen, danach können Sie importieren.',
   onbImportN: '{count} Standorte importieren',
+  onbImportConfirmTitle: 'Import bestätigen',
+  onbImportConfirmMessage:
+    '{count} Standorte werden angelegt oder aktualisiert. Bestätigen Sie mit dem Code aus Ihrer Authenticator-App.',
   onbBack: 'Zurück',
   onbFixAndRetry: 'Korrigieren und erneut versuchen',
   onbOnboardMore: 'Weitere Standorte anlegen',

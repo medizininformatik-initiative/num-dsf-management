@@ -34,14 +34,20 @@ import { verifyTotpCode, isDevTotpBypassActive } from '../services/totp.service'
 import { extractClientCert } from '../lib/clientCert';
 import { resolveCertLogin } from '../services/auth.service';
 import { db } from '../db/connection';
-import { isCertAuthMode } from '../lib/authMode';
 import { writeAuditLog } from '../services/audit.service';
 
 export type StepUpResult =
   | { ok: true }
   | { ok: false; status: 400 | 401 | 403; code: string; message: string };
 
-export async function checkStepUp(req: Request): Promise<StepUpResult> {
+/**
+ * @param totpCode the code to verify for an OTP session; defaults to
+ *   req.body.totpCode (JSON routes). Raw-body routes pass the X-Totp-Code header.
+ */
+export async function checkStepUp(
+  req: Request,
+  totpCode: unknown = req.body?.totpCode,
+): Promise<StepUpResult> {
   if (req.user?.authMethod === 'cert') {
     const cert = extractClientCert(req);
     if (!cert?.fingerprint) {
@@ -64,7 +70,7 @@ export async function checkStepUp(req: Request): Promise<StepUpResult> {
     return { ok: true };
   }
 
-  const code = req.body?.totpCode;
+  const code = totpCode;
   if (!code || typeof code !== 'string' || code.length !== 6) {
     return {
       ok: false,
@@ -107,21 +113,16 @@ export async function checkStepUp(req: Request): Promise<StepUpResult> {
 }
 
 /**
- * Step-up for routes whose body is not JSON (the raw-body onboarding upload),
- * where a typed TOTP code cannot travel. Enforced only in the certificate-only
- * deployment (AUTH_MODE=cert), where the re-presented client certificate is
- * the step-up and needs no body; passes through otherwise.
+ * Step-up for routes whose body is not JSON (the raw-body onboarding upload).
+ * A cert session re-presents its client certificate as before; an OTP session
+ * sends its TOTP code in the X-Totp-Code header, since the body cannot carry it.
  */
-export async function requireCertStepUp(
+export async function requireUploadStepUp(
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  if (!isCertAuthMode()) {
-    next();
-    return;
-  }
-  await requireStepUp(req, res, next);
+  await enforceStepUp(req, res, next, req.get('x-totp-code'));
 }
 
 export async function requireStepUp(
@@ -129,7 +130,16 @@ export async function requireStepUp(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  const result = await checkStepUp(req);
+  await enforceStepUp(req, res, next, req.body?.totpCode);
+}
+
+async function enforceStepUp(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  totpCode: unknown,
+): Promise<void> {
+  const result = await checkStepUp(req, totpCode);
   if (!result.ok) {
     // A missing code is a client mistake, not a verification attempt.
     if (result.code !== 'TOTP_REQUIRED') {

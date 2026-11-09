@@ -3,7 +3,8 @@
  * import (CSV / JSON / XLSX file, or rows typed into the in-tool editor),
  * the same with ?dryRun=true to validate without writing, a parse-only call
  * that turns one file into rows (so many files can be merged before a single
- * check / import), and the CSV / XLSX template downloads.
+ * check / import), and the CSV / XLSX template downloads. A real import of an
+ * OTP session carries its TOTP step-up code in the X-Totp-Code header.
  * Dependencies: axios, auth.store
  */
 import axios from 'axios';
@@ -51,6 +52,8 @@ export interface OnboardingRowInput {
 
 export interface OnboardingImportOptions {
   dryRun?: boolean;
+  /** Step-up code of an OTP session for a real import (sent as X-Totp-Code). */
+  totpCode?: string;
 }
 
 /** One validated row of a parsed file, with its 1-based data-row number in that file. */
@@ -88,7 +91,11 @@ async function send<T>(
   opts: OnboardingImportOptions = {},
 ): Promise<T> {
   const res = await axios.post<{ data: T }>(`${BASE}/admin/onboarding/${path}`, body, {
-    headers: { ...authHeader(), 'Content-Type': contentType },
+    headers: {
+      ...authHeader(),
+      'Content-Type': contentType,
+      ...(opts.totpCode ? { 'X-Totp-Code': opts.totpCode } : {}),
+    },
     params: opts.dryRun ? { dryRun: 'true' } : undefined,
     // axios would JSON-encode a string body for application/json; send raw.
     transformRequest: [(data: unknown) => data],

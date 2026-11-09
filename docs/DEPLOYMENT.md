@@ -407,9 +407,10 @@ JSON example:
 The upload is admin-only and hardened at the boundary:
 
 - The endpoint (`POST /api/v1/admin/onboarding/import`) requires an authenticated IMI admin; anyone else gets `403`. It accepts `text/csv`, `application/json` and an `.xlsx` workbook (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`; the first sheet that is not "Help" is read, header in row 1, formula cells are rejected like a leading `=`).
-- `?dryRun=true` runs the same parsing and validation and reports per row `created` / `updated` / `failed` (including fingerprint conflicts between rows of the same file) without writing anything. Because it changes nothing, it needs no certificate step-up and does not count against the rate limit. Every result row carries its 1-based data-row number (`row`).
+- `?dryRun=true` runs the same parsing and validation and reports per row `created` / `updated` / `failed` (including fingerprint conflicts between rows of the same file) without writing anything. Because it changes nothing, it needs no step-up and does not count against the rate limit. Every result row carries its 1-based data-row number (`row`).
 - `POST /api/v1/admin/onboarding/parse` takes the same bodies and returns the validated rows (with their `row` numbers) and the parse errors without touching the database; it needs no step-up and is not rate-limited because it writes nothing.
 - The templates are admin-only downloads: `GET /api/v1/admin/onboarding/template.xlsx` and `GET /api/v1/admin/onboarding/template.csv`.
+- A real import needs a step-up: a certificate session re-presents its client certificate (unchanged with `AUTH_MODE=cert`), an OTP session sends its TOTP code in the `X-Totp-Code` header (the GUI asks for it before the import); without it the import answers `400 TOTP_REQUIRED`. The step-up rate limit applies as on the other admin writes.
 - It is rate-limited (10 requests per 15 minutes per user).
 - The body is capped at 1 MB (`413`) and 1000 rows (`413`).
 - A file that contains a PEM block (`-----BEGIN`) is rejected outright (`400`), so a private key or certificate body is never accepted here.

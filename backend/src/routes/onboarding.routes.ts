@@ -7,8 +7,9 @@
  * validated rows to importSites for per-row transactional import.
  * `POST /parse` only parses and validates a file (no DB, no write) so many
  * files can be merged client-side. `?dryRun=true` validates and reports what would happen without writing
- * anything; as it changes nothing it skips the certificate step-up and the
- * import rate limit.
+ * anything; as it changes nothing it skips the step-up and the import rate
+ * limit. A real import needs a step-up: the re-presented client certificate
+ * for a cert session, the TOTP code in the X-Totp-Code header for an OTP session.
  * Dependencies: auth.middleware, admin.middleware, rateLimit.middleware,
  *               asyncHandler, onboarding.service, onboardingTemplate.service,
  *               errMessage
@@ -16,8 +17,8 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireImiAdmin } from '../middleware/admin.middleware';
-import { requireCertStepUp } from '../middleware/stepUp.middleware';
-import { onboardingImportRateLimit } from '../middleware/rateLimit.middleware';
+import { requireUploadStepUp } from '../middleware/stepUp.middleware';
+import { onboardingImportRateLimit, stepUpTotpRateLimit } from '../middleware/rateLimit.middleware';
 import { asyncHandler } from '../lib/asyncHandler';
 import { errMessage } from '../lib/errMessage';
 import {
@@ -76,7 +77,10 @@ function unlessDryRun(guard: (req: Request, res: Response, next: NextFunction) =
 const importLimit =
   process.env.NODE_ENV === 'test'
     ? []
-    : [unlessDryRun((req, res, next) => onboardingImportRateLimit(req, res, next))];
+    : [
+        unlessDryRun((req, res, next) => onboardingImportRateLimit(req, res, next)),
+        unlessDryRun((req, res, next) => stepUpTotpRateLimit(req, res, next)),
+      ];
 
 const rawBody = express.raw({
   type: ['text/csv', 'application/json', 'text/plain', XLSX_CONTENT_TYPE],
@@ -128,7 +132,7 @@ onboardingRouter.post(
 onboardingRouter.post(
   '/import',
   ...importLimit,
-  unlessDryRun(requireCertStepUp),
+  unlessDryRun(requireUploadStepUp),
   rawBody,
   asyncHandler(async (req, res) => {
     const parsed = await parseUpload(req, res);

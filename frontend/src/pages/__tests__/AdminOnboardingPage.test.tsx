@@ -48,6 +48,13 @@ const previewFixture: OnboardingImportResult = {
   parseErrors: [{ row: 2, issue: 'Must be a valid FQDN' }],
 };
 
+/** Confirm the import in the step-up dialog with a TOTP code (OTP session). */
+async function confirmImport(user: ReturnType<typeof userEvent.setup>) {
+  const dialog = await screen.findByRole('dialog');
+  await user.type(within(dialog).getByLabelText('TOTP Code'), '123456');
+  await user.click(within(dialog).getByRole('button', { name: /Import/ }));
+}
+
 async function openEditor(user: ReturnType<typeof userEvent.setup>) {
   renderWithProviders(<AdminOnboardingPage />);
   await user.click(screen.getByTestId('onboarding-method-editor'));
@@ -131,8 +138,11 @@ describe('AdminOnboardingPage', () => {
     await waitFor(() => expect(screen.getByTestId('onboarding-import-btn')).toBeEnabled());
 
     await user.click(screen.getByTestId('onboarding-import-btn'));
+    expect(importMock).not.toHaveBeenCalled();
+    await confirmImport(user);
     await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1));
-    expect(importMock.mock.calls[0][0]).toHaveLength(2);
+    expect(importMock.mock.calls[0][0].source).toHaveLength(2);
+    expect(importMock.mock.calls[0][0].totpCode).toBe('123456');
 
     // Step 3: summary.
     const result = await screen.findByTestId('onboarding-result');
@@ -210,6 +220,7 @@ describe('AdminOnboardingPage', () => {
       expect(dryRunMock.mock.calls[0][0]).toHaveLength(2);
       await waitFor(() => expect(screen.getByTestId('onboarding-import-btn')).toBeEnabled());
       await user.click(screen.getByTestId('onboarding-import-btn'));
+      await confirmImport(user);
 
       await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1));
       const items = await screen.findAllByTestId('onboarding-file-summary-item');

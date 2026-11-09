@@ -58,7 +58,7 @@ describe('useOnboardingImport', () => {
     const { wrapper, invalidateSpy } = makeHarness();
 
     const { result } = renderHook(() => useOnboardingImport(), { wrapper });
-    const data = await result.current.mutateAsync(file);
+    const data = await result.current.mutateAsync({ source: file });
 
     expect(importOnboarding).toHaveBeenCalledWith(file);
     expect(data).toEqual(resultFixture);
@@ -69,6 +69,28 @@ describe('useOnboardingImport', () => {
     expect(keys).toContainEqual(['instances']);
   });
 
+  it('passes the TOTP step-up code to the import call', async () => {
+    importOnboarding.mockResolvedValue({
+      summary: { created: 0, updated: 0, failed: 0 },
+      rows: [],
+      parseErrors: [],
+    });
+    importOnboardingRows.mockResolvedValue({
+      summary: { created: 0, updated: 0, failed: 0 },
+      rows: [],
+      parseErrors: [],
+    });
+    const { wrapper } = makeHarness();
+    const { result } = renderHook(() => useOnboardingImport(), { wrapper });
+    const file = new File(['x'], 'x.csv', { type: 'text/csv' });
+
+    await result.current.mutateAsync({ source: file, totpCode: '123456' });
+    await result.current.mutateAsync({ source: [], totpCode: '654321' });
+
+    expect(importOnboarding).toHaveBeenCalledWith(file, { totpCode: '123456' });
+    expect(importOnboardingRows).toHaveBeenCalledWith([], { totpCode: '654321' });
+  });
+
   it('does not invalidate anything when the import call rejects', async () => {
     importOnboarding.mockRejectedValue(new Error('bad file'));
     const { wrapper, invalidateSpy } = makeHarness();
@@ -76,7 +98,7 @@ describe('useOnboardingImport', () => {
     const { result } = renderHook(() => useOnboardingImport(), { wrapper });
     const file = new File(['x'], 'x.csv', { type: 'text/csv' });
 
-    await expect(result.current.mutateAsync(file)).rejects.toThrow('bad file');
+    await expect(result.current.mutateAsync({ source: file })).rejects.toThrow('bad file');
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(invalidateSpy).not.toHaveBeenCalled();
   });
@@ -120,7 +142,7 @@ describe('useOnboardingDryRun', () => {
     });
     const { wrapper } = makeHarness();
     const { result } = renderHook(() => useOnboardingImport(), { wrapper });
-    await result.current.mutateAsync([]);
+    await result.current.mutateAsync({ source: [] });
     expect(importOnboardingRows).toHaveBeenCalledWith([], undefined);
   });
 });

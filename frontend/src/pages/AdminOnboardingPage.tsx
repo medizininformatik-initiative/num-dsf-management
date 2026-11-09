@@ -8,7 +8,8 @@
  * a server dry run reports per row what an import would do without writing
  * anything; (3) the import, run once over all rows, and its summary per file.
  * Dependencies: useOnboardingImport / useOnboardingDryRun, useMe, useI18n,
- * the components in components/admin/onboarding, AdminPageHeader, Button, Icon, sonner
+ * the components in components/admin/onboarding, AdminPageHeader, Button, Icon,
+ * StepUpConfirmDialog (TOTP step-up of an OTP session before the import), sonner
  */
 import { useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
@@ -21,6 +22,8 @@ import type { OnboardingImportResult, OnboardingRowInput } from '../api/onboardi
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { Button } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
+import { StepUpConfirmDialog } from '../components/admin/StepUpConfirmDialog';
+import { needsTotpStepUp } from '../lib/authMode';
 import { OnboardingStepper } from '../components/admin/onboarding/OnboardingStepper';
 import {
   OnboardingMethodStep,
@@ -58,6 +61,8 @@ export function AdminOnboardingPage() {
   const [rows, setRows] = useState<EditorRow[]>(initialRows);
   const [preview, setPreview] = useState<OnboardingImportResult | null>(null);
   const [showAllErrors, setShowAllErrors] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [totpCode, setTotpCode] = useState('');
   const [result, setResult] = useState<OnboardingImportResult | null>(null);
   const [fileSummary, setFileSummary] = useState<FileSummaryItem[]>([]);
 
@@ -152,15 +157,27 @@ export function AdminOnboardingPage() {
     setStep(2);
   }
 
-  async function handleImport() {
+  function handleImport() {
     if (source.length === 0) return;
+    // An OTP session confirms the import with its TOTP code first.
+    if (needsTotpStepUp()) {
+      setTotpCode('');
+      setConfirming(true);
+      return;
+    }
+    void runImport(undefined);
+  }
+
+  async function runImport(code: string | undefined) {
     try {
-      const data = await importer.mutateAsync(source);
+      const data = await importer.mutateAsync({ source, totpCode: code });
+      setConfirming(false);
       setFileSummary(summarizeByFile(data, submission.sources));
       setResult(data);
       setStep(3);
       toast.success(t('adminOnboardingSuccessToast'));
     } catch (err: unknown) {
+      setTotpCode('');
       fail(err, 'adminOnboardingImportFailed');
     }
   }
@@ -295,6 +312,17 @@ export function AdminOnboardingPage() {
           )}
         </div>
       </div>
+      <StepUpConfirmDialog
+        open={confirming}
+        title={t('onbImportConfirmTitle')}
+        message={t('onbImportConfirmMessage', { count: okCount })}
+        confirmLabel={t('onbImportN', { count: okCount })}
+        pending={importer.isPending}
+        totpCode={totpCode}
+        onTotpCodeChange={setTotpCode}
+        onConfirm={(code) => void runImport(code)}
+        onCancel={() => setConfirming(false)}
+      />
     </div>
   );
 }

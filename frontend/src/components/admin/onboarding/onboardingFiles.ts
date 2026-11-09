@@ -47,6 +47,8 @@ const ERROR_CODE_KEY: Record<string, TranslationKey> = {
   UNSUPPORTED_FORMAT: 'adminOnboardingErrorUnsupportedFormat',
   TOO_MANY_ROWS: 'adminOnboardingErrorTooManyRows',
   EMPTY_BODY: 'adminOnboardingErrorEmptyBody',
+  TOTP_INVALID: 'totpInvalidCode',
+  TOTP_REQUIRED: 'totpDigitsRequired',
 };
 
 /** Translation key for a server rejection of a file, from its error code. */

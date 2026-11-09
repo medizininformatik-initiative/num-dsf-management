@@ -1,7 +1,8 @@
 /**
  * onboarding.routes.test.ts – Integration tests for
  * POST /api/v1/admin/onboarding/import.
- * Covers: the auth/admin guard (401/403), a successful CSV import (200,
+ * Covers: the auth/admin guard (401/403), the step-up (400 TOTP_REQUIRED
+ * without X-Totp-Code outside cert mode), a successful CSV import (200,
  * created summary), the PEM-content rejection (400 PEM_NOT_ALLOWED), and
  * the oversized-body rejection (413 FILE_TOO_LARGE).
  * Dependencies: supertest, app, db, seed helpers, auth helper
@@ -15,6 +16,17 @@ import { v4 as uuidv4 } from 'uuid';
 import ExcelJS from 'exceljs';
 import { XLSX_CONTENT_TYPE } from '../../services/onboarding.service';
 
+// A real import needs the step-up code in X-Totp-Code; the dev TOTP bypass
+// (enabled for this file below) accepts any 6-digit code.
+const TOTP = '123456';
+const savedBypass = [process.env.DEV_AUTO_LOGIN, process.env.DEV_TOTP_BYPASS];
+beforeAll(() => {
+  process.env.DEV_AUTO_LOGIN = 'true';
+  process.env.DEV_TOTP_BYPASS = 'true';
+});
+afterAll(() => {
+  [process.env.DEV_AUTO_LOGIN, process.env.DEV_TOTP_BYPASS] = savedBypass;
+});
 const FP_A = 'a'.repeat(128);
 const FP_B = 'b'.repeat(128);
 const HEADER = 'organizationIdentifier,organizationName,contactEmail,clientCertFingerprint';
@@ -73,10 +85,29 @@ describe('POST /api/v1/admin/onboarding/import', () => {
     const res = await request(app)
       .post('/api/v1/admin/onboarding/import')
       .set('Authorization', `Bearer ${token}`)
+      .set('X-Totp-Code', TOTP)
       .set('Content-Type', 'text/csv')
       .send(csvOf([`ukm.de,Uniklinikum Muenster,admin@ukm.de,${FP_A}`]));
 
     expect(res.status).toBe(403);
+  });
+
+  it('refuses a real import without a TOTP code outside cert mode and writes nothing', async () => {
+    const token = getTestToken(adminEmail, adminUserId);
+    const id = `import-nostep-${uuidv4().slice(0, 8)}.example.de`;
+    const email = `import-nostep-${uuidv4().slice(0, 8)}@example.de`;
+    identifiers.push(id);
+    emails.push(email);
+
+    const res = await request(app)
+      .post('/api/v1/admin/onboarding/import')
+      .set('Authorization', `Bearer ${token}`)
+      .set('Content-Type', 'text/csv')
+      .send(csvOf([`${id},No Step-up Org,${email},${FP_A}`]));
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('TOTP_REQUIRED');
+    expect(await db('organizations').where({ identifier: id }).first()).toBeUndefined();
   });
 
   it('admin + valid CSV (2 good rows) → 200 with created summary', async () => {
@@ -96,6 +127,7 @@ describe('POST /api/v1/admin/onboarding/import', () => {
     const res = await request(app)
       .post('/api/v1/admin/onboarding/import')
       .set('Authorization', `Bearer ${token}`)
+      .set('X-Totp-Code', TOTP)
       .set('Content-Type', 'text/csv')
       .send(csv);
 
@@ -132,6 +164,7 @@ describe('POST /api/v1/admin/onboarding/import', () => {
     const res = await request(app)
       .post('/api/v1/admin/onboarding/import')
       .set('Authorization', `Bearer ${token}`)
+      .set('X-Totp-Code', TOTP)
       .set('Content-Type', 'application/json')
       .send(rows);
 
@@ -155,6 +188,7 @@ describe('POST /api/v1/admin/onboarding/import', () => {
     const res = await request(app)
       .post('/api/v1/admin/onboarding/import')
       .set('Authorization', `Bearer ${token}`)
+      .set('X-Totp-Code', TOTP)
       .set('Content-Type', 'text/plain')
       .send(pemLike);
 
@@ -172,6 +206,7 @@ describe('POST /api/v1/admin/onboarding/import', () => {
     const res = await request(app)
       .post('/api/v1/admin/onboarding/import')
       .set('Authorization', `Bearer ${token}`)
+      .set('X-Totp-Code', TOTP)
       .set('Content-Type', 'text/csv')
       .send(big);
 
@@ -240,6 +275,7 @@ describe('POST /api/v1/admin/onboarding/import', () => {
       const res = await request(app)
         .post('/api/v1/admin/onboarding/import')
         .set('Authorization', `Bearer ${token}`)
+        .set('X-Totp-Code', TOTP)
         .set('Content-Type', XLSX_CONTENT_TYPE)
         .send(await xlsxOf([[id, 'Xlsx Org', email, FP_A]]));
 
@@ -262,6 +298,7 @@ describe('POST /api/v1/admin/onboarding/import', () => {
       await request(app)
         .post('/api/v1/admin/onboarding/import')
         .set('Authorization', `Bearer ${token}`)
+        .set('X-Totp-Code', TOTP)
         .set('Content-Type', 'text/csv')
         .send(csvOf([`${idTaken},Taken Org,${email},${FP_B}`]));
 

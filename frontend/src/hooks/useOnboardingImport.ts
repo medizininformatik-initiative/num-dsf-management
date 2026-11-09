@@ -3,7 +3,8 @@
  * onboarding. useOnboardingImport writes: a successful import can create or
  * update organizations across many instances at once, so on success it
  * invalidates every cached organization and instance query by prefix rather
- * than a single instanceId. useOnboardingDryRun validates the same source
+ * than a single instanceId; in OTP sessions it sends the TOTP step-up code
+ * along. useOnboardingDryRun validates the same source
  * (a file, or rows from the in-tool editor) on the server without writing,
  * so it touches no cache. useOnboardingParse turns one uploaded file into
  * validated rows (no database access) for the multi-file merge.
@@ -26,10 +27,23 @@ function submit(source: OnboardingSource, dryRun: boolean): Promise<OnboardingIm
   return dryRun ? importOnboarding(source, { dryRun }) : importOnboarding(source);
 }
 
+/** A real import: the source plus, in OTP sessions, the TOTP step-up code. */
+export interface OnboardingImportVars {
+  source: OnboardingSource;
+  totpCode?: string;
+}
+
+function submitImport({ source, totpCode }: OnboardingImportVars): Promise<OnboardingImportResult> {
+  if (!totpCode) return submit(source, false);
+  return Array.isArray(source)
+    ? importOnboardingRows(source, { totpCode })
+    : importOnboarding(source, { totpCode });
+}
+
 export function useOnboardingImport() {
   const qc = useQueryClient();
-  return useMutation<OnboardingImportResult, Error, OnboardingSource>({
-    mutationFn: (source) => submit(source, false),
+  return useMutation<OnboardingImportResult, Error, OnboardingImportVars>({
+    mutationFn: submitImport,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['organization'] });
       qc.invalidateQueries({ queryKey: ['instances'] });

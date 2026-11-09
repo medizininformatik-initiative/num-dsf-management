@@ -1877,6 +1877,9 @@ export const en = {
   onbValidateFailed: 'The check failed.',
   onbValidateFirst: 'Check the rows first, then you can import.',
   onbImportN: 'Import {count} sites',
+  onbImportConfirmTitle: 'Confirm import',
+  onbImportConfirmMessage:
+    '{count} sites will be created or updated. Confirm with the code from your authenticator app.',
   onbBack: 'Back',
   onbFixAndRetry: 'Fix and retry',
   onbOnboardMore: 'Onboard more sites',
