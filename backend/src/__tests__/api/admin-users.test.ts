@@ -167,6 +167,45 @@ describe('POST /api/v1/admin/users/:email/lock', () => {
     expect(row.locked_reason).toBe('Policy violation');
   });
 
+  it('refuses (409 MIN_ADMINS_REACHED) to lock an admin when fewer than 2 unlocked admins from 2 sites remain', async () => {
+    const token = getTestToken(ADMIN_A_EMAIL, ADMIN_A_ID);
+
+    // Locking admin-c would leave only admin-a + admin-b (one site) unlocked.
+    const res = await request(app)
+      .post(`/api/v1/admin/users/${encodeURIComponent(ADMIN_C_EMAIL)}/lock`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ reason: 'Takeover', totpCode: '000000' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('MIN_ADMINS_REACHED');
+    const row = await db('email_whitelist').where({ email: ADMIN_C_EMAIL }).first();
+    expect(row.locked_at).toBeNull();
+
+    // Locking admin-b leaves admin-a + admin-c from two sites: allowed.
+    const ok = await request(app)
+      .post(`/api/v1/admin/users/${encodeURIComponent(ADMIN_B_EMAIL)}/lock`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ reason: 'Leave', totpCode: '000000' });
+    expect(ok.status).toBe(200);
+  });
+
+  it('does not count a locked admin toward the quorum of demote', async () => {
+    const token = getTestToken(ADMIN_A_EMAIL, ADMIN_A_ID);
+    const adminD = 'admin-d@charite-test.example.de';
+    await seedAdminUser('10000000-0000-0000-0000-000000000004', adminD);
+    await db('email_whitelist').where({ email: adminD }).update({ locked_at: new Date() });
+
+    // Grants: a, b (imi-test), c, d (charite-test), d locked. Demoting c leaves
+    // a, b and the locked d: only one site of unlocked admins.
+    const res = await request(app)
+      .post(`/api/v1/admin/users/${encodeURIComponent(ADMIN_C_EMAIL)}/demote`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ totpCode: '000000' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('MIN_ADMINS_REACHED');
+  });
+
   it('self-lock attempt returns 400 CANNOT_LOCK_SELF', async () => {
     const token = getTestToken(ADMIN_A_EMAIL, ADMIN_A_ID);
 

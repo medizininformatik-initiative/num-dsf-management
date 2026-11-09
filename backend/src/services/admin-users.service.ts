@@ -2,11 +2,13 @@
  * admin-users.service.ts – Whitelist + admin_grants CRUD.
  * - Whitelist: list, add, lock, unlock, remove (audit-logged).
  * - Admin-grants: list, demote (signature-verified, audit-logged).
- * - Demote enforces "≥2 admins from ≥2 distinct sites" invariant.
+ * - Demote, remove and locking an admin enforce the "≥2 unlocked admins from
+ *   ≥2 distinct sites" invariant.
  * - Removal of a whitelist row also revokes any matching admin grant and
  *   deletes the e-mail's admin certificates (admin_cert_fingerprints).
  * Dependencies: db/connection, audit.service, lib/approvalState, lib/adminGrants
  */
+import type { Knex } from 'knex';
 import { db } from '../db/connection';
 import { v4 as uuidv4 } from 'uuid';
 import { writeAuditLog } from './audit.service';
@@ -38,28 +40,40 @@ function lower(email: string): string {
 }
 
 /**
- * Deletes an admin grant only if ≥2 verified admins from ≥2 distinct sites
- * remain afterwards. Reads all grants FOR UPDATE inside one transaction so
- * concurrent demotions serialize instead of both passing the simulated check
- * and dropping the system below the quorum floor.
+ * Throws MIN_ADMINS_REACHED unless ≥2 verified, unlocked admins from ≥2
+ * distinct sites remain without `email`. Reads all grants FOR UPDATE, so
+ * concurrent demotions, removals and locks serialize instead of both passing
+ * the simulated check and dropping the system below the quorum floor.
  */
+async function assertQuorumWithout(
+  trx: Knex.Transaction,
+  email: string,
+  action: 'demote' | 'remove' | 'lock',
+): Promise<void> {
+  const allGrants = await trx('admin_grants').forUpdate();
+  const locked = new Set(
+    (await trx('email_whitelist').whereNotNull('locked_at').pluck('email')).map(lower),
+  );
+  const remainingValid = allGrants
+    .filter(verifyGrant)
+    .map((g: { email: string }) => g.email)
+    .filter((e: string) => e !== email && !locked.has(lower(e)));
+  const remainingSites = new Set(remainingValid.map(siteOfEmail).filter(Boolean));
+  if (remainingValid.length < 2 || remainingSites.size < 2) {
+    throw new AdminUsersError(
+      'MIN_ADMINS_REACHED',
+      `Cannot ${action}: at least 2 unlocked admins from 2 different sites must remain`,
+    );
+  }
+}
+
+/** Deletes an admin grant only if the quorum floor holds afterwards. */
 async function deleteGrantWithQuorumGuard(
   email: string,
   action: 'demote' | 'remove',
 ): Promise<void> {
   await db.transaction(async (trx) => {
-    const allGrants = await trx('admin_grants').forUpdate();
-    const remainingValid = allGrants
-      .filter(verifyGrant)
-      .map((g: { email: string }) => g.email)
-      .filter((e: string) => e !== email);
-    const remainingSites = new Set(remainingValid.map(siteOfEmail).filter(Boolean));
-    if (remainingValid.length < 2 || remainingSites.size < 2) {
-      throw new AdminUsersError(
-        'MIN_ADMINS_REACHED',
-        `Cannot ${action}: at least 2 admins from 2 different sites must remain`,
-      );
-    }
+    await assertQuorumWithout(trx, email, action);
     await trx('admin_grants').where({ email }).del();
   });
 }
@@ -114,13 +128,17 @@ export async function lockWhitelistEntry(
   }
   const existing = await db('email_whitelist').where({ email }).first();
   if (!existing) throw new AdminUsersError('NOT_FOUND', 'Email not in whitelist');
-  await db('email_whitelist')
-    .where({ email })
-    .update({
-      locked_at: new Date(),
-      locked_by: lockedBy,
-      locked_reason: reason || null,
-    });
+  await db.transaction(async (trx) => {
+    // Locking an admin takes it out of the quorum like a demotion does.
+    if (await isVerifiedAdminEmail(email)) await assertQuorumWithout(trx, email, 'lock');
+    await trx('email_whitelist')
+      .where({ email })
+      .update({
+        locked_at: new Date(),
+        locked_by: lockedBy,
+        locked_reason: reason || null,
+      });
+  });
   await revokeAllSessions(email).catch(() => {});
   await writeAuditLog({
     userEmail: lockedBy,
