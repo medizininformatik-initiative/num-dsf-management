@@ -21,7 +21,7 @@ export const BACKUP_FORMAT_VERSION = 1;
  * Number of the latest migration in db/migrations. Bump together with every new
  * migration; a test compares it to the migrations directory.
  */
-export const SCHEMA_VERSION = 33;
+export const SCHEMA_VERSION = 34;
 
 export interface BackupColumn {
   name: string;
