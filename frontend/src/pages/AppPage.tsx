@@ -75,7 +75,7 @@ function columnMotion(expanded: boolean): string {
 }
 
 /** The status panel's collapse or close button, placed in RightPanel's header row. */
-const PANEL_BUTTON = 'absolute right-2 top-2.5 z-10 h-9 w-9 shrink-0 p-0';
+const PANEL_BUTTON = 'absolute right-2 top-3 z-10 h-8 w-8 shrink-0 p-0';
 
 type DrawerState = { kind: 'nav'; group?: SidebarGroup } | { kind: 'panel' } | null;
 
@@ -99,7 +99,7 @@ function InstancePlaceholder({ loading }: { loading: boolean }) {
   }
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-      <Icon name="dns" size={32} className="text-[color:var(--text-muted)]" />
+      <Icon name="dns" size={40} className="text-[color:var(--text-muted)]" />
       <p className="text-sm font-semibold text-[color:var(--text-primary)]">
         {t('noInstanceSelected')}
       </p>
@@ -221,12 +221,12 @@ export function AppPage() {
             aria-controls={PANEL_COLUMN_ID}
             className={PANEL_BUTTON}
           >
-            <Icon name="right_panel_close" size={20} />
+            <Icon name="right_panel_close" size={18} />
           </Button>
         </div>
       )}
       {!panelExpanded && (
-        <div className="glass-chrome absolute inset-y-0 right-0 flex w-12 animate-fade-in flex-col items-center border-b-0 border-l pt-2.5">
+        <div className="glass-chrome absolute inset-y-0 right-0 flex w-12 animate-fade-in flex-col items-center border-b-0 border-l pt-3">
           <Button
             variant="ghost"
             size="sm"
@@ -235,9 +235,9 @@ export function AppPage() {
             title={t('shellShowStatusPanel')}
             aria-expanded="false"
             aria-controls={isWide ? PANEL_COLUMN_ID : PANEL_DRAWER_ID}
-            className="h-9 w-9 shrink-0 p-0"
+            className="h-8 w-8 shrink-0 p-0"
           >
-            <Icon name="right_panel_open" size={20} />
+            <Icon name="right_panel_open" size={18} />
           </Button>
         </div>
       )}
@@ -320,7 +320,7 @@ export function AppPage() {
             title={t('shellCloseStatusPanel')}
             className={PANEL_BUTTON}
           >
-            <Icon name="close" size={20} />
+            <Icon name="close" size={18} />
           </Button>
         </Drawer>
       )}

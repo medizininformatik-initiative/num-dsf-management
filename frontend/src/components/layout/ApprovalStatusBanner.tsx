@@ -170,7 +170,7 @@ export function ApprovalStatusBanner({ approval, onResubmit, className = '' }: P
     <div
       key={state}
       data-approval-state={state}
-      className={`animate-fade-in rounded-control p-3.5 ${look.surface} ${className}`}
+      className={`animate-fade-in rounded-control p-3 ${look.surface} ${className}`}
     >
       <StatusPill tone={look.tone} icon={look.icon}>
         {t(look.label)}
@@ -196,7 +196,7 @@ export function ApprovalStatusBanner({ approval, onResubmit, className = '' }: P
       )}
       {state === 'REJECTED' && onResubmit && (
         <Button size="sm" className="mt-3 w-full" onClick={onResubmit}>
-          <Icon name="edit_square" size={16} />
+          <Icon name="edit_square" size={14} />
           {t('approvalBannerResubmit')}
         </Button>
       )}

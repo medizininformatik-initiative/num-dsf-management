@@ -64,7 +64,7 @@ function Section({
           {title}
           <Icon
             name="chevron_right"
-            size={18}
+            size={14}
             className={`shrink-0 transition-transform duration-medium ease-spring ${open ? 'rotate-90' : ''}`}
           />
         </button>
@@ -120,7 +120,7 @@ export function RightPanel({
       <div className="flex h-14 shrink-0 items-center pl-5 pr-14">
         <h2
           id={headingId}
-          className="truncate text-[15px] font-semibold text-[color:var(--text-primary)]"
+          className="truncate text-base font-semibold text-[color:var(--text-primary)]"
         >
           {t('approvalStatus')}
         </h2>
@@ -128,7 +128,7 @@ export function RightPanel({
 
       <div
         ref={edgesRef}
-        className="scroll-edges flex min-h-0 flex-1 flex-col gap-7 overflow-y-auto overscroll-contain px-5 pb-6 pt-1"
+        className="scroll-edges flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain px-5 pb-6 pt-1"
       >
         <section className="animate-list-item-in" style={stagger(0)}>
           <ApprovalStatusBanner
@@ -171,7 +171,7 @@ export function RightPanel({
                       <time
                         dateTime={when}
                         title={formatDateTime(when, lang)}
-                        className="text-[11px] text-[color:var(--text-muted)]"
+                        className="text-2xs text-[color:var(--text-muted)]"
                       >
                         {relTime(when, t)}
                       </time>

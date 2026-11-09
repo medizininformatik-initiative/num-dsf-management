@@ -4,7 +4,7 @@
  * classification (certValidity: expired, critical < 30 days, warning < 90
  * days, valid) and its date the app language (formatDate). The right panel
  * renders its own disclosure header and passes showTitle={false}.
- * Depends on: useCertificates, lib/certStatus, lib/dateUtils, StatusPill, Icon, i18n store
+ * Depends on: useCertificates, lib/certStatus, lib/dateUtils, StatusPill, i18n store
  */
 import type { CSSProperties } from 'react';
 import { useCertificates } from '../../hooks/useCertificates';
@@ -13,7 +13,6 @@ import { certValidity, CERT_STATE_TONE, type CertValidity } from '../../lib/cert
 import { formatDate } from '../../lib/dateUtils';
 import { useI18n } from '../../stores/i18n.store';
 import { StatusPill } from '../ui/StatusPill';
-import { Icon } from '../ui/Icon';
 
 interface Props {
   instanceId: string | null;
@@ -48,8 +47,7 @@ export function ExpiryTimeline({ instanceId, showTitle = true }: Props) {
   return (
     <div>
       {showTitle && (
-        <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold text-[color:var(--text-muted)]">
-          <Icon name="event" size={16} />
+        <h3 className="mb-2.5 text-xs font-semibold text-[color:var(--text-muted)]">
           {t('expiryTimelineTitle')}
         </h3>
       )}
@@ -84,7 +82,7 @@ export function ExpiryTimeline({ instanceId, showTitle = true }: Props) {
                   <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                     <time
                       dateTime={cert.valid_until}
-                      className="text-[11px] text-[color:var(--text-muted)]"
+                      className="text-2xs text-[color:var(--text-muted)]"
                     >
                       {formatDate(cert.valid_until, lang)}
                     </time>

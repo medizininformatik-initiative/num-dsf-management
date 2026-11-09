@@ -57,7 +57,7 @@ export function ReadinessChecklist({
               >
                 <Icon
                   name="check_circle"
-                  size={16}
+                  size={14}
                   filled
                   label={t('readinessItemDone')}
                   className="text-success-fg"
@@ -75,7 +75,7 @@ export function ReadinessChecklist({
               >
                 <Icon
                   name="error"
-                  size={16}
+                  size={14}
                   label={t('readinessItemMissing')}
                   className="text-warning-fg"
                 />
@@ -86,7 +86,7 @@ export function ReadinessChecklist({
           );
         })}
       </ul>
-      <p className={`text-xs font-bold ${ready ? 'text-success-fg' : 'text-warning-fg'}`}>
+      <p className={`text-xs font-semibold ${ready ? 'text-success-fg' : 'text-warning-fg'}`}>
         {ready ? t('readinessReady') : t('readinessOpen', { count: openCount })}
       </p>
     </div>
