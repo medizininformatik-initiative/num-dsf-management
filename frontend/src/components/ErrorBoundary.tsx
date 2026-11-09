@@ -1,9 +1,12 @@
 /**
  * ErrorBoundary.tsx — React class boundary that catches render errors in its subtree.
- * Logs to console and shows a reload fallback (with error message in dev builds).
+ * Logs to console and shows a reload fallback (with error message in dev builds) on
+ * the same solid card as the not-found page, in theme tokens so it follows dark mode.
+ * Dependencies: i18n store, Icon, the .surface-card and .btn classes (src/index.css).
  */
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { useI18n } from '../stores/i18n.store';
+import { Icon } from './ui/Icon';
 
 interface Props {
   children: ReactNode;
@@ -31,22 +34,23 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       const t = useI18n.getState().t;
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-8">
-          <div className="bg-white rounded-card p-8 max-w-md w-full text-center entity-card-shadow">
-            <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-red-500 text-[28px]">error</span>
-            </div>
-            <h1 className="text-lg font-bold text-slate-900 mb-2">{t('errorBoundaryTitle')}</h1>
-            <p className="text-sm text-slate-500 mb-2">{t('errorBoundaryBody')}</p>
+        <div className="flex min-h-screen items-center justify-center bg-[color:var(--bg-page)] p-6">
+          <div className="surface-card flex w-full max-w-md flex-col items-center px-8 py-10 text-center">
+            <Icon name="error" size={40} className="mb-4 text-danger-fg" />
+            <h1 className="mb-2 text-2xl font-semibold text-[color:var(--text-primary)]">
+              {t('errorBoundaryTitle')}
+            </h1>
+            <p className="mb-6 text-sm text-[color:var(--text-secondary)]">
+              {t('errorBoundaryBody')}
+            </p>
             {import.meta.env.DEV && this.state.error && (
-              <pre className="text-left text-[10px] font-mono bg-slate-50 rounded-control p-3 text-red-700 overflow-auto max-h-32 mb-4">
+              <pre className="mb-6 max-h-32 w-full overflow-auto rounded-control bg-[color:var(--bg-hover)] p-3 text-left font-mono text-2xs text-danger-fg">
                 {this.state.error.message}
               </pre>
             )}
             <button
               onClick={() => window.location.reload()}
-              className="px-5 py-2 text-sm font-bold text-white rounded-control transition-all active:scale-[0.98]"
-              style={{ background: 'var(--accent-solid)' }}
+              className="btn btn-primary btn-md press-effect"
             >
               {t('errorBoundaryReload')}
             </button>

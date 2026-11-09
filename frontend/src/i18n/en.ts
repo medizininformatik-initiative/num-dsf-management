@@ -85,7 +85,7 @@ export const en = {
   auditLog: 'Audit log',
   networkMap: 'Federation map',
   gettingStarted: 'Getting Started',
-  pageNotFound: 'Page Not Found',
+  pageNotFound: 'Page not found',
   backToDashboard: 'Back to Dashboard',
   approvalStatus: 'Approval status',
   overview: 'Overview',
@@ -131,7 +131,7 @@ export const en = {
   // ErrorBoundary
   errorBoundaryTitle: 'Something went wrong',
   errorBoundaryBody: 'An unexpected error occurred. Please reload the page.',
-  errorBoundaryReload: 'Reload Page',
+  errorBoundaryReload: 'Reload page',
 
   // AdminPage
   adminPageTitle: 'Approval review',
@@ -375,7 +375,7 @@ export const en = {
 
   // NotFoundPage
   notFoundMessage: "The page you're looking for doesn't exist.",
-  notFoundBackBtn: 'Back to App',
+  notFoundBackBtn: 'Back to the portal',
 
   // Simple / detailed view of the entity cards
   viewSwitchLabel: 'View',

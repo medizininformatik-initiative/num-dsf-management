@@ -384,7 +384,7 @@ export const de: Record<TranslationKey, string> = {
 
   // NotFoundPage
   notFoundMessage: 'Die gesuchte Seite existiert nicht.',
-  notFoundBackBtn: 'Zurück zur App',
+  notFoundBackBtn: 'Zurück zum Portal',
 
   // Einfache / detaillierte Ansicht der Entitätskarten
   viewSwitchLabel: 'Ansicht',
