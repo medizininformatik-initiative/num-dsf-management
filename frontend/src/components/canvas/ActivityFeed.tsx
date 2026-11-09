@@ -100,7 +100,7 @@ export function ActivityFeed() {
         aria-controls={panelId}
         className="min-h-0 gap-1.5 px-2 py-0.5"
       >
-        <Icon name="history" size={16} />
+        <Icon name="history" size={14} />
         {t('recentActivity')}
       </Button>
 
@@ -113,11 +113,11 @@ export function ActivityFeed() {
         aria-labelledby={titleId}
         className="bottom-full right-0 mb-2 w-[300px] overflow-hidden"
       >
-        <div className="flex items-center justify-between gap-2 border-b border-[color:var(--border)] px-3.5 py-2.5">
-          <h2 id={titleId} className="text-xs font-bold text-[color:var(--text-primary)]">
+        <div className="flex items-center justify-between gap-2 border-b border-[color:var(--border)] px-4 py-2.5">
+          <h2 id={titleId} className="text-sm font-semibold text-[color:var(--text-primary)]">
             {t('recentActivity')}
           </h2>
-          <span className="text-[11px] text-[color:var(--text-muted)]">
+          <span className="text-2xs text-[color:var(--text-muted)]">
             {t('activityEntryCount', { n: entries.length })}
           </span>
         </div>
@@ -134,12 +134,12 @@ export function ActivityFeed() {
                 return (
                   <li
                     key={log.id}
-                    className="flex animate-list-item-in gap-2 border-b border-[color:var(--border)] px-3.5 py-2 last:border-b-0"
+                    className="flex animate-list-item-in gap-2 border-b border-[color:var(--border)] px-4 py-2 last:border-b-0"
                     style={{ '--stagger-index': i } as CSSProperties}
                   >
                     <Icon
                       name={operation.icon}
-                      size={16}
+                      size={14}
                       className={`mt-px shrink-0 ${operation.className}`}
                     />
                     <div className="min-w-0 flex-1">
@@ -149,7 +149,7 @@ export function ActivityFeed() {
                         </strong>{' '}
                         {operation.label ? t(operation.label) : log.operation}
                       </p>
-                      <p className="text-[11px] text-[color:var(--text-muted)]">
+                      <p className="text-2xs text-[color:var(--text-muted)]">
                         <time dateTime={log.timestamp}>{relTime(log.timestamp, t)}</time>
                       </p>
                     </div>

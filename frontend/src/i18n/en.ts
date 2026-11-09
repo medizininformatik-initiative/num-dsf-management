@@ -89,7 +89,7 @@ export const en = {
   backToDashboard: 'Back to Dashboard',
   approvalStatus: 'Approval Status',
   overview: 'Overview',
-  recentActivity: 'Recent Activity',
+  recentActivity: 'Recent activity',
   noRequest: 'No request',
   pending: 'Pending',
   approved: 'Approved',
@@ -1706,7 +1706,7 @@ export const en = {
   marketplaceTabsLabel: 'Process details',
 
   // OnboardingWizard
-  onboardingHeader: 'Getting Started',
+  onboardingHeader: 'Getting started',
   onboardingProgress: '{done}/{total} complete',
   onboardingStepSubmit: 'Submit',
 

@@ -103,19 +103,12 @@ export function OnboardingWizard({ instanceId }: Props) {
   // opacity) and unmounts; complete on mount, it never renders.
   return (
     <Collapse open={!allDone}>
-      <section
-        aria-labelledby={headingId}
-        className="mb-4 animate-fade-in rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] px-5 py-3"
-      >
+      <section aria-labelledby={headingId} className="surface-card mb-4 animate-fade-in px-5 py-3">
         <div className="mb-1.5 flex items-center justify-between gap-3">
-          <h2
-            id={headingId}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[color:var(--text-primary)]"
-          >
-            <Icon name="rocket_launch" size={16} className="text-[color:var(--text-muted)]" />
+          <h2 id={headingId} className="text-xs font-semibold text-[color:var(--text-primary)]">
             {t('onboardingHeader')}
           </h2>
-          <span className="text-[11px] tabular-nums text-[color:var(--text-muted)]">
+          <span className="text-2xs tabular-nums text-[color:var(--text-muted)]">
             {t('onboardingProgress', { done: completedCount, total: steps.length })}
           </span>
         </div>
@@ -182,7 +175,7 @@ export function OnboardingWizard({ instanceId }: Props) {
                         label={step.key === 'submit' ? undefined : t('readinessItemMissing')}
                       />
                     </span>
-                    <span className="text-[11px] font-medium leading-tight text-[color:var(--text-primary)]">
+                    <span className="text-2xs font-medium leading-tight text-[color:var(--text-primary)]">
                       {step.label}
                     </span>
                   </button>

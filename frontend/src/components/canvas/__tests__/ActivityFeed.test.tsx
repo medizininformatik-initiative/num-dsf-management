@@ -37,13 +37,13 @@ describe('ActivityFeed', () => {
   it('is a labelled disclosure button that controls an origin-aware popover', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ActivityFeed />);
-    const trigger = screen.getByRole('button', { name: 'Recent Activity' });
+    const trigger = screen.getByRole('button', { name: 'Recent activity' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
     await user.click(trigger);
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    const panel = screen.getByRole('region', { name: 'Recent Activity' });
+    const panel = screen.getByRole('region', { name: 'Recent activity' });
     expect(trigger).toHaveAttribute('aria-controls', panel.id);
     expect(panel.className).toContain('origin-bottom-right');
     expect(panel.className).toContain('data-[state=open]:animate-popover-in');
@@ -80,7 +80,7 @@ describe('ActivityFeed', () => {
   it('closes on Escape and returns focus to the button', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ActivityFeed />);
-    const trigger = screen.getByRole('button', { name: 'Recent Activity' });
+    const trigger = screen.getByRole('button', { name: 'Recent activity' });
     await user.click(trigger);
 
     await user.keyboard('{Escape}');
