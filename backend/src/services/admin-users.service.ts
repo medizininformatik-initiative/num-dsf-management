@@ -3,7 +3,8 @@
  * - Whitelist: list, add, lock, unlock, remove (audit-logged).
  * - Admin-grants: list, demote (signature-verified, audit-logged).
  * - Demote enforces "≥2 admins from ≥2 distinct sites" invariant.
- * - Removal of a whitelist row also revokes any matching admin grant.
+ * - Removal of a whitelist row also revokes any matching admin grant and
+ *   deletes the e-mail's admin certificates (admin_cert_fingerprints).
  * Dependencies: db/connection, audit.service, lib/approvalState, lib/adminGrants
  */
 import { db } from '../db/connection';
@@ -195,6 +196,11 @@ export async function removeFromWhitelist(
     // Removing an admin counts as demotion + removal — apply min-admins guard.
     await deleteGrantWithQuorumGuard(email, 'remove');
   }
+  // The admin certificates go too: resolveCertLogin would otherwise re-create
+  // the whitelist row at the next certificate login.
+  const removedCerts = await db('admin_cert_fingerprints')
+    .whereRaw('LOWER(email) = ?', [email])
+    .del();
   await db('email_whitelist').where({ email }).del();
   await revokeAllSessions(email).catch(() => {});
   await writeAuditLog({
@@ -202,7 +208,12 @@ export async function removeFromWhitelist(
     resourceType: 'AUTH',
     resourceId: email,
     operation: 'DELETE',
-    diffJson: { whitelist_action: 'REMOVE', email, was_admin: adminFlag },
+    diffJson: {
+      whitelist_action: 'REMOVE',
+      email,
+      was_admin: adminFlag,
+      admin_certificates_removed: removedCerts,
+    },
     ipAddress,
   }).catch(() => {});
 }

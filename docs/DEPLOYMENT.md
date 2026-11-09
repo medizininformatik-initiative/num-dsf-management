@@ -616,7 +616,7 @@ Promotion requires the 4-eyes principle: an existing admin creates a promotion r
 
 ### Locking and removing users
 
-The whitelist UI (`/app/admin/users`) supports lock (reversible) and remove (permanent) for any whitelisted email. Lock/demote/remove revoke the affected user's refresh tokens — they cannot continue active sessions. Self-lock and self-remove are blocked. Demote/remove that would leave fewer than 2 admins from 2 distinct sites is rejected.
+The whitelist UI (`/app/admin/users`) supports lock (reversible) and remove (permanent) for any whitelisted email. Lock/demote/remove revoke the affected user's refresh tokens — they cannot continue active sessions. Self-lock and self-remove are blocked. Remove also deletes the e-mail's admin certificates, so a certificate login cannot re-create the whitelist entry. Demote/remove that would leave fewer than 2 admins from 2 distinct sites is rejected.
 
 ### Key rotation procedure
 

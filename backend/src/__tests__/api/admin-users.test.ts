@@ -17,6 +17,7 @@ import { db } from '../../db/connection';
 import { cleanTestData, seedTestUser } from '../helpers/seed';
 import { getTestToken } from '../helpers/auth';
 import { signGrant } from '../../lib/adminGrants';
+import { resolveCertLogin } from '../../services/auth.service';
 import { v4 as uuidv4 } from 'uuid';
 
 // ─── Admin identities ────────────────────────────────────────────────────────
@@ -281,5 +282,30 @@ describe('DELETE /api/v1/admin/users/:email', () => {
     expect(wl).toBeUndefined();
     const grant = await db('admin_grants').where({ email: ADMIN_B_EMAIL }).first();
     expect(grant).toBeUndefined();
+  });
+
+  it("deletes the removed admin's certificates so a certificate login cannot restore access", async () => {
+    const fingerprint = uuidv4().replace(/-/g, '').repeat(4);
+    await db('admin_cert_fingerprints').insert({
+      id: uuidv4(),
+      email: ADMIN_B_EMAIL,
+      fingerprint,
+      created_at: new Date(),
+      created_by: 'test',
+    });
+    const tokenA = getTestToken(ADMIN_A_EMAIL, ADMIN_A_ID);
+    try {
+      const res = await request(app)
+        .delete(`/api/v1/admin/users/${encodeURIComponent(ADMIN_B_EMAIL)}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ totpCode: '000000' });
+
+      expect(res.status).toBe(200);
+      expect(await db('admin_cert_fingerprints').where({ fingerprint }).first()).toBeUndefined();
+      expect(await resolveCertLogin(fingerprint)).toBeNull();
+      expect(await db('email_whitelist').where({ email: ADMIN_B_EMAIL }).first()).toBeUndefined();
+    } finally {
+      await db('admin_cert_fingerprints').where({ fingerprint }).del();
+    }
   });
 });
