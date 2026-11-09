@@ -114,7 +114,7 @@ export function placeOrganizations(visible: MapOrganization[], all: MapOrganizat
   for (const [bucketKey, members] of visibleBuckets) {
     const totalMembers = (totalBuckets.get(bucketKey) ?? members).length;
     const first = members[0];
-    const { coord, known } = getPinCoord(first.city);
+    const { coord, known } = getPinCoord(first.city, first.postal_code);
     if (totalMembers >= 2) {
       const group: MapClusterGroup = {
         city: first.city,

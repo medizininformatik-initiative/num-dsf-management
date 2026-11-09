@@ -150,9 +150,12 @@ export function MapPage() {
     side: 'right',
   });
   if (isPanelOpen && (!sideLock.current.open || sideLock.current.listOpen !== listOpen)) {
-    const anchor: Pick<MapOrganization, 'city' | 'country_code'> | null =
+    const anchor: Pick<MapOrganization, 'city' | 'postal_code' | 'country_code'> | null =
       selectedOrg ?? selectedCluster;
-    const west = !!anchor && isOnMap(anchor) && getPinCoord(anchor.city).coord[0] < WEST_EAST_SPLIT;
+    const west =
+      !!anchor &&
+      isOnMap(anchor) &&
+      getPinCoord(anchor.city, anchor.postal_code).coord[0] < WEST_EAST_SPLIT;
     sideLock.current.side = !listOpen && west ? 'left' : 'right';
   }
   sideLock.current.open = isPanelOpen;

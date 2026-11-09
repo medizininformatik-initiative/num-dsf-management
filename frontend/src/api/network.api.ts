@@ -43,6 +43,8 @@ export interface MapOrganization {
   name: string;
   active: boolean;
   city: string | null;
+  /** The site's own postcode; older responses may not carry it. */
+  postal_code?: string | null;
   country_code: string | null;
   cert_status: 'VALID' | 'EXPIRING' | 'EXPIRED' | 'NONE';
   endpoints: (MapEndpointPublic | MapEndpointAdmin)[];
