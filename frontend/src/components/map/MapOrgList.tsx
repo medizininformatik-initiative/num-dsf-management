@@ -132,12 +132,12 @@ export function MapOrgList({
       data-state={state}
       className={`glass absolute z-[3] flex flex-col overflow-hidden rounded-card data-[state=closed]:pointer-events-none ${VARIANT_CLASS[variant].box} map-animate-sheet-${state === 'open' ? 'in' : 'out'}-${VARIANT_CLASS[variant].edge}`}
     >
-      <div className="flex items-start gap-2 border-b border-[color:var(--border)] px-4 pb-2.5 pt-3">
+      <div className="flex items-start gap-2 border-b border-[color:var(--border)] px-4 py-3">
         <div className="min-w-0 flex-1">
-          <h2 className="m-0 text-[13px] font-semibold text-[color:var(--text-primary)]">
+          <h2 className="m-0 text-base font-semibold text-[color:var(--text-primary)]">
             {t('mapOrgListTitle')}
           </h2>
-          <p className="m-0 mt-0.5 text-[11px] text-[color:var(--text-secondary)]">
+          <p className="m-0 mt-0.5 text-xs text-[color:var(--text-secondary)]">
             {t('mapOrgListCount', { n: organizations.length, v: groups.length })}
           </p>
         </div>
@@ -146,7 +146,7 @@ export function MapOrgList({
             type="button"
             onClick={onClose}
             aria-label={t('mapHideList')}
-            className="press-effect -mr-1.5 flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+            className="press-effect -mr-1.5 flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
           >
             <Icon name={variant === 'sheet' ? 'close' : 'left_panel_close'} size={18} />
           </button>
@@ -178,15 +178,15 @@ export function MapOrgList({
                       g.parent === NONE_KEY ? 'var(--text-muted)' : verbundColor(g.parent),
                   }}
                 />
-                <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                <span className="min-w-0 flex-1 truncate text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
                   {labelText}
                 </span>
-                <span className="text-[11px] tabular-nums text-[color:var(--text-muted)]">
+                <span className="text-2xs tabular-nums text-[color:var(--text-muted)]">
                   {g.members.length}
                 </span>
                 <Icon
                   name="expand_more"
-                  size={16}
+                  size={14}
                   className={`text-[color:var(--text-muted)] transition-transform duration-short ease-spring ${isCollapsed ? '-rotate-90' : ''}`}
                 />
               </button>
@@ -210,7 +210,7 @@ export function MapOrgList({
                       style={{ '--stagger-index': index } as CSSProperties}
                       className={`map-list-row flex w-full animate-list-item-in items-center gap-2.5 rounded-control py-1.5 pl-6 pr-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
                         isSel
-                          ? 'bg-[color:color-mix(in_srgb,var(--primary)_12%,transparent)] font-semibold text-[color:var(--text-primary)] shadow-[inset_2px_0_0_var(--primary)]'
+                          ? 'bg-[color:color-mix(in_srgb,var(--primary)_12%,transparent)] font-semibold text-[color:var(--text-primary)]'
                           : isHover
                             ? 'bg-[color:var(--bg-hover)] text-[color:var(--text-primary)]'
                             : 'text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)]'
@@ -221,9 +221,9 @@ export function MapOrgList({
                         className="h-2 w-2 shrink-0 rounded-full"
                         style={{ background: certStatusColor(m.cert_status) }}
                       />
-                      <span className="min-w-0 flex-1 truncate text-[12px]">{m.name}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm">{m.name}</span>
                       {!m.active && (
-                        <span className="text-[11px] uppercase text-[color:var(--text-muted)]">
+                        <span className="text-2xs uppercase text-[color:var(--text-muted)]">
                           {t('mapOrgInactive')}
                         </span>
                       )}
@@ -234,7 +234,7 @@ export function MapOrgList({
           );
         })}
         {groups.length === 0 && (
-          <p className="m-0 p-4 text-center text-[12px] text-[color:var(--text-secondary)]">
+          <p className="m-0 p-4 text-center text-sm text-[color:var(--text-secondary)]">
             {t('mapOrgListEmpty')}
           </p>
         )}

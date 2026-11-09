@@ -126,9 +126,9 @@ export function NodeDetailsPanel({
       size="sm"
       onClick={onClose}
       aria-label={t('mapCloseDetails')}
-      className="h-8 w-8 shrink-0 rounded-full p-0"
+      className="h-8 w-8 shrink-0 rounded-control p-0"
     >
-      <Icon name="close" size={20} />
+      <Icon name="close" size={18} />
     </Button>
   );
 
@@ -151,7 +151,7 @@ export function NodeDetailsPanel({
             <div className="flex min-w-0 items-center gap-3">
               <span
                 aria-hidden="true"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 bg-[color:var(--bg-card)] text-[15px] font-bold text-[color:var(--text-primary)]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 bg-[color:var(--bg-card)] text-base font-bold text-[color:var(--text-primary)]"
                 style={{ borderColor: certStatusColor(shown.cluster.worstStatus) }}
               >
                 {shown.cluster.members.length}
@@ -159,7 +159,7 @@ export function NodeDetailsPanel({
               <div className="min-w-0">
                 <h2
                   id={titleId}
-                  className="m-0 truncate text-lg font-semibold text-[color:var(--text-primary)]"
+                  className="m-0 truncate text-base font-semibold text-[color:var(--text-primary)]"
                 >
                   {shown.cluster.city ?? '—'}
                 </h2>
@@ -180,7 +180,7 @@ export function NodeDetailsPanel({
                 type="button"
                 onClick={() => onSelectMember(m.identifier)}
                 style={stagger(i)}
-                className="press-effect flex w-full animate-list-item-in items-center gap-3 px-3 py-2.5 text-left transition-colors duration-short hover:bg-[color:var(--bg-card)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+                className="press-effect flex w-full animate-list-item-in items-center gap-3 px-3 py-2.5 text-left transition-colors duration-short hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
               >
                 <span
                   aria-hidden="true"
@@ -188,14 +188,14 @@ export function NodeDetailsPanel({
                   style={{ background: certStatusColor(m.cert_status) }}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-semibold text-[color:var(--text-primary)]">
+                  <div className="truncate text-sm font-semibold text-[color:var(--text-primary)]">
                     {m.name}
                   </div>
-                  <div className="truncate font-mono text-[11px] text-[color:var(--text-secondary)]">
+                  <div className="truncate font-mono text-xs text-[color:var(--text-secondary)]">
                     {m.identifier}
                   </div>
                 </div>
-                <Icon name="chevron_right" size={18} className="text-[color:var(--text-muted)]" />
+                <Icon name="chevron_right" size={16} className="text-[color:var(--text-muted)]" />
               </button>
             ))}
           </Group>
@@ -239,7 +239,7 @@ function OrgDetails({
         <div className="flex min-w-0 items-center gap-3">
           <span
             aria-hidden="true"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 bg-[color:var(--bg-card)] text-[13px] font-bold text-[color:var(--text-primary)]"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 bg-[color:var(--bg-card)] text-sm font-bold text-[color:var(--text-primary)]"
             style={{
               borderColor: certStatusColor(org.cert_status),
               borderStyle: org.active ? 'solid' : 'dashed',
@@ -250,11 +250,11 @@ function OrgDetails({
           <div className="min-w-0">
             <h2
               id={titleId}
-              className="m-0 text-lg font-semibold leading-snug text-[color:var(--text-primary)]"
+              className="m-0 text-base font-semibold leading-snug text-[color:var(--text-primary)]"
             >
               {org.name}
             </h2>
-            <p className="m-0 mt-0.5 break-all font-mono text-xs text-brand-700 dark:text-brand-400">
+            <p className="m-0 mt-0.5 break-all font-mono text-xs text-[color:var(--text-secondary)]">
               {org.identifier}
             </p>
           </div>
@@ -265,17 +265,17 @@ function OrgDetails({
       <StatusPill
         tone={org.active ? 'success' : 'neutral'}
         icon={org.active ? 'check_circle' : 'pause_circle'}
-        className="self-start uppercase tracking-wide"
+        className="self-start"
       >
         {t(org.active ? 'mapDetailsActive' : 'mapDetailsInactive')}
       </StatusPill>
 
       <div
         style={stagger(section++)}
-        className={`animate-list-item-in rounded-control border px-3.5 py-3 ${TONE_CLASS[tone]}`}
+        className={`animate-list-item-in rounded-control border p-3 ${TONE_CLASS[tone]}`}
       >
-        <div className="flex items-center gap-2 text-[13px] font-semibold">
-          <Icon name={expired ? 'error' : warn ? 'warning' : 'verified_user'} size={18} />
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Icon name={expired ? 'error' : warn ? 'warning' : 'verified_user'} size={16} />
           {t('mapDetailsCertLabel')}: {t(STATUS_LABEL_KEY[org.cert_status])}
           {isAdmin && org.next_cert_expiry && (
             <span className="ml-auto text-xs font-medium">
@@ -309,7 +309,7 @@ function OrgDetails({
               const adminEp = isAdmin && 'address' in ep ? ep : null;
               return (
                 <Item key={ep.identifier}>
-                  <div className="text-[13px] font-semibold text-[color:var(--text-primary)]">
+                  <div className="text-sm font-semibold text-[color:var(--text-primary)]">
                     {ep.name ?? ep.identifier}
                   </div>
                   {adminEp &&
@@ -319,13 +319,13 @@ function OrgDetails({
                         target="_blank"
                         rel="noreferrer noopener"
                         aria-label={`${adminEp.address} — ${t('mapDetailsOpensNewTab')}`}
-                        className="mt-0.5 inline-flex max-w-full items-center gap-1 break-all font-mono text-[11px] text-[color:var(--text-secondary)] underline-offset-2 hover:text-[color:var(--text-primary)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+                        className="mt-0.5 inline-flex max-w-full items-center gap-1 break-all font-mono text-xs text-[color:var(--text-secondary)] underline-offset-2 hover:text-[color:var(--text-primary)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
                       >
                         {adminEp.address}
-                        <Icon name="open_in_new" size={12} className="shrink-0" />
+                        <Icon name="open_in_new" size={14} className="shrink-0" />
                       </a>
                     ) : (
-                      <div className="mt-0.5 break-all font-mono text-[11px] text-[color:var(--text-secondary)]">
+                      <div className="mt-0.5 break-all font-mono text-xs text-[color:var(--text-secondary)]">
                         {adminEp.address}
                       </div>
                     ))}
@@ -334,7 +334,7 @@ function OrgDetails({
                       {adminEp.ips.map((ip, i) => (
                         <span
                           key={i}
-                          className={`rounded-small border px-1.5 font-mono text-[11px] ${TONE_CLASS.neutral}`}
+                          className={`rounded-small border px-1.5 font-mono text-2xs ${TONE_CLASS.neutral}`}
                         >
                           {ip.ip}
                           {ip.is_fhir ? ' · FHIR' : ''}
@@ -357,12 +357,12 @@ function OrgDetails({
             <Group>
               {org.contacts.map((c, i) => (
                 <Item key={i}>
-                  <div className="text-[13px] font-semibold text-[color:var(--text-primary)]">
+                  <div className="text-sm font-semibold text-[color:var(--text-primary)]">
                     {c.name ?? '—'}
                   </div>
                   <MailLink email={c.email} />
                   {c.types.length > 0 && (
-                    <div className="mt-0.5 text-[11px] text-[color:var(--text-secondary)]">
+                    <div className="mt-0.5 text-xs text-[color:var(--text-secondary)]">
                       {c.types.join(', ')}
                     </div>
                   )}
@@ -384,7 +384,7 @@ function OrgDetails({
               const adminM = isAdmin && 'endpoint_id' in m ? m : null;
               return (
                 <Item key={i}>
-                  <div className="flex items-center gap-2 text-[13px] font-semibold text-[color:var(--text-primary)]">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-primary)]">
                     <span
                       aria-hidden="true"
                       className="h-2 w-2 shrink-0 rounded-full"
@@ -397,7 +397,7 @@ function OrgDetails({
                       {m.roles.map((role, j) => (
                         <span
                           key={j}
-                          className={`rounded-small border px-1.5 text-[11px] font-bold ${TONE_CLASS.info}`}
+                          className={`rounded-small border px-1.5 text-2xs font-semibold ${TONE_CLASS.info}`}
                         >
                           {role}
                         </span>
@@ -405,7 +405,7 @@ function OrgDetails({
                     </div>
                   )}
                   {adminM && adminM.endpoint_id && (
-                    <div className="mt-1 font-mono text-[11px] text-[color:var(--text-secondary)]">
+                    <div className="mt-1 font-mono text-xs text-[color:var(--text-secondary)]">
                       {adminM.endpoint_id}
                     </div>
                   )}
@@ -442,7 +442,7 @@ function Section({
 }) {
   return (
     <section style={stagger(index)} className="animate-list-item-in">
-      <h3 className="m-0 mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-[color:var(--text-secondary)]">
+      <h3 className="m-0 mb-1.5 px-1 text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
         {title}
       </h3>
       {children}
@@ -450,10 +450,10 @@ function Section({
   );
 }
 
-/** iOS-style inset group: one rounded surface, hairlines between items. */
+/** iOS-style inset group: one outlined inset, hairlines between items. */
 function Group({ children }: { children: ReactNode }) {
   return (
-    <div className="divide-y divide-[color:var(--border)] overflow-hidden rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)]">
+    <div className="divide-y divide-[color:var(--border)] overflow-hidden rounded-control border border-[color:var(--border)]">
       {children}
     </div>
   );
@@ -476,7 +476,7 @@ function MailLink({ email }: { email: string }) {
   return (
     <a
       href={`mailto:${email}`}
-      className="text-[12px] text-[color:var(--text-secondary)] underline-offset-2 hover:text-[color:var(--text-primary)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+      className="text-xs text-[color:var(--text-secondary)] underline-offset-2 hover:text-[color:var(--text-primary)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
     >
       {email}
     </a>

@@ -46,7 +46,7 @@ const MODE_LABEL_KEY: Record<
 
 const FOCUS =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]';
-const CHIP = `press-effect inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition-colors duration-short ease-standard ${FOCUS}`;
+const CHIP = `press-effect inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors duration-short ease-standard ${FOCUS}`;
 const CHIP_OFF =
   'border-[color:var(--border)] bg-transparent text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)]';
 
@@ -71,15 +71,15 @@ export function MapFilters({
   const modeIndex = MODES.indexOf(state.activeMode);
 
   return (
-    <div className="glass flex flex-col gap-2 rounded-card px-3 py-2.5">
+    <div className="glass flex flex-col gap-2 rounded-card p-3">
       <div className="flex flex-wrap items-center gap-2">
         {leading}
 
         <div className="relative w-full min-w-[12rem] sm:w-64">
           <Icon
             name="search"
-            size={18}
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)]"
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)]"
           />
           <input
             type="search"
@@ -87,14 +87,14 @@ export function MapFilters({
             onChange={(e) => onChange({ ...state, query: e.target.value })}
             placeholder={t('mapFilterSearchPlaceholder')}
             aria-label={t('mapSearchLabel')}
-            className={`h-9 w-full rounded-control border border-[color:var(--border)] bg-[color:var(--bg-input)] pl-9 pr-9 text-[13px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--focus-ring)] focus:outline-none [&::-webkit-search-cancel-button]:hidden`}
+            className={`h-9 w-full rounded-control border border-[color:var(--border-strong)] bg-[color:var(--bg-input)] pl-9 pr-9 text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--focus-ring)] focus:outline-none focus:ring-[3px] focus:ring-primary/20 dark:focus:ring-brand-400/30 [&::-webkit-search-cancel-button]:hidden`}
           />
           {state.query && (
             <button
               type="button"
               onClick={() => onChange({ ...state, query: '' })}
               aria-label={t('mapClearSearch')}
-              className={`press-effect absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 animate-fade-in items-center justify-center rounded-full text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] ${FOCUS}`}
+              className={`press-effect absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 animate-fade-in items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] ${FOCUS}`}
             >
               <Icon name="close" size={16} />
             </button>
@@ -122,7 +122,7 @@ export function MapFilters({
                 type="button"
                 aria-pressed={on}
                 onClick={() => onChange({ ...state, activeMode: mode })}
-                className={`relative z-[1] rounded-small px-3 text-[12px] font-semibold capitalize transition-colors duration-short ease-standard ${FOCUS} ${on ? 'text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'}`}
+                className={`relative z-[1] rounded-small px-3 text-xs font-semibold capitalize transition-colors duration-short ease-standard ${FOCUS} ${on ? 'text-[color:var(--text-primary)]' : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'}`}
               >
                 {t(MODE_LABEL_KEY[mode])}
               </button>
@@ -156,10 +156,7 @@ export function MapFilters({
           })}
         </div>
 
-        <p
-          className="m-0 ml-auto text-[12px] text-[color:var(--text-secondary)]"
-          aria-live="polite"
-        >
+        <p className="m-0 ml-auto text-xs text-[color:var(--text-secondary)]" aria-live="polite">
           {t('mapFilterShowingOfCities', {
             visible: visibleCount,
             total: totalCount,
@@ -176,7 +173,7 @@ export function MapFilters({
           onClick={onToggleShowAllEdges}
           className={`${CHIP} ml-auto ${showAllEdges ? 'border-[color:var(--primary)] bg-[color:color-mix(in_srgb,var(--primary)_12%,transparent)] text-[color:var(--text-primary)]' : CHIP_OFF}`}
         >
-          <Icon name="polyline" size={16} />
+          <Icon name="polyline" size={14} />
           {t('mapShowAllEdges')}
         </button>
       </div>

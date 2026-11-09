@@ -320,8 +320,7 @@
 .map-list-row {
   transition:
     background-color var(--duration-short) var(--ease-standard),
-    color var(--duration-short) var(--ease-standard),
-    box-shadow var(--duration-short) var(--ease-standard);
+    color var(--duration-short) var(--ease-standard);
 }
 
 /* ─── Reduce Motion: movement becomes a crossfade ──────────────────────── */

@@ -37,7 +37,7 @@ export function MapZoomControls({ k, onZoomIn, onZoomOut, onReset }: ZoomProps) 
         disabled={k >= ZOOM_MAX}
         aria-label={t('mapZoomIn')}
       >
-        <Icon name="add" size={20} />
+        <Icon name="add" size={18} />
       </button>
       <span className="mx-2 h-px bg-[color:var(--border)]" aria-hidden="true" />
       <button
@@ -47,7 +47,7 @@ export function MapZoomControls({ k, onZoomIn, onZoomOut, onReset }: ZoomProps) 
         disabled={k <= ZOOM_MIN}
         aria-label={t('mapZoomOut')}
       >
-        <Icon name="remove" size={20} />
+        <Icon name="remove" size={18} />
       </button>
       <span className="mx-2 h-px bg-[color:var(--border)]" aria-hidden="true" />
       <button
@@ -86,23 +86,23 @@ export function MapLegend() {
       typeof window.matchMedia !== 'function' || window.matchMedia('(min-width: 1024px)').matches,
   );
   return (
-    <div className="glass max-w-[15rem] rounded-card text-[11px] text-[color:var(--text-secondary)]">
+    <div className="glass max-w-[15rem] rounded-card text-2xs text-[color:var(--text-secondary)]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="press-effect flex w-full items-center gap-1.5 rounded-control px-3 py-2 font-semibold text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+        className="press-effect flex w-full items-center gap-1.5 rounded-control px-3 py-2 text-xs font-semibold text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
-        <Icon name="legend_toggle" size={16} className="text-[color:var(--text-muted)]" />
+        <Icon name="legend_toggle" size={14} className="text-[color:var(--text-muted)]" />
         {t('mapLegendTitle')}
         <Icon
           name="expand_more"
-          size={16}
+          size={14}
           className={`ml-auto text-[color:var(--text-muted)] transition-transform duration-short ease-spring ${open ? 'rotate-180' : ''}`}
         />
       </button>
       {open && (
-        <ul className="m-0 grid animate-fade-in list-none grid-cols-2 gap-x-3 gap-y-1.5 px-3 pb-2.5 pt-0">
+        <ul className="m-0 grid animate-fade-in list-none grid-cols-2 gap-x-3 gap-y-1.5 px-3 pb-3 pt-0">
           {CERT_STATUSES.map((s) => (
             <li key={s} className="flex items-center gap-1.5">
               <Swatch color={certStatusColor(s)} />

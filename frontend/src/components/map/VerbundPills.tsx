@@ -32,7 +32,7 @@ export function VerbundPills({ counts, active, onToggle }: Props) {
             title={parent}
             onClick={() => onToggle(parent)}
             style={{ '--verbund': color } as CSSProperties}
-            className={`press-effect inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition-colors duration-short ease-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
+            className={`press-effect inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors duration-short ease-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
               on
                 ? 'border-[color:var(--verbund)] bg-[color:color-mix(in_srgb,var(--verbund)_14%,transparent)] text-[color:var(--text-primary)]'
                 : 'border-[color:var(--border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)]'

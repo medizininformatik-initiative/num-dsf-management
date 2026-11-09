@@ -239,18 +239,18 @@ export function MapPage() {
             <div className="absolute inset-0 flex items-center justify-center">
               <div
                 role="status"
-                className="glass flex animate-fade-in items-center gap-2.5 rounded-full px-4 py-2 text-[13px] text-[color:var(--text-secondary)]"
+                className="glass flex animate-fade-in items-center gap-2.5 rounded-full px-4 py-2 text-sm text-[color:var(--text-secondary)]"
               >
-                <Icon name="progress_activity" size={18} className="animate-spin" />
+                <Icon name="progress_activity" size={16} className="animate-spin" />
                 {t('mapLoadingNetwork')}
               </div>
             </div>
           )}
           {!!error && !isLoading && (
             <div className="absolute inset-0 flex items-center justify-center p-6">
-              <div className="glass flex max-w-sm animate-scale-in flex-col items-center gap-3 rounded-card px-6 py-5 text-center">
-                <Icon name="cloud_off" size={28} className="text-danger-fg" />
-                <p role="alert" className="m-0 text-[13px] text-[color:var(--text-primary)]">
+              <div className="glass flex max-w-sm animate-scale-in flex-col items-center gap-3 rounded-card p-5 text-center">
+                <Icon name="cloud_off" size={40} className="text-danger-fg" />
+                <p role="alert" className="m-0 text-sm text-[color:var(--text-primary)]">
                   {t('mapLoadFailed')}
                 </p>
                 <Button variant="secondary" size="sm" onClick={() => void refetch?.()}>
@@ -303,8 +303,8 @@ function InternationalStrip({
   if (intl.length === 0) return null;
   const countries = [...new Set(intl.map((o) => o.country_code ?? '?'))].sort().join(', ');
   return (
-    <div className="glass flex flex-wrap items-center gap-2 self-start rounded-control px-3 py-1.5 text-[12px] text-[color:var(--text-secondary)]">
-      <Icon name="public" size={16} className="text-[color:var(--text-muted)]" />
+    <div className="glass flex flex-wrap items-center gap-2 self-start rounded-control px-3 py-1.5 text-xs text-[color:var(--text-secondary)]">
+      <Icon name="public" size={14} className="text-[color:var(--text-muted)]" />
       <span className="font-semibold">
         {t('mapInternationalCount', { n: intl.length, countries })}
       </span>
@@ -314,7 +314,7 @@ function InternationalStrip({
           type="button"
           onClick={() => onSelect(o.identifier)}
           aria-current={selectedId === o.identifier ? 'true' : undefined}
-          className={`press-effect rounded-control border px-2 py-0.5 text-[12px] transition-colors duration-short focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
+          className={`press-effect rounded-control border px-2 py-0.5 text-xs transition-colors duration-short focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
             selectedId === o.identifier
               ? 'border-[color:var(--primary)] text-[color:var(--text-primary)]'
               : 'border-[color:var(--border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)]'
