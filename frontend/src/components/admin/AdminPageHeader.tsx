@@ -5,6 +5,7 @@
  * view while long lists scroll underneath and blur through it. Render it as
  * the first child of the page's scroll container. The breadcrumb trail lives
  * inside this bar, above the title, and the bar spans the full page width.
+ * On narrow screens the actions wrap below the title instead of squeezing it.
  * Dependencies: Breadcrumbs, the .glass-chrome material (src/index.css).
  */
 import type { ReactNode } from 'react';
@@ -24,7 +25,7 @@ export function AdminPageHeader({ title, subtitle, actions, toolbar }: AdminPage
     <header className="glass-chrome sticky top-0 z-20 px-6 py-4 sm:px-8">
       <Breadcrumbs />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[min(100%,16rem)] flex-1">
           <h1 className="text-xl font-bold leading-tight text-[color:var(--text-primary)]">
             {title}
           </h1>
