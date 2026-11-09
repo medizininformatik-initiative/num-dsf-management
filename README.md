@@ -1,404 +1,86 @@
-<div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dsf-dark.svg">
-    <img src="docs/logo-dsf-light.svg" alt="dsf." height="80" />
-  </picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dsf-dark.svg">
+  <img src="docs/logo-dsf-light.svg" alt="dsf." height="56" />
+</picture>
 
-  <h1>DSF Management Portal</h1>
-  <p>A web application for managing participants in the <strong>Data Sharing Framework (DSF)</strong> of the German Medical Informatics Initiative (MII / NUM).</p>
-  <p>Operated by the <a href="https://www.medizin.uni-muenster.de/imi/das-institut.html">Institute of Medical Informatics Muenster (IMI)</a> at the University of Muenster.</p>
+# DSF Management Portal
 
-  <p>
-    <a href="https://github.com/Mukeyii/num-dsf-allowlist/actions/workflows/ci.yml"><img src="https://github.com/Mukeyii/num-dsf-allowlist/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI/CD" /></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License: Apache 2.0" /></a>
-    <a href="https://www.medizin.uni-muenster.de/imi/das-institut.html"><img src="https://img.shields.io/badge/operated%20by-IMI%20M%C3%BCnster-b01e66.svg" alt="Operated by IMI Münster" /></a>
-    <img src="https://img.shields.io/badge/stack-React%20%2B%20Express%20%2B%20MySQL-3a6fb0.svg" alt="Stack: React + Express + MySQL" />
-  </p>
+Web application for managing the participants of the [Data Sharing Framework](https://dsf.dev) (DSF) in the German Medical Informatics Initiative (MII) and the Network University Medicine (NUM). Sites maintain their organization, endpoints, certificates and memberships; administrators approve changes; the portal publishes the result as the signed DSF allow list.
 
-  <br />
+Operated by the [Institute of Medical Informatics](https://www.medizin.uni-muenster.de/imi/das-institut.html), University of Münster.
 
-  <img src="docs/partner-logos.png" alt="Institute of Medical Informatics (University of Münster) · MeDIC · NUM · Data Sharing Framework" width="558" />
-</div>
+## Features
 
----
+- **Site data on one page.** Organization, contacts, endpoints, certificates and memberships of a DSF instance, with their relations.
+- **Four-eyes approval.** A change reaches the allow list only after two administrators from different sites approve it, or one approves and nobody objects for seven days.
+- **Versioned allow list.** Every published version is kept, with diff, signed download and a four-eyes restore.
+- **FHIR bundle for the DSF.** The BPE process `downloadAllowList` fetches the RS256-signed bundle over mTLS.
+- **Sign-in.** Client certificate, or e-mail one-time code plus TOTP. The DSF certificate of a site becomes its login once it is on the approved allow list.
+- **Administration.** Users and admin roles, CA white- and blacklist, bulk onboarding from CSV/XLSX, scheduled backups, audit log with export.
+- **Network map** of all sites and their networks.
 
-> **Single-page entity directory + workflow tooling for the German federated healthcare research network.** One canvas, five entities, full audit trail, FHIR-bundle export. Operated by IMI Münster for MII / NUM partner sites.
-
----
-
-## Highlights
-
-- 🧩 **Entity-graph canvas**: five entities for one DSF instance edited on a single page with live SVG relations
-- 🗺 **Federation map**: cross-instance allow-list as a Germany silhouette, peer edges by verbund (MII / NUM)
-- ✅ **Approval workflow**: 4-eyes IMI review with full snapshot, 7-day silent consent; sites see their running request and can withdraw it
-- 🗂 **Versioned allow list**: each site publishes exactly the data of its last approved request; every published version is kept with history, diff and a four-eyes restore
-- 📥 **Bulk onboarding**: CSV/XLSX templates, many site files at once, in-tool table editor and a dry run before the import
-- 🔎 **Audit log**: filters, readable before/after details, flagged anomalies, CSV/JSON export
-- 💾 **Backups**: scheduled full JSON backups on the server (at least daily), checksum, optional encryption, manual restore script
-- 🔐 **Passwordless auth**: email allow-list + OTP + TOTP, optional mTLS client-cert sign-in
-- 📦 **FHIR allow-list bundle**: RS256-signed downloads consumed by DSF BPE processes over mTLS; the download dialog links straight to the draft `downloadAllowList` Task on the site's own DSF FHIR server
-- 🧪 **CI / test pipeline**: Jest (backend) · Vitest (frontend) · contract suite · Playwright E2E + visual regression, all green on every push to `main`
-
----
-
-## Code knowledge graph
-
-<div align="center">
-  <img src="docs/graphify-graph.png" alt="Force-directed knowledge graph of the DSF Management Portal codebase, 2525 nodes, 5522 edges and 188 detected communities, with a legend of the largest modules" width="900" />
-  <p><em>2525 nodes · 5522 edges · 188 communities: a queryable map of the codebase generated by <a href="https://github.com/Graphify-Labs/graphify">Graphify</a> from tree-sitter AST extraction (no LLM). Querying this graph instead of scanning raw files cuts token usage and helps AI assistants debug the codebase efficiently. The graph lives at <code>graphify-out/graph.json</code>; regenerate it with <code>graphify update .</code>.</em></p>
-</div>
-
----
-
-## Entity model
-
-```mermaid
-erDiagram
-    INSTANCE ||--|| ORGANIZATION : "has"
-    ORGANIZATION ||--o{ CONTACT : ""
-    ORGANIZATION ||--o{ ENDPOINT : ""
-    ORGANIZATION ||--o{ CERTIFICATE : ""
-    ORGANIZATION ||--o{ MEMBERSHIP : ""
-    MEMBERSHIP }o--|| ENDPOINT : "uses"
-
-    INSTANCE {
-        uuid id PK
-        string label
-    }
-    ORGANIZATION {
-        string identifier PK "FQDN"
-        string name
-        string email
-        bool active
-    }
-    CONTACT {
-        uuid id PK
-        json types "MEDIC / DSF_ADMIN / SECURITY"
-        string email
-    }
-    ENDPOINT {
-        string identifier PK "FQDN"
-        string address "FHIR URL"
-    }
-    CERTIFICATE {
-        uuid id PK
-        string thumbprint
-        date valid_until
-    }
-    MEMBERSHIP {
-        uuid id PK
-        string parent_organization "MII / NUM"
-        json roles "DIC / HRP / DMS / AMS"
-    }
-```
-
-Each Instance owns exactly one Organization. The Organization has many Contacts, Endpoints, Certificates, and Memberships. Memberships reference an Endpoint to indicate which technical endpoint participates in a given verbund role.
-
----
-
-## Screenshots
-
-<div align="center">
 <table>
 <tr>
-<td width="33%" valign="top"><a href="docs/screenshots/01-canvas.png"><img src="docs/screenshots/01-canvas.png" width="100%" alt="Entity-graph canvas" /></a><br /><sub>🧩 <b>Entity canvas</b> · one page, live SVG relations</sub></td>
-<td width="33%" valign="top"><a href="docs/screenshots/02-map.png"><img src="docs/screenshots/02-map.png" width="100%" alt="Federation map" /></a><br /><sub>🗺 <b>Federation map</b> · federation across sites</sub></td>
-<td width="33%" valign="top"><a href="docs/screenshots/03-admin-approval.png"><img src="docs/screenshots/03-admin-approval.png" width="100%" alt="Approval review" /></a><br /><sub>✅ <b>Approval review</b> · 4-eyes IMI</sub></td>
-</tr>
-<tr>
-<td valign="top"><a href="docs/screenshots/04-audit.png"><img src="docs/screenshots/04-audit.png" width="100%" alt="Audit log" /></a><br /><sub>📜 <b>Audit log</b> · append-only history</sub></td>
-<td valign="top"><a href="docs/screenshots/05-login.png"><img src="docs/screenshots/05-login.png" width="100%" alt="Sign in" /></a><br /><sub>🔐 <b>Sign in</b> · OTP + TOTP + mTLS</sub></td>
-<td valign="top"><a href="docs/screenshots/06-marketplace.png"><img src="docs/screenshots/06-marketplace.png" width="100%" alt="Process marketplace" /></a><br /><sub>📦 <b>Marketplace</b> · DSF BPMN processes</sub></td>
+<td width="33%"><a href="docs/screenshots/01-canvas.png"><img src="docs/screenshots/01-canvas.png" alt="Site data" /></a></td>
+<td width="33%"><a href="docs/screenshots/02-map.png"><img src="docs/screenshots/02-map.png" alt="Network map" /></a></td>
+<td width="33%"><a href="docs/screenshots/03-admin-approval.png"><img src="docs/screenshots/03-admin-approval.png" alt="Approval review" /></a></td>
 </tr>
 </table>
-</div>
-
----
 
 ## Quick start
+
+Requires Docker and Git.
 
 ```bash
 git clone https://github.com/Mukeyii/num-dsf-allowlist.git
 cd num-dsf-allowlist
 cp .env.example .env
 bash scripts/generate-keys.sh
-
 docker compose up -d
 docker compose exec backend npx ts-node src/db/seed-whitelist.ts admin@example.com
-docker compose exec backend npx ts-node src/db/seed-testdata.ts   # optional
+docker compose exec backend npx ts-node src/db/seed-testdata.ts   # optional demo data
 ```
 
-| Service | URL |
-|---|---|
-| Frontend | <http://localhost> |
-| Backend API | <http://localhost/api/v1> |
-| Mail UI (Mailhog) | <http://localhost:8025> |
+The portal runs at <http://localhost>, the API at <http://localhost/api/v1>, and the development mailbox (Mailhog) at <http://localhost:8025>.
 
-**Prerequisites:** Docker Desktop 24+, Node.js 20 LTS (for local dev outside Docker), Git.
+## Development
 
----
-
-## Authentication
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant FE as Browser
-    participant BE as Backend
-    participant Mail
-    participant App as Authenticator
-
-    User->>FE: enter email
-    FE->>BE: POST /auth/request-otp
-    BE->>BE: check email_whitelist
-    BE->>Mail: send 6-digit OTP
-    Mail->>User: email with code
-    User->>FE: enter code
-    FE->>BE: POST /auth/verify-otp
-    BE-->>FE: tempToken
-    User->>App: open authenticator
-    App-->>User: 6-digit TOTP
-    User->>FE: enter TOTP
-    FE->>BE: POST /auth/verify-totp
-    BE-->>FE: JWT (15 min) + refresh cookie (7 d)
-    FE->>User: redirect to /app
+```bash
+docker compose exec backend npm test     # backend tests (Jest, needs the stack)
+cd frontend && npm test                  # frontend tests (Vitest)
+cd frontend && npm run test:e2e          # Playwright end-to-end tests (needs the stack)
+cd frontend && npm run test:contract     # contract tests against the real backend
 ```
 
-Passwordless: email allow-list, 6-digit OTP via email, TOTP from an authenticator app (Aegis, 1Password, Google Authenticator). Ten backup codes per user, bcrypt-hashed and single-use. Optional mTLS sign-in via the `/auth/client-cert-login` route when the browser presents a registered client certificate.
+Type-check with `npx tsc --noEmit` in `backend/` and `frontend/`. Commits follow Conventional Commits; the git hooks (husky) run Prettier, commitlint and, if installed, gitleaks. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
----
+```
+frontend/        React, TypeScript, Vite, Tailwind
+backend/         Node.js, Express, TypeScript
+db/migrations/   MySQL 8 schema (idempotent SQL)
+nginx/           reverse proxy configurations
+scripts/         key generation, server update, backup and restore
+docs/            guides, ADRs, screenshots
+```
 
-## Stack
+## Deployment
 
-<p>
-  <img alt="React 18" src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white" />
-  <img alt="TypeScript 5" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" />
-  <img alt="Vite 5" src="https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white" />
-  <img alt="Tailwind 3" src="https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white" />
-  <img alt="Node 20" src="https://img.shields.io/badge/Node-20-339933?logo=nodedotjs&logoColor=white" />
-  <img alt="Express" src="https://img.shields.io/badge/Express-000000?logo=express&logoColor=white" />
-  <img alt="MySQL 8" src="https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white" />
-  <img alt="Redis 7" src="https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white" />
-  <img alt="nginx" src="https://img.shields.io/badge/nginx-009639?logo=nginx&logoColor=white" />
-  <img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white" />
-  <img alt="Vitest" src="https://img.shields.io/badge/Vitest-6E9F18?logo=vitest&logoColor=white" />
-  <img alt="Playwright" src="https://img.shields.io/badge/Playwright-2EAD33?logo=playwright&logoColor=white" />
-</p>
-
-State + forms: TanStack Query 5, Zustand, React Hook Form, Zod. Auth: JWT RS256 via `jsonwebtoken`, TOTP via `speakeasy`, OTP and refresh tokens cached in Redis.
-
----
+Production runs with Docker Compose behind a TLS-terminating reverse proxy. Installation, updates, environment variables, migrations, certificate sign-in, and backup and restore are described in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md); running from the released images in [`docs/RUN-FROM-IMAGE.md`](docs/RUN-FROM-IMAGE.md).
 
 ## Documentation
 
 | Topic | Where |
 |---|---|
+| Getting started, admin guide, FAQ | [`docs/wiki/`](docs/wiki/) |
 | API reference | [`docs/wiki/API-Reference.md`](docs/wiki/API-Reference.md) |
-| Architecture | [`docs/wiki/Architecture.md`](docs/wiki/Architecture.md) |
-| Architecture decisions (ADRs) | [`docs/adr/`](docs/adr/) |
-| Database schema, ERD & migrations | [`docs/database/`](docs/database/) |
-| Deployment guide | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) |
-| Contributing | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
-| Security policy & threat model | [`SECURITY.md`](SECURITY.md) |
-| License | [`LICENSE`](LICENSE) |
-
----
-
-## API at a glance
-
-```
-POST   /auth/request-otp
-POST   /auth/verify-otp
-POST   /auth/verify-totp
-
-GET    /api/v1/instances
-GET    /api/v1/instances/:id/{organization,contacts,endpoints,certificates,memberships}
-POST   /api/v1/instances/:id/approval/submit
-GET    /api/v1/instances/:id/download/bundle
-GET    /api/v1/instances/:id/audit
-GET    /api/v1/network/map
-
-GET    /api/v1/admin/ca-blacklist                       (admin only)
-GET    /api/v1/admin/bundle-versions                    (admin only, list)
-GET    /api/v1/admin/bundle-versions/:id/download       (admin only, signed bundle JSON)
-GET    /api/v1/admin/bundle-versions/:idA/diff/:idB     (admin only, added/removed/changed)
-
-GET    /fhir/Bundle/:endpointId    (mTLS, DSF BPE process)
-GET    /fhir/Bundle                (mTLS, search by identifier)
-```
-
-Full reference in [`docs/wiki/API-Reference.md`](docs/wiki/API-Reference.md).
-
----
+| Architecture and decisions | [`docs/wiki/Architecture.md`](docs/wiki/Architecture.md), [`docs/adr/`](docs/adr/) |
+| Database schema and migrations | [`docs/database/`](docs/database/) |
+| Security policy | [`SECURITY.md`](SECURITY.md) |
 
 ## Security
 
-- Helmet-managed security headers, CSP, HSTS, X-Frame-Options
-- Redis-backed rate limiting (5 r / 15 min on `/auth/`, 100 r / min on `/api/`)
-- JWT RS256 only (HS256 forbidden), httpOnly + secure + sameSite=strict cookies
-- Knex prepared statements only, no string concatenation
-- PEM upload rejects `PRIVATE KEY` blocks at the route layer; PEM contents never logged
-- Append-only `audit_logs` table, no UPDATE / DELETE permitted at the DB role
-- DSGVO/GDPR: contact data is never published in the allow-list bundle
-
-Reporting a vulnerability: see [`SECURITY.md`](SECURITY.md). Please use a private GitHub Security Advisory.
-
----
-
-<details>
-<summary><b>Domain & workflow details</b></summary>
-
-### Admin console
-
-IMI administrators access several admin pages, grouped under a collapsible
-**Administration** section in the left sidebar (closed by default; highlighted
-when the active route is one of its children):
-
-- **`/app/admin`**: pending approval-request review (4-eyes, silent-consent after 7 days).
-- **`/app/admin/users`**: whitelist + admin role management (lock / unlock / promote / demote / remove). All writes require TOTP re-confirmation.
-- **`/app/admin/promotions`**: pending admin-promotion requests; second admin from a different site approves or rejects (NO silent consent).
-- **`/app/admin/ca-blacklist`**: distrusted CA subject DNs and fingerprints; certificate uploads issued by a CA on this list are rejected with `CA_BLACKLISTED`. Backed by a cached Mozilla trust-store snapshot as a picker.
-- **`/app/admin/ca-blacklist`** also holds the **CA whitelist** (the CAs of DSF 2.1.1, seeded at init); with `CA_WHITELIST_ENFORCE=true` certificates from other issuers are rejected.
-- **`/app/admin/bundle-versions`**: full federation-bundle history with added/removed/changed diff and RS256-signed download. Restoring an old version is a four-eyes decision: one admin requests it, a second admin from another site approves.
-- **`/app/admin/onboarding`**: bulk onboarding of sites from CSV/XLSX templates (many files at once) or the in-tool table editor, with conflict detection and a dry run.
-- **`/app/admin/backups`**: backup schedule (every 6 h, 12 h or daily), retention, run history with checksums, backup now, step-up-protected download.
-- **`/app/audit`**: append-only cross-instance audit log with filters, anomaly flags (failed sign-in bursts, rejected private keys, untrusted issuers, night-time admin actions, mass deletes, four-eyes violations) and CSV/JSON export.
-
-Admin-role assignments are stored in `admin_grants`, each row signed RS256 over a canonical message. A DB-only attacker cannot grant themselves admin without the signing key.
-
-The bootstrap admin set is populated on first backend start from `IMI_ADMIN_EMAILS`. After that the env var is ignored at runtime. The database is authoritative. Operators are encouraged to remove the env var from production after first boot.
-
-### Bundle security
-
-- Every FHIR Bundle download is **RS256-signed** (`X-Bundle-Signature` header)
-- **SHA-256 content hash** logged in the audit trail (`X-Content-Hash` header)
-- DSF processes authenticate via **mTLS client certificates** at `/fhir/Bundle/:endpointId`
-- Client-certificate thumbprints are stored per organization
-- Each site contributes the data of its **last approved request** (snapshot taken at submit): unsubmitted edits never reach the allow list, and a newer pending, rejected or withdrawn request does not drop an approved site
-- Bundles carry the DSF `read-access-tag` (`ALL`) on the envelope and every resource, plus the `dsf.dev` `StructureDefinition` `meta.profile` per resource type, so receiving DSF FHIR servers route them through the strict validator
-- A full snapshot of every approved bundle is persisted in `bundle_versions` (versioned, signed, hash-chained); the post-approval notification mail carries the content hash, signature `kid`, change counts, and direct download / verify URLs in the recipient's locale (DE / EN via `contacts.language`)
-
-### Federation map
-
-`/app/map` renders the network-wide allow-list as a schematic Germany silhouette. Pins per organization (clustered by city), peer edges per `parent_organization` verbund (MII / NUM), filters for verbund / cert-status / city / activity. Theme-aware: dark mode inverts the silhouette palette.
-
-### Federation safety
-
-The Portal coexists with other Allow-List tools (e.g., a NUM-operated tool, future regional operators). Bundles emit `DELETE` on `OrganizationAffiliation` for removed memberships. `Organization` and `Endpoint` records are deleted only for an organization whose withdrawal from the allow list was approved.
-
-Memberships removed via the UI are soft-deleted; the next bundle emission carries the corresponding `DELETE-Affiliation` entry; a daily cron at 09:00 UTC hard-deletes soft-rows older than 90 days (`MEMBERSHIP_SOFT_DELETE_RETENTION_DAYS` configurable).
-
-</details>
-
-<details>
-<summary><b>Local development</b></summary>
-
-### Project structure
-
-```
-num-dsf-allowlist/
-├── frontend/          React SPA (Vite)
-├── backend/           Express API (TypeScript)
-├── db/migrations/     MySQL schema
-├── nginx/             Reverse proxy configuration
-├── mail/              Mailhog (dev email)
-├── scripts/           Utility scripts
-├── docs/              Documentation, screenshots, logos
-└── docker-compose.yml Development environment
-```
-
-### Dev commands
-
-```bash
-docker compose up -d                                # full stack with hot reload
-cd frontend && npm install && npm run dev           # frontend dev (standalone)
-cd backend  && npm install && npm run dev           # backend dev (standalone)
-cd frontend && npx tsc --noEmit                     # type-check frontend
-cd backend  && npx tsc --noEmit                     # type-check backend
-```
-
-### Testing
-
-```bash
-docker compose exec backend npm test     # backend integration tests
-cd frontend && npm test                  # frontend unit tests (vitest)
-cd frontend && npm run test:e2e          # Playwright E2E (needs the docker stack)
-cd frontend && npm run test:contract     # contract suite vs the real backend
-```
-
-### Pre-commit hooks
-
-The repo uses [husky](https://typicode.github.io/husky/) for git hooks. They install automatically when you run `npm install` in the repo root (via the `prepare` script), so no manual setup is needed after cloning.
-
-- `.husky/pre-commit` runs `npx lint-staged` (Prettier/ESLint on staged files) followed by a conditional `gitleaks protect --staged` scan to block accidental commit of JWT private keys, SMTP / mail-provider credentials, or TOTP encryption keys.
-- `.husky/commit-msg` runs commitlint to enforce Conventional Commit messages.
-
-The gitleaks step is skipped if the binary is not on your `PATH`; install it (`brew install gitleaks` on macOS, `choco install gitleaks` on Windows) so the scan can run locally. Bypass the hooks with `git commit --no-verify` only if you understand the risk.
-
-</details>
-
-<details>
-<summary><b>Deployment & operations</b></summary>
-
-### Production deployment
-
-See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the full guide.
-
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-### Production env additions
-
-| Variable | Default | Notes |
-|---|---|---|
-| `APPROVAL_SILENT_CONSENT_DAYS` | `7` | Auto-approve approval requests after N days. |
-| `MEMBERSHIP_SOFT_DELETE_RETENTION_DAYS` | `90` | Hard-delete soft-deleted memberships after N days. |
-| `ADMIN_GRANT_PRIVATE_KEY_BASE64` | falls back to JWT keys | Optional separate signing key for `admin_grants`. |
-| `ADMIN_GRANT_PUBLIC_KEY_BASE64` | falls back to JWT keys | Pair of the above. |
-| `IMI_ADMIN_EMAILS` | (none) | Comma-separated bootstrap admins. Consumed once on first backend start, then ignored. Remove from prod after first boot. |
-| `AUTH_MODE` | (OTP) | `cert`: client-certificate-only deployment; the e-mail OTP routes are disabled and the re-presented client certificate is the step-up. |
-| `CA_WHITELIST_ENFORCE` | `false` | Reject certificates whose issuer is not on the CA whitelist (default: flag only). |
-| `BACKUP_DIR` | `/backups` | Where scheduled backups are written (a docker volume, never exposed). |
-| `BACKUP_ENCRYPTION_KEY` | (none) | Optional 64-hex AES-256-GCM key; when set, backup files are encrypted. |
-
-### Database migrations
-
-Migration files live in `db/migrations/*.sql`. They are applied automatically by MySQL's docker entrypoint on FIRST init only. To apply a new migration to an existing dev DB:
-
-```bash
-DB_PASSWORD=$(grep ^DB_PASSWORD .env | cut -d= -f2)
-docker compose exec -T db mysql -udsf -p${DB_PASSWORD} dsf_allowlist < db/migrations/008_*.sql
-```
-
-Each migration is idempotent (uses `information_schema` checks via `PREPARE` / `EXECUTE`), so re-running them is safe. CI loops `for f in db/migrations/*.sql` to apply all of them on every test DB.
-
-### Backup and restore
-
-Scheduled backups land in `BACKUP_DIR` as `.json.gz` files (mode 0600). Copy them off the server regularly. Restore by hand on the server:
-
-```bash
-bash scripts/restore-backup.sh <file> --dry-run   # verify only
-bash scripts/restore-backup.sh <file> --yes       # restore, then restart the backend
-```
-
-A restore replaces all application tables in one transaction and invalidates every session. Details: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), section "Backup und Wiederherstellung".
-
-</details>
-
----
-
-## Engineering principles
-
-Built with AI assistance under light, [Karpathy-style guardrails](https://github.com/multica-ai/andrej-karpathy-skills):
-
-![Think before coding](https://img.shields.io/badge/Think-before%20coding-3a6fb0.svg)
-![Simplicity first (YAGNI)](https://img.shields.io/badge/Simplicity-first%20%28YAGNI%29-3a6fb0.svg)
-![Surgical changes](https://img.shields.io/badge/Surgical-changes-3a6fb0.svg)
-![Goal-driven and verified](https://img.shields.io/badge/Goal-driven%20%26%20verified-3a6fb0.svg)
-
----
+Sessions use RS256-signed JWTs with revocable refresh tokens. Sensitive admin actions need a fresh second factor. Uploads containing a private key are rejected and never logged, the audit log is append-only, and contact data is never published in the allow list. Report vulnerabilities privately as described in [`SECURITY.md`](SECURITY.md).
 
 ## License
 
-Apache 2.0. Institute of Medical Informatics Muenster (IMI), University of Muenster. See [`LICENSE`](LICENSE).
+Apache 2.0, see [`LICENSE`](LICENSE). Institute of Medical Informatics, University of Münster.
