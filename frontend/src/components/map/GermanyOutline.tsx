@@ -5,27 +5,25 @@
  * and are reused for three layers: (1) land stroked with the coast hairline,
  * (2) land fill covering the inner halves of that stroke, so only the outer
  * edge keeps it, (3) the state borders. Strokes keep their on-screen width at
- * every zoom. Colours come from the .map-root tokens in map.css (light/dark).
- * Dependencies: germanyPaths, map.css.
+ * every zoom. The drop shadow is a pre-rendered, blurred silhouette image
+ * (germanyShadow.webp, black on transparent) whose strength comes from a
+ * theme token, so no SVG filter has to be recomputed while the map moves.
+ * Colours come from the .map-root tokens in map.css (light/dark).
+ * Dependencies: germanyPaths, germanyShadow.webp, map.css.
  */
 import React, { useId } from 'react';
 import { GERMANY_PATHS } from './germanyPaths';
+import shadowUrl from './germanyShadow.webp';
+
+/** Area the shadow image covers, in map units (silhouette plus blur margin). */
+const SHADOW_BOX = { x: -30, y: -30, width: 660, height: 870 } as const;
 
 export const GermanyOutline = React.memo(function GermanyOutline() {
   const prefix = `de${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const ref = (i: number) => `#${prefix}-${i}`;
-  const shadowId = `${prefix}-shadow`;
   return (
     <g style={{ pointerEvents: 'none' }} aria-hidden="true">
       <defs>
-        <filter id={shadowId} x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow
-            dx="0"
-            dy="6"
-            stdDeviation="10"
-            style={{ floodColor: 'var(--map-land-shadow)' }}
-          />
-        </filter>
         {GERMANY_PATHS.map((p, i) => (
           <path
             key={p.id}
@@ -36,7 +34,13 @@ export const GermanyOutline = React.memo(function GermanyOutline() {
           />
         ))}
       </defs>
-      <g className="map-coast" filter={`url(#${shadowId})`}>
+      <image
+        href={shadowUrl}
+        {...SHADOW_BOX}
+        preserveAspectRatio="none"
+        className="map-land-shadow"
+      />
+      <g className="map-coast">
         {GERMANY_PATHS.map((p, i) => (
           <use key={p.id} href={ref(i)} />
         ))}

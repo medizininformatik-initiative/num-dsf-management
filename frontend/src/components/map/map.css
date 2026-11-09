@@ -14,7 +14,7 @@
   --map-land: #ffffff;
   --map-coast: rgba(15, 23, 42, 0.18);
   --map-state-border: rgba(15, 23, 42, 0.08);
-  --map-land-shadow: rgba(15, 23, 42, 0.12);
+  --map-land-shadow-opacity: 0.12;
   --map-pin-fill: #ffffff;
   --map-pin-shadow: rgba(15, 23, 42, 0.28);
   --map-cluster-fill: rgba(255, 255, 255, 0.94);
@@ -31,7 +31,7 @@
   --map-land: #1c1c1f;
   --map-coast: rgba(255, 255, 255, 0.16);
   --map-state-border: rgba(255, 255, 255, 0.06);
-  --map-land-shadow: rgba(0, 0, 0, 0.7);
+  --map-land-shadow-opacity: 0.7;
   --map-pin-fill: #2a2a2e;
   --map-pin-shadow: rgba(0, 0, 0, 0.7);
   --map-cluster-fill: rgba(42, 42, 46, 0.94);
@@ -50,6 +50,9 @@
 /* ─── Base map ─────────────────────────────────────────────────────────── */
 .map-land {
   fill: var(--map-land);
+}
+.map-land-shadow {
+  opacity: var(--map-land-shadow-opacity);
 }
 .map-coast {
   fill: var(--map-land);
