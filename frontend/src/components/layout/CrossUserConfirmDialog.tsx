@@ -2,11 +2,14 @@
  * CrossUserConfirmDialog.tsx – Confirmation modal shown when an admin attempts
  * to mutate data on an instance they don't own. Pure presentational; it joins
  * the dialog stack (useDialogLayer), so Escape or a backdrop click here never
- * also closes the form modal underneath.
+ * also closes the form modal underneath. It wears the material of the other
+ * dialogs: the scrim, a thick glass panel and the shared .btn classes.
+ * Dependencies: useDialogLayer, i18n store, ui/Icon, .btn* (src/index.css).
  */
 import { useId, useRef } from 'react';
 import { useI18n } from '../../stores/i18n.store';
 import { useDialogLayer } from '../../hooks/useDialogLayer';
+import { Icon } from '../ui/Icon';
 
 interface Props {
   open: boolean;
@@ -34,87 +37,33 @@ export function CrossUserConfirmDialog({ open, ownerEmail, onConfirm, onCancel }
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        background: 'rgba(15,23,42,0.45)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'Inter, system-ui, sans-serif',
-      }}
+      className="scrim fixed inset-0 z-[1000] flex items-center justify-center"
       onClick={(e) => {
         if (e.target === e.currentTarget && isTop()) onCancel();
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          maxWidth: '440px',
-          width: '90%',
-          background: 'var(--bg-card)',
-          borderRadius: '16px',
-          padding: '24px',
-          boxShadow: '0 24px 64px rgba(15,23,42,0.25)',
-        }}
+        className="glass-thick w-[90%] max-w-[440px] rounded-card p-6"
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-          <span
-            className="material-symbols-outlined"
-            style={{ fontSize: '24px', color: '#b45309' }}
-          >
-            warning
-          </span>
-          <h2
-            id={titleId}
-            style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}
-          >
+        <div className="flex items-center gap-2.5">
+          <Icon name="warning" size={20} className="shrink-0 text-warning-fg" />
+          <h2 id={titleId} className="text-base font-semibold text-[color:var(--text-primary)]">
             {t('crossUserDialogTitle')}
           </h2>
         </div>
-        <p
-          style={{
-            margin: '0 0 16px',
-            fontSize: '13px',
-            color: 'var(--text-secondary)',
-            lineHeight: 1.5,
-          }}
-        >
+        <p className="mt-2 text-sm text-[color:var(--text-secondary)]">
           {t('crossUserDialogBody', { owner: ownerEmail ?? t('crossUserDialogAnotherUser') })}
         </p>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+        <div className="mt-6 flex justify-end gap-2">
           <button
             ref={cancelRef}
             onClick={onCancel}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '10px',
-              border: '1px solid var(--border)',
-              background: 'var(--bg-card)',
-              color: 'var(--text-secondary)',
-              fontSize: '13px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
+            className="btn press-effect btn-md btn-secondary"
           >
             {t('crossUserCancelBtn')}
           </button>
-          <button
-            onClick={onConfirm}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '10px',
-              border: 'none',
-              background: '#b45309',
-              color: '#fff',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
+          <button onClick={onConfirm} className="btn press-effect btn-md btn-primary">
             {t('crossUserContinueBtn')}
           </button>
         </div>
