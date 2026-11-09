@@ -180,7 +180,7 @@ export function AddAdminCertificateDialog({
         )}
         {preview && validity && (
           <dl
-            className="glass-thin space-y-2 rounded-xl p-4 text-xs"
+            className="glass-thin space-y-2 rounded-control p-4 text-xs"
             aria-label={t('formCertPreviewTitle')}
           >
             <div>

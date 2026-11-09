@@ -146,7 +146,7 @@ function OrgCard({ org, t }: { org: OrgDiff; t: Translate }) {
   const heading = org.id === null ? t('historyUnassigned') : org.name;
   return (
     <section
-      className="glass-thin rounded-2xl p-4"
+      className="glass-thin rounded-card p-4"
       aria-label={heading}
       data-testid="diff-org"
       data-status={org.status}
@@ -172,7 +172,7 @@ function OrgCard({ org, t }: { org: OrgDiff; t: Translate }) {
             return (
               <li
                 key={i}
-                className="flex items-start gap-2 rounded-xl border border-[color:var(--border)] px-3 py-2"
+                className="flex items-start gap-2 rounded-control border border-[color:var(--border)] px-3 py-2"
                 data-kind={c.kind}
               >
                 <span
@@ -207,7 +207,7 @@ export function BundleDiffView({ model, raw }: Props) {
 
   if (model.isEmpty) {
     return (
-      <p className="glass-thin rounded-2xl p-4 text-sm text-[color:var(--text-secondary)]">
+      <p className="glass-thin rounded-card p-4 text-sm text-[color:var(--text-secondary)]">
         {t('historyNoChanges')}
       </p>
     );
@@ -229,7 +229,7 @@ export function BundleDiffView({ model, raw }: Props) {
           type="button"
           onClick={() => setShowRaw((v) => !v)}
           aria-expanded={showRaw}
-          className="press-effect inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+          className="press-effect inline-flex items-center gap-1 rounded-control px-2 py-1 text-xs font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
         >
           <Icon name={showRaw ? 'expand_less' : 'code'} size={16} />
           {t('historyRawShow')}
@@ -239,7 +239,7 @@ export function BundleDiffView({ model, raw }: Props) {
             <p className="mb-1 text-[11px] text-[color:var(--text-muted)]">{t('historyRawHint')}</p>
             <pre
               tabIndex={0}
-              className="glass-thin max-h-96 overflow-auto rounded-xl p-3 text-[11px] leading-relaxed text-[color:var(--text-primary)]"
+              className="glass-thin max-h-96 overflow-auto rounded-control p-3 text-[11px] leading-relaxed text-[color:var(--text-primary)]"
               data-testid="diff-raw"
             >
               {JSON.stringify(raw, null, 2)}

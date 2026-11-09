@@ -125,7 +125,7 @@ export function CaBlacklistPanel({
     <div className="space-y-6">
       <p className="text-sm text-[color:var(--text-muted)]">{t('caBlacklistIntro')}</p>
 
-      <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4">
+      <section className="rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[color:var(--text-primary)]">
           <Icon name="block" size={20} className="text-danger-fg" />
           {t('caBlacklistAdd')}
@@ -179,7 +179,7 @@ export function CaBlacklistPanel({
           {whitelistedDn && (
             <div
               role="alert"
-              className="flex flex-wrap items-start gap-x-3 gap-y-2 rounded-lg border border-danger-border bg-danger-surface p-3 text-sm text-danger-fg"
+              className="flex flex-wrap items-start gap-x-3 gap-y-2 rounded-control border border-danger-border bg-danger-surface p-3 text-sm text-danger-fg"
             >
               <Icon name="gpp_bad" size={20} className="shrink-0" />
               <p className="min-w-0 flex-1">{t('caBlacklistWhitelisted')}</p>
@@ -231,7 +231,7 @@ export function CaBlacklistPanel({
         ) : isLoading ? (
           <p className="text-sm text-[color:var(--text-muted)]">{t('loading')}</p>
         ) : blacklist.length === 0 ? (
-          <p className="flex items-center gap-2 rounded-xl border border-dashed border-[color:var(--border)] p-4 text-sm text-[color:var(--text-muted)]">
+          <p className="flex items-center gap-2 rounded-card border border-dashed border-[color:var(--border)] p-4 text-sm text-[color:var(--text-muted)]">
             <Icon name="check_circle" size={20} className="text-success-fg" />
             {t('caBlacklistEmpty')}
           </p>
@@ -283,7 +283,7 @@ function BlacklistItem({
   return (
     <li
       style={{ '--stagger-index': index } as CSSProperties}
-      className="animate-list-item-in rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4"
+      className="animate-list-item-in rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -300,7 +300,7 @@ function BlacklistItem({
           disabled={removeDisabled}
           aria-label={t('caRemoveFromBlacklistAria', { name })}
           title={t('caRemoveFromBlacklistAria', { name })}
-          className="press-effect shrink-0 rounded-lg p-1.5 text-[color:var(--text-muted)] hover:bg-danger-surface hover:text-danger-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50"
+          className="press-effect shrink-0 rounded-control p-1.5 text-[color:var(--text-muted)] hover:bg-danger-surface hover:text-danger-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50"
         >
           <Icon name="delete" size={18} />
         </button>

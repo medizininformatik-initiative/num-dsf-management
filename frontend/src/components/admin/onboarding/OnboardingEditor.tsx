@@ -124,7 +124,7 @@ export function OnboardingEditor({
 
   return (
     <div ref={root} data-testid="onboarding-editor">
-      <div className="overflow-x-auto rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)]">
+      <div className="overflow-x-auto rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)]">
         <table className="w-full border-collapse text-left">
           <thead className="bg-[color:var(--bg-hover)]">
             <tr className="text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-secondary)]">

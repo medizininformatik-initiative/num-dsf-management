@@ -29,7 +29,7 @@ const ACCENT = {
 } as const;
 
 const CHIP_CLASS =
-  'rounded bg-[color:var(--bg-hover)] px-1.5 py-px font-mono text-[11px] text-[color:var(--text-secondary)]';
+  'rounded-small bg-[color:var(--bg-hover)] px-1.5 py-px font-mono text-[11px] text-[color:var(--text-secondary)]';
 
 export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: TranslateFn }) {
   const { lang } = useI18n();
@@ -213,7 +213,7 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
                 {contacts.map((c, i) => (
                   <div
                     key={i}
-                    className="min-w-[10rem] rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-hover)] px-2.5 py-1.5"
+                    className="min-w-[10rem] rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] px-2.5 py-1.5"
                   >
                     <div className="text-xs font-semibold text-[color:var(--text-primary)]">
                       {c.name ?? '—'}
@@ -247,7 +247,7 @@ function SnapshotSection({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] px-4 py-3.5">
+    <section className="rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-4 py-3.5">
       <h3 className="mb-2.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-secondary)]">
         <Icon name={icon} size={16} style={{ color }} />
         {title}

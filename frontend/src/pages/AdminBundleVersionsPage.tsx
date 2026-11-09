@@ -125,7 +125,7 @@ export function AdminBundleVersionsPage() {
         ) : list.isError ? (
           <div
             role="alert"
-            className="glass-thin flex flex-wrap items-center gap-3 rounded-2xl p-4"
+            className="glass-thin flex flex-wrap items-center gap-3 rounded-card p-4"
           >
             <span className="text-sm text-danger-fg">{t('historyLoadFailed')}</span>
             <Button size="sm" variant="secondary" onClick={() => void list.refetch()}>
@@ -133,7 +133,7 @@ export function AdminBundleVersionsPage() {
             </Button>
           </div>
         ) : versions.length === 0 ? (
-          <p className="glass-thin rounded-2xl p-4 text-sm italic text-[color:var(--text-muted)]">
+          <p className="glass-thin rounded-card p-4 text-sm italic text-[color:var(--text-muted)]">
             {t('bundleVersionsEmpty')}
           </p>
         ) : (
@@ -151,7 +151,7 @@ export function AdminBundleVersionsPage() {
 
             <section aria-live="polite" data-testid="bundle-versions-diff" className="min-w-0">
               {to && !from ? (
-                <p className="glass-thin rounded-2xl p-4 text-sm text-[color:var(--text-secondary)]">
+                <p className="glass-thin rounded-card p-4 text-sm text-[color:var(--text-secondary)]">
                   {t('historyFirstVersion')}
                 </p>
               ) : (
@@ -172,7 +172,7 @@ export function AdminBundleVersionsPage() {
                         <select
                           value={from.id}
                           onChange={(e) => setFromId(e.target.value)}
-                          className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1 text-sm text-[color:var(--text-primary)]"
+                          className="rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1 text-sm text-[color:var(--text-primary)]"
                         >
                           {versions
                             .filter((v) => v.id !== to.id)
@@ -189,7 +189,7 @@ export function AdminBundleVersionsPage() {
                     ) : diff.isError ? (
                       <div
                         role="alert"
-                        className="glass-thin flex flex-wrap items-center gap-3 rounded-2xl p-4"
+                        className="glass-thin flex flex-wrap items-center gap-3 rounded-card p-4"
                       >
                         <span className="text-sm text-danger-fg">{t('historyDiffLoadFailed')}</span>
                         <Button size="sm" variant="secondary" onClick={() => void diff.refetch()}>

@@ -51,9 +51,9 @@ export function OnboardingMethodStep({ onChoose }: { onChoose: (m: OnboardingMet
             type="button"
             onClick={() => onChoose(m.id)}
             data-testid={`onboarding-method-${m.id}`}
-            className="glass hover-lift press-effect flex flex-col items-start gap-2 rounded-2xl p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+            className="glass hover-lift press-effect flex flex-col items-start gap-2 rounded-card p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary dark:text-brand-400">
+            <span className="flex h-10 w-10 items-center justify-center rounded-control bg-primary/10 text-primary dark:text-brand-400">
               <Icon name={m.icon} size={22} />
             </span>
             <span className="text-[15px] font-semibold text-[color:var(--text-primary)]">
@@ -64,7 +64,7 @@ export function OnboardingMethodStep({ onChoose }: { onChoose: (m: OnboardingMet
         ))}
       </div>
 
-      <section className="glass-thin rounded-2xl p-4">
+      <section className="glass-thin rounded-card p-4">
         <h2 className="text-[13px] font-semibold text-[color:var(--text-primary)]">
           {t('onbTemplatesTitle')}
         </h2>

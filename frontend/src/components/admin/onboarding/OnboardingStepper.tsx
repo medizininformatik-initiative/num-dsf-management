@@ -16,7 +16,7 @@ export function OnboardingStepper({ current }: { current: 1 | 2 | 3 }) {
     <ol
       aria-label={t('onbStepperLabel')}
       data-testid="onboarding-stepper"
-      className="glass-thin flex items-center gap-2 rounded-2xl px-4 py-3"
+      className="glass-thin flex items-center gap-2 rounded-card px-4 py-3"
     >
       {STEPS.map((key, i) => {
         const n = i + 1;

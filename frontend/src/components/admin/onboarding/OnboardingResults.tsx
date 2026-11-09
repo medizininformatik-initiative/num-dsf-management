@@ -29,7 +29,7 @@ export function OnboardingResults({ result }: { result: OnboardingImportResult }
         })}
       </p>
       {result.rows.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)]">
+        <div className="overflow-x-auto rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)]">
           <table className="w-full border-collapse text-left text-[13px]">
             <thead className="bg-[color:var(--bg-hover)]">
               <tr className="text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-secondary)]">
@@ -76,7 +76,7 @@ export function OnboardingResults({ result }: { result: OnboardingImportResult }
       {result.parseErrors.length > 0 && (
         <div
           data-testid="onboarding-parse-errors"
-          className="rounded-xl border border-warning-border bg-warning-surface p-4 text-warning-fg"
+          className="rounded-card border border-warning-border bg-warning-surface p-4 text-warning-fg"
         >
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold">
             <Icon name="warning" size={16} />

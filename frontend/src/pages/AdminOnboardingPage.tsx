@@ -237,7 +237,7 @@ export function AdminOnboardingPage() {
                 <p
                   role="alert"
                   data-testid="onboarding-conflicts"
-                  className="rounded-xl border border-danger-border bg-danger-surface px-4 py-3 text-[13px] text-danger-fg"
+                  className="rounded-card border border-danger-border bg-danger-surface px-4 py-3 text-[13px] text-danger-fg"
                 >
                   {t('onbConflictsNote', { count: conflictCount })}
                 </p>
@@ -247,7 +247,7 @@ export function AdminOnboardingPage() {
                 <p
                   role="status"
                   data-testid="onboarding-preview-note"
-                  className="glass-thin rounded-xl px-4 py-3 text-[13px] text-[color:var(--text-secondary)]"
+                  className="glass-thin rounded-card px-4 py-3 text-[13px] text-[color:var(--text-secondary)]"
                 >
                   {t('onbPreviewNote', { ok: okCount, skipped })}
                 </p>

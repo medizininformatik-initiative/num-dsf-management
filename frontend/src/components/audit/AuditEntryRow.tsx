@@ -80,7 +80,7 @@ export function AuditEntryRow({ entry, expanded, onToggle, colSpan }: Props) {
               aria-expanded={expanded}
               aria-controls={detailId}
               aria-label={expanded ? t('auditRowHideDetails') : t('auditRowShowDetails')}
-              className="press-effect -ml-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)]"
+              className="press-effect -ml-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-control text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)]"
             >
               <Icon name={expanded ? 'expand_more' : 'chevron_right'} size={18} />
             </button>

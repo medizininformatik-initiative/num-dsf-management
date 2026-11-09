@@ -70,7 +70,7 @@ export function BundleTimeline({
             className="animate-list-item-in"
           >
             <div
-              className={`glass-thin flex flex-wrap items-center gap-3 rounded-2xl p-3 ${
+              className={`glass-thin flex flex-wrap items-center gap-3 rounded-card p-3 ${
                 selected ? 'ring-2 ring-[color:var(--accent)]' : ''
               }`}
             >
@@ -79,7 +79,7 @@ export function BundleTimeline({
                 onClick={() => onSelect(v.id)}
                 aria-pressed={selected}
                 data-testid={`version-${v.version_number}`}
-                className="press-effect flex min-w-0 flex-1 items-start gap-3 rounded-xl text-left"
+                className="press-effect flex min-w-0 flex-1 items-start gap-3 rounded-control text-left"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-surface text-neutral-fg">
                   <Icon name={trigger.icon} size={20} />
@@ -137,7 +137,7 @@ export function BundleTimeline({
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={t('historyDownloadVersion', { n: v.version_number })}
-                  className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-lg text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+                  className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
                 >
                   <Icon name="download" size={18} />
                 </a>

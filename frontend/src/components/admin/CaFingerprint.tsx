@@ -48,7 +48,7 @@ export function CaFingerprint({ value }: { value: string }) {
         onClick={copy}
         aria-label={t('caCopyFingerprint')}
         title={t('caCopyFingerprint')}
-        className="press-effect -my-1 shrink-0 rounded-md p-1 text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+        className="press-effect -my-1 shrink-0 rounded-control p-1 text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
         <Icon
           name={copied ? 'check' : 'content_copy'}

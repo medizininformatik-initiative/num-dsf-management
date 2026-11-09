@@ -149,7 +149,7 @@ export function AdminPromotionsPage() {
       <AdminPageHeader title={t('adminPromotionsTitle')} subtitle={t('adminPromotionsSubtitle')} />
 
       <div className="space-y-5 px-6 py-6 sm:px-8">
-        <div className="flex gap-3 rounded-xl border border-info-border bg-info-surface p-4 text-info-fg">
+        <div className="flex gap-3 rounded-card border border-info-border bg-info-surface p-4 text-info-fg">
           <Icon name="shield" size={22} className="mt-px shrink-0" />
           <div className="text-[13px] leading-5">
             <p className="font-semibold">{t('adminPromotionsRule')}</p>
@@ -158,12 +158,12 @@ export function AdminPromotionsPage() {
         </div>
 
         {isLoading && (
-          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">
+          <div className="rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">
             <Skeleton lines={3} />
           </div>
         )}
         {!isLoading && requests && requests.length === 0 && (
-          <p className="flex items-center gap-2 rounded-xl border border-dashed border-[color:var(--border)] p-4 text-sm text-[color:var(--text-muted)]">
+          <p className="flex items-center gap-2 rounded-card border border-dashed border-[color:var(--border)] p-4 text-sm text-[color:var(--text-muted)]">
             <Icon name="check_circle" size={20} className="text-success-fg" />
             {t('adminPromotionsEmpty')}
           </p>
@@ -240,7 +240,7 @@ function PromotionItem({
   return (
     <li
       style={{ '--stagger-index': index } as CSSProperties}
-      className="animate-list-item-in rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] px-5 py-4"
+      className="animate-list-item-in rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] px-5 py-4"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">

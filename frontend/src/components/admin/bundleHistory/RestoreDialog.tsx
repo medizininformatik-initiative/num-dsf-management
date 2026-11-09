@@ -94,7 +94,7 @@ export function RestoreDialog({ open, versionNumber, busy, error, onCancel, onCo
             rows={3}
             maxLength={500}
             aria-required="true"
-            className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-sm text-[color:var(--text-primary)]"
+            className="w-full rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-sm text-[color:var(--text-primary)]"
           />
           <p className="mt-1 text-[11px] text-[color:var(--text-muted)]">
             {t('historyRestoreReasonHint')}
@@ -116,7 +116,7 @@ export function RestoreDialog({ open, versionNumber, busy, error, onCancel, onCo
               autoComplete="one-time-code"
               value={totp}
               onChange={(e) => setTotp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="w-40 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-center font-mono text-base tracking-[0.3em] text-[color:var(--text-primary)]"
+              className="w-40 rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-center font-mono text-base tracking-[0.3em] text-[color:var(--text-primary)]"
             />
           </div>
         ) : (

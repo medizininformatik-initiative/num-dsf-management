@@ -31,7 +31,7 @@ export function OnboardingFileList({ files, removing, onRemove }: OnboardingFile
           key={f.id}
           data-testid="onboarding-file"
           style={{ '--stagger-index': i } as CSSProperties}
-          className={`glass-thin rounded-xl px-4 py-2.5 ${
+          className={`glass-thin rounded-card px-4 py-2.5 ${
             removing.has(f.id) ? 'animate-fade-out' : 'animate-list-item-in'
           }`}
         >

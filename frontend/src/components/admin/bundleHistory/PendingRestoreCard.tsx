@@ -35,7 +35,7 @@ export function PendingRestoreCard({ request, meEmail, onAction }: Props) {
     <section
       aria-labelledby={`${hintId}-title`}
       data-testid="pending-restore"
-      className="glass-thin mb-6 rounded-2xl p-4"
+      className="glass-thin mb-6 rounded-card p-4"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">

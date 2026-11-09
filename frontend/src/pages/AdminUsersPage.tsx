@@ -235,7 +235,7 @@ export function AdminUsersPage() {
         {/* Add row */}
         <form
           onSubmit={requestAdd}
-          className="flex flex-wrap items-end gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4"
+          className="flex flex-wrap items-end gap-3 rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4"
         >
           <div className="min-w-[14rem] flex-1">
             <label htmlFor={emailId} className={LABEL_CLASS}>
@@ -260,13 +260,13 @@ export function AdminUsersPage() {
         <PendingCertRequestsCard meEmail={me?.email ?? null} />
 
         {isLoading && (
-          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">
+          <div className="rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">
             <Skeleton lines={4} />
           </div>
         )}
 
         {users && (
-          <div className="overflow-x-auto rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)]">
+          <div className="overflow-x-auto rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)]">
             <table className="w-full border-collapse text-left text-[13px]">
               <thead className="bg-[color:var(--bg-hover)]">
                 <tr className="text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-secondary)]">

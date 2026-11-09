@@ -161,7 +161,7 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
             <h2 id={titleId} className="text-[15px] font-semibold text-[color:var(--text-primary)]">
               {orgName}
             </h2>
-            <span className="rounded-md bg-[color:var(--bg-hover)] px-2 py-0.5 font-mono text-xs text-[color:var(--text-secondary)]">
+            <span className="rounded-small bg-[color:var(--bg-hover)] px-2 py-0.5 font-mono text-xs text-[color:var(--text-secondary)]">
               {orgId}
             </span>
           </div>
@@ -228,7 +228,7 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
 
       {/* Reject comment panel */}
       {rejecting && (
-        <div className="flex animate-fade-in flex-col gap-2.5 rounded-xl border border-danger-border bg-danger-surface p-4">
+        <div className="flex animate-fade-in flex-col gap-2.5 rounded-control border border-danger-border bg-danger-surface p-4">
           <label htmlFor={commentId} className="text-xs font-semibold text-danger-fg">
             {t('adminRejectionReasonLabel')}
           </label>
@@ -281,7 +281,7 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
         type="button"
         aria-expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
-        className="press-effect inline-flex items-center gap-1.5 self-start rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2.5 py-1.5 text-xs font-medium text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+        className="press-effect inline-flex items-center gap-1.5 self-start rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2.5 py-1.5 text-xs font-medium text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
         <Icon
           name="expand_more"

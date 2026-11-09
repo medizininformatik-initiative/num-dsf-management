@@ -147,7 +147,7 @@ export function AuditPage() {
             <p className="mb-2 text-[12px] text-[color:var(--text-muted)]">
               {t('auditShowing', { total })}
             </p>
-            <div className="glass-thin overflow-x-auto rounded-2xl">
+            <div className="glass-thin overflow-x-auto rounded-card">
               <table className="w-full border-collapse text-[12px]">
                 <thead>
                   <tr className="bg-[color:var(--bg-hover)]">

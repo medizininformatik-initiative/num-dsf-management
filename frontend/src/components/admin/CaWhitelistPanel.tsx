@@ -220,7 +220,7 @@ function EnforcementBanner({ enforced }: { enforced: boolean }) {
   return (
     <div
       data-testid="ca-whitelist-enforcement"
-      className={`flex items-start gap-3 rounded-xl border p-4 text-sm ${
+      className={`flex items-start gap-3 rounded-card border p-4 text-sm ${
         enforced
           ? 'border-success-border bg-success-surface text-success-fg'
           : 'border-warning-border bg-warning-surface text-warning-fg'
@@ -236,7 +236,7 @@ function EnforcementBanner({ enforced }: { enforced: boolean }) {
         ) : (
           <>
             {before}
-            <code className="rounded bg-[color:var(--bg-card)] px-1 py-px font-mono text-xs">
+            <code className="rounded-small bg-[color:var(--bg-card)] px-1 py-px font-mono text-xs">
               {ENFORCE_VAR}
             </code>
             {after}
@@ -286,7 +286,7 @@ function WhitelistItem({
     <li
       data-testid="ca-whitelist-row"
       style={{ '--stagger-index': index } as CSSProperties}
-      className="animate-list-item-in rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4"
+      className="animate-list-item-in rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -307,7 +307,7 @@ function WhitelistItem({
             disabled={removeDisabled}
             aria-label={t('caRemoveFromWhitelistAria', { name })}
             title={t('caRemoveFromWhitelistAria', { name })}
-            className="press-effect rounded-lg p-1.5 text-[color:var(--text-muted)] hover:bg-danger-surface hover:text-danger-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50"
+            className="press-effect rounded-control p-1.5 text-[color:var(--text-muted)] hover:bg-danger-surface hover:text-danger-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50"
           >
             <Icon name="delete" size={18} />
           </button>

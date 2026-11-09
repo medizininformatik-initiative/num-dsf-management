@@ -15,7 +15,7 @@ export function AuditSummaryBar({ summary }: { summary: AuditSummary }) {
   return (
     <section
       aria-label={t('auditSummaryTitle')}
-      className="glass-thin mb-4 flex flex-wrap items-center gap-3 rounded-2xl px-4 py-3"
+      className="glass-thin mb-4 flex flex-wrap items-center gap-3 rounded-card px-4 py-3"
     >
       <h2 className="m-0 text-[13px] font-bold text-[color:var(--text-primary)]">
         {t('auditSummaryTitle')}

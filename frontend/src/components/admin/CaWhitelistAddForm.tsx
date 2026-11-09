@@ -92,14 +92,14 @@ export function CaWhitelistAddForm({ knownCas }: { knownCas: KnownCaRow[] }) {
   const showFingerprintError = fingerprintTouched && !fingerprintValid;
 
   return (
-    <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)]">
+    <section className="rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)]">
       <h2>
         <button
           type="button"
           aria-expanded={open}
           aria-controls={formId}
           onClick={() => setOpen((v) => !v)}
-          className="press-effect flex w-full items-center gap-2 rounded-xl px-4 py-3 text-left text-sm font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+          className="press-effect flex w-full items-center gap-2 rounded-card px-4 py-3 text-left text-sm font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
           data-testid="ca-whitelist-add-toggle"
         >
           <Icon name="add_circle" size={20} className="text-primary dark:text-brand-400" />
@@ -148,7 +148,7 @@ export function CaWhitelistAddForm({ knownCas }: { knownCas: KnownCaRow[] }) {
               {KINDS.map((k) => (
                 <label
                   key={k}
-                  className="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium text-[color:var(--text-secondary)] transition-colors duration-short ease-standard has-[:checked]:bg-[color:var(--bg-card)] has-[:checked]:text-[color:var(--text-primary)] has-[:checked]:shadow-card-elevated has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[color:var(--focus-ring)]"
+                  className="cursor-pointer rounded-small px-3 py-1.5 text-sm font-medium text-[color:var(--text-secondary)] transition-colors duration-short ease-standard has-[:checked]:bg-[color:var(--bg-card)] has-[:checked]:text-[color:var(--text-primary)] has-[:checked]:shadow-card-elevated has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[color:var(--focus-ring)]"
                 >
                   <input
                     type="radio"

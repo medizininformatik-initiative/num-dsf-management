@@ -68,7 +68,7 @@ export function AdminUserCertificatesDialog({
           {certs.length === 0 ? (
             <p className="text-sm text-[color:var(--text-muted)]">{t('adminCertUserNone')}</p>
           ) : (
-            <ul className="overflow-hidden rounded-xl border border-[color:var(--border)]">
+            <ul className="overflow-hidden rounded-control border border-[color:var(--border)]">
               {certs.map((c) => (
                 <AdminCertificateRow
                   key={c.id}

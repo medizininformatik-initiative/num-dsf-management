@@ -140,7 +140,7 @@ function CaTabs({
       role="tablist"
       aria-label={t('caTabsAria')}
       onKeyDown={onKeyDown}
-      className="inline-flex rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-1"
+      className="inline-flex rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-1"
     >
       {TABS.map((id) => {
         const selected = id === tab;
@@ -157,7 +157,7 @@ function CaTabs({
             aria-controls={`ca-panel-${id}`}
             tabIndex={selected ? 0 : -1}
             onClick={() => onSelect(id)}
-            className={`press-effect inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] ${
+            className={`press-effect inline-flex items-center gap-2 rounded-small px-3.5 py-1.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] ${
               selected
                 ? 'bg-[color:var(--bg-card)] text-[color:var(--text-primary)] shadow-card-elevated'
                 : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
@@ -215,7 +215,7 @@ function WhitelistFilters({
       <div
         role="group"
         aria-label={t('caKindFilterAria')}
-        className="inline-flex rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-1"
+        className="inline-flex rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-1"
       >
         {KIND_FILTERS.map((k) => (
           <button
@@ -223,7 +223,7 @@ function WhitelistFilters({
             type="button"
             aria-pressed={kind === k}
             onClick={() => onKindChange(k)}
-            className={`press-effect rounded-lg px-3 py-1.5 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] ${
+            className={`press-effect rounded-small px-3 py-1.5 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] ${
               kind === k
                 ? 'bg-[color:var(--bg-card)] text-[color:var(--text-primary)] shadow-card-elevated'
                 : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'

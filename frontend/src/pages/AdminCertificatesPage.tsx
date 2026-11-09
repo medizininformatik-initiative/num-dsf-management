@@ -81,19 +81,19 @@ export function AdminCertificatesPage() {
         <p className="text-sm text-[color:var(--text-secondary)]">{t('adminCertExplain')}</p>
 
         {isLoading && (
-          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">
+          <div className="rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">
             <Skeleton lines={3} />
           </div>
         )}
 
         {certs && certs.length === 0 && (
-          <p className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5 text-sm text-[color:var(--text-muted)]">
+          <p className="rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5 text-sm text-[color:var(--text-muted)]">
             {t('adminCertEmpty')}
           </p>
         )}
 
         {certs && certs.length > 0 && (
-          <ul className="overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)]">
+          <ul className="overflow-hidden rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)]">
             {certs.map((c) => (
               <AdminCertificateRow
                 key={c.id}

@@ -47,7 +47,7 @@ function Checksum({ value }: { value: string }) {
         onClick={copy}
         aria-label={t('backupCopyChecksum')}
         title={t('backupCopyChecksum')}
-        className="press-effect shrink-0 rounded-md p-1 text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+        className="press-effect shrink-0 rounded-control p-1 text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
         <Icon name={copied ? 'check' : 'content_copy'} size={16} />
       </button>

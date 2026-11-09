@@ -47,7 +47,7 @@ export function OnboardingUpload({
         }}
         onDragLeave={() => setOver(false)}
         onDrop={onDrop}
-        className={`glass-thin flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed px-6 py-8 text-center transition-colors duration-short ease-standard focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--focus-ring)] ${
+        className={`glass-thin flex cursor-pointer flex-col items-center gap-2 rounded-card border border-dashed px-6 py-8 text-center transition-colors duration-short ease-standard focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--focus-ring)] ${
           over ? 'border-primary bg-primary/5' : 'border-[color:var(--border-strong)]'
         }`}
       >

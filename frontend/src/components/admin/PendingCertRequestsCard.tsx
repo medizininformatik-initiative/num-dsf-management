@@ -117,7 +117,7 @@ export function PendingCertRequestsCard({ meEmail }: { meEmail: string | null })
     <section
       aria-labelledby={titleId}
       data-testid="pending-cert-requests"
-      className="glass-thin rounded-2xl p-4"
+      className="glass-thin rounded-card p-4"
     >
       <div className="flex flex-wrap items-center gap-2">
         <h2 id={titleId} className="text-base font-semibold text-[color:var(--text-primary)]">
