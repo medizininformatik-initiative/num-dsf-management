@@ -1,9 +1,46 @@
 /**
- * peerEdges.ts – Derive membership-peer edges between map organizations.
- * Two orgs are peers iff they share at least one `parent_organization`.
- * The edge is labeled with that parent_organization (the "verbund").
+ * peerEdges.ts – Verbund (parent organization) membership of map
+ * organizations, drawn as hub-and-spoke: every member links to one hub per
+ * Verbund instead of to every other member, so a Verbund of n sites needs n
+ * lines rather than n·(n−1)/2. Also the Verbund labels, colours and counts.
+ * derivePeerEdges still expands the complete graph for the current edge layer.
  */
 import type { MapOrganization } from '../api/network.api';
+
+export interface VerbundGroup {
+  verbund: string; // parent_organization
+  members: string[]; // org.identifier, each listed once
+}
+
+/** One group per Verbund, members in input order, each org listed once. */
+export function deriveVerbunds(orgs: MapOrganization[]): VerbundGroup[] {
+  const byVerbund = new Map<string, string[]>();
+  for (const o of orgs) {
+    // Dedupe parents per org: two memberships under the same parent must not
+    // list the org twice.
+    const seen = new Set<string>();
+    for (const m of o.memberships) {
+      if (seen.has(m.parent_organization)) continue;
+      seen.add(m.parent_organization);
+      const list = byVerbund.get(m.parent_organization) ?? [];
+      list.push(o.identifier);
+      byVerbund.set(m.parent_organization, list);
+    }
+  }
+  return [...byVerbund].map(([verbund, members]) => ({ verbund, members }));
+}
+
+/** Verbunds each organization belongs to (identifier → parents, deduped). */
+export function verbundsByOrg(groups: VerbundGroup[]): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const g of groups)
+    for (const id of g.members) {
+      const list = out.get(id) ?? [];
+      list.push(g.verbund);
+      out.set(id, list);
+    }
+  return out;
+}
 
 export interface PeerEdge {
   from: string; // org.identifier
@@ -59,9 +96,7 @@ export function verbundColor(parentOrg: string): string {
   return KNOWN_VERBUND_COLORS[parentOrg] ?? '#64748b';
 }
 
-export function verbundCounts(
-  orgs: import('../api/network.api').MapOrganization[],
-): Map<string, number> {
+export function verbundCounts(orgs: MapOrganization[]): Map<string, number> {
   const out = new Map<string, number>();
   for (const o of orgs) {
     const seen = new Set<string>();
