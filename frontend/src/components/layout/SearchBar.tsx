@@ -33,16 +33,12 @@ interface SearchResult {
   cardId: EntityId;
 }
 
-const TYPE_META: Record<ResultType, { icon: string; color: string; label: TranslationKey }> = {
-  organization: {
-    icon: 'corporate_fare',
-    color: 'var(--primary)',
-    label: 'shellEntityOrganization',
-  },
-  contact: { icon: 'contact_phone', color: '#9b59b6', label: 'shellEntityContact' },
-  endpoint: { icon: 'hub', color: '#3ecfb2', label: 'shellEntityEndpoint' },
-  certificate: { icon: 'verified_user', color: '#f5a623', label: 'shellEntityCertificate' },
-  membership: { icon: 'groups', color: '#4a90d9', label: 'shellEntityMembership' },
+const TYPE_META: Record<ResultType, { icon: string; label: TranslationKey }> = {
+  organization: { icon: 'corporate_fare', label: 'shellEntityOrganization' },
+  contact: { icon: 'contact_phone', label: 'shellEntityContact' },
+  endpoint: { icon: 'hub', label: 'shellEntityEndpoint' },
+  certificate: { icon: 'verified_user', label: 'shellEntityCertificate' },
+  membership: { icon: 'groups', label: 'shellEntityMembership' },
 };
 
 export function SearchBar() {
@@ -159,7 +155,7 @@ export function SearchBar() {
   return (
     <div ref={rootRef} className="relative" onKeyDown={handleKeyDown} onBlur={handleBlur}>
       <div className="flex w-60 items-center gap-1.5 rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] px-3 py-1.5 focus-within:border-[color:var(--focus-ring)]">
-        <Icon name="search" size={16} className="shrink-0 text-[color:var(--text-muted)]" />
+        <Icon name="search" size={14} className="shrink-0 text-[color:var(--text-muted)]" />
         <input
           ref={inputRef}
           type="text"
@@ -208,25 +204,22 @@ export function SearchBar() {
                   role="option"
                   aria-label={`${typeLabel}: ${r.label}`}
                   onClick={() => handleSelect(r)}
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors duration-micro ease-standard first:rounded-t-card last:rounded-b-card hover:bg-slate-900/[0.06] focus-visible:bg-slate-900/[0.06] focus-visible:outline-none dark:hover:bg-white/10 dark:focus-visible:bg-white/10"
+                  className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors duration-micro ease-standard first:rounded-t-card last:rounded-b-card hover:bg-[color:var(--bg-hover)] focus-visible:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
                 >
                   <Icon
                     name={meta.icon}
-                    size={18}
-                    className="shrink-0"
-                    style={{ color: meta.color }}
+                    size={14}
+                    className="shrink-0 text-[color:var(--text-muted)]"
                   />
                   <div className="min-w-0">
                     <p className="truncate text-xs font-semibold text-[color:var(--text-primary)]">
                       {r.label}
                     </p>
                     {r.detail && (
-                      <p className="truncate text-[11px] text-[color:var(--text-muted)]">
-                        {r.detail}
-                      </p>
+                      <p className="truncate text-xs text-[color:var(--text-muted)]">{r.detail}</p>
                     )}
                   </div>
-                  <span className="ml-auto shrink-0 whitespace-nowrap rounded-small bg-[color:var(--bg-page)] px-1.5 py-0.5 text-[11px] text-[color:var(--text-muted)]">
+                  <span className="ml-auto shrink-0 whitespace-nowrap rounded-small bg-[color:var(--bg-page)] px-1.5 py-0.5 text-2xs text-[color:var(--text-muted)]">
                     {typeLabel}
                   </span>
                 </button>

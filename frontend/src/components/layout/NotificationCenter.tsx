@@ -44,13 +44,13 @@ export function NotificationCenter() {
         }
         aria-expanded={popover.open}
         aria-controls={panelId}
-        className="press-effect relative rounded-control p-1.5 text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+        className="press-effect relative inline-flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
-        <Icon name="notifications" size={20} className="block" />
+        <Icon name="notifications" size={18} className="block" />
         {unread > 0 && (
           <span
             aria-hidden="true"
-            className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-700 px-1 text-[11px] font-bold leading-none text-white"
+            className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-error px-1 text-2xs font-semibold leading-none text-white"
           >
             {unread > 9 ? '9+' : unread}
           </span>
@@ -67,7 +67,7 @@ export function NotificationCenter() {
         className="right-0 top-full mt-2 w-80 overflow-hidden"
       >
         <div className="flex items-center justify-between gap-2 border-b border-[color:var(--border)] py-2 pl-4 pr-2">
-          <h2 id={titleId} className="text-[13px] font-bold text-[color:var(--text-primary)]">
+          <h2 id={titleId} className="text-sm font-semibold text-[color:var(--text-primary)]">
             {t('notifications')}
           </h2>
           {notifications.length > 0 && (
@@ -76,7 +76,7 @@ export function NotificationCenter() {
               size="sm"
               onClick={clear}
               aria-label={t('ariaClearNotifications')}
-              className="min-h-0 px-2 py-1 text-[11px]"
+              className="min-h-0 px-2 py-1"
             >
               {t('clearAll')}
             </Button>
@@ -97,12 +97,12 @@ export function NotificationCenter() {
                     className="flex animate-list-item-in gap-2.5 border-b border-[color:var(--border)] px-4 py-2.5 last:border-b-0"
                     style={{ '--stagger-index': i } as CSSProperties}
                   >
-                    <Icon name={icon} size={18} className={`mt-px shrink-0 ${className}`} />
+                    <Icon name={icon} size={14} className={`mt-px shrink-0 ${className}`} />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs leading-snug text-[color:var(--text-primary)]">
                         {n.message}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-[color:var(--text-muted)]">
+                      <p className="mt-0.5 text-2xs text-[color:var(--text-muted)]">
                         {relTime(new Date(n.timestamp).toISOString(), t)}
                       </p>
                     </div>

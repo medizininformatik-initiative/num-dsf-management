@@ -23,7 +23,6 @@ interface Command {
   id: string;
   label: string;
   icon: string;
-  color: string;
   category: string;
   action: () => void;
 }
@@ -73,7 +72,6 @@ export function CommandPalette() {
         id: 'nav-canvas',
         label: t('cmdGoToCanvas'),
         icon: 'dashboard',
-        color: 'var(--primary)',
         category: t('cmdCategoryNavigation'),
         action: () => {
           navigate('/app');
@@ -84,7 +82,6 @@ export function CommandPalette() {
         id: 'nav-admin',
         label: t('cmdApprovalReview'),
         icon: 'admin_panel_settings',
-        color: 'var(--primary)',
         category: t('cmdCategoryNavigation'),
         action: () => {
           navigate('/app/admin');
@@ -95,7 +92,6 @@ export function CommandPalette() {
         id: 'nav-audit',
         label: t('cmdAuditLog'),
         icon: 'history',
-        color: 'var(--primary)',
         category: t('cmdCategoryNavigation'),
         action: () => {
           navigate('/app/audit');
@@ -106,7 +102,6 @@ export function CommandPalette() {
         id: 'nav-backups',
         label: t('cmdBackups'),
         icon: 'backup',
-        color: 'var(--primary)',
         category: t('cmdCategoryNavigation'),
         action: () => {
           navigate('/app/admin/backups');
@@ -117,7 +112,6 @@ export function CommandPalette() {
         id: 'nav-admin-certs',
         label: t('adminCertTitle'),
         icon: 'badge',
-        color: 'var(--primary)',
         category: t('cmdCategoryNavigation'),
         action: () => {
           navigate('/app/admin/certificates');
@@ -128,7 +122,6 @@ export function CommandPalette() {
         id: 'nav-map',
         label: t('cmdNetworkMap'),
         icon: 'hub',
-        color: 'var(--primary)',
         category: t('cmdCategoryNavigation'),
         action: () => {
           navigate('/app/map');
@@ -139,7 +132,6 @@ export function CommandPalette() {
         id: 'nav-help',
         label: t('helpNavLabel'),
         icon: 'help',
-        color: 'var(--primary)',
         category: t('cmdCategoryNavigation'),
         action: () => {
           navigate('/app/help');
@@ -151,7 +143,6 @@ export function CommandPalette() {
         id: 'act-org',
         label: t('cmdEditOrganization'),
         icon: 'corporate_fare',
-        color: 'var(--primary)',
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('org-edit');
@@ -162,7 +153,6 @@ export function CommandPalette() {
         id: 'act-contact',
         label: t('cmdAddContact'),
         icon: 'contact_phone',
-        color: '#9b59b6',
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('contact-add');
@@ -173,7 +163,6 @@ export function CommandPalette() {
         id: 'act-endpoint',
         label: t('cmdAddEndpoint'),
         icon: 'hub',
-        color: '#3ecfb2',
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('endpoint-add');
@@ -184,7 +173,6 @@ export function CommandPalette() {
         id: 'act-cert',
         label: t('cmdAddCertificate'),
         icon: 'verified_user',
-        color: '#f5a623',
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('certificate-add');
@@ -195,7 +183,6 @@ export function CommandPalette() {
         id: 'act-membership',
         label: t('cmdAddMembership'),
         icon: 'groups',
-        color: '#4a90d9',
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('membership-add');
@@ -206,7 +193,6 @@ export function CommandPalette() {
         id: 'act-approval',
         label: t('cmdSendForApproval'),
         icon: 'rule',
-        color: '#e05c5c',
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('approval');
@@ -217,7 +203,6 @@ export function CommandPalette() {
         id: 'act-download',
         label: t('cmdDownloadAllowList'),
         icon: 'download',
-        color: 'var(--text-secondary)',
         category: t('cmdCategoryActions'),
         action: () => {
           useModals.getState().openModal('download');
@@ -229,7 +214,6 @@ export function CommandPalette() {
         id: `inst-${inst.id}`,
         label: t('cmdSwitchToInstance', { label: inst.label }),
         icon: 'swap_horiz',
-        color: '#3ecfb2',
         category: t('cmdCategoryInstances'),
         action: () => {
           setActiveInstance(inst.id);
@@ -304,7 +288,7 @@ export function CommandPalette() {
         {t('shellCommandPalette')}
       </h2>
       <div className="flex items-center gap-2.5 border-b border-[color:var(--border)] px-4 py-3.5">
-        <Icon name="search" size={20} className="shrink-0 text-[color:var(--text-muted)]" />
+        <Icon name="search" size={16} className="shrink-0 text-[color:var(--text-muted)]" />
         <input
           ref={inputRef}
           type="text"
@@ -323,7 +307,7 @@ export function CommandPalette() {
           placeholder={t('cmdPlaceholder')}
           className="min-w-0 flex-1 bg-transparent text-sm text-[color:var(--text-primary)] outline-none placeholder:text-[color:var(--text-muted)]"
         />
-        <kbd className="shrink-0 rounded-small border border-[color:var(--border)] px-1.5 py-0.5 font-sans text-[11px] text-[color:var(--text-muted)]">
+        <kbd className="shrink-0 rounded-small border border-[color:var(--border)] px-1.5 py-0.5 font-sans text-2xs text-[color:var(--text-muted)]">
           ESC
         </kbd>
       </div>
@@ -341,7 +325,7 @@ export function CommandPalette() {
               <div key={category} role="group" aria-labelledby={groupLabelId}>
                 <p
                   id={groupLabelId}
-                  className="px-5 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-[color:var(--text-muted)]"
+                  className="px-5 pb-1 pt-2 text-xs font-semibold text-[color:var(--text-muted)]"
                 >
                   {category}
                 </p>
@@ -358,15 +342,18 @@ export function CommandPalette() {
                       tabIndex={-1}
                       onClick={cmd.action}
                       onMouseEnter={() => setSelectedIndex(idx)}
-                      className={`flex w-full items-center gap-2.5 px-5 py-2 text-left text-[13px] text-[color:var(--text-primary)] transition-colors duration-micro ease-standard ${
-                        selected ? 'bg-slate-900/[0.06] dark:bg-white/10' : ''
+                      className={`flex w-full items-center gap-2.5 px-5 py-2 text-left text-sm text-[color:var(--text-primary)] transition-colors duration-micro ease-standard ${
+                        selected ? 'bg-[color:var(--accent-surface)]' : ''
                       }`}
                     >
                       <Icon
                         name={cmd.icon}
-                        size={18}
-                        className="shrink-0"
-                        style={{ color: cmd.color }}
+                        size={16}
+                        className={`shrink-0 ${
+                          selected
+                            ? 'text-[color:var(--primary)]'
+                            : 'text-[color:var(--text-muted)]'
+                        }`}
                       />
                       <span>{cmd.label}</span>
                     </button>

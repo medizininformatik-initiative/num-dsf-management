@@ -58,17 +58,17 @@ export function TopBar({
           variant="ghost"
           size="sm"
           onClick={toggleTheme}
-          className="px-1.5"
+          className="h-8 w-8 !px-0"
           aria-label={t('ariaToggleTheme')}
           title={dark ? t('lightMode') : t('darkMode')}
         >
-          <Icon name={dark ? 'light_mode' : 'dark_mode'} size={20} />
+          <Icon name={dark ? 'light_mode' : 'dark_mode'} size={18} />
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setLang(lang === 'en' ? 'de' : 'en')}
-          className="px-2 font-bold"
+          className="px-2"
           aria-label={t('ariaToggleLanguage')}
           title={lang === 'en' ? 'Deutsch' : 'English'}
         >
@@ -89,7 +89,7 @@ export function TopBar({
               data-testid="topbar-download"
               data-nudge={nudgeHint ? 'true' : undefined}
             >
-              <Icon name="download" size={16} />
+              <Icon name="download" size={14} />
               <span className="sr-only sm:not-sr-only">{t('downloadAllowList')}</span>
               {nudgeHint && (
                 <>
@@ -116,7 +116,7 @@ export function TopBar({
               </Button>
             ) : (
               <Button variant="primary" size="sm" onClick={onApproval}>
-                <Icon name="send" size={16} />
+                <Icon name="send" size={14} />
                 <span className="sr-only sm:not-sr-only">{t('sendForApproval')}</span>
               </Button>
             )}

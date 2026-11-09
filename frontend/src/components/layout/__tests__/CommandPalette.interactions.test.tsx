@@ -66,8 +66,8 @@ describe('CommandPalette interactions', () => {
     renderPalette();
     openPalette();
 
-    expect(screen.getByText('Go to Canvas')).toBeInTheDocument();
-    expect(screen.getByText('Edit Organization')).toBeInTheDocument();
+    expect(screen.getByText('Go to canvas')).toBeInTheDocument();
+    expect(screen.getByText('Edit organization')).toBeInTheDocument();
     // Admin-only command is visible because the mocked user is an admin.
     expect(screen.getByText('Approval review')).toBeInTheDocument();
   });
@@ -78,10 +78,10 @@ describe('CommandPalette interactions', () => {
 
     setQuery('contact');
 
-    expect(screen.getByText('Add Contact')).toBeInTheDocument();
+    expect(screen.getByText('Add contact')).toBeInTheDocument();
     // Unrelated commands are filtered out.
-    expect(screen.queryByText('Go to Canvas')).not.toBeInTheDocument();
-    expect(screen.queryByText('Edit Organization')).not.toBeInTheDocument();
+    expect(screen.queryByText('Go to canvas')).not.toBeInTheDocument();
+    expect(screen.queryByText('Edit organization')).not.toBeInTheDocument();
   });
 
   it('runs the selected command on Enter, navigating via the router', async () => {
@@ -116,16 +116,16 @@ describe('CommandPalette interactions', () => {
     renderPalette();
     openPalette();
 
-    // Two action commands match "add c": Add Contact, then Add Certificate.
+    // Two action commands match "add c": Add contact, then Add certificate.
     setQuery('add c');
-    expect(screen.getByText('Add Contact')).toBeInTheDocument();
-    expect(screen.getByText('Add Certificate')).toBeInTheDocument();
+    expect(screen.getByText('Add contact')).toBeInTheDocument();
+    expect(screen.getByText('Add certificate')).toBeInTheDocument();
 
     const input = screen.getByPlaceholderText(/type a command/i);
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'Enter' });
 
-    // Second match (Add Certificate) opens the certificate-add modal.
+    // Second match (Add certificate) opens the certificate-add modal.
     expect(useModals.getState().open).toBe('certificate-add');
   });
 
@@ -139,8 +139,8 @@ describe('CommandPalette interactions', () => {
     fireEvent.keyDown(input, { key: 'ArrowDown' });
 
     // Type a query that shrinks the list down to a single match.
-    setQuery('Download Allow List');
-    expect(screen.getByText('Download Allow List')).toBeInTheDocument();
+    setQuery('Download allow list');
+    expect(screen.getByText('Download allow list')).toBeInTheDocument();
 
     // Enter must run the in-range (first/only) command, not a stale index.
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -219,7 +219,7 @@ describe('CommandPalette interactions', () => {
     const listbox = screen.getByRole('listbox', { name: 'Command palette' });
     expect(combobox).toHaveAttribute('aria-controls', listbox.id);
 
-    const first = screen.getByRole('option', { name: 'Go to Canvas' });
+    const first = screen.getByRole('option', { name: 'Go to canvas' });
     expect(first).toHaveAttribute('aria-selected', 'true');
     expect(combobox).toHaveAttribute('aria-activedescendant', first.id);
 
@@ -238,6 +238,6 @@ describe('CommandPalette interactions', () => {
     setQuery('zzz-no-such-command');
 
     expect(screen.getByText('No commands found.')).toBeInTheDocument();
-    expect(screen.queryByText('Go to Canvas')).not.toBeInTheDocument();
+    expect(screen.queryByText('Go to canvas')).not.toBeInTheDocument();
   });
 });

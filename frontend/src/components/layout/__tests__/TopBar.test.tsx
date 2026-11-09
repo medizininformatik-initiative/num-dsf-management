@@ -90,7 +90,7 @@ describe('TopBar', () => {
     const download = screen.getByTestId('topbar-download');
     expect(download).toHaveAccessibleName(/download allow list/i);
     expect(download).not.toHaveClass('btn-primary');
-    const label = screen.getByText('Download Allow List', { selector: 'span' });
+    const label = screen.getByText('Download allow list', { selector: 'span' });
     expect(label).toHaveClass('sm:not-sr-only');
     expect(label).not.toHaveClass('xl:not-sr-only');
   });
@@ -142,7 +142,7 @@ describe('TopBar', () => {
       expect(download).not.toHaveClass('download-nudge');
       expect(download).not.toHaveAttribute('data-nudge');
       expect(screen.queryByTestId('topbar-download-dot')).toBeNull();
-      expect(download).toHaveAttribute('title', 'Download Allow List');
+      expect(download).toHaveAttribute('title', 'Download allow list');
     });
 
     it('does not query freshness without instance actions', () => {
