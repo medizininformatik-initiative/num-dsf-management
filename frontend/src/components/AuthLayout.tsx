@@ -41,7 +41,7 @@ export const AUTH_INPUT_CLASS =
   'w-full rounded-input border border-[color:var(--border)] bg-[color:var(--bg-input)] px-3 py-2.5 text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] transition-colors duration-short ease-standard hover:border-[color:var(--border-strong)] focus:border-[color:var(--accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] aria-[invalid=true]:border-danger-border disabled:opacity-50';
 
 const LINK_FOCUS =
-  'rounded-small focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--focus-ring)]';
+  'rounded-small focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]';
 
 const PARTNER_LOGO =
   'opacity-60 grayscale transition-[opacity,filter] duration-short ease-standard hover:opacity-100 hover:grayscale-0';
@@ -105,7 +105,7 @@ export function AuthLayout({ children, title, subtitle, step = 0, success }: Aut
               <AuthSuccess message={success} />
             ) : (
               <>
-                <h1 className="mb-1 text-xl font-semibold text-[color:var(--text-primary)]">
+                <h1 className="mb-1 text-balance text-2xl font-semibold text-[color:var(--text-primary)]">
                   {title}
                 </h1>
                 {subtitle && (
@@ -122,7 +122,7 @@ export function AuthLayout({ children, title, subtitle, step = 0, success }: Aut
         className={`relative z-[1] mt-12 flex w-full max-w-[560px] flex-col items-center ${cardIntro ? 'animate-auth-rise' : ''}`}
         style={{ ['--auth-delay' as string]: '320ms' }}
       >
-        <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+        <p className="mb-4 text-2xs font-medium text-[color:var(--text-muted)]">
           {t('authPartnersLabel')}
         </p>
 
@@ -169,14 +169,14 @@ export function AuthLayout({ children, title, subtitle, step = 0, success }: Aut
           />
         </div>
 
-        <p className="mb-1 mt-6 text-[11px] text-[color:var(--text-muted)]">
+        <p className="mb-1 mt-6 text-2xs text-[color:var(--text-muted)]">
           {t('footerAffiliation')}
         </p>
         <a
           href="https://medic.uni-muenster.de/impressum/"
           target="_blank"
           rel="noopener noreferrer"
-          className={`text-[11px] text-[color:var(--text-muted)] underline hover:text-[color:var(--text-primary)] ${LINK_FOCUS}`}
+          className={`text-2xs text-[color:var(--text-muted)] underline underline-offset-2 hover:text-[color:var(--text-primary)] ${LINK_FOCUS}`}
         >
           Impressum
         </a>

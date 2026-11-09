@@ -25,6 +25,6 @@ describe('TotpSetupPage', () => {
       route: { pathname: '/totp-setup', state: { tempToken: 'temp-123' } },
     });
     expect(screen.getByText('Set up two-factor authentication')).toBeInTheDocument();
-    expect(await screen.findByAltText('TOTP QR Code')).toBeInTheDocument();
+    expect(await screen.findByAltText('QR code for your authenticator app')).toBeInTheDocument();
   });
 });

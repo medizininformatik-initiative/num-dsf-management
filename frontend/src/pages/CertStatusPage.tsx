@@ -31,7 +31,7 @@ function CertCheckingVisual() {
         <span className="auth-cert-ring" />
         <span className="auth-cert-ring" />
         <span className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-[color:var(--border)] bg-[color:var(--accent-surface)]">
-          <Icon name="badge" size={32} className="text-[color:var(--accent-solid)]" />
+          <Icon name="badge" size={40} className="text-[color:var(--accent)]" />
           <span className="auth-cert-scan" />
         </span>
       </div>
@@ -54,9 +54,7 @@ export function CertStatusPage({ code }: { code: string | null }) {
           role={checking ? 'status' : 'alert'}
           className={`flex items-start gap-2 text-sm leading-6 text-[color:var(--text-secondary)] ${checking ? 'justify-center text-center' : ''}`}
         >
-          {!checking && (
-            <Icon name="gpp_bad" size={20} className="mt-0.5 shrink-0 text-danger-fg" />
-          )}
+          {!checking && <Icon name="gpp_bad" size={16} className="mt-1 shrink-0 text-danger-fg" />}
           {t(messageKey)}
         </p>
         {checking && (
@@ -66,7 +64,7 @@ export function CertStatusPage({ code }: { code: string | null }) {
         )}
         {!checking && (
           <Button className="w-full" onClick={() => reauthRedirect()}>
-            <Icon name="refresh" size={18} />
+            <Icon name="refresh" size={16} />
             {t('certStatusRetry')}
           </Button>
         )}

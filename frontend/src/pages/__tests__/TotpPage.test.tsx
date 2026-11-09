@@ -34,7 +34,7 @@ const ROUTE = { pathname: '/totp', state: { tempToken: 'temp-123' } };
 
 function submit(code: string) {
   fireEvent.change(screen.getByLabelText('Authenticator code'), { target: { value: code } });
-  fireEvent.click(screen.getByRole('button', { name: 'Sign in →' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 }
 
 beforeEach(() => {

@@ -107,7 +107,7 @@ export function TotpPage() {
 
         {error && (
           <p role="alert" className="flex items-start gap-1.5 text-xs text-danger-fg">
-            <Icon name="error" size={16} className="shrink-0" />
+            <Icon name="error" size={14} className="mt-px shrink-0" />
             {error}
           </p>
         )}

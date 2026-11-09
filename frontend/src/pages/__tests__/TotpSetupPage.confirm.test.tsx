@@ -36,8 +36,8 @@ async function gotoConfirmStep() {
   setupTotp.mockResolvedValue({ data: { data: { qrCodeUrl: 'data:image/png;base64,AAA' } } });
   renderWithProviders(<TotpSetupPage />, { route: ROUTE });
   // Wait for the QR to load, then advance to the confirm step.
-  await screen.findByAltText('TOTP QR Code', {}, { timeout: 4000 });
-  await user.click(screen.getByRole('button', { name: "I've scanned the QR code →" }));
+  await screen.findByAltText('QR code for your authenticator app', {}, { timeout: 4000 });
+  await user.click(screen.getByRole('button', { name: "I've scanned the QR code" }));
   expect(await screen.findByText('Verify your authenticator')).toBeInTheDocument();
   return user;
 }
@@ -59,7 +59,7 @@ describe('TotpSetupPage — confirm + backup flow', () => {
 
   it('keeps the submit button disabled until 6 digits are entered', async () => {
     const user = await gotoConfirmStep();
-    const submit = screen.getByRole('button', { name: 'Complete setup →' });
+    const submit = screen.getByRole('button', { name: 'Complete setup' });
     expect(submit).toBeDisabled();
 
     await user.type(screen.getByRole('textbox'), '123');
@@ -83,7 +83,7 @@ describe('TotpSetupPage — confirm + backup flow', () => {
     const user = await gotoConfirmStep();
 
     await user.type(screen.getByRole('textbox'), '654321');
-    await user.click(screen.getByRole('button', { name: 'Complete setup →' }));
+    await user.click(screen.getByRole('button', { name: 'Complete setup' }));
 
     await waitFor(() => expect(confirmTotp).toHaveBeenCalledWith('temp-123', '654321'), {
       timeout: 4000,
@@ -111,7 +111,7 @@ describe('TotpSetupPage — confirm + backup flow', () => {
 
     const input = screen.getByRole('textbox') as HTMLInputElement;
     await user.type(input, '000000');
-    await user.click(screen.getByRole('button', { name: 'Complete setup →' }));
+    await user.click(screen.getByRole('button', { name: 'Complete setup' }));
 
     expect(
       await screen.findByText('Invalid code. Try again.', {}, { timeout: 4000 }),
@@ -126,6 +126,6 @@ describe('TotpSetupPage — confirm + backup flow', () => {
     renderWithProviders(<TotpSetupPage />, { route: { pathname: '/totp-setup' } });
     // No QR loads; setupTotp is never called because tempToken is missing.
     await waitFor(() => expect(setupTotp).not.toHaveBeenCalled());
-    expect(screen.queryByAltText('TOTP QR Code')).not.toBeInTheDocument();
+    expect(screen.queryByAltText('QR code for your authenticator app')).not.toBeInTheDocument();
   });
 });

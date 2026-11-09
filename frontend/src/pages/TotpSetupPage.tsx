@@ -33,7 +33,7 @@ function ErrorText({ children, center }: { children: string; center?: boolean })
       role="alert"
       className={`flex items-start gap-1.5 text-xs text-danger-fg ${center ? 'justify-center' : ''}`}
     >
-      <Icon name="error" size={16} className="shrink-0" />
+      <Icon name="error" size={14} className="mt-px shrink-0" />
       {children}
     </p>
   );
@@ -212,7 +212,7 @@ export function TotpSetupPage() {
         </div>
         <ul
           aria-label={t('totpBackupCodesAria')}
-          className="grid grid-cols-2 gap-2 rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-4"
+          className="grid grid-cols-2 gap-2 rounded-control bg-[color:var(--bg-hover)] p-3"
         >
           {backupCodes.map((c, i) => (
             <li key={i}>
@@ -225,17 +225,17 @@ export function TotpSetupPage() {
 
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" className="flex-1" onClick={copyCodes}>
-            <Icon name="content_copy" size={16} />
+            <Icon name="content_copy" size={14} />
             {t('totpBackupCopyAll')}
           </Button>
           <Button variant="secondary" size="sm" className="flex-1" onClick={downloadCodes}>
-            <Icon name="download" size={16} />
+            <Icon name="download" size={14} />
             {t('totpBackupDownload')}
           </Button>
         </div>
 
         <div className="flex gap-2 rounded-control border border-warning-border bg-warning-surface p-3 text-xs text-warning-fg">
-          <Icon name="warning" size={18} className="shrink-0" />
+          <Icon name="warning" size={14} className="mt-px shrink-0" />
           <p>{t('totpBackupWarning')}</p>
         </div>
 

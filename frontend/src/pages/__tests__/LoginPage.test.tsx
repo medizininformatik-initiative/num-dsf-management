@@ -30,7 +30,7 @@ function submitEmail() {
   fireEvent.change(screen.getByLabelText('Email address'), {
     target: { value: 'admin@example.com' },
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Send code →' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
 }
 
 describe('LoginPage', () => {
@@ -43,7 +43,7 @@ describe('LoginPage', () => {
     requestOtp.mockResolvedValue({});
     renderWithProviders(<LoginPage />, { route: '/login' });
     expect(screen.getByText('Email address')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Send code →' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send code' })).toBeInTheDocument();
   });
 
   it('navigates to /otp on a successful request', async () => {

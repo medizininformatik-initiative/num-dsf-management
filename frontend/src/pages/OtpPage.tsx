@@ -200,7 +200,7 @@ export function OtpPage() {
             role="alert"
             className="flex items-start justify-center gap-1.5 text-xs text-danger-fg"
           >
-            <Icon name="error" size={16} className="shrink-0" />
+            <Icon name="error" size={14} className="mt-px shrink-0" />
             {error}
           </p>
         )}

@@ -59,9 +59,9 @@ beforeEach(() => {
 
 async function gotoBackupStep() {
   renderWithProviders(<TotpSetupPage />, { route: ROUTE });
-  fireEvent.click(await screen.findByRole('button', { name: "I've scanned the QR code →" }));
+  fireEvent.click(await screen.findByRole('button', { name: "I've scanned the QR code" }));
   fireEvent.change(screen.getByLabelText('Authenticator code'), { target: { value: '654321' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Complete setup →' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Complete setup' }));
   await screen.findByText('Save your backup codes');
 }
 
@@ -83,7 +83,7 @@ describe('TotpSetupPage — backup codes', () => {
     const list = screen.getByRole('list', { name: 'Backup codes' });
     CODES.forEach((c) => expect(list).toHaveTextContent(c));
 
-    const continueBtn = screen.getByRole('button', { name: 'Continue →' });
+    const continueBtn = screen.getByRole('button', { name: 'Continue' });
     expect(continueBtn).toBeDisabled();
     fireEvent.click(continueBtn);
     expect(navigate).not.toHaveBeenCalled();

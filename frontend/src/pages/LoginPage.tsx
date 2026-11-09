@@ -19,7 +19,7 @@ import { Icon } from '../components/ui/Icon';
 function FormError({ children }: { children: string }) {
   return (
     <p role="alert" className="flex items-start gap-1.5 text-xs text-danger-fg">
-      <Icon name="error" size={16} className="shrink-0" />
+      <Icon name="error" size={14} className="mt-px shrink-0" />
       {children}
     </p>
   );
@@ -119,7 +119,7 @@ export function LoginPage() {
           disabled={certLoading}
           onClick={handleCertLogin}
         >
-          <Icon name="badge" size={18} />
+          <Icon name="badge" size={16} />
           {certLoading ? t('loginCertSigningIn') : t('loginCertBtn')}
         </Button>
       </div>

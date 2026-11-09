@@ -327,7 +327,7 @@ export const de: Record<TranslationKey, string> = {
   loginEmailLabel: 'E-Mail-Adresse',
   loginEmailPlaceholder: 'name@krankenhaus.de',
   loginSendingBtn: 'Code wird gesendet…',
-  loginSendBtn: 'Code senden →',
+  loginSendBtn: 'Code senden',
   loginCertHint: 'Oder, falls Ihr Browser ein registriertes Client-Zertifikat hat:',
   loginCertBtn: 'Mit Client-Zertifikat anmelden',
   loginCertSigningIn: 'Wird angemeldet…',
@@ -341,7 +341,7 @@ export const de: Record<TranslationKey, string> = {
   otpInvalidCode: 'Ungültiger oder abgelaufener Code. Bitte erneut versuchen.',
   otpResend: 'Code erneut senden',
   otpResent: 'Ein neuer Code wurde gesendet.',
-  otpDifferentEmail: '← Andere E-Mail-Adresse verwenden',
+  otpDifferentEmail: 'Andere E-Mail-Adresse verwenden',
   otpCodeAria: 'Einmalcode',
   otpDigitAria: 'Ziffer {n} von 6',
 
@@ -352,35 +352,35 @@ export const de: Record<TranslationKey, string> = {
   totpLabelApp: 'Authenticator-Code',
   totpLabelBackup: 'Backup-Code',
   totpVerifying: 'Wird geprüft…',
-  totpSignIn: 'Anmelden →',
+  totpSignIn: 'Anmelden',
   totpInvalidCode: 'Ungültiger Code. Bitte erneut versuchen.',
   totpUseBackup: 'Stattdessen Backup-Code verwenden',
   totpUseApp: 'Stattdessen Authenticator-Code verwenden',
-  totpStartOver: '← Neu starten',
+  totpStartOver: 'Neu starten',
 
   // TotpSetupPage
   totpSetupTitle: 'Zwei-Faktor-Authentifizierung einrichten',
   totpSetupSubtitle:
     'Scannen Sie den QR-Code mit Ihrer Authenticator-App (Google Authenticator, Authy usw.).',
   totpSetupLoadingQr: 'QR-Code wird geladen…',
-  totpSetupQrAlt: 'TOTP QR-Code',
+  totpSetupQrAlt: 'QR-Code für Ihre Authenticator-App',
   totpSetupQrHint: 'Geben Sie nach dem Scannen den 6-stelligen Code aus Ihrer App ein.',
-  totpSetupScannedBtn: 'QR-Code gescannt →',
+  totpSetupScannedBtn: 'QR-Code gescannt',
   totpSetupSessionExpired: 'Sitzung abgelaufen. Bitte erneut anmelden.',
   totpConfirmTitle: 'Authenticator bestätigen',
   totpConfirmSubtitle:
     'Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein, um die Einrichtung abzuschließen.',
   totpConfirmLabel: 'Authenticator-Code',
   totpConfirmVerifying: 'Wird geprüft…',
-  totpConfirmCompleteBtn: 'Einrichtung abschließen →',
+  totpConfirmCompleteBtn: 'Einrichtung abschließen',
   totpConfirmInvalidCode: 'Ungültiger Code. Erneut versuchen.',
-  totpConfirmBackToQr: '← Zurück zum QR-Code',
+  totpConfirmBackToQr: 'Zurück zum QR-Code',
   totpBackupTitle: 'Backup-Codes speichern',
   totpBackupSubtitle:
     'Bewahren Sie diese Codes sicher auf. Jeder Code kann einmal verwendet werden, falls Sie den Zugang zu Ihrer Authenticator-App verlieren.',
   totpBackupWarning:
     'Diese Codes werden nicht erneut angezeigt. Kopieren Sie sie jetzt oder laden Sie sie herunter.',
-  totpBackupContinueBtn: 'Weiter →',
+  totpBackupContinueBtn: 'Weiter',
 
   // NotFoundPage
   notFoundMessage: 'Die gesuchte Seite existiert nicht.',
