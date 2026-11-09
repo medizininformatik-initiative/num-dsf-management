@@ -49,8 +49,7 @@ export function MarketplaceTile({
         height: size,
         borderRadius: size * 0.28,
         fontSize: size * 0.44,
-        background: `linear-gradient(145deg, hsl(${hue} 62% 46%), hsl(${(hue + 40) % 360} 62% 36%))`,
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), 0 1px 3px rgba(0,0,0,0.18)',
+        background: `hsl(${hue} 48% 36%)`,
       }}
     >
       {initialOf(entry)}

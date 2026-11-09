@@ -265,9 +265,8 @@ export function MarketplacePage() {
               <section aria-labelledby="mp-featured" className="flex flex-col gap-3">
                 <h2
                   id="mp-featured"
-                  className="m-0 flex items-center gap-1.5 text-[17px] font-bold text-[color:var(--text-primary)]"
+                  className="m-0 text-[17px] font-bold text-[color:var(--text-primary)]"
                 >
-                  <Icon name="auto_awesome" size={20} className="text-[color:var(--primary)]" />
                   {t('marketplaceFeatured')}
                 </h2>
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-4">
