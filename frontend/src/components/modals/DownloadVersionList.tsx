@@ -41,7 +41,7 @@ export function DownloadVersionList({
       {versions.map((v) => (
         <li
           key={v.versionNumber}
-          className="flex flex-wrap items-center gap-3 rounded-xl border border-[color:var(--border)] px-3 py-2"
+          className="flex flex-wrap items-center gap-3 rounded-control border border-[color:var(--border)] px-3 py-2"
         >
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -75,7 +75,7 @@ export function DownloadVersionList({
               type="button"
               onClick={() => onCopy(historyUrl(v.versionNumber))}
               aria-label={t('dlCopyHistoryAria', { n: v.versionNumber })}
-              className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-lg text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+              className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
             >
               <Icon name="content_copy" size={18} />
             </button>

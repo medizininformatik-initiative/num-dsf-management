@@ -29,7 +29,7 @@ export function ApprovalRunningRequest({ approval }: { approval: ApprovalStatus 
     <div className="space-y-3" data-testid="approval-running-request">
       <ApprovalStatusBanner approval={approval} />
 
-      <dl className="rounded-xl border border-[color:var(--border)] px-4 py-2 text-xs">
+      <dl className="rounded-control border border-[color:var(--border)] px-4 py-2 text-xs">
         <div className="flex items-center justify-between gap-3 border-b border-[color:var(--border)] py-1.5">
           <dt className="font-medium text-[color:var(--text-muted)]">
             {t('approvalRunningSubmitted')}
@@ -51,7 +51,7 @@ export function ApprovalRunningRequest({ approval }: { approval: ApprovalStatus 
         </div>
       </dl>
 
-      <div className="rounded-xl border border-[color:var(--border)] px-4 py-3">
+      <div className="rounded-control border border-[color:var(--border)] px-4 py-3">
         <p className="mb-2 text-xs font-bold text-[color:var(--text-primary)]">
           {t('approvalRunningContents')}
         </p>

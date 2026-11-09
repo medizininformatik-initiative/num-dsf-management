@@ -28,7 +28,7 @@ import { certValidityLabel } from './certificateUpload';
 import type { CertificatePreviewResult, CertificatePreviewState } from './useCertificatePreview';
 
 const EXIT_MS = exitMs('short');
-const PANEL = 'glass-thin rounded-xl p-4 shadow-none';
+const PANEL = 'glass-thin rounded-control p-4 shadow-none';
 
 type VisibleState = Exclude<CertificatePreviewState, { kind: 'idle' }>;
 

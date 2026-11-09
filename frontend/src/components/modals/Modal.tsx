@@ -66,7 +66,7 @@ export function Modal({
             type="button"
             onClick={requestClose}
             aria-label={t('ariaClose')}
-            className="press-effect rounded-lg p-1.5 text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)]"
+            className="press-effect rounded-control p-1.5 text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)]"
           >
             <Icon name="close" size={20} />
           </button>

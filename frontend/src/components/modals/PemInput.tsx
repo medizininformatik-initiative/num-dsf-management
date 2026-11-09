@@ -67,7 +67,7 @@ export function PemInput({ textareaProps, onFileText, dropHint }: PemInputProps)
   return (
     <div
       data-drag-over={dragOver || undefined}
-      className="pem-dropzone glass-thin space-y-3 rounded-xl border-2 border-dashed border-[color:var(--border-strong)] p-3 shadow-none"
+      className="pem-dropzone glass-thin space-y-3 rounded-control border-2 border-dashed border-[color:var(--border-strong)] p-3 shadow-none"
       onDragEnter={(e) => {
         if (!isFileDrag(e)) return;
         e.preventDefault();

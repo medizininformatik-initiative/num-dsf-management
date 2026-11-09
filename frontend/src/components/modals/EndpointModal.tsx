@@ -77,7 +77,7 @@ function IpAddressRow({ index, register, error, leaving, onRemove, onExited }: I
           style={{ '--stagger-index': index } as CSSProperties}
         >
           <div
-            className={`space-y-2 rounded-xl border bg-white/50 p-3 dark:bg-white/[0.03] ${
+            className={`space-y-2 rounded-control border bg-white/50 p-3 dark:bg-white/[0.03] ${
               error ? 'border-danger-border' : 'border-[color:var(--border)]'
             }`}
           >
@@ -333,7 +333,7 @@ export function EndpointModal({ open, onClose, instanceId, endpointId, defaultVa
             <p>{t('hintEndpointIp')}</p>
           </div>
           {fields.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-[color:var(--border-strong)] px-3 py-2.5 text-center text-xs text-[color:var(--text-muted)]">
+            <p className="rounded-control border border-dashed border-[color:var(--border-strong)] px-3 py-2.5 text-center text-xs text-[color:var(--text-muted)]">
               {t('formIpEmpty')}
             </p>
           ) : (

@@ -126,7 +126,7 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
             placeholder={t('orgModalFieldEmailPlaceholder')}
           />
         </FormField>
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-[color:var(--border)] bg-white/50 p-3 dark:bg-white/[0.03]">
+        <div className="flex items-center justify-between gap-4 rounded-control border border-[color:var(--border)] bg-white/50 p-3 dark:bg-white/[0.03]">
           <div>
             <label
               htmlFor={activeId}

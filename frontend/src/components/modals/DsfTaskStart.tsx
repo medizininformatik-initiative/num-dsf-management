@@ -27,7 +27,7 @@ interface Props {
 }
 
 const codeBox =
-  'min-w-0 flex-1 break-all rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-3 font-mono text-[11px] text-[color:var(--text-primary)]';
+  'min-w-0 flex-1 break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] p-3 font-mono text-[11px] text-[color:var(--text-primary)]';
 
 function StepRow({ n, children }: { n: number; children: ReactNode }) {
   return (
@@ -61,7 +61,7 @@ function CopyButton({
       aria-label={label}
       title={label}
       data-testid={testId}
-      className="press-effect inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+      className="press-effect inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
     >
       <Icon name="content_copy" size={18} />
     </button>
@@ -76,7 +76,7 @@ export function DsfTaskStart({ fhirBase, endpointUrl, sharedUrl, onCopy }: Props
   const title = 'text-xs font-bold text-[color:var(--text-primary)]';
 
   return (
-    <section className="glass-thin rounded-2xl p-4" aria-labelledby={`${uid}-task`}>
+    <section className="glass-thin rounded-control p-4" aria-labelledby={`${uid}-task`}>
       <h3 id={`${uid}-task`} className="text-sm font-bold text-[color:var(--text-primary)]">
         {t('dsfTaskTitle')}
       </h3>

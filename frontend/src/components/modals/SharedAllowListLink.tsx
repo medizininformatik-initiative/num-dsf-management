@@ -25,7 +25,7 @@ export function SharedAllowListLink({
       </p>
       <div className="mt-2 flex items-start gap-2">
         <code
-          className="min-w-0 flex-1 break-all rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-2 font-mono text-[11px] text-[color:var(--text-primary)]"
+          className="min-w-0 flex-1 break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] p-2 font-mono text-[11px] text-[color:var(--text-primary)]"
           data-testid="shared-link"
         >
           {url}

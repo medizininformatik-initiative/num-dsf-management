@@ -29,7 +29,7 @@ export function FreshnessBanner({ freshness }: { freshness: AllowListFreshness |
           });
     return (
       <div
-        className="rounded-2xl border border-info-border bg-info-surface px-4 py-3"
+        className="rounded-control border border-info-border bg-info-surface px-4 py-3"
         data-testid="freshness-banner"
       >
         <p className="flex items-start gap-2 text-xs font-medium text-info-fg">

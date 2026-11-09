@@ -190,7 +190,7 @@ export const inputClass = `w-full px-3 py-2 text-sm placeholder:text-[color:var(
 export const selectClass = `w-full px-3 py-2 text-sm ${fieldSurfaceClass}`;
 
 export const checkboxClass =
-  'h-4 w-4 shrink-0 cursor-pointer rounded accent-primary dark:accent-brand-400 ' +
+  'h-4 w-4 shrink-0 cursor-pointer rounded-small accent-primary dark:accent-brand-400 ' +
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ' +
   'focus-visible:outline-[color:var(--focus-ring)]';
 
@@ -220,7 +220,7 @@ export function CheckboxCards<T extends string>({
       {options.map((option, i) => (
         <label
           key={option.value}
-          className="flex cursor-pointer items-start gap-3 rounded-xl border border-[color:var(--border)] bg-white/50 p-3 transition-colors duration-short ease-standard hover:border-[color:var(--border-strong)] has-[:checked]:border-primary/40 has-[:checked]:bg-primary/[0.05] dark:bg-white/[0.03] dark:has-[:checked]:border-brand-400/50 dark:has-[:checked]:bg-brand-400/10"
+          className="flex cursor-pointer items-start gap-3 rounded-control border border-[color:var(--border)] bg-white/50 p-3 transition-colors duration-short ease-standard hover:border-[color:var(--border-strong)] has-[:checked]:border-primary/40 has-[:checked]:bg-primary/[0.05] dark:bg-white/[0.03] dark:has-[:checked]:border-brand-400/50 dark:has-[:checked]:bg-brand-400/10"
         >
           <input
             ref={i === 0 ? firstInputRef : undefined}

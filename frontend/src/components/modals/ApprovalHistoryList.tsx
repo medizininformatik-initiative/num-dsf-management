@@ -20,7 +20,7 @@ export function ApprovalHistoryList({ instanceId }: { instanceId: string }) {
   return (
     <section
       aria-label={t('approvalHistory')}
-      className="mt-3 rounded-xl border border-[color:var(--border)] px-4 py-3"
+      className="mt-3 rounded-control border border-[color:var(--border)] px-4 py-3"
       data-testid="approval-history"
     >
       <p className="text-xs font-bold text-[color:var(--text-primary)]">{t('approvalHistory')}</p>
@@ -36,7 +36,7 @@ export function ApprovalHistoryList({ instanceId }: { instanceId: string }) {
           {history.map((req, i) => {
             const when = req.submitted_at ?? req.created_at;
             return (
-              <li key={req.id} className="rounded-lg bg-[color:var(--bg-hover)] p-2">
+              <li key={req.id} className="rounded-control bg-[color:var(--bg-hover)] p-2">
                 <div className="flex items-center gap-3">
                   <span className="flex-1 text-xs font-semibold text-[color:var(--text-primary)]">
                     {t('approvalCardRequestNum', { n: history.length - i })}

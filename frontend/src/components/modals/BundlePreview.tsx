@@ -67,7 +67,7 @@ export function BundlePreview({ instanceId }: Props) {
         type="button"
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
-        className="press-effect flex w-full items-center gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-xs font-semibold text-[color:var(--text-secondary)]"
+        className="press-effect flex w-full items-center gap-2 rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-xs font-semibold text-[color:var(--text-secondary)]"
       >
         <Icon name={expanded ? 'expand_less' : 'preview'} size={16} />
         {expanded ? t('bundlePreviewHide') : t('bundlePreviewShow')}{' '}
@@ -75,7 +75,7 @@ export function BundlePreview({ instanceId }: Props) {
       </button>
 
       {expanded && (
-        <div className="mt-2 overflow-hidden rounded-xl border border-[color:var(--border)]">
+        <div className="mt-2 overflow-hidden rounded-control border border-[color:var(--border)]">
           <Row icon="corporate_fare" tone="info" kind={t('bundlePreviewOrganization')}>
             <p className={primary}>{org.name}</p>
             <p className={`${muted} font-mono`}>{org.identifier}</p>

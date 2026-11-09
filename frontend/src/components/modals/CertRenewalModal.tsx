@@ -53,7 +53,7 @@ const STEP_TITLE: Record<Step, TranslationKey> = {
 };
 
 const CHOICE =
-  'press-effect hover-lift flex w-full items-center justify-between gap-3 rounded-xl border ' +
+  'press-effect hover-lift flex w-full items-center justify-between gap-3 rounded-control border ' +
   'border-[color:var(--border)] bg-white/50 p-3 text-left dark:bg-white/[0.03] ' +
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ' +
   'focus-visible:outline-[color:var(--focus-ring)]';
@@ -175,7 +175,7 @@ export function CertRenewalModal({ open, onClose, instanceId }: Props) {
                 {t('certRenewalSelectHint')}
               </p>
               {sortedCerts.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-[color:var(--border-strong)] p-5 text-center text-xs text-[color:var(--text-muted)]">
+                <p className="rounded-control border border-dashed border-[color:var(--border-strong)] p-5 text-center text-xs text-[color:var(--text-muted)]">
                   {t('certRenewalNoCerts')}
                 </p>
               ) : (
@@ -271,7 +271,7 @@ export function CertRenewalModal({ open, onClose, instanceId }: Props) {
                 {t('certRenewalConfirmHint')}
               </p>
               <div className="mb-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-danger-border bg-danger-surface p-3">
+                <div className="rounded-control border border-danger-border bg-danger-surface p-3">
                   <p className="text-[11px] font-bold uppercase tracking-wide text-danger-fg">
                     {t('certRenewalRemovingLabel')}
                   </p>
@@ -282,7 +282,7 @@ export function CertRenewalModal({ open, onClose, instanceId }: Props) {
                     {t('certRenewalUntil', { date: formatDate(selectedCert.valid_until, lang) })}
                   </p>
                 </div>
-                <div className="rounded-xl border border-success-border bg-success-surface p-3">
+                <div className="rounded-control border border-success-border bg-success-surface p-3">
                   <p className="text-[11px] font-bold uppercase tracking-wide text-success-fg">
                     {t('certRenewalAddingLabel')}
                   </p>

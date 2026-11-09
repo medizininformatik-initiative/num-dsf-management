@@ -37,7 +37,10 @@ interface CalloutProps {
 
 export function Callout({ tone, icon, title, children, role, className = '' }: CalloutProps) {
   return (
-    <div role={role} className={`flex gap-3 rounded-xl border p-3 ${SURFACE[tone]} ${className}`}>
+    <div
+      role={role}
+      className={`flex gap-3 rounded-control border p-3 ${SURFACE[tone]} ${className}`}
+    >
       <Icon name={icon} size={20} className={`mt-px shrink-0 ${ACCENT[tone]}`} />
       <div className="min-w-0 space-y-1 text-xs leading-relaxed text-[color:var(--text-secondary)]">
         {title && <p className={`font-semibold ${ACCENT[tone]}`}>{title}</p>}

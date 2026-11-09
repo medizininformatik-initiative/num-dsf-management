@@ -81,7 +81,7 @@ function Section({
   const [open, setOpen] = useState(defaultOpen);
   const bodyId = useId();
   return (
-    <div className="overflow-hidden rounded-xl border border-[color:var(--border)]">
+    <div className="overflow-hidden rounded-control border border-[color:var(--border)]">
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -114,7 +114,7 @@ function KV({ k, v }: { k: string; v: ReactNode }) {
   );
 }
 
-const itemBox = 'rounded-lg bg-[color:var(--bg-hover)] p-2';
+const itemBox = 'rounded-control bg-[color:var(--bg-hover)] p-2';
 const empty = 'text-xs text-[color:var(--text-muted)]';
 
 interface Props {
@@ -219,7 +219,7 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
         <div className="space-y-3">
           <ApprovalStatusBanner approval={approval} />
           {!approval && (
-            <p className="rounded-xl border border-info-border bg-info-surface p-3 text-xs text-[color:var(--text-primary)]">
+            <p className="rounded-control border border-info-border bg-info-surface p-3 text-xs text-[color:var(--text-primary)]">
               {t('approvalModalPendingNote')}
             </p>
           )}
@@ -230,7 +230,7 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
           )}
 
           {readiness.withdrawal && (
-            <div className="rounded-xl border border-warning-border bg-warning-surface p-3 text-xs">
+            <div className="rounded-control border border-warning-border bg-warning-surface p-3 text-xs">
               <p className="mb-1 flex items-center gap-2 font-bold text-warning-fg">
                 <Icon name="logout" size={16} />
                 {t('approvalWithdrawalTitle')}
@@ -242,7 +242,7 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
           {/* Readiness checklist — the same rule as the wizard and the right panel */}
           {!readiness.withdrawal && (
             <div
-              className={`rounded-xl border p-3 ${
+              className={`rounded-control border p-3 ${
                 readiness.ready
                   ? 'border-success-border bg-success-surface'
                   : 'border-danger-border bg-danger-surface'
@@ -285,7 +285,7 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
                       <button
                         type="button"
                         onClick={() => jumpTo(item.key)}
-                        className="press-effect flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-xs font-medium text-danger-fg hover:bg-[color:var(--bg-card)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+                        className="press-effect flex w-full items-center gap-2 rounded-control px-1 py-0.5 text-left text-xs font-medium text-danger-fg hover:bg-[color:var(--bg-card)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
                       >
                         <Icon name="cancel" size={16} label={t('readinessItemMissing')} />
                         <Icon name={READINESS_ICON[item.key]} size={14} />

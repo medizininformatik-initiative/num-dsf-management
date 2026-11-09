@@ -66,7 +66,7 @@ const TASK_INPUT = 'http://dsf.dev/fhir/CodeSystem/allow-list|allow_list';
 const PROCESS_URL = 'https://github.com/datasharingframework/dsf-process-allow-list';
 
 const codeBox =
-  'min-w-0 flex-1 break-all rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-3 font-mono text-[11px] text-[color:var(--text-primary)]';
+  'min-w-0 flex-1 break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] p-3 font-mono text-[11px] text-[color:var(--text-primary)]';
 const sectionTitle = 'text-sm font-bold text-[color:var(--text-primary)]';
 const helpText = 'text-xs leading-relaxed text-[color:var(--text-muted)]';
 const fieldLabel = 'text-[11px] font-semibold text-[color:var(--text-secondary)]';
@@ -91,7 +91,7 @@ function CopyField({
         type="button"
         onClick={() => onCopy(value)}
         aria-label={t('downloadCopyValue', { label })}
-        className="press-effect inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+        className="press-effect inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
       >
         <Icon name="content_copy" size={18} />
       </button>
@@ -216,7 +216,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
       <div className="space-y-4">
         <FreshnessBanner freshness={freshness} />
 
-        <div className="glass-thin rounded-2xl px-4 py-3" data-testid="bundle-disclaimer">
+        <div className="glass-thin rounded-control px-4 py-3" data-testid="bundle-disclaimer">
           <p className="flex items-start gap-2 text-xs text-[color:var(--text-secondary)]">
             <Icon name="info" size={16} className="mt-px shrink-0 text-info-fg" />
             <span>{t('dlDisclaimerNote')}</span>
@@ -243,7 +243,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
               setSelectedEndpoint(e.target.value);
               setVerification(null);
             }}
-            className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-sm text-[color:var(--text-primary)]"
+            className="w-full rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-sm text-[color:var(--text-primary)]"
           >
             <option value="">{t('downloadModalSelectEndpointPlaceholder')}</option>
             {endpoints.map((ep: EndpointOption) => (
@@ -267,7 +267,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
         />
 
         {selectedEndpoint && (
-          <section className="glass-thin rounded-2xl p-4" aria-labelledby={`${uid}-history`}>
+          <section className="glass-thin rounded-control p-4" aria-labelledby={`${uid}-history`}>
             <h3 id={`${uid}-history`} className={`${sectionTitle} mb-3`}>
               {t('dlHistoryTitle')}
             </h3>
@@ -293,7 +293,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
 
         {verification && (
           <section
-            className="glass-thin animate-list-item-in space-y-3 rounded-2xl p-4"
+            className="glass-thin animate-list-item-in space-y-3 rounded-control p-4"
             aria-labelledby={`${uid}-verify`}
             data-testid="verify-panel"
           >
@@ -361,7 +361,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
           </section>
         )}
 
-        <section className="glass-thin rounded-2xl p-4" aria-labelledby={`${uid}-guide`}>
+        <section className="glass-thin rounded-control p-4" aria-labelledby={`${uid}-guide`}>
           <h3 id={`${uid}-guide`} className={`${sectionTitle} mb-3`}>
             {t('downloadGuideTitle')}
           </h3>
@@ -410,7 +410,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
           </ol>
         </section>
 
-        <details className="glass-thin rounded-2xl p-4">
+        <details className="glass-thin rounded-control p-4">
           <summary className="cursor-pointer text-sm font-semibold text-[color:var(--text-secondary)]">
             {t('dlAdvanced')}
           </summary>
