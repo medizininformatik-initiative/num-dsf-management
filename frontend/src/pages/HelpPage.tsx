@@ -34,7 +34,7 @@ const CHIP =
   'press-effect inline-block rounded-full px-2.5 py-1 text-xs font-medium text-primary dark:text-brand-400 hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]';
 const CHIP_ACTIVE = 'bg-[color:var(--accent-surface)] !text-[color:var(--accent-on-surface)]';
 const BODY =
-  'max-w-3xl space-y-2 text-[13px] leading-relaxed text-[color:var(--text-secondary)] [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5';
+  'max-w-prose space-y-2 text-sm leading-relaxed text-[color:var(--text-secondary)] [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5';
 
 function stagger(i: number): CSSProperties {
   return { '--stagger-index': Math.min(i, 8) } as CSSProperties;
@@ -111,11 +111,7 @@ function Section({
       className="mb-8 animate-list-item-in scroll-mt-44"
       style={stagger(index)}
     >
-      <h2
-        id={`${id}-title`}
-        className="mb-3 flex items-center gap-2 text-lg font-bold text-[color:var(--text-primary)]"
-      >
-        <span aria-hidden="true" className="h-5 w-1 rounded-sm bg-primary" />
+      <h2 id={`${id}-title`} className="mb-2 text-lg font-bold text-[color:var(--text-primary)]">
         {title}
       </h2>
       <div className={BODY}>{children}</div>
@@ -273,7 +269,7 @@ export function HelpPage() {
                       id={f.id}
                       className="group/faq glass-thin scroll-mt-44 rounded-xl px-4 py-2"
                     >
-                      <summary className="flex min-h-8 cursor-pointer list-none items-center gap-2 text-[13px] font-semibold text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
+                      <summary className="flex min-h-8 cursor-pointer list-none items-center gap-2 text-sm font-semibold text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
                         <Icon
                           name="chevron_right"
                           size={18}
