@@ -5,11 +5,11 @@
  * status mix reads at a glance. Selecting it expands the city: the bubble
  * shrinks to a hub while GeoMap fans the members out around it. Like pins it
  * keeps its on-screen size at every zoom and enters/leaves with a spring.
- * Hover comes from the shared hover store.
+ * Memoized; hover comes from the shared hover store.
  * Dependencies: network.api types, lib/statusColors, mapGeometry, mapLabels,
  * hoverStore, i18n.store, map.css.
  */
-import type { CSSProperties } from 'react';
+import { memo, type CSSProperties } from 'react';
 import type { MapClusterGroup, MapOrganization } from '../../api/network.api';
 import { certStatusColor } from '../../lib/statusColors';
 import { useI18n } from '../../stores/i18n.store';
@@ -59,7 +59,7 @@ function statusArcs(members: MapOrganization[], circumference: number): Arc[] {
   return arcs;
 }
 
-export function GeoMapCluster({
+export const GeoMapCluster = memo(function GeoMapCluster({
   group,
   x,
   y,
@@ -172,4 +172,4 @@ export function GeoMapCluster({
       </g>
     </g>
   );
-}
+});

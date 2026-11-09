@@ -8,11 +8,11 @@
  * staggered spring (or flies out of its cluster when `offset` is set) and,
  * while `leaving`, plays its exit and ignores input.
  * Hover comes from the shared hover store, so only the marker whose hover
- * flag flips re-renders.
+ * flag flips re-renders; the component is memoized.
  * Dependencies: network.api types, lib/statusColors, hoverStore, i18n.store,
  * map.css.
  */
-import type { CSSProperties } from 'react';
+import { memo, type CSSProperties } from 'react';
 import type { MapOrganization } from '../../api/network.api';
 import { certStatusColor } from '../../lib/statusColors';
 import { useI18n } from '../../stores/i18n.store';
@@ -40,7 +40,7 @@ interface Props {
   compact?: boolean;
 }
 
-export function GeoMapPin({
+export const GeoMapPin = memo(function GeoMapPin({
   org,
   x,
   y,
@@ -161,4 +161,4 @@ export function GeoMapPin({
       </g>
     </g>
   );
-}
+});

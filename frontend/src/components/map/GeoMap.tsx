@@ -15,12 +15,12 @@
  * - Performance: pan and zoom gestures move the zoom layer directly
  *   (useMapViewport) and re-render nothing until the gesture ends; hover
  *   lives in a store, so only the affected markers, the tooltip and the
- *   hover edges re-render.
+ *   hover edges re-render; pins and clusters are memoized.
  * Dependencies: GermanyOutline, GeoMapPin, GeoMapCluster, GeoMapEdges,
  * MapControls, mapGeometry, hoverStore, useMapViewport, usePresenceList,
  * lib/motion, lib/peerEdges, i18n.store, map.css.
  */
-import { memo, useEffect, useId, useMemo, useRef, type CSSProperties } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, type CSSProperties } from 'react';
 import type { MapOrganization } from '../../api/network.api';
 import { GermanyOutline } from './GermanyOutline';
 import { GeoMapPin } from './GeoMapPin';
@@ -166,6 +166,14 @@ export function GeoMap({
         for (const member of p.group.members) m.set(member.identifier, p.key);
     return (orgId: string) => m.get(orgId) ?? null;
   }, [placed]);
+
+  // Stable handlers keep the memoized markers from re-rendering.
+  const selectedRef = useRef(selectedId);
+  selectedRef.current = selectedId;
+  const toggleCluster = useCallback(
+    (id: string) => onSelect(selectedRef.current === id ? null : id),
+    [onSelect],
+  );
 
   // Glide to a newly selected organization or city. Only a new selection
   // moves the view; filter changes and resizes must not, so the latest
@@ -331,7 +339,7 @@ export function GeoMap({
                 expanded={!leaving && expanded?.key === key}
                 matchedCount={p.group.members.length}
                 totalCount={p.totalMembers}
-                onSelect={(id) => onSelect(selectedId === id ? null : id)}
+                onSelect={toggleCluster}
                 onHover={onHover}
                 staggerIndex={staggerOf(key)}
                 leaving={leaving}

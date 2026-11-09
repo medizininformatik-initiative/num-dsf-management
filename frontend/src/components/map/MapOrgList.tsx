@@ -6,13 +6,13 @@
  * hover highlights the row), and a selection made on the map expands its
  * group and scrolls the row into view (scrollIntoViewSafe, so Reduce Motion
  * jumps). It slides in and out with the sheet motion (usePresence).
- * Rows read hover from the shared hover store, so hovering re-renders only
- * the row whose highlight changes.
+ * Rows are memoized and read hover from the shared hover store, so hovering
+ * re-renders only the row whose highlight changes.
  * Dependencies: react, network.api types, i18n.store, lib/statusColors,
  * lib/peerEdges, lib/motion, usePresence, useScrollEdges, hoverStore,
  * ui/Icon, map.css.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useScrollEdges } from '../../hooks/useScrollEdges';
 import { usePresence } from '../../hooks/usePresence';
 import type { MapOrganization } from '../../api/network.api';
@@ -220,7 +220,7 @@ export function MapOrgList({
   );
 }
 
-function OrgRow({
+const OrgRow = memo(function OrgRow({
   org: m,
   index,
   isSelected: isSel,
@@ -270,4 +270,4 @@ function OrgRow({
       )}
     </button>
   );
-}
+});
