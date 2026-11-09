@@ -41,11 +41,11 @@ export function DownloadVersionList({
       {versions.map((v) => (
         <li
           key={v.versionNumber}
-          className="flex flex-wrap items-center gap-3 rounded-control border border-[color:var(--border)] px-3 py-2"
+          className="flex flex-wrap items-center gap-3 rounded-control bg-[color:var(--bg-hover)] px-3 py-2"
         >
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-sm font-bold text-[color:var(--text-primary)]">
+              <span className="font-mono text-sm font-semibold text-[color:var(--text-primary)]">
                 v{v.versionNumber}
               </span>
               {v.isCurrent && (
@@ -53,7 +53,7 @@ export function DownloadVersionList({
                   {t('historyCurrent')}
                 </StatusPill>
               )}
-              <span className="text-xs font-semibold text-[color:var(--text-secondary)]">
+              <span className="text-xs font-medium text-[color:var(--text-secondary)]">
                 {t(TRIGGER_LABEL[v.triggeredBy] ?? 'historyTriggerManual')}
               </span>
             </div>
@@ -62,10 +62,10 @@ export function DownloadVersionList({
               {v.notes ? ` · ${v.notes}` : ''}
             </p>
             <details className="mt-1">
-              <summary className="cursor-pointer text-[11px] font-semibold text-[color:var(--text-secondary)]">
+              <summary className="cursor-pointer rounded-small text-xs font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]">
                 {t('dlHistoryUrl')}
               </summary>
-              <code className="mt-1 block break-all font-mono text-[11px] text-[color:var(--text-primary)]">
+              <code className="mt-1 block break-all font-mono text-2xs text-[color:var(--text-primary)]">
                 {historyUrl(v.versionNumber)}
               </code>
             </details>
@@ -75,7 +75,7 @@ export function DownloadVersionList({
               type="button"
               onClick={() => onCopy(historyUrl(v.versionNumber))}
               aria-label={t('dlCopyHistoryAria', { n: v.versionNumber })}
-              className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+              className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-[color:var(--bg-card)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
             >
               <Icon name="content_copy" size={18} />
             </button>
@@ -87,7 +87,7 @@ export function DownloadVersionList({
               aria-label={t('dlDownloadVersionAria', { n: v.versionNumber })}
               data-testid={`download-version-${v.versionNumber}`}
             >
-              <Icon name="download" size={16} />
+              <Icon name="download" size={14} />
               {busyVersion === v.versionNumber ? t('downloadModalDownloading') : t('dlDownload')}
             </Button>
           </div>

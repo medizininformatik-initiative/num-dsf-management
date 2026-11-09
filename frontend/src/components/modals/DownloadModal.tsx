@@ -13,12 +13,14 @@
  * to verify and import it with the DSF process downloadAllowList.
  * A calm banner at the top says whether the site's DSF obtained the current
  * version (useAllowListFreshness); a download refreshes it.
- * Dependencies: Modal, useEndpoints, useBundleHistory, useAllowListFreshness, useMe, entities API,
- * DownloadVersionList, BundlePreview, lib/fingerprint, i18n store, sonner.
+ * Dependencies: Modal, FormField (field classes, ModalFooter), useEndpoints, useBundleHistory,
+ * useAllowListFreshness, useMe, entities API, DownloadVersionList, BundlePreview, lib/fingerprint,
+ * i18n store, sonner.
  */
 import { useId, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
+import { fieldHintClass, fieldLabelClass, ModalFooter, selectClass } from './FormField';
 import { useEndpoints } from '../../hooks/useEndpoints';
 import { useBundleHistory } from '../../hooks/useBundleHistory';
 import {
@@ -66,10 +68,14 @@ const TASK_INPUT = 'http://dsf.dev/fhir/CodeSystem/allow-list|allow_list';
 const PROCESS_URL = 'https://github.com/datasharingframework/dsf-process-allow-list';
 
 const codeBox =
-  'min-w-0 flex-1 break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] p-3 font-mono text-[11px] text-[color:var(--text-primary)]';
-const sectionTitle = 'text-sm font-bold text-[color:var(--text-primary)]';
+  'min-w-0 flex-1 break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 font-mono text-2xs text-[color:var(--text-primary)]';
+/** A group of the dialog: an outlined inset (the dialog itself is the surface). */
+const groupClass = 'rounded-control border border-[color:var(--border)] p-3';
+const sectionTitle = 'text-sm font-semibold text-[color:var(--text-primary)]';
 const helpText = 'text-xs leading-relaxed text-[color:var(--text-muted)]';
-const fieldLabel = 'text-[11px] font-semibold text-[color:var(--text-secondary)]';
+const focusRing =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]';
+const summaryClass = `cursor-pointer rounded-small text-xs font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] ${focusRing}`;
 
 /** Monospace value with a copy button. */
 function CopyField({
@@ -91,7 +97,7 @@ function CopyField({
         type="button"
         onClick={() => onCopy(value)}
         aria-label={t('downloadCopyValue', { label })}
-        className="press-effect inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+        className={`press-effect inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] ${focusRing}`}
       >
         <Icon name="content_copy" size={18} />
       </button>
@@ -104,12 +110,12 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
     <li className="flex gap-3">
       <span
         aria-hidden="true"
-        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white"
+        className="-mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[color:var(--border-strong)] text-xs font-semibold text-[color:var(--text-secondary)]"
       >
         {n}
       </span>
       <div className="min-w-0 flex-1 space-y-1.5">
-        <p className="text-xs font-bold text-[color:var(--text-primary)]">{title}</p>
+        <p className="text-xs font-semibold text-[color:var(--text-primary)]">{title}</p>
         {children}
       </div>
     </li>
@@ -216,24 +222,22 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
       <div className="space-y-4">
         <FreshnessBanner freshness={freshness} />
 
-        <div className="glass-thin rounded-control px-4 py-3" data-testid="bundle-disclaimer">
-          <p className="flex items-start gap-2 text-xs text-[color:var(--text-secondary)]">
-            <Icon name="info" size={16} className="mt-px shrink-0 text-info-fg" />
+        <div
+          className="rounded-control bg-[color:var(--bg-hover)] p-3"
+          data-testid="bundle-disclaimer"
+        >
+          <p className="flex items-start gap-2.5 text-xs text-[color:var(--text-secondary)]">
+            <Icon name="info" size={14} className="mt-px shrink-0 text-info-fg" />
             <span>{t('dlDisclaimerNote')}</span>
           </p>
           <details className="mt-1.5 pl-6">
-            <summary className="cursor-pointer text-[11px] font-semibold text-[color:var(--text-secondary)]">
-              {t('dlDisclaimerMore')}
-            </summary>
+            <summary className={summaryClass}>{t('dlDisclaimerMore')}</summary>
             <p className={`mt-1 ${helpText}`}>{t('bundleDisclaimerBody')}</p>
           </details>
         </div>
 
         <div>
-          <label
-            htmlFor={`${uid}-endpoint`}
-            className="mb-1.5 block text-xs font-semibold text-[color:var(--text-secondary)]"
-          >
+          <label htmlFor={`${uid}-endpoint`} className={`mb-1.5 block ${fieldLabelClass}`}>
             {t('downloadModalSelectEndpoint')}
           </label>
           <select
@@ -243,7 +247,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
               setSelectedEndpoint(e.target.value);
               setVerification(null);
             }}
-            className="w-full rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-sm text-[color:var(--text-primary)]"
+            className={selectClass}
           >
             <option value="">{t('downloadModalSelectEndpointPlaceholder')}</option>
             {endpoints.map((ep: EndpointOption) => (
@@ -267,7 +271,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
         />
 
         {selectedEndpoint && (
-          <section className="glass-thin rounded-control p-4" aria-labelledby={`${uid}-history`}>
+          <section className={groupClass} aria-labelledby={`${uid}-history`}>
             <h3 id={`${uid}-history`} className={`${sectionTitle} mb-3`}>
               {t('dlHistoryTitle')}
             </h3>
@@ -278,7 +282,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
                 {t('dlHistoryLoadFailed')}
               </p>
             ) : (history.data?.length ?? 0) === 0 ? (
-              <p className="text-xs italic text-[color:var(--text-muted)]">{t('dlHistoryEmpty')}</p>
+              <p className="text-xs text-[color:var(--text-muted)]">{t('dlHistoryEmpty')}</p>
             ) : (
               <DownloadVersionList
                 versions={history.data ?? []}
@@ -293,7 +297,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
 
         {verification && (
           <section
-            className="glass-thin animate-list-item-in space-y-3 rounded-control p-4"
+            className={`animate-list-item-in space-y-3 ${groupClass}`}
             aria-labelledby={`${uid}-verify`}
             data-testid="verify-panel"
           >
@@ -313,7 +317,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
             )}
             {verification.hash && (
               <div className="space-y-1.5">
-                <p className={fieldLabel}>{t('dlVerifyHash')}</p>
+                <p className={fieldLabelClass}>{t('dlVerifyHash')}</p>
                 <CopyField
                   value={verification.hash}
                   display={fingerprintGroups(verification.hash).join(' ')}
@@ -338,17 +342,13 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
                   </p>
                 )}
                 {hashCheck === 'unchecked' && (
-                  <p className="text-[11px] text-[color:var(--text-secondary)]">
-                    {t('downloadResultHashUnchecked')}
-                  </p>
+                  <p className={fieldHintClass}>{t('downloadResultHashUnchecked')}</p>
                 )}
               </div>
             )}
             {verification.signature && (
               <details>
-                <summary className="cursor-pointer text-[11px] font-semibold text-[color:var(--text-secondary)]">
-                  {t('dlVerifySignature')}
-                </summary>
+                <summary className={summaryClass}>{t('dlVerifySignature')}</summary>
                 <div className="mt-1.5">
                   <CopyField
                     value={verification.signature}
@@ -361,7 +361,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
           </section>
         )}
 
-        <section className="glass-thin rounded-control p-4" aria-labelledby={`${uid}-guide`}>
+        <section className={groupClass} aria-labelledby={`${uid}-guide`}>
           <h3 id={`${uid}-guide`} className={`${sectionTitle} mb-3`}>
             {t('downloadGuideTitle')}
           </h3>
@@ -371,7 +371,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
             </Step>
             <Step n={2} title={t('downloadGuideStep2Title')}>
               <p className={helpText}>{t('downloadGuideStep2Body')}</p>
-              <p className={fieldLabel}>{t('downloadGuideStep2Commands')}</p>
+              <p className={fieldLabelClass}>{t('downloadGuideStep2Commands')}</p>
               <CopyField
                 value={`sha256sum ${commandFile}`}
                 label="sha256sum"
@@ -390,28 +390,30 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
                   href={PROCESS_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold text-[color:var(--accent)] underline"
+                  className={`rounded-small font-semibold text-[color:var(--accent)] underline underline-offset-2 ${focusRing}`}
                 >
                   {t('downloadGuideProcessLink')}
                 </a>
                 {stepAfter}
               </p>
-              <p className={fieldLabel}>{t('downloadGuideTaskInput')}</p>
+              <p className={fieldLabelClass}>{t('downloadGuideTaskInput')}</p>
               <CopyField
                 value={TASK_INPUT}
                 label={t('downloadGuideTaskInput')}
                 onCopy={(text) => void copy(text)}
               />
-              <p className="flex gap-1.5 text-[11px] leading-relaxed text-[color:var(--text-secondary)]">
-                <Icon name="info" size={14} className="mt-px shrink-0 text-info-fg" />
+              <p className={`flex gap-2 ${helpText}`}>
+                <Icon name="info" size={14} className="mt-0.5 shrink-0 text-info-fg" />
                 <span>{t('downloadGuideIdentifiers')}</span>
               </p>
             </Step>
           </ol>
         </section>
 
-        <details className="glass-thin rounded-control p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-[color:var(--text-secondary)]">
+        <details className={groupClass}>
+          <summary
+            className={`cursor-pointer rounded-small text-sm font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] ${focusRing}`}
+          >
             {t('dlAdvanced')}
           </summary>
           <div className="mt-4 space-y-4">
@@ -451,13 +453,8 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
             <BundlePreview instanceId={instanceId} />
           </div>
         </details>
-
-        <div className="flex justify-end border-t border-[color:var(--border)] pt-3">
-          <Button variant="secondary" onClick={onClose}>
-            {t('downloadModalClose')}
-          </Button>
-        </div>
       </div>
+      <ModalFooter onCancel={onClose} cancelLabel={t('downloadModalClose')} hideSubmit />
     </Modal>
   );
 }

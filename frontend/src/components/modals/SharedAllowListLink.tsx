@@ -25,7 +25,7 @@ export function SharedAllowListLink({
       </p>
       <div className="mt-2 flex items-start gap-2">
         <code
-          className="min-w-0 flex-1 break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] p-2 font-mono text-[11px] text-[color:var(--text-primary)]"
+          className="min-w-0 flex-1 break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 font-mono text-2xs text-[color:var(--text-primary)]"
           data-testid="shared-link"
         >
           {url}
@@ -37,7 +37,7 @@ export function SharedAllowListLink({
           aria-label={t('dlSharedLinkCopy')}
           data-testid="copy-shared-link"
         >
-          <Icon name="content_copy" size={16} />
+          <Icon name="content_copy" size={14} />
           {t('dlCopyLink')}
         </Button>
       </div>

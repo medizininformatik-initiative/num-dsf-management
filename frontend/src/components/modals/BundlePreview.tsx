@@ -13,34 +13,17 @@ import { useI18n } from '../../stores/i18n.store';
 import { parseJsonArray } from '../../lib/parseJsonArray';
 import { formatDate } from '../../lib/dateUtils';
 import { Icon } from '../ui/Icon';
-import { TONE_CLASS, type StatusTone } from '../../lib/statusColors';
 
 interface Props {
   instanceId: string;
 }
 
-function Row({
-  icon,
-  tone,
-  kind,
-  children,
-}: {
-  icon: string;
-  tone: StatusTone;
-  kind: string;
-  children: React.ReactNode;
-}) {
+function Row({ icon, kind, children }: { icon: string; kind: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-3 border-b border-[color:var(--border)] px-3 py-2.5 last:border-b-0">
-      <span
-        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${TONE_CLASS[tone]}`}
-      >
-        <Icon name={icon} size={16} />
-      </span>
+      <Icon name={icon} size={16} className="shrink-0 text-[color:var(--text-muted)]" />
       <div className="min-w-0">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-muted)]">
-          {kind}
-        </p>
+        <p className="text-2xs font-medium text-[color:var(--text-muted)]">{kind}</p>
         {children}
       </div>
     </div>
@@ -58,8 +41,8 @@ export function BundlePreview({ instanceId }: Props) {
   if (!org) return null;
 
   const resourceCount = 1 + endpoints.length + certs.length + memberships.length;
-  const primary = 'text-xs font-semibold text-[color:var(--text-primary)]';
-  const muted = 'text-[11px] text-[color:var(--text-muted)]';
+  const primary = 'text-sm font-medium text-[color:var(--text-primary)]';
+  const muted = 'text-xs text-[color:var(--text-muted)]';
 
   return (
     <div>
@@ -67,16 +50,16 @@ export function BundlePreview({ instanceId }: Props) {
         type="button"
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
-        className="press-effect flex w-full items-center gap-2 rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-xs font-semibold text-[color:var(--text-secondary)]"
+        className="press-effect flex w-full items-center gap-2 rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 text-xs font-semibold text-[color:var(--text-secondary)] hover:border-[color:var(--border-strong)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
-        <Icon name={expanded ? 'expand_less' : 'preview'} size={16} />
+        <Icon name={expanded ? 'expand_less' : 'preview'} size={14} />
         {expanded ? t('bundlePreviewHide') : t('bundlePreviewShow')}{' '}
         {t('bundlePreviewSuffix', { n: resourceCount })}
       </button>
 
       {expanded && (
-        <div className="mt-2 overflow-hidden rounded-control border border-[color:var(--border)]">
-          <Row icon="corporate_fare" tone="info" kind={t('bundlePreviewOrganization')}>
+        <div className="mt-2 overflow-hidden rounded-control bg-[color:var(--bg-hover)]">
+          <Row icon="corporate_fare" kind={t('bundlePreviewOrganization')}>
             <p className={primary}>{org.name}</p>
             <p className={`${muted} font-mono`}>{org.identifier}</p>
           </Row>
@@ -88,7 +71,7 @@ export function BundlePreview({ instanceId }: Props) {
               address?: string;
               ipAddresses?: Array<{ ip: string; isFhir?: boolean; isBpe?: boolean }>;
             }) => (
-              <Row key={ep.identifier} icon="hub" tone="success" kind={t('bundlePreviewEndpoint')}>
+              <Row key={ep.identifier} icon="hub" kind={t('bundlePreviewEndpoint')}>
                 <p className={primary}>{ep.name || ep.identifier}</p>
                 <p className={`${muted} break-all`}>{ep.address}</p>
                 <div className="mt-1 flex flex-wrap gap-1">
@@ -108,12 +91,7 @@ export function BundlePreview({ instanceId }: Props) {
           )}
 
           {certs.map((cert: { id: string; subject?: string; valid_until?: string }) => (
-            <Row
-              key={cert.id}
-              icon="verified_user"
-              tone="warning"
-              kind={t('bundlePreviewCertificate')}
-            >
+            <Row key={cert.id} icon="verified_user" kind={t('bundlePreviewCertificate')}>
               <p className={primary}>{cert.subject}</p>
               <p className={muted}>
                 {t('bundlePreviewValidUntil', {
@@ -124,9 +102,9 @@ export function BundlePreview({ instanceId }: Props) {
           ))}
 
           {memberships.map((ms: { id: string; parent_organization: string; roles: unknown }) => (
-            <Row key={ms.id} icon="groups" tone="neutral" kind={t('bundlePreviewAffiliation')}>
+            <Row key={ms.id} icon="groups" kind={t('bundlePreviewAffiliation')}>
               <p className={primary}>{ms.parent_organization}</p>
-              <p className={`${muted} flex flex-wrap gap-2 font-semibold`}>
+              <p className={`${muted} flex flex-wrap gap-2`}>
                 {parseJsonArray(ms.roles).map((r) => (
                   <span key={r}>{r}</span>
                 ))}

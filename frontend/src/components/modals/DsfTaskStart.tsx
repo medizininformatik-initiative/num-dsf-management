@@ -27,14 +27,16 @@ interface Props {
 }
 
 const codeBox =
-  'min-w-0 flex-1 break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] p-3 font-mono text-[11px] text-[color:var(--text-primary)]';
+  'min-w-0 flex-1 break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-3 py-2 font-mono text-2xs text-[color:var(--text-primary)]';
+const focusRing =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]';
 
 function StepRow({ n, children }: { n: number; children: ReactNode }) {
   return (
     <li className="flex gap-3">
       <span
         aria-hidden="true"
-        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white"
+        className="-mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[color:var(--border-strong)] text-xs font-semibold text-[color:var(--text-secondary)]"
       >
         {n}
       </span>
@@ -61,7 +63,7 @@ function CopyButton({
       aria-label={label}
       title={label}
       data-testid={testId}
-      className="press-effect inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+      className={`press-effect inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] ${focusRing}`}
     >
       <Icon name="content_copy" size={18} />
     </button>
@@ -73,16 +75,19 @@ export function DsfTaskStart({ fhirBase, endpointUrl, sharedUrl, onCopy }: Props
   const uid = useId();
   const taskHref = dsfTaskSearchUrl(fhirBase);
   const taskText = dsfTaskDisplayUrl(fhirBase);
-  const title = 'text-xs font-bold text-[color:var(--text-primary)]';
+  const title = 'text-xs font-semibold text-[color:var(--text-primary)]';
 
   return (
-    <section className="glass-thin rounded-control p-4" aria-labelledby={`${uid}-task`}>
-      <h3 id={`${uid}-task`} className="text-sm font-bold text-[color:var(--text-primary)]">
+    <section
+      className="rounded-control border border-[color:var(--border)] p-3"
+      aria-labelledby={`${uid}-task`}
+    >
+      <h3 id={`${uid}-task`} className="text-sm font-semibold text-[color:var(--text-primary)]">
         {t('dsfTaskTitle')}
       </h3>
 
       {fhirBase === undefined ? (
-        <p className="mt-3 text-xs italic text-[color:var(--text-muted)]">{t('dsfTaskPick')}</p>
+        <p className="mt-3 text-xs text-[color:var(--text-muted)]">{t('dsfTaskPick')}</p>
       ) : !taskHref || !taskText ? (
         <p role="alert" className="mt-3 text-xs font-medium text-warning-fg">
           {t('dsfTaskInvalidBase')}
@@ -102,7 +107,7 @@ export function DsfTaskStart({ fhirBase, endpointUrl, sharedUrl, onCopy }: Props
                 target="_blank"
                 rel="noopener noreferrer"
                 data-testid="dsf-plugin-link"
-                className="inline-flex items-center gap-1 break-all text-xs font-semibold text-[color:var(--accent)] underline"
+                className={`inline-flex items-center gap-1 break-all rounded-small text-xs font-semibold text-[color:var(--accent)] underline underline-offset-2 ${focusRing}`}
               >
                 {PLUGIN_RELEASES_URL}
                 <Icon name="open_in_new" size={14} />
@@ -123,7 +128,6 @@ export function DsfTaskStart({ fhirBase, endpointUrl, sharedUrl, onCopy }: Props
                 </a>
                 <Button
                   variant="secondary"
-                  size="sm"
                   onClick={() => onCopy(taskHref)}
                   data-testid="dsf-task-copy"
                 >

@@ -441,7 +441,7 @@ export const en = {
   loginFingerprintSourceApproval: 'From the approved allow list',
   loginFingerprintRemove: 'Remove',
   loginFingerprintRemoveAria: 'Remove login fingerprint {prefix}',
-  dlSharedLinkCopy: 'Copy shared link',
+  dlSharedLinkCopy: 'Copy link to the shared address',
 
   // CertificatesCard
   certRenewBtn: 'Renew',
@@ -701,12 +701,12 @@ export const en = {
   downloadModalSelectEndpointPlaceholder: 'Select endpoint…',
   downloadModalBundleTitle: 'Allow-list bundle',
   downloadModalSelectAbove: 'Select an endpoint above.',
-  downloadModalDownloadBundle: 'Download Bundle (JSON)',
+  downloadModalDownloadBundle: 'Download bundle (JSON)',
   downloadModalDownloading: 'Downloading…',
-  downloadModalIpTitle: 'IP Address List',
+  downloadModalIpTitle: 'IP address list',
   downloadModalIpDesc:
     'Contains all outgoing IP addresses of participating organizations. Use for firewall configuration.',
-  downloadModalDownloadIp: 'Download IP Address List (Excel)',
+  downloadModalDownloadIp: 'Download IP address list (Excel)',
   downloadModalClose: 'Close',
   downloadBundleSuccess: 'Bundle downloaded.',
   downloadBundleFailed: 'Failed to download bundle.',
