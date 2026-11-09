@@ -1730,7 +1730,7 @@ export const en = {
   approvalStatusRejected: 'Rejected',
   mapOrgListTitle: 'Organizations',
   mapOrgListCount: '{n} total · {v} groups',
-  mapOrgNoVerbund: '— No group —',
+  mapOrgNoVerbund: 'No group',
   mapOrgListEmpty: 'No organizations match the current filter.',
   mapOrgInactive: 'inactive',
 

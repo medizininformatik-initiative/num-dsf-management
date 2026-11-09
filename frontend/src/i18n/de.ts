@@ -1764,7 +1764,7 @@ export const de: Record<TranslationKey, string> = {
   approvalStatusRejected: 'Abgelehnt',
   mapOrgListTitle: 'Organisationen',
   mapOrgListCount: '{n} gesamt · {v} Gruppen',
-  mapOrgNoVerbund: '— Keine Gruppe —',
+  mapOrgNoVerbund: 'Keine Gruppe',
   mapOrgListEmpty: 'Keine Organisation entspricht dem aktuellen Filter.',
   mapOrgInactive: 'inaktiv',
 
