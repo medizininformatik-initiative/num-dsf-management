@@ -12,6 +12,7 @@ import { db } from '../db/connection';
 import {
   parseOnboardingFile,
   importSites,
+  previewSites,
   onboardingRowSchema,
   type OnboardingRow,
 } from '../services/onboarding.service';
@@ -258,6 +259,33 @@ describe('importSites', () => {
     expect(orgs).toHaveLength(1);
     const instances = await db('instances').where({ id: orgs[0].instance_id });
     expect(instances).toHaveLength(1);
+  });
+
+  it('refuses an admin certificate fingerprint with ADMIN_CERTIFICATE, in the import and the dry run', async () => {
+    const adminFp = uuidv4().replace(/-/g, '').repeat(4);
+    await db('admin_cert_fingerprints').insert({
+      id: uuidv4(),
+      email: `onb-admin-${uuidv4().slice(0, 8)}@imi-test.example.de`,
+      fingerprint: adminFp,
+      created_at: new Date(),
+      created_by: 'test',
+    });
+    const row = track(importRow({ clientCertFingerprint: adminFp }));
+    try {
+      const preview = await previewSites([row]);
+      const result = await importSites([row], ACTOR_EMAIL, IP);
+
+      expect(preview.rows[0]).toMatchObject({ ok: false, issue: 'ADMIN_CERTIFICATE' });
+      expect(result.rows[0]).toMatchObject({ ok: false, issue: 'ADMIN_CERTIFICATE' });
+      expect(
+        await db('org_login_certificates').where({ fingerprint: adminFp }).first(),
+      ).toBeUndefined();
+      expect(
+        await db('organizations').where({ identifier: row.organizationIdentifier }).first(),
+      ).toBeUndefined();
+    } finally {
+      await db('admin_cert_fingerprints').where({ fingerprint: adminFp }).del();
+    }
   });
 
   it('fails a repeated identifier in one payload with DUPLICATE_IDENTIFIER and writes only the first', async () => {

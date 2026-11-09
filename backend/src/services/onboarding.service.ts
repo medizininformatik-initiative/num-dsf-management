@@ -243,6 +243,10 @@ export async function previewSites(rows: OnboardingRow[]): Promise<ImportResult>
       results.push({ identifier, action: 'failed', ok: false, issue: 'DUPLICATE_IDENTIFIER' });
       continue;
     }
+    if (await db('admin_cert_fingerprints').where({ fingerprint: fp }).first()) {
+      results.push({ identifier, action: 'failed', ok: false, issue: 'ADMIN_CERTIFICATE' });
+      continue;
+    }
     const fileOwner = fileFingerprintOwner.get(fp);
     if (owner || (fileOwner && fileOwner !== identifier)) {
       results.push({ identifier, action: 'failed', ok: false, issue: 'FINGERPRINT_IN_USE' });
@@ -320,6 +324,14 @@ export async function importSites(
           .whereNot({ organization_id: identifier })
           .first();
         if (fingerprintOwner) throw new Error('FINGERPRINT_IN_USE');
+        // An admin certificate never becomes a site login (as in enable()).
+        if (
+          await trx('admin_cert_fingerprints')
+            .where({ fingerprint: row.clientCertFingerprint })
+            .first()
+        ) {
+          throw new Error('ADMIN_CERTIFICATE');
+        }
 
         // 2. Idempotently ensure the contact has a user + whitelist row.
         await trx('users')
