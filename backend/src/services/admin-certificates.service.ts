@@ -11,13 +11,15 @@
  * service never grants them, it only requires them for a target.
  * The PEM is never stored and never logged, only fingerprint + metadata.
  *
- * Dependencies: db/connection, audit.service, certificate.service (PEM checks),
+ * Dependencies: db/connection, audit.service, auth.service (revokeAllSessions),
+ *               certificate.service (PEM checks),
  * ca-whitelist/blacklist, lib/adminGrants, lib/certFingerprint
  */
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
+import { revokeAllSessions } from './auth.service';
 import { rejectPrivateKey, parseCertificate } from './certificate.service';
 import { isCaBlacklisted } from './ca-blacklist.service';
 import { isIssuerWhitelisted, isWhitelistEnforced } from './ca-whitelist.service';
@@ -199,7 +201,8 @@ export interface RemoveOptions {
 }
 
 /**
- * Remove one admin certificate of `email`.
+ * Remove one admin certificate of `email` and end all sessions of `email`
+ * (refresh tokens; access tokens run out within their 15 minutes).
  * @throws AdminCertError CERTIFICATE_NOT_FOUND / CURRENT_CERTIFICATE (a session
  *   may not remove the certificate it is using, so nobody locks themselves out).
  */
@@ -213,6 +216,9 @@ export async function removeAdminCertificate(opts: RemoveOptions): Promise<Admin
     throw new AdminCertError('CURRENT_CERTIFICATE');
   }
   await db('admin_cert_fingerprints').where({ id: opts.id }).del();
+  // End the admin's sessions, as lock and demote do: outside cert mode a
+  // session created with this certificate would otherwise keep refreshing.
+  await revokeAllSessions(email).catch(() => {});
   await writeAuditLog({
     userEmail: opts.actor,
     resourceType: 'AUTH',
