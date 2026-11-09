@@ -1,9 +1,8 @@
-/* PemInput.css — the PEM drop zone. Idle it is a dashed glass well; while a
-   file is dragged over it the border turns solid in the brand colour, the
-   fill takes a light brand tint, a soft ring pulses outwards (the animated
-   border) and the icon lifts on a small spring. Under Reduce Motion the
-   global rule in index.css stops the pulse and the icon movement, so only the
-   static highlight remains. */
+/* PemInput.css — the PEM drop zone. Idle it is a dashed well; while a file is
+   dragged over it the border turns solid in the brand colour, the fill takes
+   a light brand tint and the icon lifts on a small spring. Under Reduce Motion
+   the global rule in index.css leaves transform out of the transitions, so the
+   icon changes without animating and only the static highlight remains. */
 .pem-dropzone {
   transition:
     border-color var(--duration-short) var(--ease-standard),
@@ -14,17 +13,6 @@
   border-style: solid;
   border-color: var(--focus-ring);
   background-color: color-mix(in srgb, var(--focus-ring) 8%, transparent);
-  animation: pem-dropzone-pulse 1.2s var(--ease-standard) infinite;
-}
-
-@keyframes pem-dropzone-pulse {
-  0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--focus-ring) 35%, transparent);
-  }
-  70%,
-  100% {
-    box-shadow: 0 0 0 8px color-mix(in srgb, var(--focus-ring) 0%, transparent);
-  }
 }
 
 .pem-dropzone-icon {

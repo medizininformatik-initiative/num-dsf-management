@@ -28,7 +28,7 @@ import { certValidityLabel } from './certificateUpload';
 import type { CertificatePreviewResult, CertificatePreviewState } from './useCertificatePreview';
 
 const EXIT_MS = exitMs('short');
-const PANEL = 'glass-thin rounded-control p-4 shadow-none';
+const PANEL = 'rounded-control border border-[color:var(--border)] p-3';
 
 type VisibleState = Exclude<CertificatePreviewState, { kind: 'idle' }>;
 
@@ -54,9 +54,7 @@ export function DistinguishedName({ value }: { value: string }) {
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="space-y-1">
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
-        {label}
-      </dt>
+      <dt className="text-2xs font-semibold text-[color:var(--text-secondary)]">{label}</dt>
       <dd className="text-xs text-[color:var(--text-primary)]">{children}</dd>
     </div>
   );
@@ -74,7 +72,6 @@ function PreviewCard({ preview, busy = false }: { preview: CertificatePreview; b
       className={`${PANEL} space-y-3 transition-opacity duration-short ease-standard ${busy ? 'opacity-60' : ''}`}
     >
       <div className="flex items-center gap-2">
-        <Icon name="verified_user" size={18} className="text-[color:var(--text-secondary)]" />
         <h3 id={titleId} className="text-sm font-semibold text-[color:var(--text-primary)]">
           {t('formCertPreviewTitle')}
         </h3>
@@ -174,7 +171,7 @@ function PanelBody({ state }: { state: VisibleState }) {
       return (
         <div role="status" className={`${PANEL} space-y-3`}>
           <p className="flex items-center gap-2 text-xs text-[color:var(--text-secondary)]">
-            <Icon name="progress_activity" size={16} className="animate-spin" />
+            <Icon name="progress_activity" size={14} className="animate-spin" />
             {t('formCertPreviewChecking')}
           </p>
           <Skeleton lines={3} />

@@ -1,7 +1,7 @@
 /**
  * PemInput.tsx — certificate PEM entry used by the upload and renewal forms:
- * a glass drop zone around the textarea (files can be dropped anywhere on it,
- * with an animated highlight while dragging), a "Choose file" button as the
+ * a dashed drop zone around the textarea (files can be dropped anywhere on it,
+ * with a highlight while dragging), a "Choose file" button as the
  * keyboard path (.pem, .crt, .cer, read as text) and the textarea itself.
  * Files that are too large, unreadable, not a PEM certificate or carrying a
  * private key are refused with an announced message instead of being loaded.
@@ -67,7 +67,7 @@ export function PemInput({ textareaProps, onFileText, dropHint }: PemInputProps)
   return (
     <div
       data-drag-over={dragOver || undefined}
-      className="pem-dropzone glass-thin space-y-3 rounded-control border-2 border-dashed border-[color:var(--border-strong)] p-3 shadow-none"
+      className="pem-dropzone space-y-3 rounded-control border border-dashed border-[color:var(--border-strong)] p-3"
       onDragEnter={(e) => {
         if (!isFileDrag(e)) return;
         e.preventDefault();
@@ -93,12 +93,12 @@ export function PemInput({ textareaProps, onFileText, dropHint }: PemInputProps)
       }}
     >
       <div className="flex flex-wrap items-center gap-3">
-        <Icon name="upload_file" size={28} className="pem-dropzone-icon shrink-0" />
+        <Icon name="upload_file" size={24} className="pem-dropzone-icon shrink-0" />
         <p className="min-w-0 flex-1 text-xs text-[color:var(--text-secondary)]">
           {dragOver ? t('formPemDropRelease') : dropHint}
         </p>
         <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
-          <Icon name="folder_open" size={16} />
+          <Icon name="folder_open" size={14} />
           {t('formPemChooseFile')}
         </Button>
       </div>

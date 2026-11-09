@@ -53,10 +53,10 @@ const STEP_TITLE: Record<Step, TranslationKey> = {
 };
 
 const CHOICE =
-  'press-effect hover-lift flex w-full items-center justify-between gap-3 rounded-control border ' +
-  'border-[color:var(--border)] bg-white/50 p-3 text-left dark:bg-white/[0.03] ' +
-  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ' +
-  'focus-visible:outline-[color:var(--focus-ring)]';
+  'press-effect flex w-full items-center justify-between gap-3 rounded-control border ' +
+  'border-[color:var(--border)] p-3 text-left hover:border-[color:var(--border-strong)] ' +
+  'hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 ' +
+  'focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]';
 
 function previewOf(state: CertificatePreviewState): CertificatePreview | undefined {
   if (state.kind === 'ready') return state.preview;
@@ -160,12 +160,16 @@ export function CertRenewalModal({ open, onClose, instanceId }: Props) {
             direction === 'forward' ? 'renewal-animate-step-forward' : 'renewal-animate-step-back'
           }
         >
-          <h3 ref={headingRef} tabIndex={-1} className="mb-4 outline-none">
-            <span className="block text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
-              {t('formStepOf', { n: stepIndex + 1, total: STEPS.length })}
-            </span>
-            <span className="block text-sm font-semibold text-[color:var(--text-primary)]">
+          <h3
+            ref={headingRef}
+            tabIndex={-1}
+            className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 outline-none"
+          >
+            <span className="text-sm font-semibold text-[color:var(--text-primary)]">
               {t(STEP_TITLE[step])}
+            </span>
+            <span className="text-xs text-[color:var(--text-muted)]">
+              {t('formStepOf', { n: stepIndex + 1, total: STEPS.length })}
             </span>
           </h3>
 
@@ -175,7 +179,7 @@ export function CertRenewalModal({ open, onClose, instanceId }: Props) {
                 {t('certRenewalSelectHint')}
               </p>
               {sortedCerts.length === 0 ? (
-                <p className="rounded-control border border-dashed border-[color:var(--border-strong)] p-5 text-center text-xs text-[color:var(--text-muted)]">
+                <p className="rounded-control border border-dashed border-[color:var(--border-strong)] p-3 text-center text-xs text-[color:var(--text-muted)]">
                   {t('certRenewalNoCerts')}
                 </p>
               ) : (
@@ -197,7 +201,7 @@ export function CertRenewalModal({ open, onClose, instanceId }: Props) {
                           }}
                         >
                           <span className="min-w-0">
-                            <span className="block break-words text-sm font-semibold text-[color:var(--text-primary)]">
+                            <span className="block break-words text-sm font-medium text-[color:var(--text-primary)]">
                               {cert.subject}
                             </span>
                             <span className="block text-xs text-[color:var(--text-muted)]">
@@ -212,7 +216,7 @@ export function CertRenewalModal({ open, onClose, instanceId }: Props) {
                             </StatusPill>
                             <Icon
                               name="chevron_right"
-                              size={20}
+                              size={16}
                               className="text-[color:var(--text-muted)]"
                             />
                           </span>
@@ -272,7 +276,7 @@ export function CertRenewalModal({ open, onClose, instanceId }: Props) {
               </p>
               <div className="mb-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-control border border-danger-border bg-danger-surface p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-danger-fg">
+                  <p className="text-xs font-semibold text-danger-fg">
                     {t('certRenewalRemovingLabel')}
                   </p>
                   <p className="mt-1 text-xs font-medium text-[color:var(--text-primary)]">
@@ -283,7 +287,7 @@ export function CertRenewalModal({ open, onClose, instanceId }: Props) {
                   </p>
                 </div>
                 <div className="rounded-control border border-success-border bg-success-surface p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-success-fg">
+                  <p className="text-xs font-semibold text-success-fg">
                     {t('certRenewalAddingLabel')}
                   </p>
                   <NewCertificateSummary preview={previewOf(preview.state)} pem={pem} />
