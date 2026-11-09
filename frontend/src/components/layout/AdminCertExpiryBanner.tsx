@@ -66,24 +66,24 @@ export function AdminCertExpiryBanner() {
       role="alert"
       aria-label={t('adminCertBannerTitle')}
       data-tone={tone}
-      className={`glass fixed left-1/2 top-16 z-40 flex w-[min(40rem,calc(100vw-2rem))] -translate-x-1/2 animate-list-item-in flex-wrap items-center gap-3 rounded-card border p-3.5 ${surface}`}
+      className={`glass fixed left-1/2 top-16 z-40 flex w-[min(40rem,calc(100vw-2rem))] -translate-x-1/2 animate-list-item-in flex-wrap items-center gap-3 rounded-card border p-4 ${surface}`}
     >
       <Icon name={tone === 'danger' ? 'error' : 'warning'} size={20} className="shrink-0" />
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-bold">
+        <p className="text-sm font-semibold">
           {days < 0 ? t('adminCertBannerExpired') : t('adminCertBannerBody', { n: days })}
         </p>
       </div>
       <Link
         to="/app/admin/certificates"
-        className="press-effect rounded-control px-2 py-1 text-[13px] font-semibold underline focus-visible:outline focus-visible:outline-2"
+        className="press-effect rounded-control px-2 py-1 text-sm font-semibold underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
         {t('adminCertBannerLink')}
       </Link>
       <button
         type="button"
         aria-label={t('adminCertBannerDismiss')}
-        className="press-effect rounded-control p-1 focus-visible:outline focus-visible:outline-2"
+        className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
         onClick={() => {
           try {
             localStorage.setItem(ADMIN_CERT_DISMISS_KEY, today());

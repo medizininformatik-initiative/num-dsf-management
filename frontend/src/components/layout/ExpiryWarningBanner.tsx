@@ -89,15 +89,15 @@ export function ExpiryWarningBanner() {
         {mounted && (
           <section
             aria-labelledby={titleId}
-            className={`mx-5 mt-2 flex flex-wrap items-start gap-3 rounded-card border p-3.5 ${TONE_SURFACE[tone]}`}
+            className={`mx-4 mt-2 flex flex-wrap items-start gap-3 rounded-card border p-4 ${TONE_SURFACE[tone]}`}
           >
             <Icon
               name={tone === 'danger' ? 'error' : 'warning'}
               size={20}
-              className={`mt-0.5 shrink-0 ${TONE_TEXT[tone]}`}
+              className={`shrink-0 ${TONE_TEXT[tone]}`}
             />
             <div className="min-w-0 flex-1">
-              <p id={titleId} className={`text-[13px] font-bold ${TONE_TEXT[tone]}`}>
+              <p id={titleId} className={`text-sm font-semibold ${TONE_TEXT[tone]}`}>
                 {title}
               </p>
               <ul className="mt-1 space-y-0.5">
@@ -120,7 +120,7 @@ export function ExpiryWarningBanner() {
               onClick={() => useModals.getState().openModal('cert-renew')}
               className="shrink-0"
             >
-              <Icon name="autorenew" size={16} />
+              <Icon name="autorenew" size={14} />
               {t('expiryBannerRenew')}
             </Button>
           </section>
