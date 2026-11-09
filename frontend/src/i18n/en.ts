@@ -559,6 +559,8 @@ export const en = {
     'You are changing the cert thumbprint. Re-confirm with your authenticator code.',
   orgModalSaveBtn: 'Save Organization',
   orgModalSaveSuccess: 'Organization saved successfully.',
+  orgModalThumbprintInUse:
+    'This certificate thumbprint is already used by another organization (THUMBPRINT_IN_USE).',
   orgModalSaveFailed: 'Failed to save organization.',
 
   // ContactModal

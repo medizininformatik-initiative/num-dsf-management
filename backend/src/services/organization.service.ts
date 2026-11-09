@@ -10,6 +10,30 @@ import { writeAuditLog } from './audit.service';
  * @param instanceId Instance to look up.
  * @returns The organization row, or null if none exists.
  */
+/**
+ * Whether another organization already uses this SHA-256 thumbprint, as its
+ * client_cert_thumbprint or as a registered certificate (case-insensitive).
+ * /fhir resolves sites by these values, so a second claim would let a squatter
+ * lock a clinic out or take over its identity.
+ */
+export async function isClientThumbprintInUse(
+  instanceId: string,
+  identifier: string,
+  thumbprint: string,
+): Promise<boolean> {
+  const t = thumbprint.toLowerCase();
+  const claim = await db('organizations')
+    .whereRaw('LOWER(client_cert_thumbprint) = ?', [t])
+    .whereNot({ instance_id: instanceId })
+    .first('identifier');
+  if (claim) return true;
+  const cert = await db('certificates')
+    .whereIn('thumbprint', [t, t.toUpperCase()])
+    .whereNot({ organization_id: identifier })
+    .first('id');
+  return !!cert;
+}
+
 export async function getOrganization(instanceId: string) {
   // Coalesce the resolved row, not the query promise, so no-org returns null.
   const row = await db('organizations').where({ instance_id: instanceId }).first();

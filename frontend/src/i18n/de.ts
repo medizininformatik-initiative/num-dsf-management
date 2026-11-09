@@ -567,6 +567,8 @@ export const de: Record<TranslationKey, string> = {
   orgModalThumbprintTotpHint: 'Sie ändern den Cert-Thumbprint. Mit Authenticator-Code bestätigen.',
   orgModalSaveBtn: 'Organisation speichern',
   orgModalSaveSuccess: 'Organisation erfolgreich gespeichert.',
+  orgModalThumbprintInUse:
+    'Dieser Zertifikats-Fingerabdruck wird bereits von einer anderen Organisation verwendet (THUMBPRINT_IN_USE).',
   orgModalSaveFailed: 'Organisation konnte nicht gespeichert werden.',
 
   // ContactModal

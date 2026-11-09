@@ -15,7 +15,7 @@ import { organizationSchema, OrganizationFormData } from '../../schemas/organiza
 import { useUpdateOrganization } from '../../hooks/useOrganization';
 import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
 import { useI18n } from '../../stores/i18n.store';
-import { getErrorMessageForStepUp } from '../../lib/getErrorMessage';
+import { getErrorCode, getErrorMessageForStepUp } from '../../lib/getErrorMessage';
 import { needsTotpStepUp } from '../../lib/authMode';
 
 interface Props {
@@ -70,7 +70,9 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
       onClose();
     } catch (err: unknown) {
       toast.error(
-        getErrorMessageForStepUp(err, t('orgModalSaveFailed'), t('certStepUpFailedToast')),
+        getErrorCode(err) === 'THUMBPRINT_IN_USE'
+          ? t('orgModalThumbprintInUse')
+          : getErrorMessageForStepUp(err, t('orgModalSaveFailed'), t('certStepUpFailedToast')),
       );
     }
   }

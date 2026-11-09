@@ -4,7 +4,8 @@
  *
  * client_cert_thumbprint writes are gated by an admin-vs-owner check
  * (FORBIDDEN_THUMBPRINT_WRITE) so an admin's session can't plant a
- * thumbprint on a victim org.
+ * thumbprint on a victim org. A thumbprint another organization already uses
+ * is refused with 409 THUMBPRINT_IN_USE.
  */
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
@@ -63,6 +64,25 @@ organizationRouter.put(
         error: {
           code: 'FORBIDDEN_THUMBPRINT_WRITE',
           message: "Admins cannot modify client_cert_thumbprint on another user's organization.",
+        },
+      });
+    }
+
+    // A thumbprint another organization already uses is refused at write time;
+    // findOrgByClientCert's ambiguity refusal stays as the backstop.
+    if (
+      incomingThumb &&
+      existingThumb !== incomingThumb &&
+      (await svc.isClientThumbprintInUse(
+        req.instance!.id,
+        existingOrgRow?.identifier ?? req.body.identifier,
+        incomingThumb,
+      ))
+    ) {
+      return res.status(409).json({
+        error: {
+          code: 'THUMBPRINT_IN_USE',
+          message: 'This certificate thumbprint is already used by another organization.',
         },
       });
     }
