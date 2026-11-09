@@ -449,6 +449,20 @@ body {
    each material falls back to the opaque card surface.
    These are Tailwind components: use the literal class names so they are
    not purged, and override them with utilities when needed. */
+/* Static content surface: page boxes, panels and list cards that sit in the
+   page flow. Glass is for what floats over content (bars, popovers, dialogs,
+   drawers, map overlays, toasts); a static box uses this solid card. */
+@layer components {
+  .surface-card {
+    border-radius: theme('borderRadius.card');
+    border: 1px solid var(--border);
+    background-color: var(--bg-card);
+    box-shadow:
+      0 4px 20px -2px rgba(24, 28, 32, 0.04),
+      0 2px 8px -1px rgba(24, 28, 32, 0.02);
+  }
+}
+
 @layer components {
   .glass-thin,
   .glass,

@@ -161,6 +161,13 @@ export default {
         button: '10px',
         input: '10px',
       },
+      // Type scale: 2xs 11 (captions, badges, table heads), xs 12 (meta,
+      // hints), sm 14 (body, controls), base 16 (card and section titles),
+      // lg 18 (section titles on reading pages), xl 20 (page title), 2xl 24
+      // (display: not-found, process name, sign-in card).
+      fontSize: {
+        '2xs': ['0.6875rem', { lineHeight: '1rem' }],
+      },
       boxShadow: {
         'card-elevated': '0 2px 8px rgba(24,28,32,0.06)',
         'card-elevated-hover': '0 4px 16px rgba(24,28,32,0.1)',
