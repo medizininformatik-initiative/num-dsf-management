@@ -51,7 +51,7 @@ export function DetailTabList({
     <div
       role="tablist"
       aria-label={t('marketplaceTabsLabel')}
-      className="glass-thin inline-flex max-w-full gap-1 overflow-x-auto rounded-full p-1"
+      className="inline-flex max-w-full gap-1 overflow-x-auto rounded-full border border-[color:var(--border)] bg-[color:var(--bg-card)] p-1"
     >
       {TABS.map((tab, i) => {
         const active = tab === value;
@@ -69,10 +69,10 @@ export function DetailTabList({
             type="button"
             onClick={() => onChange(tab)}
             onKeyDown={(e) => onKeyDown(e, i)}
-            className={`press-effect min-h-[36px] whitespace-nowrap rounded-full px-4 text-[13px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--primary)] ${
+            className={`press-effect min-h-[36px] whitespace-nowrap rounded-full px-4 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
               active
                 ? 'bg-[color:var(--accent-solid)] text-white'
-                : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
+                : 'text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)]'
             }`}
           >
             {labels[tab]}
@@ -86,16 +86,27 @@ export function DetailTabList({
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="py-3 first:pt-0 last:pb-0">
-      <dt className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[color:var(--text-muted)]">
+      <dt className="mb-1 text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
         {label}
       </dt>
-      <dd className="m-0 text-[13px] text-[color:var(--text-secondary)]">{children}</dd>
+      <dd className="m-0 text-sm text-[color:var(--text-secondary)]">{children}</dd>
     </div>
   );
 }
 
 function Dash() {
   return <span className="text-[color:var(--text-muted)]">—</span>;
+}
+
+/** A repository count with its icon; the full label is the tooltip and the spoken text. */
+function Stat({ icon, value, label }: { icon: string; value: number; label: string }) {
+  return (
+    <span title={label} className="inline-flex items-center gap-1">
+      <Icon name={icon} size={16} className="text-[color:var(--text-muted)]" />
+      <span aria-hidden="true">{value}</span>
+      <span className="sr-only">{label}</span>
+    </span>
+  );
 }
 
 function Chips({ items, mono }: { items: string[]; mono?: boolean }) {
@@ -121,7 +132,7 @@ function Panel({ tab, children }: { tab: DetailTab; children: ReactNode }) {
       id={`mp-panel-${tab}`}
       aria-labelledby={`mp-tab-${tab}`}
       tabIndex={0}
-      className="glass animate-fade-in rounded-card p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--primary)] sm:p-6"
+      className="surface-card animate-fade-in p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
     >
       {children}
     </div>
@@ -134,7 +145,7 @@ function Overview({ entry }: { entry: MarketplaceDetail }) {
   return (
     <Panel tab="overview">
       <div className="grid gap-6 md:grid-cols-[1fr_16rem]">
-        <div className="space-y-3 text-[15px] leading-relaxed text-[color:var(--text-primary)]">
+        <div className="max-w-prose space-y-3 text-sm leading-relaxed text-[color:var(--text-primary)]">
           {paragraphs.length > 0 ? (
             paragraphs.map((p, i) => (
               <p key={i} className="m-0 whitespace-pre-line">
@@ -146,7 +157,7 @@ function Overview({ entry }: { entry: MarketplaceDetail }) {
           )}
           {entry.topics.length > 0 && (
             <div className="pt-2">
-              <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-[color:var(--text-muted)]">
+              <div className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
                 {t('marketplaceTopics')}
               </div>
               <Chips items={entry.topics} />
@@ -181,12 +192,22 @@ function Overview({ entry }: { entry: MarketplaceDetail }) {
           <dl className="m-0 divide-y divide-[color:var(--border)]">
             <Field label={t('marketplaceTabReleases')}>{entry.latestReleaseTag ?? <Dash />}</Field>
             <Field label="GitHub">
-              <span className="flex flex-wrap gap-x-3 gap-y-1">
-                <span title={t('marketplaceStarsLabel', { n: entry.stars })}>★ {entry.stars}</span>
-                <span title={t('marketplaceForksLabel', { n: entry.forks })}>⑂ {entry.forks}</span>
-                <span title={t('marketplaceIssuesLabel', { n: entry.openIssues })}>
-                  ⓘ {entry.openIssues}
-                </span>
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Stat
+                  icon="star"
+                  value={entry.stars}
+                  label={t('marketplaceStarsLabel', { n: entry.stars })}
+                />
+                <Stat
+                  icon="call_split"
+                  value={entry.forks}
+                  label={t('marketplaceForksLabel', { n: entry.forks })}
+                />
+                <Stat
+                  icon="bug_report"
+                  value={entry.openIssues}
+                  label={t('marketplaceIssuesLabel', { n: entry.openIssues })}
+                />
                 {entry.language && <span>{entry.language}</span>}
               </span>
             </Field>
@@ -194,7 +215,7 @@ function Overview({ entry }: { entry: MarketplaceDetail }) {
               <Field label={t('marketplaceSupersededBy')}>
                 <Link
                   to={`/app/marketplace/${entry.supersededBy}`}
-                  className="font-semibold text-[color:var(--primary)]"
+                  className="font-semibold text-[color:var(--primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
                 >
                   {entry.supersededBy}
                 </Link>
@@ -219,7 +240,7 @@ function Releases({ entry }: { entry: MarketplaceDetail }) {
             const latest = r.tag === entry.latestReleaseTag || (i === 0 && !entry.latestReleaseTag);
             return (
               <li key={r.tag} className="relative flex gap-4 pb-5 last:pb-0">
-                <span aria-hidden="true" className="relative mt-1.5 flex flex-col items-center">
+                <span aria-hidden="true" className="relative mt-1 flex flex-col items-center">
                   <span
                     className={`h-3 w-3 rounded-full ${latest ? 'bg-[color:var(--primary)]' : 'border-2 border-[color:var(--border-strong)] bg-transparent'}`}
                   />
@@ -267,7 +288,7 @@ function Compatibility({ entry }: { entry: MarketplaceDetail }) {
               href={artifact}
               target="_blank"
               rel="noopener noreferrer"
-              className="break-all font-semibold text-[color:var(--primary)]"
+              className="break-all font-semibold text-[color:var(--primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
             >
               {artifact}
             </a>
@@ -290,9 +311,9 @@ function LinkRow({ href, icon, label }: { href: string; icon: string; label: str
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="press-effect flex min-h-[44px] items-center gap-3 rounded-control px-3 py-2 text-sm font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)]"
+        className="press-effect flex min-h-[44px] items-center gap-3 rounded-control px-3 py-2 text-sm font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
-        <Icon name={icon} size={20} className="text-[color:var(--primary)]" />
+        <Icon name={icon} size={16} className="text-[color:var(--primary)]" />
         <span className="flex-1">{label}</span>
         <Icon name="open_in_new" size={16} className="text-[color:var(--text-muted)]" />
       </a>

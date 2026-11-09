@@ -63,18 +63,18 @@ export function MarketplaceDetailPage() {
 
   const backButton = (
     <Button variant="ghost" size="sm" onClick={goBack} className="-ml-2 shrink-0">
-      <Icon name="chevron_left" size={20} />
+      <Icon name="chevron_left" size={14} />
       {t('marketplaceBack')}
     </Button>
   );
 
   if (isLoading) {
     return (
-      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8" aria-busy="true">
+      <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8" aria-busy="true">
         <div className="space-y-4">
           <span className="sr-only">{t('loading')}</span>
           {backButton}
-          <div aria-hidden="true" className="glass h-40 rounded-card p-6">
+          <div aria-hidden="true" className="surface-card h-40 p-5">
             <div className="flex items-center gap-4">
               <div className="skeleton h-[72px] w-[72px] rounded-control" />
               <div className="flex-1 space-y-2">
@@ -90,10 +90,10 @@ export function MarketplaceDetailPage() {
 
   if (!entry) {
     return (
-      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
+      <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8">
         <div className="space-y-6">
           {backButton}
-          <div className="glass flex flex-col items-center gap-3 rounded-card p-12 text-center">
+          <div className="surface-card flex flex-col items-center gap-3 px-6 py-10 text-center">
             <Icon name="search_off" size={40} className="text-[color:var(--text-muted)]" />
             <p className="m-0 text-sm text-[color:var(--text-secondary)]">
               {t('marketplaceNotFound')}
@@ -113,7 +113,7 @@ export function MarketplaceDetailPage() {
       onScroll={(e) => setScrolled(e.currentTarget.scrollTop > SCROLLED_AT)}
       className="flex-1 overflow-y-auto"
     >
-      <div className="glass-chrome sticky top-0 z-20 px-4 py-2 sm:px-8">
+      <div className="glass-chrome sticky top-0 z-20 px-6 py-4 sm:px-8">
         <Breadcrumbs current={displayName(entry)} />
         <div className="flex items-center gap-3">
           {backButton}
@@ -141,14 +141,14 @@ export function MarketplaceDetailPage() {
         </div>
       </div>
 
-      <div className="px-4 pb-10 pt-4 sm:px-8">
-        <div className="flex animate-scale-in flex-col gap-5">
-          <section className="glass flex flex-col gap-5 rounded-card p-5 sm:p-7">
+      <div className="px-6 py-6 sm:px-8">
+        <div className="flex animate-scale-in flex-col gap-4">
+          <section className="surface-card flex flex-col gap-5 p-5">
             <div className="flex flex-wrap items-start gap-4">
               <MarketplaceTile entry={entry} size={72} />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="m-0 text-[26px] font-bold leading-tight tracking-tight text-[color:var(--text-primary)]">
+                  <h1 className="m-0 text-2xl font-bold leading-tight tracking-tight text-[color:var(--text-primary)]">
                     {displayName(entry)}
                   </h1>
                   {entry.verified && (
@@ -196,7 +196,7 @@ export function MarketplaceDetailPage() {
                 rel="noopener noreferrer"
                 className={`${LINK_BTN} btn-primary`}
               >
-                <Icon name="code" size={18} />
+                <Icon name="code" size={16} />
                 {t('marketplaceViewOnGithub')}
               </a>
               {artifact && (
@@ -206,13 +206,13 @@ export function MarketplaceDetailPage() {
                   rel="noopener noreferrer"
                   className={`${LINK_BTN} btn-secondary`}
                 >
-                  <Icon name="download" size={18} />
+                  <Icon name="download" size={16} />
                   {t('marketplaceDownloadArtifact')}
                 </a>
               )}
               {isAdmin && (
                 <Button variant="secondary" onClick={() => setEditOpen(true)}>
-                  <Icon name="edit" size={18} />
+                  <Icon name="edit" size={16} />
                   {t('marketplaceEditMeta')}
                 </Button>
               )}
@@ -222,13 +222,13 @@ export function MarketplaceDetailPage() {
           {entry.advisorySeverity && (
             <div
               role="note"
-              className={`rounded-control border p-4 ${ADVISORY_CLASS[entry.advisorySeverity]}`}
+              className={`rounded-card border p-4 ${ADVISORY_CLASS[entry.advisorySeverity]}`}
             >
-              <div className="flex items-center gap-2 text-sm font-bold">
-                <Icon name="warning" size={20} />
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Icon name="warning" size={16} />
                 {t('marketplaceAdvisory')} · {entry.advisorySeverity}
               </div>
-              {entry.advisoryText && <p className="m-0 mt-1.5 text-[13px]">{entry.advisoryText}</p>}
+              {entry.advisoryText && <p className="m-0 mt-1.5 text-sm">{entry.advisoryText}</p>}
             </div>
           )}
 
