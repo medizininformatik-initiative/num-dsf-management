@@ -33,7 +33,7 @@ export function ResourceCard({ resource, featured = false, className = '', style
   const { t } = useI18n();
   const descId = useId();
   const host = hostOf(resource.url);
-  const tile = featured ? 'h-12 w-12 rounded-[14px]' : 'h-10 w-10 rounded-[12px]';
+  const tile = featured ? 'h-12 w-12 rounded-control' : 'h-10 w-10 rounded-control';
 
   return (
     <a
@@ -43,7 +43,7 @@ export function ResourceCard({ resource, featured = false, className = '', style
       aria-label={`${resource.title}, ${t('dsfResourcesOpensExternally', { host })}`}
       aria-describedby={descId}
       style={style}
-      className={`group glass hover-lift press-effect flex h-full min-w-0 items-start gap-3.5 rounded-[20px] text-[color:var(--text-primary)] no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--primary)] ${
+      className={`group glass hover-lift press-effect flex h-full min-w-0 items-start gap-3.5 rounded-card text-[color:var(--text-primary)] no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--primary)] ${
         featured ? 'p-5' : 'p-4'
       } ${className}`}
     >

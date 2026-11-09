@@ -133,7 +133,7 @@ export function DsfResourcesPage() {
             <ResourceGrid resources={gridItems} />
           </div>
           {results.length === 0 && (
-            <div className="glass-thin flex animate-fade-in flex-col items-center gap-2 rounded-[20px] px-6 py-10 text-center">
+            <div className="glass-thin flex animate-fade-in flex-col items-center gap-2 rounded-card px-6 py-10 text-center">
               <Icon name="search_off" size={32} className="text-[color:var(--text-muted)]" />
               <p className="m-0 text-[15px] font-semibold text-[color:var(--text-primary)]">
                 {t('dsfResourcesEmptyTitle')}

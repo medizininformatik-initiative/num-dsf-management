@@ -62,10 +62,10 @@ function CardSkeletons() {
         <div
           key={i}
           aria-hidden="true"
-          className="glass flex h-[208px] flex-col gap-3 rounded-[20px] p-4"
+          className="glass flex h-[208px] flex-col gap-3 rounded-card p-4"
         >
           <div className="flex items-center gap-3">
-            <div className="skeleton h-12 w-12 rounded-[14px]" />
+            <div className="skeleton h-12 w-12 rounded-control" />
             <div className="flex-1 space-y-2">
               <div className="skeleton h-3.5 w-2/3 rounded-full" />
               <div className="skeleton h-3 w-1/3 rounded-full" />
@@ -239,7 +239,7 @@ export function MarketplacePage() {
         {isError && !isLoading && (
           <div
             role="alert"
-            className="glass flex flex-col items-center gap-3 rounded-[20px] p-10 text-center"
+            className="glass flex flex-col items-center gap-3 rounded-card p-10 text-center"
           >
             <Icon name="cloud_off" size={36} className="text-[color:var(--text-muted)]" />
             <p className="m-0 text-sm text-[color:var(--text-secondary)]">
@@ -276,7 +276,7 @@ export function MarketplacePage() {
             )}
 
             {filtered.length === 0 ? (
-              <div className="glass flex flex-col items-center gap-3 rounded-[20px] p-12 text-center">
+              <div className="glass flex flex-col items-center gap-3 rounded-card p-12 text-center">
                 <Icon name="deployed_code" size={40} className="text-[color:var(--text-muted)]" />
                 <p className="m-0 text-sm text-[color:var(--text-secondary)]">
                   {entries.length === 0 ? t('marketplaceEmpty') : t('marketplaceNoResults')}

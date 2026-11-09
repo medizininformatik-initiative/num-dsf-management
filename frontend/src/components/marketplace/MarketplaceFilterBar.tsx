@@ -58,7 +58,7 @@ export function MarketplaceFilterBar({
         <kbd
           aria-hidden="true"
           title={t('marketplaceSearchKeyHint')}
-          className="hidden rounded-md border border-[color:var(--border)] px-1.5 text-[11px] text-[color:var(--text-muted)] sm:inline"
+          className="hidden rounded-small border border-[color:var(--border)] px-1.5 text-[11px] text-[color:var(--text-muted)] sm:inline"
         >
           /
         </kbd>

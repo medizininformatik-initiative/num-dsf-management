@@ -43,11 +43,10 @@ export function MarketplaceTile({
   return (
     <span
       aria-hidden="true"
-      className="flex shrink-0 select-none items-center justify-center font-bold text-white"
+      className="flex shrink-0 select-none items-center justify-center rounded-control font-bold text-white"
       style={{
         width: size,
         height: size,
-        borderRadius: size * 0.28,
         fontSize: size * 0.44,
         background: `hsl(${hue} 48% 36%)`,
       }}
@@ -65,7 +64,7 @@ export function MarketplaceCard({ entry }: { entry: MarketplaceEntry }) {
   return (
     <Link
       to={`/app/marketplace/${entry.slug}`}
-      className="glass hover-lift press-effect flex h-full min-w-0 flex-col gap-3 rounded-[20px] p-4 text-[color:var(--text-primary)] no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--primary)]"
+      className="glass hover-lift press-effect flex h-full min-w-0 flex-col gap-3 rounded-card p-4 text-[color:var(--text-primary)] no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--primary)]"
     >
       {entry.advisorySeverity && (
         <div

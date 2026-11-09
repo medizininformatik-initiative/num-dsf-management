@@ -121,7 +121,7 @@ function Panel({ tab, children }: { tab: DetailTab; children: ReactNode }) {
       id={`mp-panel-${tab}`}
       aria-labelledby={`mp-tab-${tab}`}
       tabIndex={0}
-      className="glass animate-fade-in rounded-[20px] p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--primary)] sm:p-6"
+      className="glass animate-fade-in rounded-card p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--primary)] sm:p-6"
     >
       {children}
     </div>
@@ -290,7 +290,7 @@ function LinkRow({ href, icon, label }: { href: string; icon: string; label: str
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="press-effect flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)]"
+        className="press-effect flex min-h-[44px] items-center gap-3 rounded-control px-3 py-2 text-sm font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)]"
       >
         <Icon name={icon} size={20} className="text-[color:var(--primary)]" />
         <span className="flex-1">{label}</span>
