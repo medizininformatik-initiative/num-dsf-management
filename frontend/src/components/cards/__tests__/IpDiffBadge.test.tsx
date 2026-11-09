@@ -17,8 +17,8 @@ interface EndpointRow {
   ipAddresses?: { ip: string }[];
 }
 
-const historyMock = vi.fn<[], { data: HistoryRow[] }>();
-const endpointsMock = vi.fn<[], { data: EndpointRow[] }>();
+const historyMock = vi.fn<() => { data: HistoryRow[] }>();
+const endpointsMock = vi.fn<() => { data: EndpointRow[] }>();
 
 vi.mock('../../../hooks/useApproval', () => ({
   useApprovalHistory: () => historyMock(),

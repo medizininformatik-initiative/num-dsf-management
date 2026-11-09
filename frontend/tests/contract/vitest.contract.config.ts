@@ -6,7 +6,7 @@ export default defineConfig({
     testTimeout: 30_000,
     environment: 'node',
     pool: 'threads',
-    poolOptions: { threads: { singleThread: true } },
+    maxWorkers: 1,
     isolate: false, // share module state across files (token cache)
     fileParallelism: false, // serial — shared backend state
     server: {
