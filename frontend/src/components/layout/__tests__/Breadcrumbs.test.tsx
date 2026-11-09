@@ -18,21 +18,21 @@ describe('Breadcrumbs', () => {
 
   it('shows the overview and the current page on a top-level route', () => {
     renderWithProviders(<Breadcrumbs />, { route: '/app/audit' });
-    expect(trail()).toEqual(['Dashboard', 'Audit Log']);
-    expect(screen.getByText('Audit Log')).toHaveAttribute('aria-current', 'page');
+    expect(trail()).toEqual(['Dashboard', 'Audit log']);
+    expect(screen.getByText('Audit log')).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/app');
   });
 
   it('does not show another admin page as the parent of a sibling', () => {
     renderWithProviders(<Breadcrumbs />, { route: '/app/admin/onboarding' });
     expect(trail()).toEqual(['Dashboard', 'Onboarding']);
-    expect(screen.queryByRole('link', { name: 'Approval Review' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Approval review' })).not.toBeInTheDocument();
   });
 
   it('nests the admin guide below the approval review', () => {
     renderWithProviders(<Breadcrumbs />, { route: '/app/admin/help' });
-    expect(trail()).toEqual(['Dashboard', 'Approval Review', 'Admin guide']);
-    expect(screen.getByRole('link', { name: 'Approval Review' })).toHaveAttribute(
+    expect(trail()).toEqual(['Dashboard', 'Approval review', 'Admin reference']);
+    expect(screen.getByRole('link', { name: 'Approval review' })).toHaveAttribute(
       'href',
       '/app/admin',
     );

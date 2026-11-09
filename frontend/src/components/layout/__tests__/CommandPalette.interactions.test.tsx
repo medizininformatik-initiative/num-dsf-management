@@ -69,7 +69,7 @@ describe('CommandPalette interactions', () => {
     expect(screen.getByText('Go to Canvas')).toBeInTheDocument();
     expect(screen.getByText('Edit Organization')).toBeInTheDocument();
     // Admin-only command is visible because the mocked user is an admin.
-    expect(screen.getByText('Approval Review')).toBeInTheDocument();
+    expect(screen.getByText('Approval review')).toBeInTheDocument();
   });
 
   it('filters the command list as the query is typed', () => {
@@ -225,7 +225,7 @@ describe('CommandPalette interactions', () => {
 
     fireEvent.keyDown(combobox, { key: 'ArrowDown' });
 
-    const second = screen.getByRole('option', { name: 'Approval Review' });
+    const second = screen.getByRole('option', { name: 'Approval review' });
     expect(second).toHaveAttribute('aria-selected', 'true');
     expect(first).toHaveAttribute('aria-selected', 'false');
     expect(combobox).toHaveAttribute('aria-activedescendant', second.id);

@@ -63,12 +63,12 @@ describe('AdminPage', () => {
     setQuery({ data: [] });
     renderWithProviders(<AdminPage />);
 
-    expect(screen.getByRole('heading', { name: 'Approval Review' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Approval review' })).toBeInTheDocument();
     expect(
       screen.getByText('Review and action pending approval requests from DSF participants'),
     ).toBeInTheDocument();
     expect(screen.getByText('4-eyes approval principle')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Admin guide/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Admin reference/ })).toHaveAttribute(
       'href',
       '/app/admin/help',
     );
@@ -108,7 +108,7 @@ describe('AdminPage', () => {
       'Access denied. You do not have admin privileges.',
     );
     // Header still renders, but no empty/loading state while an error is shown.
-    expect(screen.getByRole('heading', { name: 'Approval Review' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Approval review' })).toBeInTheDocument();
     expect(screen.queryByText('No pending requests')).not.toBeInTheDocument();
     expect(screen.queryByText('Loading pending requests…')).not.toBeInTheDocument();
   });
@@ -143,7 +143,7 @@ describe('AdminPage', () => {
     renderWithProviders(<AdminPage />);
 
     // The <Navigate replace> short-circuits before any page markup renders.
-    expect(screen.queryByRole('heading', { name: 'Approval Review' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Approval review' })).not.toBeInTheDocument();
     expect(screen.queryByText('4-eyes approval principle')).not.toBeInTheDocument();
     expect(screen.queryByText('No pending requests')).not.toBeInTheDocument();
   });

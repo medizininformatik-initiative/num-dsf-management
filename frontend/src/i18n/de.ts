@@ -1127,7 +1127,7 @@ export const de: Record<TranslationKey, string> = {
   adminHelpToc_certs: 'Zertifikate',
   adminHelpToc_mtls: 'mTLS-Anmeldung',
   adminHelpToc_support: 'Support',
-  adminHelpLink: 'Admin-Anleitung',
+  adminHelpLink: 'Admin-Referenz',
   adminHelpApprovalTitle: 'Genehmigungs-Workflow (Vier-Augen-Prinzip)',
   adminHelpApprovalP1:
     'Jede Einreichung erfordert Genehmigungen von zwei Admins unterschiedlicher Sites (unterschiedliche E-Mail-Domains).',

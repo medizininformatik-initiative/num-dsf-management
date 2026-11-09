@@ -20,7 +20,7 @@ describe('DsfResourcesPage', () => {
   it('renders a single title with the intro, the Start here row and the full list', () => {
     renderWithProviders(<DsfResourcesPage />);
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole('heading', { level: 1, name: 'DSF Resources' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'DSF resources' })).toBeInTheDocument();
     const featured = DSF_RESOURCES.filter((r) => r.featured);
     expect(within(section('Start here')).getAllByRole('link')).toHaveLength(featured.length);
     expect(within(section('All resources')).getAllByRole('link')).toHaveLength(

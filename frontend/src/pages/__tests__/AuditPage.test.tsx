@@ -91,7 +91,7 @@ describe('AuditPage', () => {
 
     renderWithProviders(<AuditPage />);
 
-    expect(screen.getByRole('heading', { name: 'Audit Log' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Audit log' })).toBeInTheDocument();
     // Header columns for resource and operation are present.
     expect(screen.getByRole('columnheader', { name: 'Resource' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Operation' })).toBeInTheDocument();
@@ -206,7 +206,7 @@ describe('AuditPage', () => {
     renderWithProviders(<AuditPage />);
 
     // The page redirects (<Navigate to="/app">) so none of its content renders.
-    expect(screen.queryByRole('heading', { name: 'Audit Log' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Audit log' })).not.toBeInTheDocument();
     expect(screen.queryByText('No audit entries yet.')).not.toBeInTheDocument();
   });
 

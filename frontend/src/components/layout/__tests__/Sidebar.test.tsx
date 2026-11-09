@@ -80,9 +80,9 @@ describe('Sidebar navigation', () => {
     expect(list).not.toBeNull();
     const current = within(list as HTMLElement).getByRole('link', { name: 'User management' });
     expect(current).toHaveAttribute('aria-current', 'page');
-    // The exact match keeps the parent "Approval Review" link inactive.
+    // The exact match keeps the parent "Approval review" link inactive.
     expect(
-      within(list as HTMLElement).getByRole('link', { name: 'Approval Review' }),
+      within(list as HTMLElement).getByRole('link', { name: 'Approval review' }),
     ).not.toHaveAttribute('aria-current');
   });
 });
@@ -207,7 +207,7 @@ describe('Sidebar variants', () => {
       'aria-expanded',
       'true',
     );
-    await user.click(screen.getByRole('link', { name: 'Audit Log' }));
+    await user.click(screen.getByRole('link', { name: 'Audit log' }));
     expect(onNavigate).toHaveBeenCalledTimes(1);
 
     await user.click(screen.getByRole('button', { name: 'beta.example.de' }));

@@ -14,7 +14,7 @@ import { AdminHelpPage } from '../AdminHelpPage';
 describe('AdminHelpPage', () => {
   it('renders the page title and subtitle', () => {
     renderWithProviders(<AdminHelpPage />, { route: '/app/admin/help' });
-    expect(screen.getByRole('heading', { name: 'Admin Reference' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Admin reference' })).toBeInTheDocument();
     expect(
       screen.getByText('Workflows, security mechanisms, and developer support.'),
     ).toBeInTheDocument();
@@ -77,7 +77,7 @@ describe('AdminHelpPage', () => {
   it('renders German section headings when language is de', () => {
     renderWithProviders(<AdminHelpPage />, { route: '/app/admin/help', lang: 'de' });
     // The title is translated, so the English heading must be absent.
-    expect(screen.queryByRole('heading', { name: 'Admin Reference' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Admin reference' })).not.toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Auf dieser Seite' })).toBeInTheDocument();
   });
 });

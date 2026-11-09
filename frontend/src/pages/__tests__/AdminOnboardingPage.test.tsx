@@ -72,7 +72,7 @@ describe('AdminOnboardingPage', () => {
   it('starts on step 1 with the two methods and both template downloads', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminOnboardingPage />);
-    expect(screen.getByRole('heading', { name: 'Bulk Onboarding Import' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Bulk onboarding import' })).toBeInTheDocument();
     expect(
       screen.getByTestId('onboarding-stepper').querySelector('[aria-current="step"]'),
     ).toHaveTextContent('Choose method');

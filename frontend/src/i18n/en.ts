@@ -10,13 +10,13 @@ export const en = {
   sendingCode: 'Sending code…',
   darkMode: 'Dark Mode',
   lightMode: 'Light Mode',
-  approvalReview: 'Approval Review',
+  approvalReview: 'Approval review',
   sidebarAdminGroup: 'Administration',
   sidebarUserManagement: 'User management',
   sidebarPromotions: 'Promotions',
   sidebarMarketplace: 'Marketplace',
   sidebarResourcesGroup: 'Resources',
-  marketplaceTitle: 'Process Marketplace',
+  marketplaceTitle: 'Process marketplace',
   marketplaceEmpty: 'No processes registered yet.',
   marketplaceAdd: 'Add process',
   marketplaceEdit: 'Edit status',
@@ -82,7 +82,7 @@ export const en = {
   cancel: 'Cancel',
   approve: 'Approve',
   reject: 'Reject',
-  auditLog: 'Audit Log',
+  auditLog: 'Audit log',
   networkMap: 'Federation map',
   gettingStarted: 'Getting Started',
   pageNotFound: 'Page Not Found',
@@ -134,7 +134,7 @@ export const en = {
   errorBoundaryReload: 'Reload Page',
 
   // AdminPage
-  adminPageTitle: 'Approval Review',
+  adminPageTitle: 'Approval review',
   adminPageSubtitle: 'Review and action pending approval requests from DSF participants',
   adminFourEyesTitle: '4-eyes approval principle',
   adminFourEyesBody:
@@ -1100,7 +1100,7 @@ export const en = {
     'The file contains all portal data including contact details. Store it securely.',
 
   // AdminHelpPage
-  adminHelpTitle: 'Admin Reference',
+  adminHelpTitle: 'Admin reference',
   adminHelpSubtitle: 'Workflows, security mechanisms, and developer support.',
   adminHelpToc: 'On this page',
   adminHelpToc_approval: 'Approval workflow',
@@ -1110,7 +1110,7 @@ export const en = {
   adminHelpToc_certs: 'Certificates',
   adminHelpToc_mtls: 'mTLS sign-in',
   adminHelpToc_support: 'Support',
-  adminHelpLink: 'Admin guide',
+  adminHelpLink: 'Admin reference',
   adminHelpApprovalTitle: 'Approval workflow (4-eyes principle)',
   adminHelpApprovalP1:
     'Every submission requires approvals from two admins working at different sites (different email domains).',
@@ -1438,7 +1438,7 @@ export const en = {
     'Every approval persists a full snapshot of the federation bundle. Pick two snapshots to diff, or download any version verbatim.',
   bundleVersionsEmpty:
     'No bundle versions yet. Snapshots are created automatically when an approval reaches APPROVED.',
-  bundleVersionsNavLabel: 'Bundle Versions',
+  bundleVersionsNavLabel: 'Bundle versions',
   bundleVersionsColVersion: 'Version',
   createdAt: 'Created',
   triggeredBy: 'Trigger',
@@ -1568,7 +1568,7 @@ export const en = {
 
   // ─── Onboarding Import (bulk CSV/JSON upload) ─────────────────────────────
   adminOnboardingNavLabel: 'Onboarding',
-  adminOnboardingTitle: 'Bulk Onboarding Import',
+  adminOnboardingTitle: 'Bulk onboarding import',
   adminOnboardingIntro:
     'Add several sites at once: type them into the table, paste rows from Excel, or upload a CSV or XLSX file. Each site needs an identifier, a name, a contact e-mail and the SHA-512 fingerprint of its client certificate.',
   adminOnboardingFileLabel: 'File',
@@ -1644,8 +1644,8 @@ export const en = {
   cmdCategoryActions: 'Actions',
   cmdCategoryInstances: 'Instances',
   cmdGoToCanvas: 'Go to Canvas',
-  cmdApprovalReview: 'Approval Review',
-  cmdAuditLog: 'Audit Log',
+  cmdApprovalReview: 'Approval review',
+  cmdAuditLog: 'Audit log',
   cmdNetworkMap: 'Federation map',
   cmdEditOrganization: 'Edit Organization',
   cmdAddContact: 'Add Contact',
@@ -1769,8 +1769,8 @@ export const en = {
   dsfResourcesDescEcosystem: 'Tools, organisations and people around the DSF.',
 
   // DSF Resources page
-  dsfResourcesNavLabel: 'DSF Resources',
-  dsfResourcesTitle: 'DSF Resources',
+  dsfResourcesNavLabel: 'DSF resources',
+  dsfResourcesTitle: 'DSF resources',
   dsfResourcesIntro:
     'Official documentation, tools and communities around the Data Sharing Framework.',
   dsfResourcesCatGettingStarted: 'Getting started',
