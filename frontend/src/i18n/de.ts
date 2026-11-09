@@ -909,6 +909,8 @@ export const de: Record<TranslationKey, string> = {
   mapLegendInactive: 'Inaktiv',
   mapLegendCluster: 'Mehrere Standorte',
   mapLegendConnection: 'Gemeinsames Netzwerk',
+  mapLegendHub: 'Verbund-Knoten',
+  mapLegendPeer: 'Partner der Auswahl',
   mapNodeLabel: '{name}, Zertifikat: {status}',
   mapNodeLabelInactive: '{name}, inaktiv, Zertifikat: {status}',
   mapClusterLabel: '{city}: {n} Standorte',

@@ -1,8 +1,9 @@
 /**
  * MapControls.tsx – Floating glass controls of the network map: the zoom
  * group (zoom in, zoom out, show all of Germany) and a compact, collapsible
- * legend explaining the status rings, inactive (dashed) sites, city bubbles
- * and network lines. Both float over the map canvas.
+ * legend explaining the status rings, inactive (dashed) sites, city bubbles,
+ * network lines, Verbund hubs and the peer ring of a selection. Both float
+ * over the map canvas.
  * Dependencies: ui/Icon, lib/statusColors, mapLabels, i18n.store.
  */
 import { useState } from 'react';
@@ -134,6 +135,35 @@ export function MapLegend() {
               <path d="M1 11 Q 7 1 13 11" fill="none" stroke="var(--primary)" strokeWidth="1.5" />
             </svg>
             {t('mapLegendConnection')}
+          </li>
+          <li className="flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" className="shrink-0">
+              <rect
+                x="1"
+                y="3.5"
+                width="12"
+                height="7"
+                rx="3.5"
+                fill="none"
+                stroke="var(--text-secondary)"
+                strokeWidth="1.5"
+              />
+            </svg>
+            {t('mapLegendHub')}
+          </li>
+          <li className="flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" className="shrink-0">
+              <circle
+                cx="7"
+                cy="7"
+                r="3.5"
+                fill="none"
+                stroke="var(--text-muted)"
+                strokeWidth="1.5"
+              />
+              <circle cx="7" cy="7" r="6" fill="none" stroke="var(--primary)" strokeWidth="1.5" />
+            </svg>
+            {t('mapLegendPeer')}
           </li>
         </ul>
       )}

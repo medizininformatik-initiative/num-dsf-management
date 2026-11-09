@@ -897,6 +897,8 @@ export const en = {
   mapLegendInactive: 'Inactive',
   mapLegendCluster: 'Several sites',
   mapLegendConnection: 'Shared network',
+  mapLegendHub: 'Verbund hub',
+  mapLegendPeer: 'Peer of the selection',
   mapNodeLabel: '{name}, certificate: {status}',
   mapNodeLabelInactive: '{name}, inactive, certificate: {status}',
   mapClusterLabel: '{city}: {n} sites',
