@@ -80,7 +80,7 @@ export function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
           return (
             <li
               key={inst.id}
-              className={`group flex h-9 items-center rounded-[10px] transition-colors duration-short ease-standard ${
+              className={`group flex h-9 items-center rounded-control transition-colors duration-short ease-standard ${
                 isActive
                   ? ACTIVE
                   : 'text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)]'
@@ -90,7 +90,7 @@ export function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
                 type="button"
                 onClick={() => select(inst.id)}
                 aria-current={isActive ? 'true' : undefined}
-                className={`h-full min-w-0 flex-1 truncate rounded-[10px] pl-[10px] text-left text-[13px] ${
+                className={`h-full min-w-0 flex-1 truncate rounded-control pl-[10px] text-left text-[13px] ${
                   isActive ? 'font-semibold' : 'font-medium'
                 } ${ROW_FOCUS}`}
               >
@@ -102,7 +102,7 @@ export function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
                 aria-pressed={isPinned}
                 aria-label={t('shellPinInstance', { label: inst.label })}
                 title={t(isPinned ? 'shellUnpin' : 'shellPinToTop')}
-                className={`press-effect mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md hover:bg-black/5 focus-visible:opacity-100 group-hover:opacity-100 dark:hover:bg-white/10 ${
+                className={`press-effect mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-control hover:bg-black/5 focus-visible:opacity-100 group-hover:opacity-100 dark:hover:bg-white/10 ${
                   isPinned
                     ? 'text-warning-fg'
                     : 'text-[color:var(--text-muted)] [@media(hover:hover)]:opacity-0'

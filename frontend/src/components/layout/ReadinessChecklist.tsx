@@ -53,7 +53,7 @@ export function ReadinessChecklist({
             return (
               <li
                 key={item.key}
-                className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-[color:var(--text-primary)]"
+                className="flex items-center gap-2 rounded-control px-2 py-1 text-xs text-[color:var(--text-primary)]"
               >
                 <Icon
                   name="check_circle"
@@ -71,7 +71,7 @@ export function ReadinessChecklist({
               <button
                 type="button"
                 onClick={() => revealReadinessCard(item.key)}
-                className="press-effect flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-xs text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+                className="press-effect flex w-full items-center gap-2 rounded-control px-2 py-1 text-left text-xs text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
               >
                 <Icon
                   name="error"

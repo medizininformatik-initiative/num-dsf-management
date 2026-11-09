@@ -15,7 +15,7 @@ export const ROW_FOCUS =
 
 // Icons sit 22 px from the column edge in every variant, so they stay put
 // while the column narrows to the rail and the selection pill shrinks with it.
-export const ROW = `press-effect flex h-9 w-full items-center gap-3 overflow-hidden whitespace-nowrap rounded-[10px] px-[10px] text-left text-[13px] ${ROW_FOCUS}`;
+export const ROW = `press-effect flex h-9 w-full items-center gap-3 overflow-hidden whitespace-nowrap rounded-control px-[10px] text-left text-[13px] ${ROW_FOCUS}`;
 
 export const IDLE =
   'font-medium text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)]';

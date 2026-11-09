@@ -69,7 +69,7 @@ export function Breadcrumbs({ current }: { current?: string }) {
             {crumb.to ? (
               <Link
                 to={crumb.to}
-                className="rounded-sm font-medium text-[color:var(--text-secondary)] underline-offset-2 hover:text-[color:var(--primary)] hover:underline focus-visible:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+                className="rounded-small font-medium text-[color:var(--text-secondary)] underline-offset-2 hover:text-[color:var(--primary)] hover:underline focus-visible:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
               >
                 {crumb.label}
               </Link>

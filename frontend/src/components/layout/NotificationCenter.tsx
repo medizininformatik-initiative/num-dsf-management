@@ -44,7 +44,7 @@ export function NotificationCenter() {
         }
         aria-expanded={popover.open}
         aria-controls={panelId}
-        className="press-effect relative rounded-lg p-1.5 text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+        className="press-effect relative rounded-control p-1.5 text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
         <Icon name="notifications" size={20} className="block" />
         {unread > 0 && (

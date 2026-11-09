@@ -170,7 +170,7 @@ export function ApprovalStatusBanner({ approval, onResubmit, className = '' }: P
     <div
       key={state}
       data-approval-state={state}
-      className={`animate-fade-in rounded-2xl p-3.5 ${look.surface} ${className}`}
+      className={`animate-fade-in rounded-control p-3.5 ${look.surface} ${className}`}
     >
       <StatusPill tone={look.tone} icon={look.icon}>
         {t(look.label)}

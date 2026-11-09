@@ -59,7 +59,7 @@ function Section({
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-controls={bodyId}
-          className={`-mx-1.5 flex w-[calc(100%+0.75rem)] items-center justify-between gap-2 rounded-md px-1.5 py-1 text-left hover:text-[color:var(--text-primary)] ${SECTION_HEADER} ${FOCUS_RING}`}
+          className={`-mx-1.5 flex w-[calc(100%+0.75rem)] items-center justify-between gap-2 rounded-control px-1.5 py-1 text-left hover:text-[color:var(--text-primary)] ${SECTION_HEADER} ${FOCUS_RING}`}
         >
           {title}
           <Icon

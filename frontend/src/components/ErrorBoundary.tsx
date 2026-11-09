@@ -32,20 +32,20 @@ export class ErrorBoundary extends Component<Props, State> {
       const t = useI18n.getState().t;
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-8">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center entity-card-shadow">
+          <div className="bg-white rounded-card p-8 max-w-md w-full text-center entity-card-shadow">
             <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-red-500 text-[28px]">error</span>
             </div>
             <h1 className="text-lg font-bold text-slate-900 mb-2">{t('errorBoundaryTitle')}</h1>
             <p className="text-sm text-slate-500 mb-2">{t('errorBoundaryBody')}</p>
             {import.meta.env.DEV && this.state.error && (
-              <pre className="text-left text-[10px] font-mono bg-slate-50 rounded-xl p-3 text-red-700 overflow-auto max-h-32 mb-4">
+              <pre className="text-left text-[10px] font-mono bg-slate-50 rounded-control p-3 text-red-700 overflow-auto max-h-32 mb-4">
                 {this.state.error.message}
               </pre>
             )}
             <button
               onClick={() => window.location.reload()}
-              className="px-5 py-2 text-sm font-bold text-white rounded-xl transition-all active:scale-[0.98]"
+              className="px-5 py-2 text-sm font-bold text-white rounded-control transition-all active:scale-[0.98]"
               style={{ background: 'var(--accent-solid)' }}
             >
               {t('errorBoundaryReload')}

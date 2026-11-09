@@ -158,7 +158,7 @@ export function SearchBar() {
 
   return (
     <div ref={rootRef} className="relative" onKeyDown={handleKeyDown} onBlur={handleBlur}>
-      <div className="flex w-60 items-center gap-1.5 rounded-[10px] border border-[color:var(--border)] bg-[color:var(--bg-hover)] px-3 py-1.5 focus-within:border-[color:var(--focus-ring)]">
+      <div className="flex w-60 items-center gap-1.5 rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] px-3 py-1.5 focus-within:border-[color:var(--focus-ring)]">
         <Icon name="search" size={16} className="shrink-0 text-[color:var(--text-muted)]" />
         <input
           ref={inputRef}
@@ -183,7 +183,7 @@ export function SearchBar() {
               inputRef.current?.focus();
             }}
             aria-label={t('searchClearAria')}
-            className="press-effect flex shrink-0 rounded text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+            className="press-effect flex shrink-0 rounded-small text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
           >
             <Icon name="close" size={14} />
           </button>
@@ -208,7 +208,7 @@ export function SearchBar() {
                   role="option"
                   aria-label={`${typeLabel}: ${r.label}`}
                   onClick={() => handleSelect(r)}
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors duration-micro ease-standard first:rounded-t-xl last:rounded-b-xl hover:bg-slate-900/[0.06] focus-visible:bg-slate-900/[0.06] focus-visible:outline-none dark:hover:bg-white/10 dark:focus-visible:bg-white/10"
+                  className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors duration-micro ease-standard first:rounded-t-card last:rounded-b-card hover:bg-slate-900/[0.06] focus-visible:bg-slate-900/[0.06] focus-visible:outline-none dark:hover:bg-white/10 dark:focus-visible:bg-white/10"
                 >
                   <Icon
                     name={meta.icon}
@@ -226,7 +226,7 @@ export function SearchBar() {
                       </p>
                     )}
                   </div>
-                  <span className="ml-auto shrink-0 whitespace-nowrap rounded bg-[color:var(--bg-page)] px-1.5 py-0.5 text-[11px] text-[color:var(--text-muted)]">
+                  <span className="ml-auto shrink-0 whitespace-nowrap rounded-small bg-[color:var(--bg-page)] px-1.5 py-0.5 text-[11px] text-[color:var(--text-muted)]">
                     {typeLabel}
                   </span>
                 </button>

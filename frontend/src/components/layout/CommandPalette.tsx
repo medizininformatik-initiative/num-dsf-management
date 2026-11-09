@@ -323,7 +323,7 @@ export function CommandPalette() {
           placeholder={t('cmdPlaceholder')}
           className="min-w-0 flex-1 bg-transparent text-sm text-[color:var(--text-primary)] outline-none placeholder:text-[color:var(--text-muted)]"
         />
-        <kbd className="shrink-0 rounded border border-[color:var(--border)] px-1.5 py-0.5 font-sans text-[11px] text-[color:var(--text-muted)]">
+        <kbd className="shrink-0 rounded-small border border-[color:var(--border)] px-1.5 py-0.5 font-sans text-[11px] text-[color:var(--text-muted)]">
           ESC
         </kbd>
       </div>

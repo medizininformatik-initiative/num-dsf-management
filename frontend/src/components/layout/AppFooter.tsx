@@ -33,7 +33,7 @@ export function AppFooter({ children }: { children?: ReactNode }) {
       </span>
       <Link
         to="/app/legal"
-        className="rounded-sm text-[color:var(--text-secondary)] underline transition-colors duration-short ease-standard hover:text-[color:var(--primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+        className="rounded-small text-[color:var(--text-secondary)] underline transition-colors duration-short ease-standard hover:text-[color:var(--primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
         {t('bundleDisclaimerLinkLabel')}
       </Link>

@@ -24,7 +24,7 @@ export function CrossUserInstanceBanner({ instanceId }: Props) {
   return (
     <div
       role="alert"
-      className="mx-5 mt-2 flex items-start gap-2.5 rounded-xl border border-warning-border bg-warning-surface px-3.5 py-2.5 text-warning-fg"
+      className="mx-5 mt-2 flex items-start gap-2.5 rounded-card border border-warning-border bg-warning-surface px-3.5 py-2.5 text-warning-fg"
     >
       <Icon name="admin_panel_settings" size={20} className="mt-px shrink-0" />
       <div className="text-xs leading-snug">

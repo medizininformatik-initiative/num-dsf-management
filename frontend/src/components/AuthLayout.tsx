@@ -41,7 +41,7 @@ export const AUTH_INPUT_CLASS =
   'w-full rounded-input border border-[color:var(--border)] bg-[color:var(--bg-input)] px-3 py-2.5 text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] transition-colors duration-short ease-standard hover:border-[color:var(--border-strong)] focus:border-[color:var(--accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] aria-[invalid=true]:border-danger-border disabled:opacity-50';
 
 const LINK_FOCUS =
-  'rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--focus-ring)]';
+  'rounded-small focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--focus-ring)]';
 
 const PARTNER_LOGO =
   'opacity-60 grayscale transition-[opacity,filter] duration-short ease-standard hover:opacity-100 hover:grayscale-0';
@@ -96,7 +96,7 @@ export function AuthLayout({ children, title, subtitle, step = 0, success }: Aut
       </header>
 
       <main
-        className={`glass-thick auth-card relative z-[1] w-full max-w-md rounded-2xl ${cardIntro ? 'animate-auth-card-in' : ''}`}
+        className={`glass-thick auth-card relative z-[1] w-full max-w-md rounded-card ${cardIntro ? 'animate-auth-card-in' : ''}`}
         style={height !== undefined ? { height } : undefined}
       >
         <div ref={innerRef} className="p-8">
