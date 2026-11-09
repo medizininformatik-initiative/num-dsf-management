@@ -71,10 +71,10 @@ export function DsfResourcesPage() {
   return (
     <div className="flex-1 overflow-y-auto font-sans">
       <AdminPageHeader title={t('dsfResourcesTitle')} subtitle={t('dsfResourcesIntro')} />
-      <div className="flex w-full flex-col gap-8 px-4 py-8 sm:px-8">
+      <div className="flex w-full flex-col gap-6 px-6 py-6 sm:px-8">
         <div className="flex flex-col gap-3">
-          <div className="glass flex max-w-xl items-center gap-2 rounded-full px-4 py-1.5">
-            <Icon name="search" size={20} className="text-[color:var(--text-muted)]" />
+          <div className="flex max-w-xl items-center gap-2 rounded-full border border-[color:var(--border-strong)] bg-[color:var(--bg-input)] px-4 py-1.5 focus-within:border-[color:var(--focus-ring)] focus-within:ring-[3px] focus-within:ring-primary/20 dark:focus-within:ring-brand-400/30">
+            <Icon name="search" size={16} className="text-[color:var(--text-muted)]" />
             <input
               type="search"
               value={query}
@@ -82,7 +82,7 @@ export function DsfResourcesPage() {
               placeholder={t('dsfResourcesSearchPlaceholder')}
               aria-label={t('dsfResourcesSearchLabel')}
               aria-controls={listId}
-              className="min-h-[36px] min-w-0 flex-1 border-0 bg-transparent text-[15px] text-[color:var(--text-primary)] outline-none placeholder:text-[color:var(--text-muted)]"
+              className="min-h-[36px] min-w-0 flex-1 border-0 bg-transparent text-sm text-[color:var(--text-primary)] outline-none placeholder:text-[color:var(--text-muted)]"
             />
           </div>
           <CategoryFilter value={category} onChange={setCategory} counts={counts} />
@@ -92,7 +92,7 @@ export function DsfResourcesPage() {
           <section aria-labelledby={startId} className="flex flex-col gap-3">
             <h2
               id={startId}
-              className="m-0 text-[17px] font-semibold text-[color:var(--text-primary)]"
+              className="m-0 text-base font-semibold text-[color:var(--text-primary)]"
             >
               {t('dsfResourcesStartHere')}
             </h2>
@@ -118,13 +118,13 @@ export function DsfResourcesPage() {
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2
               id={listId + '-h'}
-              className="m-0 text-[17px] font-semibold text-[color:var(--text-primary)]"
+              className="m-0 text-base font-semibold text-[color:var(--text-primary)]"
             >
               {listHeading}
             </h2>
             <p
               aria-live="polite"
-              className="m-0 text-[13px] tabular-nums text-[color:var(--text-muted)]"
+              className="m-0 text-xs tabular-nums text-[color:var(--text-muted)]"
             >
               {countText}
             </p>
@@ -133,12 +133,12 @@ export function DsfResourcesPage() {
             <ResourceGrid resources={gridItems} />
           </div>
           {results.length === 0 && (
-            <div className="glass-thin flex animate-fade-in flex-col items-center gap-2 rounded-card px-6 py-10 text-center">
-              <Icon name="search_off" size={32} className="text-[color:var(--text-muted)]" />
-              <p className="m-0 text-[15px] font-semibold text-[color:var(--text-primary)]">
+            <div className="surface-card flex animate-fade-in flex-col items-center gap-2 px-6 py-10 text-center">
+              <Icon name="search_off" size={40} className="text-[color:var(--text-muted)]" />
+              <p className="m-0 text-base font-semibold text-[color:var(--text-primary)]">
                 {t('dsfResourcesEmptyTitle')}
               </p>
-              <p className="m-0 text-[13px] text-[color:var(--text-secondary)]">
+              <p className="m-0 text-sm text-[color:var(--text-secondary)]">
                 {t('dsfResourcesEmptyHint')}
               </p>
               <Button variant="secondary" size="sm" onClick={clear} className="mt-2">

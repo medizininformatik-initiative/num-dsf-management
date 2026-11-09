@@ -66,18 +66,18 @@ export function CategoryFilter({ value, onChange, counts }: Props) {
     f === 'all' ? t('dsfResourcesFilterAll') : t(CATEGORY_LABEL_KEY[f]);
 
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+    <div className="-mx-6 overflow-x-auto px-6 pb-1 sm:mx-0 sm:px-0">
       <div
         ref={groupRef}
         role="group"
         aria-label={t('dsfResourcesFilterLabel')}
-        className="glass-thin relative inline-flex min-w-max items-center gap-0.5 rounded-full p-1"
+        className="relative inline-flex min-w-max items-center gap-0.5 rounded-full border border-[color:var(--border)] bg-[color:var(--bg-card)] p-1"
       >
         {pill && (
           <span
             aria-hidden="true"
             data-testid="category-pill"
-            className={`absolute left-0 top-0 rounded-full bg-[color:var(--primary)] shadow-sm ${
+            className={`absolute left-0 top-0 rounded-full bg-[color:var(--accent-solid)] shadow-sm ${
               animated ? 'transition-[transform,width,height] duration-medium ease-spring' : ''
             }`}
             style={{
@@ -99,7 +99,7 @@ export function CategoryFilter({ value, onChange, counts }: Props) {
               type="button"
               aria-pressed={active}
               onClick={() => onChange(f)}
-              className={`press-effect relative z-[1] inline-flex min-h-[36px] items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--primary)] ${
+              className={`press-effect relative z-[1] inline-flex min-h-[36px] items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
                 active
                   ? 'text-white'
                   : 'text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)]'
@@ -107,7 +107,7 @@ export function CategoryFilter({ value, onChange, counts }: Props) {
             >
               {label(f)}
               <span
-                className={`text-[11px] font-medium tabular-nums ${
+                className={`text-2xs font-medium tabular-nums ${
                   active ? 'text-white/90' : 'text-[color:var(--text-muted)]'
                 }`}
               >
