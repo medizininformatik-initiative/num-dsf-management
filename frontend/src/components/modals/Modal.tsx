@@ -51,9 +51,9 @@ export function Modal({
         describedBy={subtitle ? subtitleId : undefined}
         className={`overflow-hidden ${width}`}
       >
-        <div className="flex items-center justify-between gap-4 border-b border-[color:var(--border)] px-6 pb-4 pt-6">
+        <div className="flex items-start justify-between gap-4 border-b border-[color:var(--border)] px-6 pb-4 pt-6">
           <div className="min-w-0">
-            <h2 id={titleId} className="text-base font-bold text-[color:var(--text-primary)]">
+            <h2 id={titleId} className="text-base font-semibold text-[color:var(--text-primary)]">
               {title}
             </h2>
             {subtitle && (
@@ -66,9 +66,9 @@ export function Modal({
             type="button"
             onClick={requestClose}
             aria-label={t('ariaClose')}
-            className="press-effect rounded-control p-1.5 text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)]"
+            className="press-effect -mr-2 -mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
           >
-            <Icon name="close" size={20} />
+            <Icon name="close" size={18} />
           </button>
         </div>
         <div className="max-h-[75vh] overflow-y-auto px-6 py-5">{children}</div>

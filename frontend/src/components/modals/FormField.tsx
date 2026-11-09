@@ -7,8 +7,10 @@
  *   render function for composite fields such as the PEM drop zone.
  * - FormFieldGroup: the same for checkbox groups (role="group").
  * - FieldError: the announced (role="alert") error line that fades/slides in.
+ * - fieldLabelClass / fieldHintClass: the one label and hint style, for
+ *   labels and hints that sit outside a FormField.
  * - inputClass / selectClass / checkboxClass: one field style with a
- *   consistent focus ring and translucent, glass-friendly fills in dark mode.
+ *   consistent focus ring and the theme's input fill and border tokens.
  * - ModalFooter: Cancel, an optional Back and the one primary CTA (Button).
  * Dependencies: Button, Icon, InfoHint, i18n store.
  */
@@ -67,9 +69,15 @@ export function FieldError({ id, error }: { id: string; error: string }) {
   );
 }
 
+/** Label of a control or group (FormField, FormFieldGroup and ad-hoc labels). */
+export const fieldLabelClass = 'text-xs font-semibold text-[color:var(--text-secondary)]';
+
+/** Helper text under a control or group. */
+export const fieldHintClass = 'text-xs text-[color:var(--text-muted)]';
+
 function FieldHint({ id, children }: { id: string; children: React.ReactNode }) {
   return (
-    <p id={id} className="text-xs text-[color:var(--text-muted)]">
+    <p id={id} className={fieldHintClass}>
       {children}
     </p>
   );
@@ -86,8 +94,6 @@ function RequiredMark() {
     </>
   );
 }
-
-const labelClass = 'text-xs font-semibold text-[color:var(--text-secondary)]';
 
 export function FormField({ label, required, error, hint, infoKey, children }: FormFieldProps) {
   const { t } = useI18n();
@@ -118,7 +124,7 @@ export function FormField({ label, required, error, hint, infoKey, children }: F
   return (
     <div className="space-y-1.5">
       <div className="flex items-center">
-        <label htmlFor={controlId} className={labelClass}>
+        <label htmlFor={controlId} className={fieldLabelClass}>
           {label}
           {required && <RequiredMark />}
         </label>
@@ -163,7 +169,7 @@ export function FormFieldGroup({
       className="space-y-1.5"
     >
       <div className="flex items-center">
-        <span id={labelId} className={labelClass}>
+        <span id={labelId} className={fieldLabelClass}>
           {label}
           {required && <RequiredMark />}
         </span>
@@ -178,8 +184,8 @@ export function FormFieldGroup({
 
 /** Border, fill, focus ring and invalid/disabled states of every text control. */
 export const fieldSurfaceClass =
-  'rounded-input border border-[color:var(--border-strong)] bg-white/80 outline-none ' +
-  'text-[color:var(--text-primary)] dark:border-white/10 dark:bg-white/[0.06] ' +
+  'rounded-input border border-[color:var(--border-strong)] bg-[color:var(--bg-input)] outline-none ' +
+  'text-[color:var(--text-primary)] ' +
   'transition-[border-color,box-shadow,background-color] duration-short ease-standard ' +
   'focus:border-[color:var(--focus-ring)] focus:ring-[3px] focus:ring-primary/20 ' +
   'dark:focus:ring-brand-400/30 aria-[invalid=true]:border-danger-fg ' +
@@ -220,7 +226,7 @@ export function CheckboxCards<T extends string>({
       {options.map((option, i) => (
         <label
           key={option.value}
-          className="flex cursor-pointer items-start gap-3 rounded-control border border-[color:var(--border)] bg-white/50 p-3 transition-colors duration-short ease-standard hover:border-[color:var(--border-strong)] has-[:checked]:border-primary/40 has-[:checked]:bg-primary/[0.05] dark:bg-white/[0.03] dark:has-[:checked]:border-brand-400/50 dark:has-[:checked]:bg-brand-400/10"
+          className="flex cursor-pointer items-start gap-3 rounded-control border border-[color:var(--border)] p-3 transition-colors duration-short ease-standard hover:border-[color:var(--border-strong)] has-[:checked]:border-primary/40 has-[:checked]:bg-primary/[0.05] dark:has-[:checked]:border-brand-400/50 dark:has-[:checked]:bg-brand-400/10"
         >
           <input
             ref={i === 0 ? firstInputRef : undefined}
@@ -237,7 +243,7 @@ export function CheckboxCards<T extends string>({
             className={`mt-0.5 ${checkboxClass}`}
           />
           <span className="min-w-0">
-            <span className="block text-xs font-bold text-[color:var(--text-primary)]">
+            <span className="block text-sm font-semibold text-[color:var(--text-primary)]">
               {option.label}
             </span>
             <span className="block text-xs text-[color:var(--text-muted)]">
@@ -285,7 +291,7 @@ export function ModalFooter({
     <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-[color:var(--border)] pt-4">
       {onBack && (
         <Button variant="ghost" onClick={onBack} className="mr-auto">
-          <Icon name="arrow_back" size={18} />
+          <Icon name="arrow_back" size={16} />
           {backLabel ?? t('formBackBtn')}
         </Button>
       )}
@@ -298,7 +304,7 @@ export function ModalFooter({
           onClick={onSubmit}
           disabled={loading || disabled}
         >
-          {loading && <Icon name="progress_activity" size={18} className="animate-spin" />}
+          {loading && <Icon name="progress_activity" size={16} className="animate-spin" />}
           {loading ? (loadingLabel ?? t('modalSavingBtn')) : submitLabel || t('modalSaveBtn')}
         </Button>
       )}
