@@ -60,7 +60,7 @@ function IpFlag({ kind, labelled = true }: { kind: IpFlagKind; labelled?: boolea
   return (
     <span
       title={t(flag.label)}
-      className={`inline-flex h-4 min-w-[1rem] items-center justify-center rounded border px-0.5 text-[11px] font-bold leading-none ${flag.className}`}
+      className={`inline-flex h-4 min-w-[1rem] items-center justify-center rounded-small border px-0.5 text-[11px] font-bold leading-none ${flag.className}`}
     >
       <span aria-hidden="true">{flag.letter}</span>
       {labelled && <span className="sr-only">{t(flag.label)}</span>}
@@ -145,7 +145,7 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
               if (list.length <= 3) return chips;
               return (
                 <details className="group/ips mt-1.5">
-                  <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-md text-[11px] font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
+                  <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-control text-[11px] font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
                     <Icon
                       name="chevron_right"
                       size={16}
@@ -161,7 +161,7 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
               <li
                 key={ep.identifier}
                 data-entity-row={`endpoints:${ep.identifier}`}
-                className="hover-lift animate-list-item-in flex items-start gap-2 rounded-xl bg-[color:var(--bg-hover)] p-3.5"
+                className="hover-lift animate-list-item-in flex items-start gap-2 rounded-control bg-[color:var(--bg-hover)] p-3.5"
                 style={{ '--stagger-index': index } as CSSProperties}
               >
                 <div className="min-w-0 flex-1">

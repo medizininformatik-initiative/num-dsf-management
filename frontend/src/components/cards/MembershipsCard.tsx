@@ -80,7 +80,7 @@ export function MembershipsCard({ instanceId }: { instanceId: string }) {
               <li
                 key={ms.id}
                 data-entity-row={`memberships:${ms.id}`}
-                className="hover-lift animate-list-item-in flex items-start gap-2 rounded-xl bg-[color:var(--bg-hover)] p-3.5"
+                className="hover-lift animate-list-item-in flex items-start gap-2 rounded-control bg-[color:var(--bg-hover)] p-3.5"
                 style={{ '--stagger-index': index } as CSSProperties}
               >
                 <div className="min-w-0 flex-1">

@@ -267,7 +267,7 @@ function CertificateItem({
   return (
     <li
       data-entity-row={`certificates:${cert.id}`}
-      className="hover-lift animate-list-item-in rounded-xl bg-[color:var(--bg-hover)] p-3.5"
+      className="hover-lift animate-list-item-in rounded-control bg-[color:var(--bg-hover)] p-3.5"
       style={{ '--stagger-index': index } as CSSProperties}
     >
       <div className="flex items-start justify-between gap-2">
@@ -361,7 +361,7 @@ function CertificateFingerprints({ cert }: { cert: CertRow }) {
         }}
       />
       <details className="group/more mt-2">
-        <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-md text-[11px] font-semibold text-[color:var(--text-secondary)] transition-colors duration-short ease-standard hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
+        <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-control text-[11px] font-semibold text-[color:var(--text-secondary)] transition-colors duration-short ease-standard hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
           <Icon
             name="chevron_right"
             size={16}
@@ -431,7 +431,7 @@ function CertificateIssuer({ issuerDn, trusted }: { issuerDn: string; trusted: b
               dismissed ? '!invisible !opacity-0' : ''
             }`}
           >
-            <span className="glass-thin block w-max max-w-[16rem] rounded-lg px-2 py-1 text-[11px] text-[color:var(--text-primary)]">
+            <span className="glass-thin block w-max max-w-[16rem] rounded-control px-2 py-1 text-[11px] text-[color:var(--text-primary)]">
               {issuer}
             </span>
           </span>

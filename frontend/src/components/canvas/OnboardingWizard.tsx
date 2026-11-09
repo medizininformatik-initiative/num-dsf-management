@@ -139,7 +139,7 @@ export function OnboardingWizard({ instanceId }: Props) {
           {steps.map((step, i) => {
             const isNext = step === nextStep;
             const tile =
-              'flex h-full w-full flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-center';
+              'flex h-full w-full flex-col items-center gap-1 rounded-control px-1 py-1.5 text-center';
             return (
               <li
                 key={step.key}

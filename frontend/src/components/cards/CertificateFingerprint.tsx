@@ -65,7 +65,7 @@ export function CertificateFingerprint({
       )}
       <code
         data-testid="thumbprint-value"
-        className="mono-id mt-1 block select-all break-all rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1.5 text-[11px] leading-5 text-[color:var(--text-primary)]"
+        className="mono-id mt-1 block select-all break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1.5 text-[11px] leading-5 text-[color:var(--text-primary)]"
       >
         {normalizeFingerprint(hex)}
       </code>
@@ -73,7 +73,7 @@ export function CertificateFingerprint({
         <div className="mt-1.5 flex items-center gap-2">
           <code
             data-testid="thumbprint-command"
-            className="mono-id min-w-0 flex-1 select-all break-all rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1.5 text-[11px] leading-5 text-[color:var(--text-primary)]"
+            className="mono-id min-w-0 flex-1 select-all break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1.5 text-[11px] leading-5 text-[color:var(--text-primary)]"
           >
             {command.text}
           </code>

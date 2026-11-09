@@ -98,7 +98,7 @@ export function LoginFingerprintEntries({
       {entries.map((entry, index) => (
         <li
           key={entry.fingerprint}
-          className="hover-lift animate-list-item-in rounded-xl bg-[color:var(--bg-hover)] p-3.5"
+          className="hover-lift animate-list-item-in rounded-control bg-[color:var(--bg-hover)] p-3.5"
           style={{ '--stagger-index': index } as CSSProperties}
         >
           <div className="flex items-start justify-between gap-2">

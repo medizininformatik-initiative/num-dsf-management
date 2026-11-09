@@ -117,7 +117,7 @@ export function ContactsCard({ instanceId }: { instanceId: string }) {
                 key={c.id}
                 data-entity-row={`contacts:${c.id}`}
                 onClick={(e) => handleRowClick(e, c)}
-                className="hover-lift animate-list-item-in flex cursor-pointer items-start gap-3 rounded-xl bg-[color:var(--bg-hover)] p-3.5"
+                className="hover-lift animate-list-item-in flex cursor-pointer items-start gap-3 rounded-control bg-[color:var(--bg-hover)] p-3.5"
                 style={{ '--stagger-index': index } as CSSProperties}
               >
                 <span
