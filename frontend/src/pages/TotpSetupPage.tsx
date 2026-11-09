@@ -139,7 +139,7 @@ export function TotpSetupPage() {
             <div className="flex flex-col items-center gap-4">
               {/* Always white: authenticator apps need a light quiet zone around the code. */}
               <div
-                className="animate-scale-in rounded-xl border border-[color:var(--border)] p-3"
+                className="animate-scale-in rounded-control border border-[color:var(--border)] p-3"
                 style={{ background: '#fff' }}
               >
                 <img src={qrCodeUrl} alt={t('totpSetupQrAlt')} width={200} height={200} />
@@ -204,7 +204,7 @@ export function TotpSetupPage() {
   return (
     <AuthLayout title={t('totpBackupTitle')} subtitle={t('totpBackupSubtitle')} step={4}>
       <div className="space-y-5">
-        <div className="flex items-center gap-3 rounded-xl border border-success-border bg-success-surface px-3 py-2.5">
+        <div className="flex items-center gap-3 rounded-control border border-success-border bg-success-surface px-3 py-2.5">
           <AuthCheck size={32} />
           <p role="status" className="m-0 text-sm font-medium text-success-fg">
             {t('totpSetupActive')}
@@ -212,11 +212,11 @@ export function TotpSetupPage() {
         </div>
         <ul
           aria-label={t('totpBackupCodesAria')}
-          className="grid grid-cols-2 gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-4"
+          className="grid grid-cols-2 gap-2 rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-4"
         >
           {backupCodes.map((c, i) => (
             <li key={i}>
-              <code className="block rounded-md border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1 text-center font-mono text-sm tracking-widest text-[color:var(--text-primary)]">
+              <code className="block rounded-small border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1 text-center font-mono text-sm tracking-widest text-[color:var(--text-primary)]">
                 {c}
               </code>
             </li>
@@ -234,7 +234,7 @@ export function TotpSetupPage() {
           </Button>
         </div>
 
-        <div className="flex gap-2 rounded-lg border border-warning-border bg-warning-surface p-3 text-xs text-warning-fg">
+        <div className="flex gap-2 rounded-control border border-warning-border bg-warning-surface p-3 text-xs text-warning-fg">
           <Icon name="warning" size={18} className="shrink-0" />
           <p>{t('totpBackupWarning')}</p>
         </div>

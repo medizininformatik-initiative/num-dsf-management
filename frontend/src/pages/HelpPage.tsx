@@ -53,7 +53,7 @@ function CodeLine({ text }: { text: string }) {
   }
   return (
     <div className="flex items-start gap-2">
-      <code className="mono-id min-w-0 flex-1 select-all break-all rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2.5 py-2 text-[11px] leading-5 text-[color:var(--text-primary)]">
+      <code className="mono-id min-w-0 flex-1 select-all break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2.5 py-2 text-[11px] leading-5 text-[color:var(--text-primary)]">
         {text}
       </code>
       <Button
@@ -243,7 +243,7 @@ export function HelpPage() {
 
       <div className="px-6 py-6 sm:px-8">
         {total === 0 ? (
-          <div role="status" className="glass-thin animate-fade-in rounded-2xl p-6 text-center">
+          <div role="status" className="glass-thin animate-fade-in rounded-card p-6 text-center">
             <p className="text-sm font-semibold text-[color:var(--text-primary)]">
               {t('helpNoResults', { query: query.trim() })}
             </p>
@@ -267,7 +267,7 @@ export function HelpPage() {
                     <details
                       key={f.id}
                       id={f.id}
-                      className="group/faq glass-thin scroll-mt-44 rounded-xl px-4 py-2"
+                      className="group/faq glass-thin scroll-mt-44 rounded-card px-4 py-2"
                     >
                       <summary className="flex min-h-8 cursor-pointer list-none items-center gap-2 text-sm font-semibold text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
                         <Icon

@@ -10,7 +10,7 @@ export function NotFoundPage() {
   const { t } = useI18n();
   return (
     <div className="flex h-screen flex-col items-center justify-center bg-[color:var(--bg-page)] p-6 font-sans">
-      <div className="glass flex max-w-md flex-col items-center rounded-3xl px-8 py-10 text-center">
+      <div className="glass flex max-w-md flex-col items-center rounded-card px-8 py-10 text-center">
         <Icon name="search_off" size={64} className="mb-5 text-[color:var(--text-muted)]" />
         <h1 className="mb-2 text-2xl font-semibold text-[color:var(--text-primary)]">
           {t('pageNotFound')}
