@@ -2119,7 +2119,7 @@ export const de: Record<TranslationKey, string> = {
   emailInvalid: 'Muss eine gültige E-Mail-Adresse sein',
   emailTooLong: 'E-Mail darf höchstens 255 Zeichen lang sein',
   countryCodeInvalid: 'Muss ein 2-Buchstaben-ISO-Ländercode sein (z. B. DE)',
-  thumbprintTooLong: 'Fingerabdruck darf höchstens 128 Zeichen lang sein',
+  thumbprintInvalid: 'Fingerabdruck muss ein SHA-256-Wert aus 64 Hex-Zeichen sein',
 
   // Schema validation — contact
   contactTypesRequired: 'Mindestens einen Typ auswählen',

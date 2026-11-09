@@ -68,10 +68,13 @@ async function findOrgByClientCert(cert: ClientCertInfo): Promise<ResolvedOrg | 
       .first();
     if (byFingerprint) return { org: byFingerprint, match: 'sha512' };
   }
+  // client_cert_thumbprint is tenant-editable and not unique: identify the
+  // site only when exactly one organization claims the thumbprint.
   const byThumbprint = await db('organizations')
-    .where({ client_cert_thumbprint: cert.thumbprint })
-    .first();
-  if (byThumbprint) return { org: byThumbprint, match: 'sha256' };
+    .whereIn('client_cert_thumbprint', [cert.thumbprint, cert.thumbprint.toUpperCase()])
+    .limit(2);
+  if (byThumbprint.length > 1) return null;
+  if (byThumbprint.length === 1) return { org: byThumbprint[0], match: 'sha256' };
 
   // A DSF BPE presents the organization's DSF client certificate, which is
   // usually not the certificate used for the browser login. Accept it when

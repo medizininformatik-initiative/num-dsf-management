@@ -21,6 +21,11 @@ export const upsertOrganizationSchema = z.object({
     .refine((v) => v === '' || v.length === 2, 'Must be empty or a 2-character country code')
     .optional()
     .default(''),
-  clientCertThumbprint: z.string().max(128).optional().nullable(),
+  // SHA-256 of the DSF client certificate (64 hex characters) or empty.
+  clientCertThumbprint: z
+    .string()
+    .regex(/^([0-9a-fA-F]{64})?$/, 'Must be a SHA-256 thumbprint (64 hex characters)')
+    .optional()
+    .nullable(),
   totpCode: z.string().length(6).optional(),
 });

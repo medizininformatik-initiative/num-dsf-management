@@ -200,7 +200,7 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
             className={`${inputClass} font-mono`}
             spellCheck={false}
             placeholder={t('orgModalFieldThumbprintPlaceholder')}
-            maxLength={128}
+            maxLength={64}
           />
         </FormField>
         {needsTotpStepUp() &&

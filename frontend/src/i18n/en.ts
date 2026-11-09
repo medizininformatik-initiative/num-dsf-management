@@ -2074,7 +2074,7 @@ export const en = {
   emailInvalid: 'Must be a valid email address',
   emailTooLong: 'Email must be at most 255 characters',
   countryCodeInvalid: 'Must be a 2-letter ISO country code (e.g. DE)',
-  thumbprintTooLong: 'Thumbprint must be at most 128 characters',
+  thumbprintInvalid: 'Thumbprint must be a SHA-256 value of 64 hex characters',
 
   // Schema validation — contact
   contactTypesRequired: 'Select at least one type',

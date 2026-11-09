@@ -22,7 +22,11 @@ export const organizationSchema = z.object({
     .toUpperCase()
     .optional()
     .or(z.literal('')),
-  clientCertThumbprint: z.string().max(128, 'thumbprintTooLong').optional().or(z.literal('')),
+  clientCertThumbprint: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, 'thumbprintInvalid')
+    .optional()
+    .or(z.literal('')),
 });
 
 export type OrganizationFormData = z.infer<typeof organizationSchema>;
