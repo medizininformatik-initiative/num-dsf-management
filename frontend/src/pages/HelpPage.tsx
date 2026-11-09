@@ -31,10 +31,10 @@ import { Button } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
 
 const CHIP =
-  'press-effect inline-block rounded-full px-2.5 py-1 text-xs font-medium text-primary dark:text-brand-400 hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]';
+  'press-effect inline-block rounded-full px-2.5 py-1 text-xs font-medium text-primary dark:text-brand-400 hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]';
 const CHIP_ACTIVE = 'bg-[color:var(--accent-surface)] !text-[color:var(--accent-on-surface)]';
 const BODY =
-  'max-w-prose space-y-2 text-sm leading-relaxed text-[color:var(--text-secondary)] [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5';
+  'max-w-prose space-y-3 text-sm leading-relaxed text-[color:var(--text-secondary)] [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5';
 
 function stagger(i: number): CSSProperties {
   return { '--stagger-index': Math.min(i, 8) } as CSSProperties;
@@ -53,7 +53,7 @@ function CodeLine({ text }: { text: string }) {
   }
   return (
     <div className="flex items-start gap-2">
-      <code className="mono-id min-w-0 flex-1 select-all break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2.5 py-2 text-[11px] leading-5 text-[color:var(--text-primary)]">
+      <code className="mono-id min-w-0 flex-1 select-all break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2.5 py-2 text-xs leading-5 text-[color:var(--text-primary)]">
         {text}
       </code>
       <Button
@@ -63,7 +63,7 @@ function CodeLine({ text }: { text: string }) {
         onClick={() => void copy()}
         className="h-8 w-8 shrink-0 !px-0"
       >
-        <Icon name="content_copy" size={16} />
+        <Icon name="content_copy" size={18} />
       </Button>
     </div>
   );
@@ -111,7 +111,10 @@ function Section({
       className="mb-8 animate-list-item-in scroll-mt-44"
       style={stagger(index)}
     >
-      <h2 id={`${id}-title`} className="mb-2 text-lg font-bold text-[color:var(--text-primary)]">
+      <h2
+        id={`${id}-title`}
+        className="mb-2 text-lg font-semibold text-[color:var(--text-primary)]"
+      >
         {title}
       </h2>
       <div className={BODY}>{children}</div>
@@ -200,17 +203,17 @@ export function HelpPage() {
           me?.isAdmin ? (
             <Link
               to="/app/admin/help"
-              className="press-effect inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-primary hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] dark:text-brand-400"
+              className="press-effect inline-flex min-h-8 items-center gap-1.5 rounded-control px-3 text-xs font-semibold text-primary hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] dark:text-brand-400"
             >
-              <Icon name="admin_panel_settings" size={16} />
+              <Icon name="admin_panel_settings" size={14} />
               {t('helpAdminLink')}
             </Link>
           ) : undefined
         }
         toolbar={
           <div className="space-y-2">
-            <div className="glass flex max-w-md items-center gap-2 rounded-full px-4 py-1">
-              <Icon name="search" size={18} className="text-[color:var(--text-muted)]" />
+            <div className="flex max-w-md items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--bg-input)] px-4 py-1 focus-within:border-[color:var(--focus-ring)] focus-within:ring-[3px] focus-within:ring-primary/20 dark:focus-within:ring-brand-400/30">
+              <Icon name="search" size={16} className="text-[color:var(--text-muted)]" />
               <input
                 id={searchId}
                 type="search"
@@ -218,7 +221,7 @@ export function HelpPage() {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t('helpSearchPlaceholder')}
                 aria-label={t('helpSearchLabel')}
-                className="min-h-[32px] min-w-0 flex-1 border-0 bg-transparent text-sm text-[color:var(--text-primary)] outline-none placeholder:text-[color:var(--text-muted)]"
+                className="min-h-8 min-w-0 flex-1 border-0 bg-transparent text-sm text-[color:var(--text-primary)] outline-none placeholder:text-[color:var(--text-muted)]"
               />
             </div>
             <nav aria-label={t('helpTocLabel')}>
@@ -243,7 +246,7 @@ export function HelpPage() {
 
       <div className="px-6 py-6 sm:px-8">
         {total === 0 ? (
-          <div role="status" className="glass-thin animate-fade-in rounded-card p-6 text-center">
+          <div role="status" className="surface-card animate-fade-in p-5 text-center">
             <p className="text-sm font-semibold text-[color:var(--text-primary)]">
               {t('helpNoResults', { query: query.trim() })}
             </p>
@@ -267,17 +270,17 @@ export function HelpPage() {
                     <details
                       key={f.id}
                       id={f.id}
-                      className="group/faq glass-thin scroll-mt-44 rounded-card px-4 py-2"
+                      className="group/faq surface-card scroll-mt-44 px-4 py-2"
                     >
-                      <summary className="flex min-h-8 cursor-pointer list-none items-center gap-2 text-sm font-semibold text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
+                      <summary className="flex min-h-8 cursor-pointer list-none items-center gap-2 rounded-control text-sm font-semibold text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
                         <Icon
                           name="chevron_right"
-                          size={18}
+                          size={16}
                           className="shrink-0 transition-transform duration-short ease-spring group-open/faq:rotate-90"
                         />
                         {t(f.qKey)}
                       </summary>
-                      <p className="animate-fade-in pb-1 pl-7 pt-1">{t(f.aKey)}</p>
+                      <p className="animate-fade-in pb-1 pl-6 pt-1">{t(f.aKey)}</p>
                     </details>
                   ))}
                 </div>
@@ -290,7 +293,7 @@ export function HelpPage() {
                 <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <Link
                     to="/app/legal"
-                    className="font-semibold text-[color:var(--accent)] underline"
+                    className="rounded-small font-semibold text-[color:var(--accent)] underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
                   >
                     {t('helpLegalLink')}
                   </Link>

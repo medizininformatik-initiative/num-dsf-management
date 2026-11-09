@@ -24,8 +24,8 @@ const SECTION_IDS = [
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section id={id} className="mb-8 scroll-mt-40">
-      <h2 className="mb-2 text-lg font-bold text-[color:var(--text-primary)]">{title}</h2>
-      <div className="max-w-prose space-y-2 text-sm leading-relaxed text-[color:var(--text-secondary)] [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5">
+      <h2 className="mb-2 text-lg font-semibold text-[color:var(--text-primary)]">{title}</h2>
+      <div className="max-w-prose space-y-3 text-sm leading-relaxed text-[color:var(--text-secondary)] [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5">
         {children}
       </div>
     </section>
@@ -75,7 +75,7 @@ export function AdminHelpPage() {
                   <a
                     href={`#${id}`}
                     onClick={(e) => jumpTo(e, id)}
-                    className="press-effect inline-block rounded-full px-2.5 py-1 text-xs font-medium text-primary dark:text-brand-400 hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+                    className="press-effect inline-block rounded-full px-2.5 py-1 text-xs font-medium text-primary dark:text-brand-400 hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
                   >
                     {TOC_LABEL[id]}
                   </a>
@@ -121,7 +121,7 @@ export function AdminHelpPage() {
 
         <Section id="support" title={t('adminHelpSupportTitle')}>
           <p>{t('adminHelpSupportP1')}</p>
-          <p className="mt-3 text-xs text-[color:var(--text-muted)]">{t('footerAffiliation')}</p>
+          <p className="text-xs text-[color:var(--text-muted)]">{t('footerAffiliation')}</p>
         </Section>
       </div>
     </div>

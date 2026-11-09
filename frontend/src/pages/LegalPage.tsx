@@ -13,8 +13,8 @@ export function LegalPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <AdminPageHeader title={t('legalPageTitle')} />
-      <div className="p-6 sm:p-8">
-        <section className="glass-thin space-y-4 rounded-card p-6 text-sm leading-relaxed text-[color:var(--text-secondary)]">
+      <div className="px-6 py-6 sm:px-8">
+        <section className="surface-card space-y-2 p-5 text-sm leading-relaxed text-[color:var(--text-secondary)]">
           <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">
             {t('bundleDisclaimerHeading')}
           </h2>
