@@ -19,7 +19,6 @@ interface Props {
   group: MapClusterGroup;
   x: number;
   y: number;
-  k?: number;
   isHovered: boolean;
   isSelected: boolean;
   /** True while the members are fanned out around the hub. */
@@ -60,7 +59,6 @@ export function GeoMapCluster({
   group,
   x,
   y,
-  k = 1,
   isHovered,
   isSelected,
   expanded = false,
@@ -108,7 +106,7 @@ export function GeoMapCluster({
       onFocus={() => onHover(key)}
       onBlur={() => onHover(null)}
     >
-      <g className="map-counter-scale" style={{ transform: `scale(${1 / k})` }}>
+      <g className="map-counter-scale">
         <g
           className={leaving ? 'map-animate-node-out' : 'map-animate-node-in'}
           style={{ '--stagger-index': staggerIndex } as CSSProperties}

@@ -19,7 +19,6 @@ interface FanNode {
 
 interface Props {
   node: Placed | FanNode;
-  k: number;
 }
 
 const CHAR_WIDTH = 6.6; // ≈ average glyph width of 12px Inter semibold
@@ -29,7 +28,7 @@ function clip(s: string): string {
   return s.length > MAX_CHARS ? `${s.slice(0, MAX_CHARS - 1)}…` : s;
 }
 
-export function MapTooltip({ node, k }: Props) {
+export function MapTooltip({ node }: Props) {
   const { t } = useI18n();
   let title: string;
   let subtitle: string;
@@ -60,7 +59,7 @@ export function MapTooltip({ node, k }: Props) {
       style={{ pointerEvents: 'none' }}
       aria-hidden="true"
     >
-      <g className="map-counter-scale" style={{ transform: `scale(${1 / k})` }}>
+      <g className="map-counter-scale">
         <g transform={`translate(${dx} ${dy - lift - height})`} className="animate-fade-in">
           <rect
             x={-width / 2}

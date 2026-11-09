@@ -3,7 +3,8 @@
  * and a status ring in the certificate tone (dashed when inactive), initials
  * inside. Hover and keyboard focus lift it on a short spring; selected, it
  * grows, fills with the status tone and gains a halo. The marker keeps its
- * on-screen size at every zoom (counter-scaled by 1/zoom). It enters with a
+ * on-screen size at every zoom (counter-scaled by the --map-inv variable the
+ * viewport sets). It enters with a
  * staggered spring (or flies out of its cluster when `offset` is set) and,
  * while `leaving`, plays its exit and ignores input.
  * Dependencies: network.api types, lib/statusColors, i18n.store, map.css.
@@ -19,8 +20,6 @@ interface Props {
   org: MapOrganization;
   x: number;
   y: number;
-  /** Current map zoom; the marker is counter-scaled to keep its size. */
-  k?: number;
   isHovered: boolean;
   isSelected: boolean;
   isUnknown: boolean; // true when city falls back to the "Other" zone
@@ -39,7 +38,6 @@ export function GeoMapPin({
   org,
   x,
   y,
-  k = 1,
   isHovered,
   isSelected,
   isUnknown,
@@ -99,7 +97,7 @@ export function GeoMapPin({
       onFocus={() => onHover(org.identifier)}
       onBlur={() => onHover(null)}
     >
-      <g className="map-counter-scale" style={{ transform: `scale(${1 / k})` }}>
+      <g className="map-counter-scale">
         <g className={motionClass} style={motionStyle}>
           <g transform={offset ? `translate(${dx} ${dy})` : undefined}>
             <g

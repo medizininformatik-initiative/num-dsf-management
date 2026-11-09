@@ -16,7 +16,7 @@
  * MapControls, mapGeometry, useMapViewport, usePresenceList, lib/motion,
  * lib/peerEdges, i18n.store, map.css.
  */
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { MapOrganization } from '../../api/network.api';
 import { GermanyOutline } from './GermanyOutline';
 import { GeoMapPin } from './GeoMapPin';
@@ -271,7 +271,12 @@ export function GeoMap({
         </defs>
         <g
           className="map-zoom-layer"
-          style={{ transform: `translate(${view.tx}px, ${view.ty}px) scale(${k})` }}
+          style={
+            {
+              transform: `translate(${view.tx}px, ${view.ty}px) scale(${k})`,
+              '--map-inv': 1 / ks,
+            } as CSSProperties
+          }
         >
           <GermanyOutline />
 
@@ -316,7 +321,6 @@ export function GeoMap({
                 org={p.org}
                 x={p.x}
                 y={p.y}
-                k={ks}
                 isHovered={hoveredId === key}
                 isSelected={selectedId === key}
                 isUnknown={!p.known}
@@ -331,7 +335,6 @@ export function GeoMap({
                 group={p.group}
                 x={p.x}
                 y={p.y}
-                k={ks}
                 isHovered={hoveredId === key}
                 isSelected={selectedId === key}
                 expanded={!leaving && expanded?.key === key}
@@ -351,7 +354,6 @@ export function GeoMap({
               org={f.org}
               x={f.x}
               y={f.y}
-              k={ks}
               offset={f.offset}
               compact
               isHovered={hoveredId === f.org.identifier}
@@ -364,7 +366,7 @@ export function GeoMap({
             />
           ))}
 
-          {tooltipNode && <MapTooltip key={tooltipId} node={tooltipNode} k={ks} />}
+          {tooltipNode && <MapTooltip key={tooltipId} node={tooltipNode} />}
         </g>
       </svg>
 

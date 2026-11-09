@@ -93,13 +93,25 @@
   outline-offset: -2px;
   border-radius: 16px;
 }
-.map-zoom-layer,
+/* The viewport sets the zoom layer's transform and --map-inv (screen-size
+ * counter-scale for markers) together; one transition on the layer eases
+ * both, so markers need no transition of their own. */
+@property --map-inv {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+.map-zoom-layer {
+  transform-origin: 0 0;
+  transition:
+    transform var(--duration-long) var(--ease-spring),
+    --map-inv var(--duration-long) var(--ease-spring);
+}
 .map-counter-scale {
   transform-origin: 0 0;
-  transition: transform var(--duration-long) var(--ease-spring);
+  transform: scale(var(--map-inv, 1));
 }
-.map-svg[data-dragging='true'] .map-zoom-layer,
-.map-svg[data-dragging='true'] .map-counter-scale {
+.map-svg[data-dragging='true'] .map-zoom-layer {
   transition: none;
 }
 
