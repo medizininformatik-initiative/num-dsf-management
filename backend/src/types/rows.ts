@@ -13,6 +13,7 @@ export interface OrganizationRow {
   active: boolean | number;
   email: string;
   city?: string | null;
+  postal_code?: string | null;
   country_code?: string | null;
 }
 

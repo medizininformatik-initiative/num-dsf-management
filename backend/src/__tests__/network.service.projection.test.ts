@@ -44,7 +44,7 @@ describe('network.service – admin vs non-admin projection of an approved org',
       active: 1,
       email: 'proj-org@example.de',
       address_line: 'x',
-      postal_code: '0',
+      postal_code: '48149',
       city: 'Muenster',
       country_code: 'DE',
       created_at: new Date(),
@@ -171,6 +171,14 @@ describe('network.service – admin vs non-admin projection of an approved org',
     expect(found.email).toBe('proj-org@example.de');
     const contacts = found.contacts as Array<Record<string, unknown>>;
     expect(contacts.some((c) => c.email === contactEmail && c.name === 'Proj Contact')).toBe(true);
+  });
+
+  it('both views carry the organization postcode for map placement', async () => {
+    for (const isAdmin of [true, false]) {
+      const { organizations } = await getNetworkMap({ isAdmin });
+      const found = organizations.find((o) => o.identifier === org) as Record<string, unknown>;
+      expect(found.postal_code).toBe('48149');
+    }
   });
 
   it('soft-deleted memberships are excluded for both admin and non-admin views', async () => {

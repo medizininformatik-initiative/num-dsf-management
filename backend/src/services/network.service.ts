@@ -115,6 +115,9 @@ export async function getNetworkMap(opts: { isAdmin: boolean }) {
       name: snapshotOrgField(snapshot, 'name') ?? org.name,
       active: true,
       city: snapshotOrgField(snapshot, 'city') ?? org.city ?? null,
+      // Organization master data (not personal data); the map places a site by
+      // its own postcode when the city name is not in its city table.
+      postal_code: snapshotOrgField(snapshot, 'postal_code') ?? org.postal_code ?? null,
       country_code: snapshotOrgField(snapshot, 'country_code') ?? org.country_code ?? null,
       cert_status: status,
     };
