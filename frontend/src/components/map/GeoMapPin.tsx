@@ -2,9 +2,10 @@
  * GeoMapPin.tsx – Single-organization marker: a glass disc with a soft shadow
  * and a status ring in the certificate tone (dashed when inactive), initials
  * inside. Hover and keyboard focus lift it on a short spring; selected, it
- * grows, fills with the status tone and gains a halo. The marker keeps its
- * on-screen size at every zoom (counter-scaled by the --map-inv variable the
- * viewport sets). It enters with a
+ * grows, fills with the status tone and gains a halo. While another site of
+ * the selected site's Verbund is selected, a ring in the Verbund colour marks
+ * it as a peer. The marker keeps its on-screen size at every zoom (counter-
+ * scaled by the --map-inv variable the viewport sets). It enters with a
  * staggered spring (or flies out of its cluster when `offset` is set) and,
  * while `leaving`, plays its exit and ignores input.
  * Hover comes from the shared hover store, so only the marker whose hover
@@ -38,6 +39,8 @@ interface Props {
   leaving?: boolean;
   /** Smaller disc for fanned-out cluster members. */
   compact?: boolean;
+  /** Verbund colour when this site is a peer of the selected site. */
+  peerColor?: string | null;
 }
 
 export const GeoMapPin = memo(function GeoMapPin({
@@ -54,6 +57,7 @@ export const GeoMapPin = memo(function GeoMapPin({
   offset,
   leaving = false,
   compact = false,
+  peerColor = null,
 }: Props) {
   const { t } = useI18n();
   const hoveredInStore = useIsHovered(hover, org.identifier);
@@ -153,6 +157,15 @@ export const GeoMapPin = memo(function GeoMapPin({
                     ?
                   </text>
                 </g>
+              )}
+              {peerColor && (
+                <circle
+                  r={r + 3}
+                  className="map-peer-ring map-animate-edge-in"
+                  style={{ stroke: peerColor }}
+                  data-map-peer=""
+                  aria-hidden="true"
+                />
               )}
               <circle r={r + 4} className="map-focus-ring" aria-hidden="true" />
             </g>

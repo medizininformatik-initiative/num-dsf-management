@@ -139,6 +139,20 @@ describe('GeoMap', () => {
     expect(container.querySelector(`[data-map-hub="${VERBUND}"]`)).not.toBeNull();
   });
 
+  it('rings the Verbund peers of the selected site instead of drawing lines to them', () => {
+    const { container } = renderMap({ selectedId: 'uksh.de' });
+    const peer = container.querySelector('[data-map-node="ukm.de"] [data-map-peer]');
+    expect(peer).not.toBeNull();
+    expect(peer).toHaveStyle({ stroke: '#4a90d9' });
+    // The selected site itself is no peer.
+    expect(container.querySelector('[data-map-node="uksh.de"] [data-map-peer]')).toBeNull();
+  });
+
+  it('rings no peers while nothing is selected', () => {
+    const { container } = renderMap({ showAllEdges: true });
+    expect(container.querySelector('[data-map-peer]')).toBeNull();
+  });
+
   it('runs the dash flow on at most MAX_FLOW spokes of a selection', () => {
     // Six sites of one city, each in its own Verbund with a site elsewhere:
     // selecting the city selects six spokes, but only three flow.

@@ -169,6 +169,11 @@
 .map-marker:focus-visible .map-focus-ring {
   opacity: 1;
 }
+/* A peer of the selected site: a ring in the shared Verbund's colour. */
+.map-peer-ring {
+  fill: none;
+  stroke-width: 2.5;
+}
 
 /* ─── Verbund hubs ─────────────────────────────────────────────────────── */
 .map-hub {

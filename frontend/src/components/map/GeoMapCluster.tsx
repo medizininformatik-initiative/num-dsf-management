@@ -4,7 +4,8 @@
  * ring is split into arcs in the certificate tones of the members, so the
  * status mix reads at a glance. Selecting it expands the city: the bubble
  * shrinks to a hub while GeoMap fans the members out around it. Like pins it
- * keeps its on-screen size at every zoom and enters/leaves with a spring.
+ * keeps its on-screen size at every zoom and enters/leaves with a spring, and
+ * shows a Verbund-coloured ring when it holds peers of the selected site.
  * Memoized; hover comes from the shared hover store.
  * Dependencies: network.api types, lib/statusColors, mapGeometry, mapLabels,
  * hoverStore, i18n.store, map.css.
@@ -34,6 +35,8 @@ interface Props {
   onHover: (clusterKey: string | null) => void;
   staggerIndex?: number;
   leaving?: boolean;
+  /** Verbund colour when members are peers of the selected site. */
+  peerColor?: string | null;
 }
 
 interface Arc {
@@ -73,6 +76,7 @@ export const GeoMapCluster = memo(function GeoMapCluster({
   onHover,
   staggerIndex = 0,
   leaving = false,
+  peerColor = null,
 }: Props) {
   const { t } = useI18n();
   const key = clusterKeyOf(group);
@@ -166,6 +170,15 @@ export const GeoMapCluster = memo(function GeoMapCluster({
             >
               {countText}
             </text>
+            {peerColor && (
+              <circle
+                r={r + 3}
+                className="map-peer-ring map-animate-edge-in"
+                style={{ stroke: peerColor }}
+                data-map-peer=""
+                aria-hidden="true"
+              />
+            )}
             <circle r={r + 4} className="map-focus-ring" aria-hidden="true" />
           </g>
         </g>

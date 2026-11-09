@@ -10,7 +10,8 @@
  *   selected organization in one spring movement (useMapViewport). Reduce
  *   Motion turns movement into crossfades and instant view changes.
  * - Verbunds: every site links to its Verbund hub (hub-and-spoke, one line
- *   per member).
+ *   per member); selecting a site rings its Verbund peers in the Verbund
+ *   colour.
  * - Keyboard: Tab reaches every node; arrow keys jump to the nearest node in
  *   that direction (or pan when the map itself has focus); + / − zoom and 0
  *   shows all of Germany.
@@ -47,7 +48,7 @@ import { useMapViewport, viewTransform } from './useMapViewport';
 import { layoutSpokes } from './spokeGeometry';
 import { useHoveredId, useOwnHoverStore, type HoverStore } from './hoverStore';
 import { usePresenceList } from './usePresenceList';
-import type { VerbundGroup } from '../../lib/peerEdges';
+import { verbundColor, verbundsByOrg, type VerbundGroup } from '../../lib/peerEdges';
 import { exitMs } from '../../lib/motion';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
@@ -175,6 +176,29 @@ export function GeoMap({
     () => layoutSpokes(verbunds, endpointPos, clusterKeyForOrg),
     [verbunds, endpointPos, clusterKeyForOrg],
   );
+
+  // Peers of the selection: every other member of the selected site's (or
+  // selected city's) Verbunds, keyed by the node that shows them, coloured
+  // by the first shared Verbund.
+  const parentsOf = useMemo(() => verbundsByOrg(verbunds), [verbunds]);
+  const peerColors = useMemo(() => {
+    const out = new Map<string, string>();
+    if (!selectedId) return out;
+    const selectedOrgs = expanded ? expanded.group.members.map((m) => m.identifier) : [selectedId];
+    const own = new Set(selectedOrgs);
+    const shared = new Set(selectedOrgs.flatMap((id) => parentsOf.get(id) ?? []));
+    for (const g of verbunds) {
+      if (!shared.has(g.verbund)) continue;
+      for (const id of g.members) {
+        if (own.has(id)) continue;
+        const color = verbundColor(g.verbund);
+        const nodeKey = clusterKeyForOrg(id) ?? id;
+        if (!out.has(nodeKey)) out.set(nodeKey, color);
+        if (!out.has(id)) out.set(id, color);
+      }
+    }
+    return out;
+  }, [selectedId, expanded, parentsOf, verbunds, clusterKeyForOrg]);
 
   // Stable handlers keep the memoized markers from re-rendering.
   const selectedRef = useRef(selectedId);
@@ -335,6 +359,7 @@ export function GeoMap({
                 onHover={onHover}
                 staggerIndex={staggerOf(key)}
                 leaving={leaving}
+                peerColor={peerColors.get(key) ?? null}
               />
             ) : (
               <GeoMapCluster
@@ -351,6 +376,7 @@ export function GeoMap({
                 onHover={onHover}
                 staggerIndex={staggerOf(key)}
                 leaving={leaving}
+                peerColor={expanded?.key === key ? null : (peerColors.get(key) ?? null)}
               />
             ),
           )}
@@ -370,6 +396,7 @@ export function GeoMap({
               onHover={onHover}
               staggerIndex={f.index}
               leaving={leaving}
+              peerColor={peerColors.get(f.org.identifier) ?? null}
             />
           ))}
 
