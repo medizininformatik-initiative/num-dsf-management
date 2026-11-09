@@ -20,10 +20,12 @@ export function ApprovalHistoryList({ instanceId }: { instanceId: string }) {
   return (
     <section
       aria-label={t('approvalHistory')}
-      className="mt-3 rounded-control border border-[color:var(--border)] px-4 py-3"
+      className="mt-3 rounded-control border border-[color:var(--border)] p-3"
       data-testid="approval-history"
     >
-      <p className="text-xs font-bold text-[color:var(--text-primary)]">{t('approvalHistory')}</p>
+      <p className="text-sm font-semibold text-[color:var(--text-primary)]">
+        {t('approvalHistory')}
+      </p>
       {lastApprovedAt && (
         <p className="mt-1 text-xs text-[color:var(--text-secondary)]">
           {t('lastApproved')}: {formatDateTime(lastApprovedAt, lang)}
@@ -36,12 +38,12 @@ export function ApprovalHistoryList({ instanceId }: { instanceId: string }) {
           {history.map((req, i) => {
             const when = req.submitted_at ?? req.created_at;
             return (
-              <li key={req.id} className="rounded-control bg-[color:var(--bg-hover)] p-2">
+              <li key={req.id} className="rounded-control bg-[color:var(--bg-hover)] px-3 py-2">
                 <div className="flex items-center gap-3">
-                  <span className="flex-1 text-xs font-semibold text-[color:var(--text-primary)]">
+                  <span className="flex-1 text-sm font-medium text-[color:var(--text-primary)]">
                     {t('approvalCardRequestNum', { n: history.length - i })}
                   </span>
-                  <time dateTime={when} className="text-[11px] text-[color:var(--text-muted)]">
+                  <time dateTime={when} className="text-xs text-[color:var(--text-muted)]">
                     {formatDateTime(when, lang)}
                   </time>
                   <ApprovalStatePill status={req.status} />
