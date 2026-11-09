@@ -1,7 +1,7 @@
 /**
  * login-certificate-sync.test.ts – Login certificates follow the approved allow
- * list: an approval enables the snapshot's thumbprints as login (also for an
- * admin-uploaded certificate), a later approval without a thumbprint removes
+ * list: an approval enables the snapshot's thumbprints as login (an
+ * admin-uploaded certificate only after two approvals from distinct sites), a later approval without a thumbprint removes
  * its APPROVAL entry but keeps onboarding entries, admin certificates and
  * thumbprints of another organization are skipped, withdrawals change
  * nothing. Uploading links a fingerprint-only entry, renewing keeps the old
@@ -86,6 +86,17 @@ async function approvedRequest(site: Site, thumbprints: string[], active = true)
   return id;
 }
 
+async function sign(requestId: string, adminEmail: string): Promise<void> {
+  await db('approval_signatures').insert({
+    id: uuidv4(),
+    approval_request_id: requestId,
+    admin_email: adminEmail,
+    admin_site: adminEmail.split('@')[1],
+    decision: 'APPROVE',
+    signed_at: new Date(),
+  });
+}
+
 function entry(fingerprint: string) {
   return db('org_login_certificates').where({ fingerprint }).first();
 }
@@ -110,15 +121,36 @@ describe('login certificates from the approved allow list', () => {
     expect(await resolveCertLogin(fp)).toMatchObject({ kind: 'org', instanceId: site.instanceId });
   });
 
-  it('enables an admin-uploaded certificate once it is approved', async () => {
+  it('enables an admin-uploaded certificate after two approvals from distinct sites', async () => {
     const site = await makeSite('b');
     const pem = makeCertPem(`dsf.${site.org}`);
     const fp = sha512FingerprintFromPem(pem);
     await insertCert(site, pem, true);
+    const id = await approvedRequest(site, [fp]);
+    await sign(id, `a-${sfx}@site-one.example.de`);
+    await sign(id, `b-${sfx}@site-two.example.de`);
 
-    await syncLoginCertificatesFromApproval(await approvedRequest(site, [fp]));
+    await syncLoginCertificatesFromApproval(id);
 
     expect(await entry(fp)).toMatchObject({ source: 'APPROVAL' });
+  });
+
+  it('skips an admin-uploaded certificate approved by one site and silent consent', async () => {
+    const site = await makeSite('b2');
+    const pem = makeCertPem(`dsf.${site.org}`);
+    const fp = sha512FingerprintFromPem(pem);
+    const clinicPem = makeCertPem(`clinic.${site.org}`);
+    const clinicFp = sha512FingerprintFromPem(clinicPem);
+    await insertCert(site, pem, true);
+    await insertCert(site, clinicPem, false);
+    const id = await approvedRequest(site, [fp, clinicFp]);
+    await sign(id, `a-${sfx}@site-one.example.de`);
+    await sign(id, `a2-${sfx}@site-one.example.de`);
+
+    const res = await syncLoginCertificatesFromApproval(id);
+
+    expect(res.added).toEqual([clinicFp]);
+    expect(await entry(fp)).toBeUndefined();
   });
 
   it('removes an APPROVAL entry the next approval no longer lists, keeps onboarding entries', async () => {

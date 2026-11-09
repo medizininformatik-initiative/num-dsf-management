@@ -8,7 +8,9 @@
  * an APPROVAL entry whose thumbprint a later approved snapshot no longer lists
  * is removed. Entries from onboarding, the migration or an admin are never
  * removed here. Admin certificates and thumbprints that already log in for
- * another organization are skipped.
+ * another organization are skipped. A certificate an admin uploaded (e.g. one
+ * a site sent by mail) logs in only after real four-eyes approval: two APPROVE
+ * signatures from distinct sites; one approval plus silent consent is not enough.
  *
  * Uploading a certificate links it to an existing entry with the same
  * thumbprint (e.g. a fingerprint-only entry of the legacy import); renewing a
@@ -23,6 +25,7 @@ import { db } from '../db/connection';
 import { recordSystemLoginChange } from './org-login-certificates.service';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
 import { logger } from '../lib/logger';
+import { siteOfEmail } from '../lib/approvalState';
 
 export const APPROVAL_ACTOR = 'SYSTEM:allow-list-approval';
 
@@ -35,6 +38,7 @@ interface CertRow {
   id: string;
   pem: string;
   valid_until: Date | string | null;
+  uploaded_by_admin: number | boolean | null;
 }
 
 function allowListOf(snapshotJson: unknown): SnapshotAllowList | null {
@@ -90,8 +94,18 @@ export async function syncLoginCertificatesFromApproval(
     const certs = fingerprintsOf(
       await trx('certificates')
         .where({ organization_id: identifier })
-        .select('id', 'pem', 'valid_until'),
+        .select('id', 'pem', 'valid_until', 'uploaded_by_admin'),
     );
+    const approverSites = new Set(
+      (
+        await trx('approval_signatures')
+          .where({ approval_request_id: requestId, decision: 'APPROVE' })
+          .pluck('admin_email')
+      )
+        .map((e: string) => siteOfEmail(e))
+        .filter((site: string) => site !== ''),
+    );
+    const fourEyes = approverSites.size >= 2;
     const adminFps = new Set(
       approved.length
         ? await trx('admin_cert_fingerprints').whereIn('fingerprint', approved).pluck('fingerprint')
@@ -121,6 +135,13 @@ export async function syncLoginCertificatesFromApproval(
         continue;
       }
       const cert = certs.get(fp);
+      if (cert && Number(cert.uploaded_by_admin) === 1 && !fourEyes) {
+        logger.warn(
+          { identifier },
+          '[LoginSync] admin-uploaded certificate lacks two approvals from distinct sites, skipped',
+        );
+        continue;
+      }
       const row = existing.get(fp);
       if (row && row.organization_id !== identifier) {
         logger.warn(
