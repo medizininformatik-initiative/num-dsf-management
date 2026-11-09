@@ -24,8 +24,8 @@ export function MapHeader() {
   return (
     <header className="glass-chrome px-6 py-4 sm:px-8">
       <Breadcrumbs />
-      <div className="flex items-center gap-3">
-        <div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="min-w-[min(100%,16rem)] flex-1">
           <h1 className="m-0 text-xl font-bold leading-tight text-[color:var(--text-primary)]">
             {t('networkMap')}
           </h1>
@@ -39,7 +39,7 @@ export function MapHeader() {
           <StatusPill
             tone={isAdmin ? 'info' : 'neutral'}
             icon={isAdmin ? 'shield' : 'person'}
-            className="ml-auto animate-fade-in"
+            className="shrink-0 animate-fade-in"
           >
             {isAdmin ? t('mapRoleAdmin') : t('mapRoleMember')}
           </StatusPill>
