@@ -21,17 +21,15 @@ jobs:
           npm ci
           # Excluded advisories have no fix inside the current major and are not
           # reachable from this code base:
-          #  - GHSA-86w9-cpqp-85rv: node-forge RSA PKCS#1 v1.5 signature verification. No
-          #    patched release exists (<= 1.4.0). The backend only parses certificates and
-          #    hashes their DER with node-forge; signatures are verified with node:crypto.
           #  - GHSA-v53p-9fqp-m79j, GHSA-prgh-xp8r-p3m5: nodemailer addressparser slowdowns
           #    on address values of hundreds of KB. Only outbound mail is sent, to
           #    whitelisted or zod-validated addresses of at most 255 characters. The fix is
           #    nodemailer 9 -> 10 (semver-major); Dependabot owns it.
-          #  - GHSA-vfj7-8cjw-p6xm: braces stack exhaustion on hostile glob patterns. No
-          #    patched release exists (<= 3.0.3), and braces is only pulled in by the dev
-          #    tools jest and ts-node-dev, which never see untrusted patterns.
-          npx better-npm-audit audit --level high -x GHSA-86w9-cpqp-85rv,GHSA-v53p-9fqp-m79j,GHSA-prgh-xp8r-p3m5,GHSA-vfj7-8cjw-p6xm
+          #  - GHSA-mrhx-c7xc-m3w5: zod memory exhaustion on oversized constrained
+          #    collections. Every validated input is size-capped before zod sees it (JSON
+          #    bodies 100 kB, onboarding files 1 MB and 1000 rows). The fix is zod 3 -> 4
+          #    (semver-major); Dependabot owns it.
+          npx better-npm-audit audit --level high -x GHSA-v53p-9fqp-m79j,GHSA-prgh-xp8r-p3m5,GHSA-mrhx-c7xc-m3w5
       - name: Frontend audit
         working-directory: frontend
         run: |
@@ -43,13 +41,15 @@ jobs:
           #    when the dev server is bound to the network via --host. Production serves the
           #    static `vite build` output through nginx and never starts the dev server. The
           #    only fix is vite 5 -> 8 (semver-major, cascading vitest 1 -> 4); Dependabot owns it.
-          #  - GHSA-vfj7-8cjw-p6xm: braces stack exhaustion on hostile glob patterns, no
-          #    patched release (<= 3.0.3); only the build tools tailwindcss and chokidar use it.
+          #  - GHSA-587h-7wmj-h5pm: launch-editor existence check in the vite dev server's
+          #    open-in-editor middleware; dev server only, fix is vite 5 -> 8 (see above).
+          #  - GHSA-mrhx-c7xc-m3w5: zod memory exhaustion on oversized collections. In the
+          #    browser zod only validates the user's own form input; fix is zod 3 -> 4.
           #  - GHSA-5gmw-xhrv-c9v3, GHSA-85c8-ppgw-ccpr: tinypool prototype-pollution gadgets in
           #    its worker pool. tinypool is vitest's test-runner pool and only ever runs this
           #    repository's own test files; it is not part of the build output. The fix
           #    (tinypool 2.1.2) needs vitest 1 -> 4 (semver-major); Dependabot owns it.
-          npx better-npm-audit audit --level high -x GHSA-5xrq-8626-4rwp,GHSA-fx2h-pf6j-xcff,GHSA-vfj7-8cjw-p6xm,GHSA-5gmw-xhrv-c9v3,GHSA-85c8-ppgw-ccpr
+          npx better-npm-audit audit --level high -x GHSA-5xrq-8626-4rwp,GHSA-fx2h-pf6j-xcff,GHSA-5gmw-xhrv-c9v3,GHSA-85c8-ppgw-ccpr,GHSA-587h-7wmj-h5pm,GHSA-mrhx-c7xc-m3w5
 
   backend-lint:
     name: Backend Lint
