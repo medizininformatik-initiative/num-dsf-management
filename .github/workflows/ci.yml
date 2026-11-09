@@ -19,13 +19,7 @@ jobs:
         working-directory: backend
         run: |
           npm ci
-          # Excluded advisories have no fix inside the current major and are not
-          # reachable from this code base:
-          #  - GHSA-mrhx-c7xc-m3w5: zod memory exhaustion on oversized constrained
-          #    collections. Every validated input is size-capped before zod sees it (JSON
-          #    bodies 100 kB, onboarding files 1 MB and 1000 rows). The fix is zod 3 -> 4
-          #    (semver-major); Dependabot owns it.
-          npx better-npm-audit audit --level high -x GHSA-mrhx-c7xc-m3w5
+          npx better-npm-audit audit --level high
       - name: Frontend audit
         working-directory: frontend
         run: |
