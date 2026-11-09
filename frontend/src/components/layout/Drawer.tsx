@@ -38,9 +38,9 @@ export interface DrawerProps {
 const EXIT_MS = exitMs('long');
 
 const SIDE_CLASS = {
-  left: 'left-0 rounded-r-2xl border-l-0 data-[state=open]:animate-sheet-in-left data-[state=closed]:animate-sheet-out-left',
+  left: 'left-0 rounded-r-card border-l-0 data-[state=open]:animate-sheet-in-left data-[state=closed]:animate-sheet-out-left',
   right:
-    'right-0 rounded-l-2xl border-r-0 data-[state=open]:animate-sheet-in-right data-[state=closed]:animate-sheet-out-right',
+    'right-0 rounded-l-card border-r-0 data-[state=open]:animate-sheet-in-right data-[state=closed]:animate-sheet-out-right',
 } as const;
 
 export function Drawer({

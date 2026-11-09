@@ -149,7 +149,14 @@ export default {
         muted: '#9b9fad',
         ink: '#1a1a2e',
       },
+      // Radius scale by role: small (code, kbd, tiny badges, segment items),
+      // control (buttons, inputs, and anything nested inside a surface), card
+      // (standalone surfaces: page boxes, panels, dialogs, popovers, banners)
+      // and full for pills. button / input are the control step under their
+      // older names.
       borderRadius: {
+        small: '6px',
+        control: '10px',
         card: '16px',
         button: '10px',
         input: '10px',

@@ -489,7 +489,7 @@ body {
   .dsf-toast {
     --_glass-opacity: var(--glass-opacity-thick);
     --_glass-blur: 24px;
-    border-radius: 14px;
+    border-radius: theme('borderRadius.card');
     color: var(--text-primary);
     font-family: theme('fontFamily.sans');
   }

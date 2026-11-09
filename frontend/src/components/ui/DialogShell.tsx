@@ -87,7 +87,7 @@ export function DialogShell({
         aria-describedby={describedBy}
         tabIndex={-1}
         data-state={state}
-        className={`glass-thick relative w-full rounded-2xl outline-none data-[state=open]:animate-scale-in data-[state=closed]:animate-scale-out ${className}`}
+        className={`glass-thick relative w-full rounded-card outline-none data-[state=open]:animate-scale-in data-[state=closed]:animate-scale-out ${className}`}
       >
         {open ? children : lastOpenContent.current}
       </div>

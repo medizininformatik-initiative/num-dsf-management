@@ -47,7 +47,7 @@ export const PopoverPanel = forwardRef<HTMLDivElement, PopoverPanelProps>(functi
       {...rest}
       data-state={state}
       aria-hidden={state === 'closed' ? true : undefined}
-      className={`glass-thin absolute z-[100] rounded-xl outline-none ${ORIGIN_CLASS[origin]} data-[state=open]:animate-popover-in data-[state=closed]:pointer-events-none data-[state=closed]:animate-popover-out ${className}`}
+      className={`glass-thin absolute z-[100] rounded-card outline-none ${ORIGIN_CLASS[origin]} data-[state=open]:animate-popover-in data-[state=closed]:pointer-events-none data-[state=closed]:animate-popover-out ${className}`}
     >
       {open ? children : lastOpenContent.current}
     </div>

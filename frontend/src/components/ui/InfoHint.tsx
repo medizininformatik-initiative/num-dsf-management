@@ -42,7 +42,7 @@ export function InfoHint({ text, label }: InfoHintProps) {
         <span
           role="tooltip"
           id={tipId}
-          className="glass-thick animate-popover-in absolute left-0 top-7 z-50 w-56 rounded-xl p-2.5 text-[12px] leading-snug text-[color:var(--text-primary)]"
+          className="glass-thick animate-popover-in absolute left-0 top-7 z-50 w-56 rounded-control p-2.5 text-[12px] leading-snug text-[color:var(--text-primary)]"
         >
           {text}
         </span>

@@ -36,9 +36,9 @@ export function Skeleton({ className = '', lines = 3 }: SkeletonProps) {
 
 export function CardSkeleton() {
   return (
-    <div className="rounded-[16px] border-l-4 border-[color:var(--border)] bg-[color:var(--bg-card)] p-6 entity-card-shadow">
+    <div className="rounded-card border-l-4 border-[color:var(--border)] bg-[color:var(--bg-card)] p-6 entity-card-shadow">
       <div className="mb-5 flex items-center gap-3" aria-hidden="true">
-        <div className="skeleton h-6 w-6 rounded-md" />
+        <div className="skeleton h-6 w-6 rounded-small" />
         <div className="skeleton h-4 w-28 rounded-full" />
       </div>
       <Skeleton lines={4} />
