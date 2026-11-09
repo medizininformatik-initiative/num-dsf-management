@@ -16,7 +16,7 @@ import {
   type AuditFilterForm,
 } from './auditConfig';
 
-const LABEL = 'mb-1 block text-[12px] font-semibold text-[color:var(--text-secondary)]';
+const LABEL = 'mb-1 block text-xs font-semibold text-[color:var(--text-secondary)]';
 
 interface Props {
   value: AuditFilterForm;
@@ -37,7 +37,7 @@ export function AuditFilterBar({ value, onChange, sites, exporting, onExport }: 
       role="search"
       aria-label={t('auditFilters')}
       onSubmit={(e) => e.preventDefault()}
-      className="glass-thin mb-4 rounded-card p-4"
+      className="surface-card mb-4 p-5"
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
@@ -150,7 +150,7 @@ export function AuditFilterBar({ value, onChange, sites, exporting, onExport }: 
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <label className="flex cursor-pointer items-center gap-2 text-[13px] text-[color:var(--text-primary)]">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-[color:var(--text-primary)]">
           <input
             type="checkbox"
             className={checkboxClass}
@@ -163,7 +163,7 @@ export function AuditFilterBar({ value, onChange, sites, exporting, onExport }: 
           {t('auditFilterReset')}
         </Button>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <span className="text-[12px] text-[color:var(--text-muted)]">{t('auditExportHint')}</span>
+          <span className="text-xs text-[color:var(--text-muted)]">{t('auditExportHint')}</span>
           <Button
             variant="secondary"
             size="sm"

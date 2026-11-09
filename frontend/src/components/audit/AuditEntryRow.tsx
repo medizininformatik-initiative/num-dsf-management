@@ -1,8 +1,9 @@
 /**
  * AuditEntryRow.tsx – one audit entry as a table row plus an expandable detail row.
- * Flagged entries get a coloured left accent AND a StatusPill with icon and rule
- * title (never colour alone); the detail row explains each rule and lists the
- * recorded fields as a before/after table. FHIR field names stay as recorded.
+ * Flagged entries get a StatusPill per rule in the severity's tone, with its
+ * severity icon and the rule title (never colour alone); the detail row explains
+ * each rule and lists the recorded fields as a before/after table. FHIR field
+ * names stay as recorded.
  * Dependencies: StatusPill, Icon, i18n store, lib/auditDescribe, lib/dateUtils
  */
 import { Fragment } from 'react';
@@ -23,20 +24,16 @@ import {
 } from '../../lib/auditDescribe';
 
 // Complete literal class names so Tailwind keeps them.
-const ACCENT: Record<AuditFlagSeverity, string> = {
-  info: 'border-l-[color:var(--tone-info-fg)]',
-  warning: 'border-l-[color:var(--tone-warning-fg)]',
-  critical: 'border-l-[color:var(--tone-danger-fg)]',
-};
-
 const ICON_TEXT: Record<AuditFlagSeverity, string> = {
   info: 'text-info-fg',
   warning: 'text-warning-fg',
   critical: 'text-danger-fg',
 };
 
-const TH = 'px-2 py-1.5 text-left text-[12px] font-bold text-[color:var(--text-secondary)]';
+const TH =
+  'px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]';
 const TD = 'px-3 py-2.5 align-top text-[color:var(--text-primary)]';
+const DETAIL_TITLE = 'm-0 mb-1 text-xs font-semibold text-[color:var(--text-secondary)]';
 
 interface Props {
   entry: AuditEntry;
@@ -70,9 +67,7 @@ export function AuditEntryRow({ entry, expanded, onToggle, colSpan }: Props) {
         data-flag={top?.severity}
         className="border-t border-[color:var(--border)] transition-colors hover:bg-[color:var(--bg-hover)]"
       >
-        <td
-          className={`${TD} border-l-4 ${top ? ACCENT[top.severity] : 'border-l-transparent'} whitespace-nowrap`}
-        >
+        <td className={`${TD} whitespace-nowrap`}>
           <div className="flex items-start gap-1.5">
             <button
               type="button"
@@ -80,13 +75,13 @@ export function AuditEntryRow({ entry, expanded, onToggle, colSpan }: Props) {
               aria-expanded={expanded}
               aria-controls={detailId}
               aria-label={expanded ? t('auditRowHideDetails') : t('auditRowShowDetails')}
-              className="press-effect -ml-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-control text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-hover)]"
+              className="press-effect -ml-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
             >
-              <Icon name={expanded ? 'expand_more' : 'chevron_right'} size={18} />
+              <Icon name={expanded ? 'expand_more' : 'chevron_right'} size={16} />
             </button>
             <div>
               <div>{formatDateTime(entry.timestamp, lang)}</div>
-              <div className="text-[11px] text-[color:var(--text-muted)]">
+              <div className="text-2xs text-[color:var(--text-muted)]">
                 {relTime(entry.timestamp, t)}
               </div>
             </div>
@@ -116,7 +111,7 @@ export function AuditEntryRow({ entry, expanded, onToggle, colSpan }: Props) {
         <td className={TD}>
           {site}
           {entry.organization_identifier && (
-            <div className="font-mono text-[11px] text-[color:var(--text-muted)]">
+            <div className="font-mono text-2xs text-[color:var(--text-muted)]">
               {entry.organization_identifier}
             </div>
           )}
@@ -133,20 +128,18 @@ export function AuditEntryRow({ entry, expanded, onToggle, colSpan }: Props) {
       </tr>
       {expanded && (
         <tr id={detailId} className="bg-[color:var(--bg-hover)]">
-          <td colSpan={colSpan} className="px-4 py-3">
+          <td colSpan={colSpan} className="p-3">
             {flags.length > 0 && (
               <div className="mb-3">
-                <h3 className="m-0 mb-1 text-[12px] font-bold text-[color:var(--text-secondary)]">
-                  {t('auditDetailRules')}
-                </h3>
+                <h3 className={DETAIL_TITLE}>{t('auditDetailRules')}</h3>
                 <ul className="m-0 list-none space-y-1 p-0">
                   {flags.map((f) => {
                     const meta = FLAG_META[f.code];
                     return (
-                      <li key={f.code} className="flex items-start gap-2 text-[13px]">
+                      <li key={f.code} className="flex items-start gap-2 text-xs">
                         <Icon
                           name={SEVERITY_ICON[f.severity]}
-                          size={16}
+                          size={14}
                           className={`mt-0.5 ${ICON_TEXT[f.severity]}`}
                         />
                         <span>
@@ -167,11 +160,9 @@ export function AuditEntryRow({ entry, expanded, onToggle, colSpan }: Props) {
                 </ul>
               </div>
             )}
-            <h3 className="m-0 mb-1 text-[12px] font-bold text-[color:var(--text-secondary)]">
-              {t('auditDetailsTitle')}
-            </h3>
+            <h3 className={DETAIL_TITLE}>{t('auditDetailsTitle')}</h3>
             {entry.resource_id && (
-              <p className="m-0 mb-2 text-[12px] text-[color:var(--text-secondary)]">
+              <p className="m-0 mb-2 text-xs text-[color:var(--text-secondary)]">
                 {t('auditColResourceId')}:{' '}
                 <span className="font-mono text-[color:var(--text-primary)]">
                   {entry.resource_id}
@@ -180,7 +171,7 @@ export function AuditEntryRow({ entry, expanded, onToggle, colSpan }: Props) {
             )}
             {table && table.rows.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-[12px]">
+                <table className="w-full border-collapse text-xs">
                   <thead>
                     <tr>
                       <th className={TH}>{t('auditDetailField')}</th>
@@ -214,9 +205,7 @@ export function AuditEntryRow({ entry, expanded, onToggle, colSpan }: Props) {
                 </table>
               </div>
             ) : (
-              <p className="m-0 text-[12px] text-[color:var(--text-muted)]">
-                {t('auditDetailNone')}
-              </p>
+              <p className="m-0 text-xs text-[color:var(--text-muted)]">{t('auditDetailNone')}</p>
             )}
           </td>
         </tr>

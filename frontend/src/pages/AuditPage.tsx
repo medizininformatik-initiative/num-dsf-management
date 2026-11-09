@@ -18,7 +18,8 @@ import { EMPTY_FILTERS, type AuditFilterForm } from '../components/audit/auditCo
 import { AuditSummaryBar } from '../components/audit/AuditSummaryBar';
 import { exportCrossInstanceAudit, type AuditFilters } from '../api/audit.api';
 
-const TH = 'px-3 py-2.5 text-left text-[12px] font-bold text-[color:var(--text-secondary)]';
+const TH =
+  'px-3 py-2.5 text-left text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]';
 const COLUMNS = 7;
 const TEXT_DEBOUNCE_MS = 300;
 
@@ -118,7 +119,7 @@ export function AuditPage() {
         title={t('auditLog')}
         subtitle={isAdmin ? t('auditScopeAdmin') : t('auditScopeOwner')}
       />
-      <div className="p-6 sm:p-8">
+      <div className="px-6 py-6 sm:px-8">
         <AuditFilterBar
           value={form}
           onChange={setForm}
@@ -129,26 +130,31 @@ export function AuditPage() {
 
         {summary && <AuditSummaryBar summary={summary} />}
 
-        {isLoading && <p className="text-sm text-[color:var(--text-muted)]">{t('loading')}</p>}
+        {isLoading && (
+          <p className="surface-card p-5 text-sm text-[color:var(--text-muted)]">{t('loading')}</p>
+        )}
         {error && (
-          <p role="alert" className="text-sm text-danger-fg">
+          <p
+            role="alert"
+            className="rounded-card border border-danger-border bg-danger-surface p-4 text-sm text-danger-fg"
+          >
             {t('auditLoadFailed')}
           </p>
         )}
 
         {!isLoading && !error && rows.length === 0 && (
-          <p className="text-sm text-[color:var(--text-muted)]">
+          <p className="surface-card p-5 text-sm text-[color:var(--text-muted)]">
             {filtersActive ? t('auditNoEntries') : t('auditEmpty')}
           </p>
         )}
 
         {rows.length > 0 && (
           <>
-            <p className="mb-2 text-[12px] text-[color:var(--text-muted)]">
+            <p className="mb-2 text-xs text-[color:var(--text-muted)]">
               {t('auditShowing', { total })}
             </p>
-            <div className="glass-thin overflow-x-auto rounded-card">
-              <table className="w-full border-collapse text-[12px]">
+            <div className="surface-card overflow-x-auto">
+              <table className="w-full border-collapse text-xs">
                 <thead>
                   <tr className="bg-[color:var(--bg-hover)]">
                     <th className={TH}>{t('auditColTimestamp')}</th>
@@ -177,7 +183,7 @@ export function AuditPage() {
         )}
 
         {totalPages > 1 && (
-          <div className="mt-4 flex items-center justify-end gap-3 text-[12px]">
+          <div className="mt-4 flex items-center justify-end gap-3 text-xs">
             <Button
               variant="secondary"
               size="sm"

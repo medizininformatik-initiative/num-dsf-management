@@ -15,13 +15,13 @@ export function AuditSummaryBar({ summary }: { summary: AuditSummary }) {
   return (
     <section
       aria-label={t('auditSummaryTitle')}
-      className="glass-thin mb-4 flex flex-wrap items-center gap-3 rounded-card px-4 py-3"
+      className="surface-card mb-4 flex flex-wrap items-center gap-3 px-4 py-3"
     >
-      <h2 className="m-0 text-[13px] font-bold text-[color:var(--text-primary)]">
+      <h2 className="m-0 text-sm font-semibold text-[color:var(--text-primary)]">
         {t('auditSummaryTitle')}
       </h2>
       {summary.flagged === 0 ? (
-        <span className="text-[13px] text-[color:var(--text-secondary)]">
+        <span className="text-sm text-[color:var(--text-secondary)]">
           {t('auditSummaryNone', { n: summary.scanned })}
         </span>
       ) : (
@@ -31,7 +31,7 @@ export function AuditSummaryBar({ summary }: { summary: AuditSummary }) {
               {t(SEVERITY_LABEL[sev])}: {summary[sev]}
             </StatusPill>
           ))}
-          <span className="text-[12px] text-[color:var(--text-muted)]">
+          <span className="text-xs text-[color:var(--text-muted)]">
             {t('auditSummaryScanned', { n: summary.scanned })}
           </span>
         </>
