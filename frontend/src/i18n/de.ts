@@ -822,6 +822,8 @@ export const de: Record<TranslationKey, string> = {
     'Hochladen abgelehnt: Die ausstellende Zertifizierungsstelle steht auf der Blacklist (CA_BLACKLISTED).',
   formCertErrorNotWhitelisted:
     'Hochladen abgelehnt: Die ausstellende Zertifizierungsstelle steht nicht auf der CA-Whitelist (CA_NOT_WHITELISTED).',
+  formCertErrorRegisteredElsewhere:
+    'Hochladen abgelehnt: Dieses Zertifikat ist bereits für eine andere Organisation registriert (CERT_REGISTERED_ELSEWHERE).',
   formCertExpired: 'Abgelaufen',
   formCertExpiresToday: 'Läuft heute ab',
   formCertDayLeft: 'Noch 1 Tag',

@@ -810,6 +810,8 @@ export const en = {
     'Upload refused: the issuing certificate authority is blacklisted (CA_BLACKLISTED).',
   formCertErrorNotWhitelisted:
     'Upload refused: the issuing certificate authority is not on the CA whitelist (CA_NOT_WHITELISTED).',
+  formCertErrorRegisteredElsewhere:
+    'Upload refused: this certificate is already registered for another organization (CERT_REGISTERED_ELSEWHERE).',
   formCertExpired: 'Expired',
   formCertExpiresToday: 'Expires today',
   formCertDayLeft: '1 day left',

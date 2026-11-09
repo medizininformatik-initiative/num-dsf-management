@@ -64,6 +64,7 @@ const UPLOAD_ERROR_KEY: Record<string, TranslationKey> = {
   INVALID_PEM: 'formCertErrorInvalidPem',
   CA_BLACKLISTED: 'formCertErrorBlacklisted',
   CA_NOT_WHITELISTED: 'formCertErrorNotWhitelisted',
+  CERT_REGISTERED_ELSEWHERE: 'formCertErrorRegisteredElsewhere',
 };
 
 /** Translated reason for a failed certificate upload or renewal. */

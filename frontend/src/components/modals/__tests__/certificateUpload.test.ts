@@ -73,6 +73,9 @@ describe('certificateUploadError', () => {
     expect(certificateUploadError(apiError('CA_NOT_WHITELISTED'), t, 'fallback')).toBe(
       en.formCertErrorNotWhitelisted,
     );
+    expect(certificateUploadError(apiError('CERT_REGISTERED_ELSEWHERE'), t, 'fallback')).toBe(
+      en.formCertErrorRegisteredElsewhere,
+    );
   });
 
   it('falls back to the backend message or the default', () => {

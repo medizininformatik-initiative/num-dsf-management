@@ -18,7 +18,12 @@ import { asyncHandler } from '../lib/asyncHandler';
 import { writeAuditLog } from '../services/audit.service';
 import { isAdminCaller } from '../lib/isAdmin';
 
-const DENIAL_REASONS = new Set(['PRIVATE_KEY_REJECTED', 'CA_BLACKLISTED', 'CA_NOT_WHITELISTED']);
+const DENIAL_REASONS = new Set([
+  'PRIVATE_KEY_REJECTED',
+  'CA_BLACKLISTED',
+  'CA_NOT_WHITELISTED',
+  'CERT_REGISTERED_ELSEWHERE',
+]);
 
 /** Audit a refused certificate upload (never the PEM itself) without blocking the response. */
 function auditCertificateDenial(req: Request, err: unknown): void {
@@ -32,6 +37,11 @@ function auditCertificateDenial(req: Request, err: unknown): void {
     diffJson: { reason },
     ipAddress: req.ip || 'unknown',
   }).catch(() => {});
+}
+
+/** 409 when another organization holds the certificate, else 400. */
+function uploadErrorStatus(err: unknown): number {
+  return err instanceof Error && err.message === 'CERT_REGISTERED_ELSEWHERE' ? 409 : 400;
 }
 
 export const certificatesRouter = Router({ mergeParams: true });
@@ -87,7 +97,7 @@ certificatesRouter.post('/', validate(createCertificateSchema), async (req, res)
     }
     // Known business codes (INVALID_PEM, CA_BLACKLISTED, CA_NOT_WHITELISTED)
     // pass through so the UI can explain the rejection; anything else is masked.
-    res.status(400).json({ error: sanitizeError(err) });
+    res.status(uploadErrorStatus(err)).json({ error: sanitizeError(err) });
   }
 });
 
@@ -138,6 +148,6 @@ certificatesRouter.post('/:cid/renew', validate(renewCertificateSchema), async (
         .status(400)
         .json({ error: { code: 'PRIVATE_KEY_REJECTED', message: 'Private keys are not allowed' } });
     }
-    res.status(400).json({ error: sanitizeError(err) });
+    res.status(uploadErrorStatus(err)).json({ error: sanitizeError(err) });
   }
 });

@@ -3,6 +3,7 @@
  * SECURITY CRITICAL: Private keys IMMEDIATELY rejected, PEM NEVER in logs
  */
 import crypto from 'crypto';
+import type { Knex } from 'knex';
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
 import { isCaBlacklisted } from './ca-blacklist.service';
@@ -194,6 +195,28 @@ export async function getCertificates(instanceId: string) {
 }
 
 /**
+ * A certificate belongs to one organization: refuse a PEM whose thumbprint
+ * another organization registered or whose SHA-512 fingerprint logs in for one.
+ * @throws CERT_REGISTERED_ELSEWHERE
+ */
+async function assertNotRegisteredElsewhere(
+  conn: Knex | Knex.Transaction,
+  organizationId: string,
+  thumbprint: string,
+  pem: string,
+): Promise<void> {
+  const cert = await conn('certificates')
+    .where({ thumbprint })
+    .whereNot({ organization_id: organizationId })
+    .first('id');
+  const login = await conn('org_login_certificates')
+    .where({ fingerprint: sha512FingerprintFromPem(pem) })
+    .whereNot({ organization_id: organizationId })
+    .first('fingerprint');
+  if (cert || login) throw new Error('CERT_REGISTERED_ELSEWHERE');
+}
+
+/**
  * Validate and store a certificate for the instance's organization.
  * `uploadedByAdmin` records whether an admin session uploaded it (default true = unknown,
  * not eligible as login certificate; the clinic itself passes false).
@@ -202,6 +225,7 @@ export async function getCertificates(instanceId: string) {
  * @throws ORGANIZATION_NOT_FOUND if the instance has no organization.
  * @throws CA_BLACKLISTED if the issuing CA is blacklisted.
  * @throws CA_NOT_WHITELISTED if the whitelist is enforced and the issuer is not on it.
+ * @throws CERT_REGISTERED_ELSEWHERE if another organization holds the certificate.
  */
 export async function createCertificate(
   instanceId: string,
@@ -218,6 +242,7 @@ export async function createCertificate(
     throw new Error('CA_BLACKLISTED');
   }
   await assertIssuerAllowed(issuerDn);
+  await assertNotRegisteredElsewhere(db, org.identifier, thumbprint, pem.trim());
   const id = uuidv4();
   await db('certificates').insert({
     id,
@@ -286,6 +311,7 @@ export async function deleteCertificate(
  * @throws ORGANIZATION_NOT_FOUND / CERTIFICATE_NOT_FOUND if the org or old cert is missing.
  * @throws CA_BLACKLISTED if the issuing CA is blacklisted.
  * @throws CA_NOT_WHITELISTED if the whitelist is enforced and the issuer is not on it.
+ * @throws CERT_REGISTERED_ELSEWHERE if another organization holds the new certificate.
  */
 export async function renewCertificate(
   instanceId: string,
@@ -312,6 +338,7 @@ export async function renewCertificate(
       .forUpdate()
       .first();
     if (!oldCert) throw new Error('CERTIFICATE_NOT_FOUND');
+    await assertNotRegisteredElsewhere(trx, org.identifier, thumbprint, body.pem.trim());
 
     // Insert new cert
     const newId = uuidv4();
