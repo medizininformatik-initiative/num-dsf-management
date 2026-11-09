@@ -6,8 +6,11 @@
  * hover highlights the row), and a selection made on the map expands its
  * group and scrolls the row into view (scrollIntoViewSafe, so Reduce Motion
  * jumps). It slides in and out with the sheet motion (usePresence).
+ * Rows read hover from the shared hover store, so hovering re-renders only
+ * the row whose highlight changes.
  * Dependencies: react, network.api types, i18n.store, lib/statusColors,
- * lib/peerEdges, lib/motion, usePresence, useScrollEdges, ui/Icon, map.css.
+ * lib/peerEdges, lib/motion, usePresence, useScrollEdges, hoverStore,
+ * ui/Icon, map.css.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useScrollEdges } from '../../hooks/useScrollEdges';
@@ -18,12 +21,14 @@ import { certStatusColor } from '../../lib/statusColors';
 import { verbundColor } from '../../lib/peerEdges';
 import { exitMs, scrollIntoViewSafe } from '../../lib/motion';
 import { Icon } from '../ui/Icon';
+import { useIsHovered, type HoverStore } from './hoverStore';
 
 interface Props {
   organizations: MapOrganization[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-  hoveredId?: string | null;
+  /** Hover shared with the map; rows highlight while their site is hovered. */
+  hover?: HoverStore;
   onHover?: (id: string | null) => void;
   /** Collapsed lists unmount after their exit animation. */
   open?: boolean;
@@ -78,7 +83,7 @@ export function MapOrgList({
   organizations,
   selectedId,
   onSelect,
-  hoveredId = null,
+  hover,
   onHover,
   open = true,
   onClose,
@@ -191,45 +196,17 @@ export function MapOrgList({
                 />
               </button>
               {!isCollapsed &&
-                g.members.map((m) => {
-                  const isSel = selectedId === m.identifier;
-                  const isHover = hoveredId === m.identifier;
-                  const index = rowIndex++;
-                  return (
-                    <button
-                      key={m.identifier}
-                      type="button"
-                      data-org-row={m.identifier}
-                      aria-current={isSel ? 'true' : undefined}
-                      onClick={() => onSelect(m.identifier)}
-                      onMouseEnter={() => onHover?.(m.identifier)}
-                      onMouseLeave={() => onHover?.(null)}
-                      onFocus={() => onHover?.(m.identifier)}
-                      onBlur={() => onHover?.(null)}
-                      title={m.identifier}
-                      style={{ '--stagger-index': index } as CSSProperties}
-                      className={`map-list-row flex w-full animate-list-item-in items-center gap-2.5 rounded-control py-1.5 pl-6 pr-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
-                        isSel
-                          ? 'bg-[color:color-mix(in_srgb,var(--primary)_12%,transparent)] font-semibold text-[color:var(--text-primary)]'
-                          : isHover
-                            ? 'bg-[color:var(--bg-hover)] text-[color:var(--text-primary)]'
-                            : 'text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)]'
-                      }`}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: certStatusColor(m.cert_status) }}
-                      />
-                      <span className="min-w-0 flex-1 truncate text-sm">{m.name}</span>
-                      {!m.active && (
-                        <span className="text-2xs uppercase text-[color:var(--text-muted)]">
-                          {t('mapOrgInactive')}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                g.members.map((m) => (
+                  <OrgRow
+                    key={m.identifier}
+                    org={m}
+                    index={rowIndex++}
+                    isSelected={selectedId === m.identifier}
+                    hover={hover}
+                    onSelect={onSelect}
+                    onHover={onHover}
+                  />
+                ))}
             </div>
           );
         })}
@@ -240,5 +217,57 @@ export function MapOrgList({
         )}
       </div>
     </aside>
+  );
+}
+
+function OrgRow({
+  org: m,
+  index,
+  isSelected: isSel,
+  hover,
+  onSelect,
+  onHover,
+}: {
+  org: MapOrganization;
+  index: number;
+  isSelected: boolean;
+  hover?: HoverStore;
+  onSelect: (id: string | null) => void;
+  onHover?: (id: string | null) => void;
+}) {
+  const { t } = useI18n();
+  const isHover = useIsHovered(hover, m.identifier);
+  return (
+    <button
+      type="button"
+      data-org-row={m.identifier}
+      aria-current={isSel ? 'true' : undefined}
+      onClick={() => onSelect(m.identifier)}
+      onMouseEnter={() => onHover?.(m.identifier)}
+      onMouseLeave={() => onHover?.(null)}
+      onFocus={() => onHover?.(m.identifier)}
+      onBlur={() => onHover?.(null)}
+      title={m.identifier}
+      style={{ '--stagger-index': index } as CSSProperties}
+      className={`map-list-row flex w-full animate-list-item-in items-center gap-2.5 rounded-control py-1.5 pl-6 pr-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
+        isSel
+          ? 'bg-[color:color-mix(in_srgb,var(--primary)_12%,transparent)] font-semibold text-[color:var(--text-primary)]'
+          : isHover
+            ? 'bg-[color:var(--bg-hover)] text-[color:var(--text-primary)]'
+            : 'text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)]'
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className="h-2 w-2 shrink-0 rounded-full"
+        style={{ background: certStatusColor(m.cert_status) }}
+      />
+      <span className="min-w-0 flex-1 truncate text-sm">{m.name}</span>
+      {!m.active && (
+        <span className="text-2xs uppercase text-[color:var(--text-muted)]">
+          {t('mapOrgInactive')}
+        </span>
+      )}
+    </button>
   );
 }

@@ -16,18 +16,21 @@
  * cluster, or to its fanned-out position while the cluster is expanded);
  * clusterKeyForOrg lets a cluster key select the edges of all its members.
  * Stroke widths are divided by the zoom `k` so lines stay hairline-thin.
+ * Hover is read from the shared hover store, so a hover change re-renders this
+ * layer only.
  */
 import { useMemo, type CSSProperties } from 'react';
 import { verbundColor } from '../../lib/peerEdges';
 import type { PeerEdge } from '../../lib/peerEdges';
 import { exitMs } from '../../lib/motion';
 import { usePresenceList } from './usePresenceList';
+import { useHoveredId, type HoverStore } from './hoverStore';
 
 interface Props {
   edges: PeerEdge[];
   endpointPos: Map<string, [number, number]>;
   selectedId: string | null; // pin id OR cluster key
-  hoveredId: string | null;
+  hover: HoverStore;
   activeVerbunds: Set<string>;
   showAllEdges: boolean;
   clusterKeyForOrg: (orgId: string) => string | null;
@@ -58,12 +61,13 @@ export function GeoMapEdges({
   edges,
   endpointPos,
   selectedId,
-  hoveredId,
+  hover,
   activeVerbunds,
   showAllEdges,
   clusterKeyForOrg,
   k = 1,
 }: Props) {
+  const hoveredId = useHoveredId(hover);
   const { selected, background } = useMemo(() => {
     const sel: DrawnEdge[] = [];
     const bg: (DrawnEdge & { opacity: number })[] = [];

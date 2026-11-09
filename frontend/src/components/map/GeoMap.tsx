@@ -13,12 +13,14 @@
  *   that direction (or pan when the map itself has focus); + / − zoom and 0
  *   shows all of Germany.
  * - Performance: pan and zoom gestures move the zoom layer directly
- *   (useMapViewport) and re-render nothing until the gesture ends.
+ *   (useMapViewport) and re-render nothing until the gesture ends; hover
+ *   lives in a store, so only the affected markers, the tooltip and the
+ *   hover edges re-render.
  * Dependencies: GermanyOutline, GeoMapPin, GeoMapCluster, GeoMapEdges,
- * MapControls, mapGeometry, useMapViewport, usePresenceList, lib/motion,
- * lib/peerEdges, i18n.store, map.css.
+ * MapControls, mapGeometry, hoverStore, useMapViewport, usePresenceList,
+ * lib/motion, lib/peerEdges, i18n.store, map.css.
  */
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useId, useMemo, useRef, type CSSProperties } from 'react';
 import type { MapOrganization } from '../../api/network.api';
 import { GermanyOutline } from './GermanyOutline';
 import { GeoMapPin } from './GeoMapPin';
@@ -40,6 +42,7 @@ import {
   type PlacedCluster,
 } from './mapGeometry';
 import { useMapViewport, viewTransform } from './useMapViewport';
+import { useHoveredId, useOwnHoverStore, type HoverStore } from './hoverStore';
 import { usePresenceList } from './usePresenceList';
 import type { PeerEdge } from '../../lib/peerEdges';
 import { exitMs } from '../../lib/motion';
@@ -55,9 +58,8 @@ interface Props {
   edges: PeerEdge[];
   activeVerbunds: Set<string>;
   showAllEdges: boolean;
-  /** Controlled hover (shared with the organization list); internal if omitted. */
-  hoveredId?: string | null;
-  onHover?: (id: string | null) => void;
+  /** Hover shared with the organization list; the map keeps its own if omitted. */
+  hover?: HoverStore;
   /** Offered in the "nothing matches" state. */
   onResetFilters?: () => void;
   /** Screen-pixel sideways shift for focusing, when a sheet floats over the map. */
@@ -99,16 +101,15 @@ export function GeoMap({
   edges,
   activeVerbunds,
   showAllEdges,
-  hoveredId: hoveredProp,
-  onHover: onHoverProp,
+  hover: hoverProp,
   onResetFilters,
   focusShiftPx = 0,
 }: Props) {
   const { t } = useI18n();
   const hintId = useId();
-  const [hoveredLocal, setHoveredLocal] = useState<string | null>(null);
-  const hoveredId = hoveredProp !== undefined ? hoveredProp : hoveredLocal;
-  const onHover = onHoverProp ?? setHoveredLocal;
+  const ownHover = useOwnHoverStore();
+  const hover = hoverProp ?? ownHover;
+  const onHover = hover.set;
   const viewport = useMapViewport();
   const { view, focusOn } = viewport;
   const k = view.k;
@@ -236,14 +237,6 @@ export function GeoMap({
     event.preventDefault();
   }
 
-  // An expanded city gets no label: it would cover its fanned-out members,
-  // and the details sheet already names it.
-  const labelId = hoveredId ?? selectedId;
-  const tooltipId = labelId && labelId === expanded?.key ? null : labelId;
-  const tooltipNode =
-    (tooltipId && placed.find((p) => p.key === tooltipId)) ||
-    (tooltipId && fanMembers.find((f) => f.org.identifier === tooltipId)) ||
-    null;
   const hasUnknown = placed.some((p) => p.kind === 'pin' && !p.known);
 
   return (
@@ -305,7 +298,7 @@ export function GeoMap({
             edges={edges}
             endpointPos={endpointPos}
             selectedId={selectedId}
-            hoveredId={hoveredId}
+            hover={hover}
             activeVerbunds={activeVerbunds}
             showAllEdges={showAllEdges}
             clusterKeyForOrg={clusterKeyForOrg}
@@ -319,7 +312,7 @@ export function GeoMap({
                 org={p.org}
                 x={p.x}
                 y={p.y}
-                isHovered={hoveredId === key}
+                hover={hover}
                 isSelected={selectedId === key}
                 isUnknown={!p.known}
                 onSelect={onSelect}
@@ -333,7 +326,7 @@ export function GeoMap({
                 group={p.group}
                 x={p.x}
                 y={p.y}
-                isHovered={hoveredId === key}
+                hover={hover}
                 isSelected={selectedId === key}
                 expanded={!leaving && expanded?.key === key}
                 matchedCount={p.group.members.length}
@@ -354,7 +347,7 @@ export function GeoMap({
               y={f.y}
               offset={f.offset}
               compact
-              isHovered={hoveredId === f.org.identifier}
+              hover={hover}
               isSelected={selectedId === f.org.identifier}
               isUnknown={false}
               onSelect={onSelect}
@@ -364,7 +357,13 @@ export function GeoMap({
             />
           ))}
 
-          {tooltipNode && <MapTooltip key={tooltipId} node={tooltipNode} />}
+          <TooltipLayer
+            hover={hover}
+            selectedId={selectedId}
+            expandedKey={expanded?.key ?? null}
+            placed={placed}
+            fanMembers={fanMembers}
+          />
         </g>
       </svg>
 
@@ -387,3 +386,29 @@ export function GeoMap({
     </div>
   );
 }
+
+/** The label of the hovered (else selected) node; re-renders on hover only. */
+const TooltipLayer = memo(function TooltipLayer({
+  hover,
+  selectedId,
+  expandedKey,
+  placed,
+  fanMembers,
+}: {
+  hover: HoverStore;
+  selectedId: string | null;
+  expandedKey: string | null;
+  placed: Placed[];
+  fanMembers: FanMember[];
+}) {
+  const hoveredId = useHoveredId(hover);
+  // An expanded city gets no label: it would cover its fanned-out members,
+  // and the details sheet already names it.
+  const labelId = hoveredId ?? selectedId;
+  const tooltipId = labelId && labelId === expandedKey ? null : labelId;
+  const tooltipNode =
+    (tooltipId && placed.find((p) => p.key === tooltipId)) ||
+    (tooltipId && fanMembers.find((f) => f.org.identifier === tooltipId)) ||
+    null;
+  return tooltipNode ? <MapTooltip key={tooltipId} node={tooltipNode} /> : null;
+});

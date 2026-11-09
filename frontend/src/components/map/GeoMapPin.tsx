@@ -7,7 +7,10 @@
  * viewport sets). It enters with a
  * staggered spring (or flies out of its cluster when `offset` is set) and,
  * while `leaving`, plays its exit and ignores input.
- * Dependencies: network.api types, lib/statusColors, i18n.store, map.css.
+ * Hover comes from the shared hover store, so only the marker whose hover
+ * flag flips re-renders.
+ * Dependencies: network.api types, lib/statusColors, hoverStore, i18n.store,
+ * map.css.
  */
 import type { CSSProperties } from 'react';
 import type { MapOrganization } from '../../api/network.api';
@@ -15,12 +18,15 @@ import { certStatusColor } from '../../lib/statusColors';
 import { useI18n } from '../../stores/i18n.store';
 import { CERT_STATUS_LABEL_KEY } from './mapLabels';
 import { PIN_SHADOW_GRADIENT_ID, initialsOf } from './mapGeometry';
+import { useIsHovered, type HoverStore } from './hoverStore';
 
 interface Props {
   org: MapOrganization;
   x: number;
   y: number;
-  isHovered: boolean;
+  /** Shared hover state; `isHovered` overrides it when given. */
+  hover?: HoverStore;
+  isHovered?: boolean;
   isSelected: boolean;
   isUnknown: boolean; // true when city falls back to the "Other" zone
   onSelect: (id: string) => void;
@@ -38,7 +44,8 @@ export function GeoMapPin({
   org,
   x,
   y,
-  isHovered,
+  hover,
+  isHovered: isHoveredProp,
   isSelected,
   isUnknown,
   onSelect,
@@ -49,6 +56,8 @@ export function GeoMapPin({
   compact = false,
 }: Props) {
   const { t } = useI18n();
+  const hoveredInStore = useIsHovered(hover, org.identifier);
+  const isHovered = isHoveredProp ?? hoveredInStore;
   const color = certStatusColor(org.cert_status);
   const isInactive = !org.active;
   const r = compact ? 11 : 13;

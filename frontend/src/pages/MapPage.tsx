@@ -7,9 +7,11 @@
  * sheets), so focusing a selection centres it in the visible area. The
  * details sheet docks on the side of Germany the selected site is on (right
  * whenever the list occupies the left), and keeps that side while open.
- * Hover and selection are shared between list and map.
+ * Hover and selection are shared between list and map; hover lives in a
+ * small store (hoverStore) rather than page state, so hovering never
+ * re-renders the page, the list or the whole map.
  * Dependencies: useNetworkMap, GeoMap, MapOrgList, NodeDetailsPanel,
- * MapFilters, VerbundPills, mapGeometry, lib/germanCities, lib/peerEdges,
+ * MapFilters, VerbundPills, mapGeometry, hoverStore, lib/germanCities, lib/peerEdges,
  * ui/Icon, ui/Button, i18n.store, map.css.
  */
 import {
@@ -27,6 +29,7 @@ import { MapOrgList } from '../components/map/MapOrgList';
 import { NodeDetailsPanel, type SheetSide } from '../components/map/NodeDetailsPanel';
 import { MapFilters, MapFilterState } from '../components/map/MapFilters';
 import { VerbundPills } from '../components/map/VerbundPills';
+import { useOwnHoverStore } from '../components/map/hoverStore';
 import { WEST_EAST_SPLIT, clusterGroupFor, isOnMap } from '../components/map/mapGeometry';
 import { Icon } from '../components/ui/Icon';
 import { Button } from '../components/ui/Button';
@@ -79,7 +82,7 @@ export function MapPage() {
   const [rootRef, rootWidth] = useElementWidth<HTMLDivElement>();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const hover = useOwnHoverStore();
   const [listOpen, setListOpen] = useState(wide);
   useEffect(() => setListOpen(wide), [wide]);
 
@@ -205,8 +208,8 @@ export function MapPage() {
         organizations={filtered}
         selectedId={selectedId}
         onSelect={setSelectedId}
-        hoveredId={hoveredId}
-        onHover={setHoveredId}
+        hover={hover}
+        onHover={hover.set}
         open={listOpen}
         onClose={() => setListOpen(false)}
         variant={wide ? 'sidebar' : 'sheet'}
@@ -268,8 +271,7 @@ export function MapPage() {
               allOrganizations={organizations}
               selectedId={selectedId}
               onSelect={setSelectedId}
-              hoveredId={hoveredId}
-              onHover={setHoveredId}
+              hover={hover}
               edges={edges}
               activeVerbunds={activeVerbunds}
               showAllEdges={showAllEdges}

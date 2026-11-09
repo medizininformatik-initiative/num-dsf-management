@@ -5,8 +5,9 @@
  * status mix reads at a glance. Selecting it expands the city: the bubble
  * shrinks to a hub while GeoMap fans the members out around it. Like pins it
  * keeps its on-screen size at every zoom and enters/leaves with a spring.
+ * Hover comes from the shared hover store.
  * Dependencies: network.api types, lib/statusColors, mapGeometry, mapLabels,
- * i18n.store, map.css.
+ * hoverStore, i18n.store, map.css.
  */
 import type { CSSProperties } from 'react';
 import type { MapClusterGroup, MapOrganization } from '../../api/network.api';
@@ -14,12 +15,15 @@ import { certStatusColor } from '../../lib/statusColors';
 import { useI18n } from '../../stores/i18n.store';
 import { PIN_SHADOW_GRADIENT_ID, clusterKeyOf } from './mapGeometry';
 import { CERT_STATUSES } from './mapLabels';
+import { useIsHovered, type HoverStore } from './hoverStore';
 
 interface Props {
   group: MapClusterGroup;
   x: number;
   y: number;
-  isHovered: boolean;
+  /** Shared hover state; `isHovered` overrides it when given. */
+  hover?: HoverStore;
+  isHovered?: boolean;
   isSelected: boolean;
   /** True while the members are fanned out around the hub. */
   expanded?: boolean;
@@ -59,7 +63,8 @@ export function GeoMapCluster({
   group,
   x,
   y,
-  isHovered,
+  hover,
+  isHovered: isHoveredProp,
   isSelected,
   expanded = false,
   matchedCount,
@@ -71,6 +76,8 @@ export function GeoMapCluster({
 }: Props) {
   const { t } = useI18n();
   const key = clusterKeyOf(group);
+  const hoveredInStore = useIsHovered(hover, key);
+  const isHovered = isHoveredProp ?? hoveredInStore;
   const total = totalCount ?? group.members.length;
   const visible = matchedCount;
   const countText = visible < total ? `${visible}/${total}` : `${total}`;
