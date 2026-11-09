@@ -3,12 +3,12 @@ import { screen, fireEvent, within, act } from '@testing-library/react';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 import { GeoMap } from '../GeoMap';
 import { GermanyOutline } from '../GermanyOutline';
-import { derivePeerEdges } from '../../../lib/peerEdges';
+import { deriveVerbunds } from '../../../lib/peerEdges';
 import type { MapOrganization } from '../../../api/network.api';
 
 // Two orgs in *different* known cities (Berlin / Hamburg) so each renders as
 // its own pin rather than collapsing into a single-city cluster. Both share a
-// parent_organization, so derivePeerEdges yields exactly one peer edge.
+// parent_organization, so they form one Verbund: one hub, two spokes.
 const VERBUND = 'num-testverband.example.de';
 
 function org(id: string, name: string, city: string): MapOrganization {
@@ -29,7 +29,7 @@ const orgs: MapOrganization[] = [
   org('uksh.de', 'Uni Klinikum Hamburg', 'Hamburg'),
 ];
 
-const edges = derivePeerEdges(orgs);
+const verbunds = deriveVerbunds(orgs);
 
 function renderMap(
   opts: {
@@ -49,7 +49,7 @@ function renderMap(
       allOrganizations={opts.allOrganizations ?? list}
       selectedId={opts.selectedId ?? null}
       onSelect={onSelect}
-      edges={derivePeerEdges(list)}
+      verbunds={deriveVerbunds(list)}
       activeVerbunds={new Set()}
       showAllEdges={opts.showAllEdges ?? false}
       onResetFilters={opts.onResetFilters}
@@ -85,17 +85,41 @@ describe('GeoMap', () => {
     expect(onSelect).toHaveBeenCalledWith('ukm.de');
   });
 
-  it('derives exactly one peer edge for two orgs sharing a verbund', () => {
-    // Sanity-check the fixture so the edge-render assertion below is meaningful.
-    expect(edges).toHaveLength(1);
-    expect(edges[0]).toMatchObject({ from: 'ukm.de', to: 'uksh.de', verbund: VERBUND });
+  it('derives one Verbund holding both orgs', () => {
+    // Sanity-check the fixture so the spoke assertions below are meaningful.
+    expect(verbunds).toEqual([{ verbund: VERBUND, members: ['ukm.de', 'uksh.de'] }]);
   });
 
-  it('renders an edge path per seeded relation when showAllEdges is on', () => {
+  it('batches all spokes of a Verbund into one path when showAllEdges is on', () => {
     const { container } = renderMap({ showAllEdges: true });
     expect(edgeCount(container)).toBe(1);
-    // A quadratic-bezier curve, not a straight line.
-    expect(container.querySelector('path[data-map-edge]')?.getAttribute('d')).toContain('Q');
+    const d = container.querySelector('path[data-map-edge]')?.getAttribute('d') ?? '';
+    // Two quadratic curves (one per member) in one path.
+    expect(d.match(/M/g)).toHaveLength(2);
+    expect(d.match(/Q/g)).toHaveLength(2);
+    expect(container.querySelector('path[data-map-edge]')).toHaveAttribute(
+      'vector-effect',
+      'non-scaling-stroke',
+    );
+  });
+
+  it('shows the Verbund hub with its label midway between the members', () => {
+    const { container } = renderMap({ showAllEdges: true });
+    const hub = container.querySelector(`[data-map-hub="${VERBUND}"]`);
+    expect(hub).not.toBeNull();
+    expect(hub?.textContent).toBe('NUM');
+    // Centroid of Berlin (481, 257) and Hamburg (269, 149).
+    expect(hub?.getAttribute('transform')).toBe('translate(375 203)');
+  });
+
+  it('needs one spoke per member, not one edge per pair', () => {
+    const cities = ['Berlin', 'Hamburg', 'München', 'Köln', 'Leipzig', 'Dresden', 'Kiel'];
+    const many = Array.from({ length: 7 }, (_, i) =>
+      org(`s${i}.example.de`, `Site ${i}`, cities[i]),
+    );
+    const { container } = renderMap({ organizations: many, showAllEdges: true });
+    const d = container.querySelector('path[data-map-edge]')?.getAttribute('d') ?? '';
+    expect(d.match(/M/g)).toHaveLength(7); // a complete graph would need 21
   });
 
   it('draws no edge path when showAllEdges is off and nothing is selected', () => {
@@ -103,15 +127,36 @@ describe('GeoMap', () => {
     expect(edgeCount(container)).toBe(0);
   });
 
-  it('draws the selected node edges on, starting from the selected node', () => {
+  it('draws the selected node spoke on, starting from the selected node', () => {
     const { container } = renderMap({ selectedId: 'uksh.de' });
-    const edge = container.querySelector('path[data-map-edge]');
-    expect(edge).not.toBeNull();
-    expect(edge?.getAttribute('class')).toContain('map-animate-edge-draw');
-    // Hamburg (269, 149) is the start point of the drawn curve.
-    expect(edge?.getAttribute('d')).toMatch(/^M 269 149 /);
-    // A dash flow runs along the selected edge.
-    expect(container.querySelector('.map-edge-flow')).not.toBeNull();
+    const edges = container.querySelectorAll('path[data-map-edge]');
+    expect(edges).toHaveLength(1);
+    expect(edges[0].getAttribute('class')).toContain('map-animate-edge-draw');
+    // Hamburg (269, 149) is the start point of the drawn curve, the hub its end.
+    expect(edges[0].getAttribute('d')).toMatch(/^M269 149Q.* 375 203$/);
+    // A dash flow runs along the selected spoke, and the hub is shown.
+    expect(container.querySelectorAll('.map-edge-flow')).toHaveLength(1);
+    expect(container.querySelector(`[data-map-hub="${VERBUND}"]`)).not.toBeNull();
+  });
+
+  it('runs the dash flow on at most MAX_FLOW spokes of a selection', () => {
+    // Six sites of one city, each in its own Verbund with a site elsewhere:
+    // selecting the city selects six spokes, but only three flow.
+    const list: MapOrganization[] = [];
+    for (let i = 0; i < 6; i++) {
+      const parent = `v${i}.example.de`;
+      list.push({
+        ...org(`b${i}.example.de`, `Berlin ${i}`, 'Berlin'),
+        memberships: [{ parent_organization: parent, roles: [] }],
+      });
+      list.push({
+        ...org(`h${i}.example.de`, `Hamburg ${i}`, 'Hamburg'),
+        memberships: [{ parent_organization: parent, roles: [] }],
+      });
+    }
+    const { container } = renderMap({ organizations: list, selectedId: '__cluster__berlin|DE' });
+    expect(container.querySelectorAll('.map-animate-edge-draw').length).toBeGreaterThan(3);
+    expect(container.querySelectorAll('.map-edge-flow')).toHaveLength(3);
   });
 
   it('zooms with the floating controls and resets to all of Germany', () => {
@@ -169,7 +214,7 @@ describe('GeoMap', () => {
         allOrganizations={list}
         selectedId="__cluster__berlin|DE"
         onSelect={onSelect}
-        edges={[]}
+        verbunds={[]}
         activeVerbunds={new Set()}
         showAllEdges={false}
       />,
@@ -192,7 +237,7 @@ describe('GeoMap', () => {
         allOrganizations={orgs}
         selectedId={null}
         onSelect={onSelect}
-        edges={[]}
+        verbunds={[]}
         activeVerbunds={new Set()}
         showAllEdges={false}
       />,
@@ -211,7 +256,7 @@ describe('GeoMap', () => {
         allOrganizations={[]}
         selectedId={null}
         onSelect={vi.fn()}
-        edges={[]}
+        verbunds={[]}
         activeVerbunds={new Set()}
         showAllEdges={false}
       />,

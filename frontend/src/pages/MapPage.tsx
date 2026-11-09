@@ -36,7 +36,7 @@ import { Button } from '../components/ui/Button';
 import { useI18n } from '../stores/i18n.store';
 import type { MapOrganization } from '../api/network.api';
 import { getPinCoord } from '../lib/germanCities';
-import { derivePeerEdges, verbundCounts } from '../lib/peerEdges';
+import { deriveVerbunds, verbundCounts } from '../lib/peerEdges';
 import '../components/map/map.css';
 
 const WIDE_QUERY = '(min-width: 1024px)';
@@ -113,7 +113,7 @@ export function MapPage() {
     });
   }, [organizations, filter]);
 
-  const edges = useMemo(() => derivePeerEdges(filtered), [filtered]);
+  const verbunds = useMemo(() => deriveVerbunds(filtered), [filtered]);
   const counts = useMemo(() => verbundCounts(filtered), [filtered]);
 
   const cityCount = useMemo(() => {
@@ -272,7 +272,7 @@ export function MapPage() {
               selectedId={selectedId}
               onSelect={setSelectedId}
               hover={hover}
-              edges={edges}
+              verbunds={verbunds}
               activeVerbunds={activeVerbunds}
               showAllEdges={showAllEdges}
               onResetFilters={resetFilters}

@@ -3,7 +3,6 @@
  * organizations, drawn as hub-and-spoke: every member links to one hub per
  * Verbund instead of to every other member, so a Verbund of n sites needs n
  * lines rather than n·(n−1)/2. Also the Verbund labels, colours and counts.
- * derivePeerEdges still expands the complete graph for the current edge layer.
  */
 import type { MapOrganization } from '../api/network.api';
 
@@ -40,39 +39,6 @@ export function verbundsByOrg(groups: VerbundGroup[]): Map<string, string[]> {
       out.set(id, list);
     }
   return out;
-}
-
-export interface PeerEdge {
-  from: string; // org.identifier
-  to: string; // org.identifier
-  verbund: string; // parent_organization
-}
-
-export function derivePeerEdges(orgs: MapOrganization[]): PeerEdge[] {
-  // verbund -> identifiers of member orgs. Dedupe parents per org so two
-  // memberships under the same parent don't list the org twice (which would
-  // yield a self-loop and a duplicate edge in the pairwise expansion below).
-  const byVerbund = new Map<string, string[]>();
-  for (const o of orgs) {
-    const seen = new Set<string>();
-    for (const m of o.memberships) {
-      if (seen.has(m.parent_organization)) continue;
-      seen.add(m.parent_organization);
-      const list = byVerbund.get(m.parent_organization) ?? [];
-      list.push(o.identifier);
-      byVerbund.set(m.parent_organization, list);
-    }
-  }
-  const edges: PeerEdge[] = [];
-  for (const [verbund, members] of byVerbund) {
-    for (let i = 0; i < members.length; i++) {
-      for (let j = i + 1; j < members.length; j++) {
-        if (members[i] === members[j]) continue; // never a self-loop
-        edges.push({ from: members[i], to: members[j], verbund });
-      }
-    }
-  }
-  return edges;
 }
 
 const KNOWN_VERBUND_LABELS: Record<string, string> = {

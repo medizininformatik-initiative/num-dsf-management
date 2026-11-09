@@ -1,8 +1,8 @@
 /**
- * peerEdges.test.ts – Unit tests for membership-peer edge derivation
+ * peerEdges.test.ts – Unit tests for Verbund grouping (hub-and-spoke model)
  */
 import { describe, it, expect } from 'vitest';
-import { derivePeerEdges } from '../peerEdges';
+import { deriveVerbunds, verbundsByOrg } from '../peerEdges';
 import type { MapOrganization } from '../../api/network.api';
 
 function org(identifier: string, parents: string[]): MapOrganization {
@@ -18,51 +18,42 @@ function org(identifier: string, parents: string[]): MapOrganization {
   };
 }
 
-describe('derivePeerEdges', () => {
-  it('returns no edges for orgs with no shared parent', () => {
-    const orgs = [org('a', ['mii']), org('b', ['num'])];
-    expect(derivePeerEdges(orgs)).toEqual([]);
+describe('deriveVerbunds', () => {
+  it('returns no groups for orgs without memberships', () => {
+    expect(deriveVerbunds([org('a', []), org('b', [])])).toEqual([]);
   });
 
-  it('returns one edge for two orgs sharing one parent', () => {
-    const edges = derivePeerEdges([org('a', ['mii']), org('b', ['mii'])]);
-    expect(edges).toHaveLength(1);
-    expect(edges[0].verbund).toBe('mii');
-    const ids = [edges[0].from, edges[0].to].sort();
-    expect(ids).toEqual(['a', 'b']);
+  it('groups members by parent organization, in input order', () => {
+    expect(deriveVerbunds([org('a', ['mii']), org('b', ['mii'])])).toEqual([
+      { verbund: 'mii', members: ['a', 'b'] },
+    ]);
   });
 
-  it('returns one edge per shared parent for two orgs in two verbunds', () => {
-    const edges = derivePeerEdges([org('a', ['mii', 'num']), org('b', ['mii', 'num'])]);
-    expect(edges).toHaveLength(2);
-    const verbunds = edges.map((e) => e.verbund).sort();
-    expect(verbunds).toEqual(['mii', 'num']);
+  it('lists an org in every Verbund it belongs to', () => {
+    const groups = deriveVerbunds([org('a', ['mii', 'num']), org('b', ['num'])]);
+    expect(groups).toEqual([
+      { verbund: 'mii', members: ['a'] },
+      { verbund: 'num', members: ['a', 'b'] },
+    ]);
   });
 
-  it('does not duplicate or self-loop', () => {
-    const orgs = [org('a', ['mii']), org('b', ['mii']), org('c', ['mii'])];
-    const edges = derivePeerEdges(orgs);
-    expect(edges).toHaveLength(3); // a-b, a-c, b-c
-    for (const e of edges) expect(e.from).not.toBe(e.to);
-    const pairs = new Set(edges.map((e) => [e.from, e.to].sort().join('|')));
-    expect(pairs.size).toBe(3);
+  it('lists an org once even with two memberships under the same parent', () => {
+    const groups = deriveVerbunds([org('a', ['mii', 'mii']), org('b', ['mii', 'mii'])]);
+    expect(groups).toEqual([{ verbund: 'mii', members: ['a', 'b'] }]);
   });
 
-  it('handles orgs with no memberships', () => {
-    expect(derivePeerEdges([org('a', []), org('b', [])])).toEqual([]);
+  it('grows linearly: n members, n entries (no pairwise expansion)', () => {
+    const many = Array.from({ length: 52 }, (_, i) => org(`o${i}`, ['mii']));
+    const [group] = deriveVerbunds(many);
+    expect(group.members).toHaveLength(52);
   });
+});
 
-  it('produces no self-loop for one org with two memberships under one parent', () => {
-    const edges = derivePeerEdges([org('a', ['mii', 'mii'])]);
-    expect(edges).toEqual([]);
-  });
-
-  it('does not duplicate or self-loop across two same-parent memberships', () => {
-    const edges = derivePeerEdges([org('a', ['mii', 'mii']), org('b', ['mii', 'mii'])]);
-    expect(edges).toHaveLength(1);
-    for (const e of edges) expect(e.from).not.toBe(e.to);
-    const pairs = new Set(edges.map((e) => [e.from, e.to].sort().join('|')));
-    expect(pairs.size).toBe(1);
-    expect(edges[0].verbund).toBe('mii');
+describe('verbundsByOrg', () => {
+  it('maps each org to the Verbunds it belongs to', () => {
+    const map = verbundsByOrg(deriveVerbunds([org('a', ['mii', 'num']), org('b', ['num'])]));
+    expect(map.get('a')).toEqual(['mii', 'num']);
+    expect(map.get('b')).toEqual(['num']);
+    expect(map.get('c')).toBeUndefined();
   });
 });

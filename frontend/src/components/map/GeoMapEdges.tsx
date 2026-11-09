@@ -1,161 +1,249 @@
 /**
- * GeoMapEdges.tsx – SVG layer of peer edges (shared network/Verbund) as thin
- * quadratic curves in the Verbund colour. The layer is `pointer-events: none`
- * so it never steals hover/click from markers.
+ * GeoMapEdges.tsx – SVG layer of the Verbund hub-and-spoke lines: thin
+ * curves from each site to its Verbund hub, in the Verbund colour, and the
+ * labelled hubs themselves. The layer is `pointer-events: none` so it never
+ * steals hover/click from markers.
  *
- * Background edges fade in at low opacity when triggered:
- *   - `hoveredId` matches one endpoint   → 0.55
- *   - `activeVerbunds` includes the edge → 0.45
+ * Background spokes are batched: one <path> per Verbund (or colour) whose `d`
+ * holds all its spokes, with a non-scaling stroke so zooming never touches
+ * them. They fade in when triggered:
+ *   - the hovered node's spokes          → 0.55
+ *   - a Verbund chosen in the pills      → 0.45
  *   - `showAllEdges` is true             → 0.22 (0.1 while a node is selected)
- * Edges of the selected node (or of every member of a selected cluster) draw
- * on from the selected end, then a dash flow runs along them; when the
- * selection goes they retract towards it, faster than they came. Under Reduce
- * Motion the draw and retract are crossfades and the flow stands still.
+ * Spokes of the selected node (or of every member of a selected cluster)
+ * draw on from the selected end; a dash flow then runs along at most
+ * MAX_FLOW of them, the rest stay a static highlight. When the selection
+ * goes they retract towards it, faster than they came. Under Reduce Motion
+ * the draw and retract are crossfades and the flow stands still. A hub shows
+ * while any of its spokes does.
  *
- * endpointPos maps org.identifier → [x, y] (a clustered member maps to its
- * cluster, or to its fanned-out position while the cluster is expanded);
- * clusterKeyForOrg lets a cluster key select the edges of all its members.
- * Stroke widths are divided by the zoom `k` so lines stay hairline-thin.
- * Hover is read from the shared hover store, so a hover change re-renders this
- * layer only.
+ * Hover is read from the hover store in two small sub-layers, so a hover
+ * change re-renders only those, never the whole map.
+ * Dependencies: spokeGeometry, hoverStore, usePresenceList, lib/motion,
+ * map.css.
  */
-import { useMemo, type CSSProperties } from 'react';
-import { verbundColor } from '../../lib/peerEdges';
-import type { PeerEdge } from '../../lib/peerEdges';
+import { memo, useMemo, type CSSProperties } from 'react';
 import { exitMs } from '../../lib/motion';
 import { usePresenceList } from './usePresenceList';
 import { useHoveredId, type HoverStore } from './hoverStore';
+import type { Hub, Spoke } from './spokeGeometry';
 
 interface Props {
-  edges: PeerEdge[];
-  endpointPos: Map<string, [number, number]>;
+  hubs: Hub[];
+  spokes: Spoke[];
   selectedId: string | null; // pin id OR cluster key
-  hover: HoverStore;
+  hover?: HoverStore;
   activeVerbunds: Set<string>;
   showAllEdges: boolean;
-  clusterKeyForOrg: (orgId: string) => string | null;
+  /** Screen pixels per map unit (zoom × fit scale), for the selected spokes. */
   k?: number;
 }
 
-interface DrawnEdge {
-  key: string;
-  d: string;
-  color: string;
-}
-
+/** At most this many selected spokes run the dash flow animation. */
+export const MAX_FLOW = 3;
 const RETRACT_MS = exitMs('medium');
+const LINE_WIDTH = 1.4; // screen pixels
 
-function bezierBetween(x1: number, y1: number, x2: number, y2: number, idx: number): string {
-  const mx = (x1 + x2) / 2;
-  const my = (y1 + y2) / 2;
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const len = Math.sqrt(dx * dx + dy * dy) || 1;
-  const nx = -dy / len;
-  const ny = dx / len;
-  const offset = 0.18 * len * (idx % 2 === 0 ? 1 : -1);
-  return `M ${x1} ${y1} Q ${mx + nx * offset} ${my + ny * offset} ${x2} ${y2}`;
+function touches(spoke: Spoke, id: string | null): boolean {
+  return id !== null && spoke.nodes.includes(id);
 }
+
+/** One batched path per key: all `d`s of a group concatenated. */
+function batch<T extends { key: string; color: string; opacity: number }>(
+  spokes: Spoke[],
+  groupOf: (s: Spoke) => T | null,
+): (T & { d: string })[] {
+  const out = new Map<string, T & { d: string }>();
+  for (const s of spokes) {
+    const g = groupOf(s);
+    if (!g) continue;
+    const prev = out.get(g.key);
+    if (prev) prev.d += s.d;
+    else out.set(g.key, { ...g, d: s.d });
+  }
+  return [...out.values()];
+}
+
+function BatchedPath({ d, color, opacity }: { d: string; color: string; opacity: number }) {
+  return (
+    <path
+      data-map-edge=""
+      className="map-edge map-animate-edge-in"
+      d={d}
+      vectorEffect="non-scaling-stroke"
+      strokeWidth={LINE_WIDTH}
+      style={{ stroke: color, opacity }}
+    />
+  );
+}
+
+/** Spokes of the hovered node, re-rendered on hover only. */
+const HoverSpokes = memo(function HoverSpokes({
+  spokes,
+  hover,
+  selectedId,
+}: {
+  spokes: Spoke[];
+  hover: HoverStore;
+  selectedId: string | null;
+}) {
+  const hoveredId = useHoveredId(hover);
+  const paths = useMemo(
+    () =>
+      hoveredId
+        ? batch(spokes, (s) =>
+            touches(s, hoveredId) && !touches(s, selectedId)
+              ? { key: `${hoveredId}|${s.color}`, color: s.color, opacity: 0.55 }
+              : null,
+          )
+        : [],
+    [spokes, hoveredId, selectedId],
+  );
+  return (
+    <>
+      {paths.map((p) => (
+        <BatchedPath key={p.key} d={p.d} color={p.color} opacity={p.opacity} />
+      ))}
+    </>
+  );
+});
+
+const HubMarker = memo(function HubMarker({ hub }: { hub: Hub }) {
+  const width = 16 + hub.label.length * 7;
+  return (
+    <g
+      transform={`translate(${hub.x} ${hub.y})`}
+      className="map-animate-edge-in"
+      data-map-hub={hub.verbund}
+    >
+      <g className="map-counter-scale">
+        <rect
+          x={-width / 2}
+          y={-10}
+          width={width}
+          height={20}
+          rx={10}
+          className="map-hub"
+          style={{ stroke: hub.color }}
+        />
+        <text
+          textAnchor="middle"
+          dominantBaseline="central"
+          className="map-hub-label"
+          style={{ fill: hub.color }}
+        >
+          {hub.label}
+        </text>
+      </g>
+    </g>
+  );
+});
+
+/** Hubs with a visible spoke; the hovered node's hubs join while hovered. */
+const Hubs = memo(function Hubs({
+  hubs,
+  spokes,
+  visible,
+  hover,
+}: {
+  hubs: Hub[];
+  spokes: Spoke[];
+  visible: Set<string>;
+  hover?: HoverStore;
+}) {
+  const hoveredId = useHoveredId(hover ?? NO_HOVER);
+  const shown = useMemo(() => {
+    if (!hoveredId) return visible;
+    const next = new Set(visible);
+    for (const s of spokes) if (touches(s, hoveredId)) next.add(s.verbund);
+    return next;
+  }, [visible, spokes, hoveredId]);
+  return (
+    <>
+      {hubs
+        .filter((h) => shown.has(h.verbund))
+        .map((h) => (
+          <HubMarker key={h.verbund} hub={h} />
+        ))}
+    </>
+  );
+});
+
+const NO_HOVER: HoverStore = {
+  get: () => null,
+  set: () => {},
+  subscribe: () => () => {},
+};
 
 export function GeoMapEdges({
-  edges,
-  endpointPos,
+  hubs,
+  spokes,
   selectedId,
   hover,
   activeVerbunds,
   showAllEdges,
-  clusterKeyForOrg,
   k = 1,
 }: Props) {
-  const hoveredId = useHoveredId(hover);
-  const { selected, background } = useMemo(() => {
-    const sel: DrawnEdge[] = [];
-    const bg: (DrawnEdge & { opacity: number })[] = [];
-    edges.forEach((e, i) => {
-      const fromPos = endpointPos.get(e.from);
-      const toPos = endpointPos.get(e.to);
-      if (!fromPos || !toPos) return;
-      // Skip self-edges that arise when both endpoints map to the same cluster pin.
-      if (fromPos[0] === toPos[0] && fromPos[1] === toPos[1]) return;
-      const fromKey = clusterKeyForOrg(e.from);
-      const toKey = clusterKeyForOrg(e.to);
-      const touches = (id: string | null, org: string, key: string | null) =>
-        id !== null && (id === org || id === key);
-      const selFrom = touches(selectedId, e.from, fromKey);
-      const selTo = touches(selectedId, e.to, toKey);
-      const color = verbundColor(e.verbund);
-      const baseKey = `${e.from}|${e.to}|${e.verbund}|${i}`;
-      if (selFrom || selTo) {
-        // Draw away from the selected end.
-        const [a, b] = selFrom ? [fromPos, toPos] : [toPos, fromPos];
-        sel.push({
-          key: `${selectedId}|${baseKey}`,
-          d: bezierBetween(a[0], a[1], b[0], b[1], i),
-          color,
-        });
-        return;
-      }
-      const hovered = touches(hoveredId, e.from, fromKey) || touches(hoveredId, e.to, toKey);
-      const opacity = hovered
-        ? 0.55
-        : activeVerbunds.has(e.verbund)
-          ? 0.45
-          : showAllEdges
-            ? selectedId
-              ? 0.1
-              : 0.22
-            : 0;
-      if (opacity === 0) return;
-      bg.push({
-        key: baseKey,
-        d: bezierBetween(fromPos[0], fromPos[1], toPos[0], toPos[1], i),
-        color,
-        opacity,
-      });
+  const { selected, background, visibleHubs } = useMemo(() => {
+    const sel = spokes
+      .filter((s) => touches(s, selectedId))
+      .map((s) => ({ ...s, key: `${selectedId}|${s.key}` }));
+    const bg = batch(spokes, (s) => {
+      if (touches(s, selectedId)) return null;
+      const opacity = activeVerbunds.has(s.verbund)
+        ? 0.45
+        : showAllEdges
+          ? selectedId
+            ? 0.1
+            : 0.22
+          : 0;
+      return opacity === 0 ? null : { key: `${s.verbund}|${opacity}`, color: s.color, opacity };
     });
-    return { selected: sel, background: bg };
-  }, [edges, endpointPos, selectedId, hoveredId, activeVerbunds, showAllEdges, clusterKeyForOrg]);
+    const vis = new Set<string>();
+    for (const s of sel) vis.add(s.verbund);
+    for (const s of spokes) if (activeVerbunds.has(s.verbund) || showAllEdges) vis.add(s.verbund);
+    return { selected: sel, background: bg, visibleHubs: vis };
+  }, [spokes, selectedId, activeVerbunds, showAllEdges]);
 
-  const presentSelected = usePresenceList(selected, (e) => e.key, RETRACT_MS);
-  const width = 1.4 / k;
+  const presentSelected = usePresenceList(selected, (s) => s.key, RETRACT_MS);
+  const width = (LINE_WIDTH * 1.4) / k;
+  let flowing = 0;
 
   return (
     <g style={{ pointerEvents: 'none' }} aria-hidden="true">
-      {background.map((e) => (
-        <path
-          key={e.key}
-          data-map-edge=""
-          className="map-edge map-animate-edge-in"
-          d={e.d}
-          style={{ stroke: e.color, opacity: e.opacity }}
-          strokeWidth={width}
-        />
+      {background.map((p) => (
+        <BatchedPath key={p.key} d={p.d} color={p.color} opacity={p.opacity} />
       ))}
-      {presentSelected.map(({ item: e, key, leaving }) => (
-        <g key={key}>
-          <path
-            data-map-edge={leaving ? undefined : ''}
-            className={`map-edge ${leaving ? 'map-animate-edge-retract' : 'map-animate-edge-draw'}`}
-            d={e.d}
-            pathLength={1}
-            style={{ stroke: e.color, opacity: 0.85 }}
-            strokeWidth={width * 1.4}
-          />
-          {!leaving && (
+      {hover && <HoverSpokes spokes={spokes} hover={hover} selectedId={selectedId} />}
+      {presentSelected.map(({ item: s, key, leaving }) => {
+        const flow = !leaving && flowing++ < MAX_FLOW;
+        return (
+          <g key={key}>
             <path
-              className="map-edge-flow"
-              d={e.d}
+              data-map-edge={leaving ? undefined : ''}
+              className={`map-edge ${leaving ? 'map-animate-edge-retract' : 'map-animate-edge-draw'}`}
+              d={s.d}
+              pathLength={1}
+              style={{ stroke: s.color, opacity: 0.85 }}
               strokeWidth={width}
-              style={
-                {
-                  strokeDasharray: `${2 / k} ${8 / k}`,
-                  '--flow': `${10 / k}px`,
-                } as CSSProperties
-              }
             />
-          )}
-        </g>
-      ))}
+            {flow && (
+              <path
+                className="map-edge-flow"
+                d={s.d}
+                strokeWidth={LINE_WIDTH / k}
+                style={
+                  {
+                    strokeDasharray: `${2 / k} ${8 / k}`,
+                    '--flow': `${10 / k}px`,
+                  } as CSSProperties
+                }
+              />
+            )}
+          </g>
+        );
+      })}
+      <Hubs hubs={hubs} spokes={spokes} visible={visibleHubs} hover={hover} />
     </g>
   );
 }

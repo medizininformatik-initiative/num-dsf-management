@@ -9,16 +9,18 @@
  *   in when filters change (usePresenceList), and the view glides to a newly
  *   selected organization in one spring movement (useMapViewport). Reduce
  *   Motion turns movement into crossfades and instant view changes.
+ * - Verbunds: every site links to its Verbund hub (hub-and-spoke, one line
+ *   per member).
  * - Keyboard: Tab reaches every node; arrow keys jump to the nearest node in
  *   that direction (or pan when the map itself has focus); + / − zoom and 0
  *   shows all of Germany.
  * - Performance: pan and zoom gestures move the zoom layer directly
  *   (useMapViewport) and re-render nothing until the gesture ends; hover
  *   lives in a store, so only the affected markers, the tooltip and the
- *   hover edges re-render; pins and clusters are memoized.
+ *   hover spokes re-render; pins and clusters are memoized.
  * Dependencies: GermanyOutline, GeoMapPin, GeoMapCluster, GeoMapEdges,
- * MapControls, mapGeometry, hoverStore, useMapViewport, usePresenceList,
- * lib/motion, lib/peerEdges, i18n.store, map.css.
+ * MapControls, mapGeometry, spokeGeometry, hoverStore, useMapViewport,
+ * usePresenceList, lib/motion, lib/peerEdges, i18n.store, map.css.
  */
 import { memo, useCallback, useEffect, useId, useMemo, useRef, type CSSProperties } from 'react';
 import type { MapOrganization } from '../../api/network.api';
@@ -42,9 +44,10 @@ import {
   type PlacedCluster,
 } from './mapGeometry';
 import { useMapViewport, viewTransform } from './useMapViewport';
+import { layoutSpokes } from './spokeGeometry';
 import { useHoveredId, useOwnHoverStore, type HoverStore } from './hoverStore';
 import { usePresenceList } from './usePresenceList';
-import type { PeerEdge } from '../../lib/peerEdges';
+import type { VerbundGroup } from '../../lib/peerEdges';
 import { exitMs } from '../../lib/motion';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
@@ -55,7 +58,7 @@ interface Props {
   allOrganizations: MapOrganization[]; // unfiltered, used for cluster totals
   selectedId: string | null; // pin identifier OR cluster key
   onSelect: (id: string | null) => void;
-  edges: PeerEdge[];
+  verbunds: VerbundGroup[];
   activeVerbunds: Set<string>;
   showAllEdges: boolean;
   /** Hover shared with the organization list; the map keeps its own if omitted. */
@@ -98,7 +101,7 @@ export function GeoMap({
   allOrganizations,
   selectedId,
   onSelect,
-  edges,
+  verbunds,
   activeVerbunds,
   showAllEdges,
   hover: hoverProp,
@@ -166,6 +169,12 @@ export function GeoMap({
         for (const member of p.group.members) m.set(member.identifier, p.key);
     return (orgId: string) => m.get(orgId) ?? null;
   }, [placed]);
+
+  // Spoke geometry depends on positions only, never on highlight state.
+  const { hubs, spokes } = useMemo(
+    () => layoutSpokes(verbunds, endpointPos, clusterKeyForOrg),
+    [verbunds, endpointPos, clusterKeyForOrg],
+  );
 
   // Stable handlers keep the memoized markers from re-rendering.
   const selectedRef = useRef(selectedId);
@@ -303,13 +312,12 @@ export function GeoMap({
           )}
 
           <GeoMapEdges
-            edges={edges}
-            endpointPos={endpointPos}
+            hubs={hubs}
+            spokes={spokes}
             selectedId={selectedId}
             hover={hover}
             activeVerbunds={activeVerbunds}
             showAllEdges={showAllEdges}
-            clusterKeyForOrg={clusterKeyForOrg}
             k={ks}
           />
 
