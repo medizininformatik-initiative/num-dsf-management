@@ -88,7 +88,7 @@ adminBundleVersionsRouter.post(
     const parsed = restoreSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: { code: 'VALIDATION', message: parsed.error.errors[0]?.message || 'Invalid input' },
+        error: { code: 'VALIDATION', message: parsed.error.issues[0]?.message || 'Invalid input' },
       });
     }
     try {

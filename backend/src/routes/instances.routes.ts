@@ -85,7 +85,7 @@ instancesRouter.put(
     const parsed = labelSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: { code: 'VALIDATION', message: parsed.error.errors[0]?.message || 'Invalid label' },
+        error: { code: 'VALIDATION', message: parsed.error.issues[0]?.message || 'Invalid label' },
       });
     }
     if (req.user!.scopeInstanceId && req.user!.scopeInstanceId !== req.params.id) {

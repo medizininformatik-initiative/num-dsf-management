@@ -104,7 +104,7 @@ export const hackathonManifestSchema = z
     manifest.users.forEach((u, i) => {
       if (emails.has(u.email)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: `duplicate email in manifest: ${u.email}`,
           path: ['users', i, 'email'],
         });
@@ -113,7 +113,7 @@ export const hackathonManifestSchema = z
 
       if (orgIdentifiers.has(u.orgIdentifier)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: `duplicate orgIdentifier in manifest: ${u.orgIdentifier}`,
           path: ['users', i, 'orgIdentifier'],
         });
@@ -122,7 +122,7 @@ export const hackathonManifestSchema = z
 
       if (fingerprints.has(u.fingerprintSha512)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: `duplicate fingerprintSha512 in manifest for ${u.email}`,
           path: ['users', i, 'fingerprintSha512'],
         });
@@ -131,7 +131,7 @@ export const hackathonManifestSchema = z
 
       if (thumbprints.has(u.thumbprintSha256)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: `duplicate thumbprintSha256 in manifest for ${u.email}`,
           path: ['users', i, 'thumbprintSha256'],
         });

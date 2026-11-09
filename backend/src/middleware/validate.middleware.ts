@@ -3,9 +3,9 @@
  * Dependencies: zod
  */
 import { Request, Response, NextFunction } from 'express';
-import { ZodSchema } from 'zod';
+import type { ZodType } from 'zod';
 
-export function validate(schema: ZodSchema, source: 'body' | 'query' = 'body') {
+export function validate(schema: ZodType, source: 'body' | 'query' = 'body') {
   return (req: Request, res: Response, next: NextFunction): void => {
     const result = schema.safeParse(source === 'body' ? req.body : req.query);
     if (!result.success) {
@@ -13,7 +13,7 @@ export function validate(schema: ZodSchema, source: 'body' | 'query' = 'body') {
         error: {
           code: 'VALIDATION',
           message: 'Invalid input',
-          details: result.error.errors,
+          details: result.error.issues,
         },
       });
       return;

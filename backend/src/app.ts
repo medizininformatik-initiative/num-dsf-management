@@ -200,13 +200,13 @@ app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
   logger.error({ err, requestId: (req as Request & { id?: string }).id }, 'Unhandled error');
 
   // Narrow err
-  const errObj = err as { name?: string; message?: string; errors?: unknown } | null;
+  const errObj = err as { name?: string; message?: string; issues?: unknown } | null;
   const name = errObj?.name;
   const message = errObj?.message;
 
   if (name === 'ZodError') {
     return res.status(400).json({
-      error: { code: 'VALIDATION', message: 'Invalid input', details: errObj?.errors },
+      error: { code: 'VALIDATION', message: 'Invalid input', details: errObj?.issues },
     });
   }
   if (message === 'PRIVATE_KEY_REJECTED') {
