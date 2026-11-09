@@ -6,6 +6,7 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { z } from 'zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
 import { FormField, inputClass, selectClass, ModalFooter } from './FormField';
@@ -29,7 +30,7 @@ export function MarketplaceAddModal({ open, onClose }: Props) {
     handleSubmit,
     reset,
     formState: { errors, isDirty },
-  } = useForm<MarketplaceAddForm>({
+  } = useForm<z.input<typeof marketplaceAddFormSchema>, unknown, MarketplaceAddForm>({
     resolver: zodResolver(marketplaceAddFormSchema),
     defaultValues: { gitUrl: '', status: 'APPROVED', totpCode: '' },
   });

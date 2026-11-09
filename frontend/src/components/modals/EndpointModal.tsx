@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { useForm, useFieldArray, type UseFormRegister } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { z } from 'zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
 import {
@@ -54,7 +55,7 @@ const EMPTY_IP = { ip: '', isFhir: false, isBpe: false };
 
 interface IpAddressRowProps {
   index: number;
-  register: UseFormRegister<EndpointFormData>;
+  register: UseFormRegister<z.input<typeof endpointSchema>>;
   error?: string;
   leaving: boolean;
   onRemove: () => void;
@@ -167,7 +168,7 @@ export function EndpointModal({ open, onClose, instanceId, endpointId, defaultVa
     reset,
     setFocus,
     formState: { errors, isDirty },
-  } = useForm<EndpointFormData>({
+  } = useForm<z.input<typeof endpointSchema>, unknown, EndpointFormData>({
     resolver: zodResolver(endpointSchema),
     defaultValues: { ipAddresses: [], ...defaultValues },
   });

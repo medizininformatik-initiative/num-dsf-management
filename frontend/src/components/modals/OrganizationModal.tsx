@@ -7,6 +7,7 @@
 import { useEffect, useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { z } from 'zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
 import { FormField, fieldHintClass, inputClass, ModalFooter } from './FormField';
@@ -36,7 +37,7 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
     reset,
     watch,
     formState: { errors, isDirty },
-  } = useForm<OrganizationFormData>({
+  } = useForm<z.input<typeof organizationSchema>, unknown, OrganizationFormData>({
     resolver: zodResolver(organizationSchema),
     defaultValues: { active: true, ...defaultValues },
   });

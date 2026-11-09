@@ -9,6 +9,7 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { z } from 'zod';
 import {
   backupSettingsSchema,
   type BackupSettingsFormData,
@@ -34,7 +35,7 @@ export function BackupSettingsForm({ settings, saving, onSave }: BackupSettingsF
     reset,
     watch,
     formState: { errors, isDirty },
-  } = useForm<BackupSettingsFormData>({
+  } = useForm<z.input<typeof backupSettingsSchema>, unknown, BackupSettingsFormData>({
     resolver: zodResolver(backupSettingsSchema),
     defaultValues: toValues(settings),
   });
