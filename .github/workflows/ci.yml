@@ -27,17 +27,11 @@ jobs:
           # Excluded advisories are all in BUILD-TIME dev tooling (vitest/vite/esbuild),
           # never shipped in the production bundle and not reachable at app runtime:
           #  - GHSA-5xrq-8626-4rwp: vitest --ui server, which CI never starts (vitest run only).
-          #  - GHSA-fx2h-pf6j-xcff: vite dev-server `server.fs.deny` bypass, only reachable
-          #    when the dev server is bound to the network via --host. Production serves the
-          #    static `vite build` output through nginx and never starts the dev server. The
-          #    only fix is vite 5 -> 8 (semver-major, cascading vitest 1 -> 4); Dependabot owns it.
-          #  - GHSA-587h-7wmj-h5pm: launch-editor existence check in the vite dev server's
-          #    open-in-editor middleware; dev server only, fix is vite 5 -> 8 (see above).
           #  - GHSA-5gmw-xhrv-c9v3, GHSA-85c8-ppgw-ccpr: tinypool prototype-pollution gadgets in
           #    its worker pool. tinypool is vitest's test-runner pool and only ever runs this
           #    repository's own test files; it is not part of the build output. The fix
           #    (tinypool 2.1.2) needs vitest 1 -> 4 (semver-major); Dependabot owns it.
-          npx better-npm-audit audit --level high -x GHSA-5xrq-8626-4rwp,GHSA-fx2h-pf6j-xcff,GHSA-5gmw-xhrv-c9v3,GHSA-85c8-ppgw-ccpr,GHSA-587h-7wmj-h5pm
+          npx better-npm-audit audit --level high -x GHSA-5xrq-8626-4rwp,GHSA-5gmw-xhrv-c9v3,GHSA-85c8-ppgw-ccpr
 
   backend-lint:
     name: Backend Lint
