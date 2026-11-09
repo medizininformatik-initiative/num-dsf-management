@@ -24,13 +24,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
-          # Excluded advisories are all in BUILD-TIME dev tooling (vitest/vite/esbuild),
-          # never shipped in the production bundle and not reachable at app runtime:
-          #  - GHSA-5gmw-xhrv-c9v3, GHSA-85c8-ppgw-ccpr: tinypool prototype-pollution gadgets in
-          #    its worker pool. tinypool is vitest's test-runner pool and only ever runs this
-          #    repository's own test files; it is not part of the build output. The fix
-          #    (tinypool 2.1.2) needs vitest 1 -> 4 (semver-major); Dependabot owns it.
-          npx better-npm-audit audit --level high -x GHSA-5gmw-xhrv-c9v3,GHSA-85c8-ppgw-ccpr
+          npx better-npm-audit audit --level high
 
   backend-lint:
     name: Backend Lint
