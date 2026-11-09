@@ -7,8 +7,9 @@
  * step-up dialog with the TOTP code in OTP sessions).
  * Dependencies: caWhitelist.api, caBlacklist.api (KnownCaRow), useAdmin keys,
  * useConfirm, lib/certStatus, lib/dateUtils, lib/fingerprint, lib/authMode,
- * lib/getErrorMessage, StatusPill, Icon, CaFingerprint, CaWhitelistAddForm,
- * StepUpConfirmDialog, caDn, i18n store, sonner, TanStack Query.
+ * lib/getErrorMessage, StatusPill, Icon, Skeleton, CaFingerprint,
+ * CaWhitelistAddForm, StepUpConfirmDialog, caDn, i18n store, sonner,
+ * TanStack Query.
  */
 import { useState, type CSSProperties } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -30,6 +31,7 @@ import { needsTotpStepUp } from '../../lib/authMode';
 import { getErrorMessageForStepUp } from '../../lib/getErrorMessage';
 import { StatusPill } from '../ui/StatusPill';
 import { Icon } from '../ui/Icon';
+import { Skeleton } from '../ui/Skeleton';
 import { CaFingerprint } from './CaFingerprint';
 import { CaWhitelistAddForm } from './CaWhitelistAddForm';
 import { StepUpConfirmDialog } from './StepUpConfirmDialog';
@@ -142,34 +144,42 @@ export function CaWhitelistPanel({
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-[color:var(--text-muted)]">{t('caWhitelistIntro')}</p>
+      <p className="text-sm text-[color:var(--text-secondary)]">{t('caWhitelistIntro')}</p>
 
       {data && <EnforcementBanner enforced={enforced} />}
 
       <CaWhitelistAddForm knownCas={knownCas} />
 
       {isError ? (
-        <p role="alert" className="text-sm text-danger-fg">
+        <p
+          role="alert"
+          className="flex items-start gap-3 rounded-card border border-danger-border bg-danger-surface p-4 text-sm text-danger-fg"
+        >
+          <Icon name="error" size={20} className="shrink-0" />
           {t('caWhitelistLoadFailed')}
         </p>
       ) : isLoading ? (
-        <p className="text-sm text-[color:var(--text-muted)]">{t('loading')}</p>
+        <div className="surface-card p-5">
+          <Skeleton lines={3} />
+        </div>
       ) : all.length === 0 ? (
-        <p className="text-sm italic text-[color:var(--text-muted)]">{t('caWhitelistEmpty')}</p>
+        <p className="surface-card p-5 text-sm text-[color:var(--text-muted)]">
+          {t('caWhitelistEmpty')}
+        </p>
       ) : (
         <>
-          <p aria-live="polite" className="text-xs font-medium text-[color:var(--text-muted)]">
+          <p aria-live="polite" className="text-xs text-[color:var(--text-muted)]">
             {t('caResultCount', { shown: visible.length, total: all.length })}
           </p>
           {groups.map((group) => (
             <section key={group.kind} aria-labelledby={`ca-group-${group.kind}`}>
               <h2
                 id={`ca-group-${group.kind}`}
-                className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-primary)]"
+                className="flex items-center gap-2 text-base font-semibold text-[color:var(--text-primary)]"
               >
-                <Icon name={group.kind === 'CLIENT' ? 'badge' : 'dns'} size={18} />
+                <Icon name={group.kind === 'CLIENT' ? 'badge' : 'dns'} size={20} />
                 {group.kind === 'CLIENT' ? t('caKindClient') : t('caKindServer')}
-                <span className="text-xs font-medium tabular-nums text-[color:var(--text-muted)]">
+                <span className="text-2xs font-medium tabular-nums text-[color:var(--text-muted)]">
                   {group.rows.length}
                 </span>
               </h2>
@@ -179,7 +189,7 @@ export function CaWhitelistPanel({
               {group.rows.length === 0 ? (
                 <p className="text-sm italic text-[color:var(--text-muted)]">{t('caNoMatches')}</p>
               ) : (
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                   {group.rows.map((row, i) => (
                     <WhitelistItem
                       key={row.id}
@@ -226,7 +236,7 @@ function EnforcementBanner({ enforced }: { enforced: boolean }) {
           : 'border-warning-border bg-warning-surface text-warning-fg'
       }`}
     >
-      <Icon name={enforced ? 'verified_user' : 'gpp_maybe'} size={22} className="shrink-0" />
+      <Icon name={enforced ? 'verified_user' : 'gpp_maybe'} size={20} className="shrink-0" />
       <p>
         <strong className="font-semibold">
           {enforced ? t('caWhitelistEnforced') : t('caWhitelistNotEnforced')}:
@@ -286,7 +296,7 @@ function WhitelistItem({
     <li
       data-testid="ca-whitelist-row"
       style={{ '--stagger-index': index } as CSSProperties}
-      className="animate-list-item-in rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4"
+      className="animate-list-item-in surface-card p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -307,7 +317,7 @@ function WhitelistItem({
             disabled={removeDisabled}
             aria-label={t('caRemoveFromWhitelistAria', { name })}
             title={t('caRemoveFromWhitelistAria', { name })}
-            className="press-effect rounded-control p-1.5 text-[color:var(--text-muted)] hover:bg-danger-surface hover:text-danger-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50"
+            className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-danger-surface hover:text-danger-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50"
           >
             <Icon name="delete" size={18} />
           </button>

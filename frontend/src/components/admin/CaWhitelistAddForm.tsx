@@ -92,14 +92,14 @@ export function CaWhitelistAddForm({ knownCas }: { knownCas: KnownCaRow[] }) {
   const showFingerprintError = fingerprintTouched && !fingerprintValid;
 
   return (
-    <section className="rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)]">
+    <section className="surface-card">
       <h2>
         <button
           type="button"
           aria-expanded={open}
           aria-controls={formId}
           onClick={() => setOpen((v) => !v)}
-          className="press-effect flex w-full items-center gap-2 rounded-card px-4 py-3 text-left text-sm font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+          className={`press-effect flex w-full items-center gap-2 px-5 py-3 text-left text-base font-semibold text-[color:var(--text-primary)] hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${open ? 'rounded-t-card' : 'rounded-card'}`}
           data-testid="ca-whitelist-add-toggle"
         >
           <Icon name="add_circle" size={20} className="text-primary dark:text-brand-400" />
@@ -114,7 +114,7 @@ export function CaWhitelistAddForm({ knownCas }: { knownCas: KnownCaRow[] }) {
       <form
         id={formId}
         hidden={!open}
-        className="animate-fade-in space-y-4 border-t border-[color:var(--border)] p-4"
+        className="animate-fade-in space-y-4 border-t border-[color:var(--border)] p-5"
         onSubmit={(e) => {
           e.preventDefault();
           if (canSubmit) addMut.mutate();
@@ -202,7 +202,7 @@ export function CaWhitelistAddForm({ knownCas }: { knownCas: KnownCaRow[] }) {
 
         {conflict && (
           <p role="alert" className="flex items-center gap-1.5 text-sm text-danger-fg">
-            <Icon name="error" size={18} />
+            <Icon name="error" size={16} className="shrink-0" />
             {t('caWhitelistConflict')}
           </p>
         )}
@@ -219,7 +219,7 @@ export function CaWhitelistAddForm({ knownCas }: { knownCas: KnownCaRow[] }) {
             <span />
           )}
           <Button type="submit" disabled={!canSubmit} data-testid="ca-whitelist-add-btn">
-            <Icon name="add" size={18} />
+            <Icon name="add" size={16} />
             {addMut.isPending ? t('caAdding') : t('caWhitelistAddBtn')}
           </Button>
         </div>

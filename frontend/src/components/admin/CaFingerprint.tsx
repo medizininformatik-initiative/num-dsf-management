@@ -35,7 +35,7 @@ export function CaFingerprint({ value }: { value: string }) {
 
   return (
     <div className="flex min-w-0 items-start gap-2">
-      <span className="mt-px shrink-0 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+      <span className="mt-0.5 shrink-0 text-2xs font-semibold text-[color:var(--text-secondary)]">
         {t('caFingerprintLabel')}
       </span>
       <code className="flex min-w-0 flex-wrap gap-x-1.5 font-mono text-xs leading-5 text-[color:var(--text-secondary)]">
@@ -48,7 +48,7 @@ export function CaFingerprint({ value }: { value: string }) {
         onClick={copy}
         aria-label={t('caCopyFingerprint')}
         title={t('caCopyFingerprint')}
-        className="press-effect -my-1 shrink-0 rounded-control p-1 text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+        className="press-effect -my-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-[color:var(--bg-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
         <Icon
           name={copied ? 'check' : 'content_copy'}

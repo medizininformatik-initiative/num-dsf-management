@@ -140,7 +140,7 @@ function CaTabs({
       role="tablist"
       aria-label={t('caTabsAria')}
       onKeyDown={onKeyDown}
-      className="inline-flex rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-1"
+      className="inline-flex rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-0.5"
     >
       {TABS.map((id) => {
         const selected = id === tab;
@@ -157,16 +157,16 @@ function CaTabs({
             aria-controls={`ca-panel-${id}`}
             tabIndex={selected ? 0 : -1}
             onClick={() => onSelect(id)}
-            className={`press-effect inline-flex items-center gap-2 rounded-small px-3.5 py-1.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] ${
+            className={`press-effect inline-flex items-center gap-1.5 rounded-small px-3 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] ${
               selected
                 ? 'bg-[color:var(--bg-card)] text-[color:var(--text-primary)] shadow-card-elevated'
                 : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
             }`}
           >
-            <Icon name={id === 'whitelist' ? 'verified' : 'block'} size={18} />
+            <Icon name={id === 'whitelist' ? 'verified' : 'block'} size={16} />
             {id === 'whitelist' ? t('caWhitelistTitle') : t('caBlacklistTitle')}
             {counts[id] !== undefined && (
-              <span className="min-w-[1.25rem] rounded-full bg-[color:var(--bg-page)] px-1.5 text-center text-[11px] font-semibold tabular-nums text-[color:var(--text-secondary)]">
+              <span className="min-w-[1.25rem] rounded-full bg-[color:var(--bg-page)] px-1.5 text-center text-2xs font-semibold tabular-nums text-[color:var(--text-secondary)]">
                 {counts[id]}
               </span>
             )}
@@ -199,8 +199,8 @@ function WhitelistFilters({
       <div className="relative min-w-[12rem] flex-1">
         <Icon
           name="search"
-          size={18}
-          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)]"
+          size={16}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)]"
         />
         <input
           type="search"
@@ -215,7 +215,7 @@ function WhitelistFilters({
       <div
         role="group"
         aria-label={t('caKindFilterAria')}
-        className="inline-flex rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-1"
+        className="inline-flex rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] p-0.5"
       >
         {KIND_FILTERS.map((k) => (
           <button
@@ -223,7 +223,7 @@ function WhitelistFilters({
             type="button"
             aria-pressed={kind === k}
             onClick={() => onKindChange(k)}
-            className={`press-effect rounded-small px-3 py-1.5 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] ${
+            className={`press-effect rounded-small px-3 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus-ring)] ${
               kind === k
                 ? 'bg-[color:var(--bg-card)] text-[color:var(--text-primary)] shadow-card-elevated'
                 : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'

@@ -7,7 +7,7 @@
  * (409 CA_WHITELISTED); that refusal is explained inline with a shortcut to
  * the entry in the whitelist.
  * Dependencies: caBlacklist.api, useAdmin keys, useConfirm, lib/authMode,
- * lib/dateUtils, lib/getErrorMessage, Button, Icon, CaFingerprint,
+ * lib/dateUtils, lib/getErrorMessage, Button, Icon, Skeleton, CaFingerprint,
  * StepUpConfirmDialog, TotpCodeField, fieldClasses, caDn, i18n store, sonner,
  * TanStack Query.
  */
@@ -23,6 +23,7 @@ import { formatDate } from '../../lib/dateUtils';
 import { getErrorCode, getErrorMessageForStepUp } from '../../lib/getErrorMessage';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
+import { Skeleton } from '../ui/Skeleton';
 import { CaFingerprint } from './CaFingerprint';
 import { StepUpConfirmDialog } from './StepUpConfirmDialog';
 import { TotpCodeField } from './TotpCodeField';
@@ -123,10 +124,10 @@ export function CaBlacklistPanel({
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-[color:var(--text-muted)]">{t('caBlacklistIntro')}</p>
+      <p className="text-sm text-[color:var(--text-secondary)]">{t('caBlacklistIntro')}</p>
 
-      <section className="rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[color:var(--text-primary)]">
+      <section className="surface-card p-5">
+        <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-[color:var(--text-primary)]">
           <Icon name="block" size={20} className="text-danger-fg" />
           {t('caBlacklistAdd')}
         </h2>
@@ -205,7 +206,7 @@ export function CaBlacklistPanel({
               <span />
             )}
             <Button type="submit" disabled={!canSubmit} data-testid="ca-blacklist-add-btn">
-              <Icon name="add" size={18} />
+              <Icon name="add" size={16} />
               {addMut.isPending ? t('caAdding') : t('caBlacklistAddBtn')}
             </Button>
           </div>
@@ -215,28 +216,34 @@ export function CaBlacklistPanel({
       <section aria-labelledby={`${formId}-entries`}>
         <h2
           id={`${formId}-entries`}
-          className="mb-3 flex items-center gap-2 text-sm font-semibold text-[color:var(--text-primary)]"
+          className="mb-3 flex items-center gap-2 text-base font-semibold text-[color:var(--text-primary)]"
         >
           {t('caBlacklistEntries')}
           {!isLoading && (
-            <span className="text-xs font-medium tabular-nums text-[color:var(--text-muted)]">
+            <span className="text-2xs font-medium tabular-nums text-[color:var(--text-muted)]">
               {blacklist.length}
             </span>
           )}
         </h2>
         {isError ? (
-          <p role="alert" className="text-sm text-danger-fg">
+          <p
+            role="alert"
+            className="flex items-start gap-3 rounded-card border border-danger-border bg-danger-surface p-4 text-sm text-danger-fg"
+          >
+            <Icon name="error" size={20} className="shrink-0" />
             {t('caBlacklistLoadFailed')}
           </p>
         ) : isLoading ? (
-          <p className="text-sm text-[color:var(--text-muted)]">{t('loading')}</p>
+          <div className="surface-card p-5">
+            <Skeleton lines={3} />
+          </div>
         ) : blacklist.length === 0 ? (
-          <p className="flex items-center gap-2 rounded-card border border-dashed border-[color:var(--border)] p-4 text-sm text-[color:var(--text-muted)]">
-            <Icon name="check_circle" size={20} className="text-success-fg" />
+          <p className="surface-card flex items-center gap-2 p-5 text-sm text-[color:var(--text-muted)]">
+            <Icon name="check_circle" size={16} className="shrink-0 text-success-fg" />
             {t('caBlacklistEmpty')}
           </p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {blacklist.map((row, i) => (
               <BlacklistItem
                 key={row.id}
@@ -283,7 +290,7 @@ function BlacklistItem({
   return (
     <li
       style={{ '--stagger-index': index } as CSSProperties}
-      className="animate-list-item-in rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4"
+      className="animate-list-item-in surface-card p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -300,7 +307,7 @@ function BlacklistItem({
           disabled={removeDisabled}
           aria-label={t('caRemoveFromBlacklistAria', { name })}
           title={t('caRemoveFromBlacklistAria', { name })}
-          className="press-effect shrink-0 rounded-control p-1.5 text-[color:var(--text-muted)] hover:bg-danger-surface hover:text-danger-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50"
+          className="press-effect inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-[color:var(--text-muted)] hover:bg-danger-surface hover:text-danger-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50"
         >
           <Icon name="delete" size={18} />
         </button>
