@@ -142,7 +142,7 @@ describe('CertificatesCard', () => {
 
   it('opens the certificate-add modal when Add is clicked', async () => {
     renderWithProviders(<CertificatesCard instanceId="i1" />);
-    await userEvent.click(screen.getByText('+ Add'));
+    await userEvent.click(screen.getByText('Add'));
     expect(useModals.getState().open).toBe('certificate-add');
   });
 });

@@ -65,7 +65,7 @@ describe('EndpointsCard', () => {
 
   it('opens the endpoint-add modal when Add is clicked', async () => {
     renderWithProviders(<EndpointsCard instanceId="i1" />);
-    await userEvent.click(screen.getByText('+ Add'));
+    await userEvent.click(screen.getByText('Add'));
     expect(useModals.getState().open).toBe('endpoint-add');
   });
 

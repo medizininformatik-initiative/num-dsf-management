@@ -1,6 +1,6 @@
-/* entity-card.css – EntityCard chrome: a quiet surface with one hairline
-   border (set in the component). The accent colour is carried only as a CSS
-   variable for the FK highlight ring; there is no stripe or icon tile. */
+/* entity-card.css – EntityCard chrome: the solid card surface
+   (.surface-card, set in the component). The chrome is neutral: no stripe or
+   icon tile; the accent colour only travels as the --card-accent variable. */
 .entity-card {
   position: relative;
 }

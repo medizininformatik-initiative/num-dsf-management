@@ -154,7 +154,7 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
         worst && (
           <Icon
             name={HEADER_ICON[worst]}
-            size={18}
+            size={20}
             label={overallLabel}
             title={overallLabel}
             className={TONE_TEXT[CERT_STATE_TONE[worst]]}
@@ -267,7 +267,7 @@ function CertificateItem({
   return (
     <li
       data-entity-row={`certificates:${cert.id}`}
-      className="hover-lift animate-list-item-in rounded-control bg-[color:var(--bg-hover)] p-3.5"
+      className="animate-list-item-in rounded-control bg-[color:var(--bg-hover)] p-3"
       style={{ '--stagger-index': index } as CSSProperties}
     >
       <div className="flex items-start justify-between gap-2">
@@ -275,7 +275,7 @@ function CertificateItem({
           <p className="mono-id break-all text-xs font-semibold text-[color:var(--text-primary)]">
             {name}
           </p>
-          <p className="mt-0.5 text-[11px] text-[color:var(--text-muted)]">
+          <p className="mt-0.5 text-xs text-[color:var(--text-muted)]">
             {t('certCardValidUntil', { date: formatDate(cert.valid_until, lang) })}
           </p>
         </div>
@@ -305,7 +305,7 @@ function CertificateItem({
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span className={`text-[11px] font-bold ${TONE_TEXT[tone]}`}>
+          <span className={`text-2xs font-semibold ${TONE_TEXT[tone]}`}>
             {state === 'expired'
               ? t('certCardExpiredDaysAgo', { n: -days })
               : t('certDaysLeft', { n: days })}
@@ -333,9 +333,9 @@ function CertificateItem({
           size="sm"
           aria-label={t('certCardRemoveAria', { name })}
           onClick={onRemove}
-          className="text-danger-fg hover:!bg-danger-surface hover:!text-danger-fg"
+          className="hover:!bg-danger-surface hover:!text-danger-fg"
         >
-          <Icon name="delete" size={16} />
+          <Icon name="delete" size={14} />
           {t('certRemoveBtn')}
         </Button>
       </div>
@@ -361,10 +361,10 @@ function CertificateFingerprints({ cert }: { cert: CertRow }) {
         }}
       />
       <details className="group/more mt-2">
-        <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-control text-[11px] font-semibold text-[color:var(--text-secondary)] transition-colors duration-short ease-standard hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
+        <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-control text-xs font-semibold text-[color:var(--text-secondary)] transition-colors duration-short ease-standard hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
           <Icon
             name="chevron_right"
-            size={16}
+            size={14}
             className="transition-transform duration-short ease-spring group-open/more:rotate-90"
           />
           {t('certCardMoreFingerprints')}
@@ -401,9 +401,7 @@ function CertificateIssuer({ issuerDn, trusted }: { issuerDn: string; trusted: b
     const issuer = commonName(issuerDn);
     return (
       <div className="mt-3 flex items-center gap-2">
-        <span className="text-[11px] text-[color:var(--text-muted)]">
-          {t('certCardIssuerLabel')}
-        </span>
+        <span className="text-2xs text-[color:var(--text-muted)]">{t('certCardIssuerLabel')}</span>
         <span
           className="group/issuer relative inline-flex"
           onMouseLeave={() => setDismissed(false)}
@@ -431,7 +429,7 @@ function CertificateIssuer({ issuerDn, trusted }: { issuerDn: string; trusted: b
               dismissed ? '!invisible !opacity-0' : ''
             }`}
           >
-            <span className="glass-thin block w-max max-w-[16rem] rounded-control px-2 py-1 text-[11px] text-[color:var(--text-primary)]">
+            <span className="glass-thin block w-max max-w-[16rem] rounded-control px-2 py-1 text-xs text-[color:var(--text-primary)]">
               {issuer}
             </span>
           </span>
@@ -443,20 +441,16 @@ function CertificateIssuer({ issuerDn, trusted }: { issuerDn: string; trusted: b
   return (
     <div className="mt-3">
       <div className="flex items-center gap-2">
-        <span className="text-[11px] text-[color:var(--text-muted)]">
-          {t('certCardIssuerLabel')}
-        </span>
+        <span className="text-2xs text-[color:var(--text-muted)]">{t('certCardIssuerLabel')}</span>
         <StatusPill tone="warning" icon="gpp_maybe">
           {t('certCardIssuerUntrusted')}
         </StatusPill>
       </div>
-      <p className="mt-1 text-[11px] leading-4 text-[color:var(--text-secondary)]">
+      <p className="mt-1 text-xs text-[color:var(--text-secondary)]">
         {t('certCardIssuerUntrustedHint')}
       </p>
       {issuerDn && (
-        <p className="mono-id mt-1 break-all text-[11px] leading-4 text-[color:var(--text-muted)]">
-          {issuerDn}
-        </p>
+        <p className="mono-id mt-1 break-all text-2xs text-[color:var(--text-muted)]">{issuerDn}</p>
       )}
     </div>
   );

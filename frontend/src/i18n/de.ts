@@ -79,7 +79,7 @@ export const de: Record<TranslationKey, string> = {
   loading: 'Laden…',
   edit: 'Bearbeiten',
   delete: 'Löschen',
-  add: '+ Hinzufügen',
+  add: 'Hinzufügen',
   submit: 'Einreichen',
   cancel: 'Abbrechen',
   approve: 'Genehmigen',

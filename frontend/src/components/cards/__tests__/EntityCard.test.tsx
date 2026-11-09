@@ -41,7 +41,7 @@ describe('EntityCard', () => {
         <span />
       </EntityCard>,
     );
-    await userEvent.click(screen.getByRole('button', { name: '+ Add Contacts' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add Contacts' }));
     expect(onAdd).toHaveBeenCalledTimes(1);
   });
 
@@ -52,7 +52,7 @@ describe('EntityCard', () => {
       </EntityCard>,
       { lang: 'de' },
     );
-    expect(screen.getByRole('button', { name: '+ Hinzufügen Kontakte' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hinzufügen Kontakte' })).toBeInTheDocument();
   });
 
   it('uses a custom add label and still names the card', () => {

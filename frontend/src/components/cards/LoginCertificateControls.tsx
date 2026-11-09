@@ -63,11 +63,11 @@ export function LoginSwitch({
           }`}
         />
       </button>
-      <span aria-hidden="true" className="text-[11px] text-[color:var(--text-secondary)]">
+      <span aria-hidden="true" className="text-xs text-[color:var(--text-secondary)]">
         {t('loginCertSwitchLabel')}
       </span>
       {blocked && (
-        <p id={hintId} className="basis-full text-[11px] text-[color:var(--text-secondary)]">
+        <p id={hintId} className="basis-full text-xs text-[color:var(--text-secondary)]">
           {t('loginCertNotClinicHint')}
         </p>
       )}
@@ -98,7 +98,7 @@ export function LoginFingerprintEntries({
       {entries.map((entry, index) => (
         <li
           key={entry.fingerprint}
-          className="hover-lift animate-list-item-in rounded-control bg-[color:var(--bg-hover)] p-3.5"
+          className="animate-list-item-in rounded-control bg-[color:var(--bg-hover)] p-3"
           style={{ '--stagger-index': index } as CSSProperties}
         >
           <div className="flex items-start justify-between gap-2">
@@ -106,7 +106,7 @@ export function LoginFingerprintEntries({
               <p className="text-xs font-semibold text-[color:var(--text-primary)]">
                 {t('loginFingerprintTitle')}
               </p>
-              <p className="mt-0.5 text-[11px] text-[color:var(--text-muted)]">
+              <p className="mt-0.5 text-xs text-[color:var(--text-muted)]">
                 {t(SOURCE_LABEL[entry.source])} · {formatDate(entry.createdAt, lang)}
               </p>
             </div>
@@ -128,9 +128,9 @@ export function LoginFingerprintEntries({
                   prefix: entry.fingerprint.slice(0, 12),
                 })}
                 onClick={() => onRemove(entry)}
-                className="text-danger-fg hover:!bg-danger-surface hover:!text-danger-fg"
+                className="hover:!bg-danger-surface hover:!text-danger-fg"
               >
-                <Icon name="delete" size={16} />
+                <Icon name="delete" size={14} />
                 {t('loginFingerprintRemove')}
               </Button>
             </div>

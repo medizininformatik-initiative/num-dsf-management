@@ -117,7 +117,7 @@ export function ContactsCard({ instanceId }: { instanceId: string }) {
                 key={c.id}
                 data-entity-row={`contacts:${c.id}`}
                 onClick={(e) => handleRowClick(e, c)}
-                className="hover-lift animate-list-item-in flex cursor-pointer items-start gap-3 rounded-control bg-[color:var(--bg-hover)] p-3.5"
+                className="hover-lift animate-list-item-in flex cursor-pointer items-start gap-3 rounded-control bg-[color:var(--bg-hover)] p-3"
                 style={{ '--stagger-index': index } as CSSProperties}
               >
                 <span
@@ -127,7 +127,7 @@ export function ContactsCard({ instanceId }: { instanceId: string }) {
                   {name[0]?.toUpperCase()}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[color:var(--text-primary)]">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-[color:var(--text-primary)]">
                     <span className="truncate">{name}</span>
                     {!details.detailed && !c.email_validated && (
                       // The simplified view hides the pills but never the problem.
@@ -168,7 +168,7 @@ export function ContactsCard({ instanceId }: { instanceId: string }) {
                       onClick={() => void resendVerification(c)}
                       className="-ml-2 mt-1 text-[color:var(--primary)]"
                     >
-                      <Icon name="forward_to_inbox" size={16} />
+                      <Icon name="forward_to_inbox" size={14} />
                       {t('contactResendVerification')}
                     </Button>
                   </Details>
@@ -181,16 +181,16 @@ export function ContactsCard({ instanceId }: { instanceId: string }) {
                     onClick={() => openEditor(c.id)}
                     className="h-8 w-8 !px-0"
                   >
-                    <Icon name="edit" size={16} />
+                    <Icon name="edit" size={18} />
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     aria-label={t('contactCardDeleteAria', { name })}
                     onClick={() => requestDelete(c)}
-                    className="h-8 w-8 !px-0 text-danger-fg hover:!bg-danger-surface hover:!text-danger-fg"
+                    className="h-8 w-8 !px-0 hover:!bg-danger-surface hover:!text-danger-fg"
                   >
-                    <Icon name="delete" size={16} />
+                    <Icon name="delete" size={18} />
                   </Button>
                 </div>
               </li>

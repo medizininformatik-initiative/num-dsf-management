@@ -80,11 +80,11 @@ export function MembershipsCard({ instanceId }: { instanceId: string }) {
               <li
                 key={ms.id}
                 data-entity-row={`memberships:${ms.id}`}
-                className="hover-lift animate-list-item-in flex items-start gap-2 rounded-control bg-[color:var(--bg-hover)] p-3.5"
+                className="animate-list-item-in flex items-start gap-2 rounded-control bg-[color:var(--bg-hover)] p-3"
                 style={{ '--stagger-index': index } as CSSProperties}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-[color:var(--text-primary)]">
+                  <p className="truncate text-sm font-semibold text-[color:var(--text-primary)]">
                     {parent}
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1">
@@ -113,16 +113,16 @@ export function MembershipsCard({ instanceId }: { instanceId: string }) {
                     onClick={() => useModals.getState().openModal('membership-edit', ms.id)}
                     className="h-8 w-8 !px-0"
                   >
-                    <Icon name="edit" size={16} />
+                    <Icon name="edit" size={18} />
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     aria-label={t('membershipCardDeleteAria', { parent })}
                     onClick={() => requestDelete(ms)}
-                    className="h-8 w-8 !px-0 text-danger-fg hover:!bg-danger-surface hover:!text-danger-fg"
+                    className="h-8 w-8 !px-0 hover:!bg-danger-surface hover:!text-danger-fg"
                   >
-                    <Icon name="delete" size={16} />
+                    <Icon name="delete" size={18} />
                   </Button>
                 </div>
               </li>

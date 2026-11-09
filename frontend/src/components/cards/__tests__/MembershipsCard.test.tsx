@@ -60,7 +60,7 @@ describe('MembershipsCard', () => {
 
   it('opens the membership-add modal when Add is clicked', async () => {
     renderWithProviders(<MembershipsCard instanceId="i1" />);
-    await userEvent.click(screen.getByText('+ Add'));
+    await userEvent.click(screen.getByText('Add'));
     expect(useModals.getState().open).toBe('membership-add');
   });
 

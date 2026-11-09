@@ -30,7 +30,7 @@ interface EndpointRow {
   ipAddresses?: EndpointIpRow[];
 }
 
-const CHIP = 'mono-id rounded-small border px-2 py-0.5 text-[11px]';
+const CHIP = 'mono-id rounded-small border px-2 py-0.5 text-2xs';
 
 export function IpDiffBadge({ instanceId, compact = false }: Props) {
   const { t } = useI18n();
@@ -85,10 +85,10 @@ export function IpDiffBadge({ instanceId, compact = false }: Props) {
   }
 
   return (
-    <div className="mt-2 animate-fade-in rounded-control border border-[color:var(--border)] bg-[color:var(--bg-hover)] px-3.5 py-2.5">
+    <div className="mt-2 animate-fade-in rounded-control bg-[color:var(--bg-hover)] p-3">
       <div className="mb-2 flex items-center gap-1.5">
-        <Icon name="difference" size={16} className="text-warning-fg" />
-        <span className="text-[11px] font-bold text-[color:var(--text-secondary)]">
+        <Icon name="difference" size={14} className="text-warning-fg" />
+        <span className="text-xs font-semibold text-[color:var(--text-secondary)]">
           {t('ipDiffTitle')}
         </span>
       </div>

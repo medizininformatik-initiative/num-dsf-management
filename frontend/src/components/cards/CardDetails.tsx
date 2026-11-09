@@ -25,7 +25,7 @@ export function DetailsToggle({ details }: { details: CardDetails }) {
     >
       <Icon
         name="chevron_right"
-        size={16}
+        size={14}
         className={`transition-transform duration-short ease-spring ${
           details.expanded ? 'rotate-90' : ''
         }`}

@@ -1,7 +1,8 @@
 /**
- * EntityCard.tsx – the shared card of the entity canvas: a glass section with
- * a hairline border, an icon + title header, an optional header slot and an add
- * Button named after the card ("+ Add Contacts"). `status` swaps the body for
+ * EntityCard.tsx – the shared card of the entity canvas: a solid card surface
+ * (surface-card), an icon + title header, an optional header slot and an add
+ * Button named after the card ("+ Add Contacts"); on a narrow card the buttons
+ * wrap below the title instead of truncating it. `status` swaps the body for
  * a skeleton while loading or an error with a retry Button, so a failed
  * request never looks like "no data yet". The section (`card-<id>`) is the FK
  * jump target: tabIndex -1 lets FkLink move focus to it, and the canvas draws
@@ -58,10 +59,10 @@ export function EntityCard({
       aria-labelledby={titleId}
       aria-busy={status === 'loading' || undefined}
       tabIndex={-1}
-      className="entity-card flex flex-col rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
+      className="entity-card surface-card flex flex-col p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       style={{ '--card-accent': borderColor } as CSSProperties}
     >
-      <div className="mb-5 flex items-start justify-between gap-3">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="entity-card-icon inline-flex shrink-0 items-center justify-center text-[color:var(--text-muted)]">
             <Icon name={icon} size={20} />
@@ -74,7 +75,7 @@ export function EntityCard({
           </h3>
           {badge}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {headerRight}
           {onAdd && (
             <Button
@@ -83,6 +84,7 @@ export function EntityCard({
               onClick={onAdd}
               aria-labelledby={`${addLabelId} ${titleId}`}
             >
+              {!addLabel && <Icon name="add" size={14} />}
               <span id={addLabelId}>{addLabel ?? t('add')}</span>
             </Button>
           )}
@@ -96,14 +98,14 @@ export function EntityCard({
       {status === 'error' && (
         <div className="flex min-h-[7.5rem] flex-col items-center justify-center gap-2.5 px-4 py-3 text-center">
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-danger-surface text-danger-fg">
-            <Icon name="cloud_off" size={22} />
+            <Icon name="cloud_off" size={20} />
           </span>
-          <p role="alert" className="text-[13px] font-medium text-[color:var(--text-secondary)]">
+          <p role="alert" className="text-sm font-medium text-[color:var(--text-secondary)]">
             {t('cardLoadError')}
           </p>
           {onRetry && (
             <Button variant="secondary" size="sm" onClick={onRetry}>
-              <Icon name="refresh" size={16} />
+              <Icon name="refresh" size={14} />
               {t('cardRetry')}
             </Button>
           )}

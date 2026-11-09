@@ -60,7 +60,7 @@ function IpFlag({ kind, labelled = true }: { kind: IpFlagKind; labelled?: boolea
   return (
     <span
       title={t(flag.label)}
-      className={`inline-flex h-4 min-w-[1rem] items-center justify-center rounded-small border px-0.5 text-[11px] font-bold leading-none ${flag.className}`}
+      className={`inline-flex h-4 min-w-[1rem] items-center justify-center rounded-small border px-0.5 text-2xs font-semibold leading-none ${flag.className}`}
     >
       <span aria-hidden="true">{flag.letter}</span>
       {labelled && <span className="sr-only">{t(flag.label)}</span>}
@@ -133,7 +133,7 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
                   {list.map((ip) => (
                     <li
                       key={ip.id}
-                      className="inline-flex items-center gap-1 rounded-full bg-[color:var(--bg-card)] py-0.5 pl-2 pr-1 text-[11px] text-[color:var(--text-secondary)]"
+                      className="inline-flex items-center gap-1 rounded-full bg-[color:var(--bg-card)] py-0.5 pl-2 pr-1 text-2xs text-[color:var(--text-secondary)]"
                     >
                       <span className="mono-id">{ip.ip}</span>
                       {ip.isFhir && <IpFlag kind="fhir" />}
@@ -145,10 +145,10 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
               if (list.length <= 3) return chips;
               return (
                 <details className="group/ips mt-1.5">
-                  <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-control text-[11px] font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
+                  <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-control text-xs font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
                     <Icon
                       name="chevron_right"
-                      size={16}
+                      size={14}
                       className="transition-transform duration-short ease-spring group-open/ips:rotate-90"
                     />
                     {t('endpointCardIpsLabel')} ({list.length})
@@ -161,15 +161,15 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
               <li
                 key={ep.identifier}
                 data-entity-row={`endpoints:${ep.identifier}`}
-                className="hover-lift animate-list-item-in flex items-start gap-2 rounded-control bg-[color:var(--bg-hover)] p-3.5"
+                className="animate-list-item-in flex items-start gap-2 rounded-control bg-[color:var(--bg-hover)] p-3"
                 style={{ '--stagger-index': index } as CSSProperties}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-[color:var(--text-primary)]">
+                  <p className="truncate text-sm font-semibold text-[color:var(--text-primary)]">
                     {name}
                   </p>
                   {ep.name && (
-                    <p className="mono-id truncate text-[11px] text-[color:var(--text-muted)]">
+                    <p className="mono-id truncate text-xs text-[color:var(--text-muted)]">
                       {ep.identifier}
                     </p>
                   )}
@@ -191,16 +191,16 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
                     onClick={() => useModals.getState().openModal('endpoint-edit', ep.identifier)}
                     className="h-8 w-8 !px-0"
                   >
-                    <Icon name="edit" size={16} />
+                    <Icon name="edit" size={18} />
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     aria-label={t('endpointCardDeleteAria', { name })}
                     onClick={() => requestDelete(ep)}
-                    className="h-8 w-8 !px-0 text-danger-fg hover:!bg-danger-surface hover:!text-danger-fg"
+                    className="h-8 w-8 !px-0 hover:!bg-danger-surface hover:!text-danger-fg"
                   >
-                    <Icon name="delete" size={16} />
+                    <Icon name="delete" size={18} />
                   </Button>
                 </div>
               </li>
@@ -217,7 +217,7 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
         {/* Visual key only: every flag already carries its meaning for screen readers. */}
         <p
           aria-hidden="true"
-          className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[color:var(--text-muted)]"
+          className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-[color:var(--text-muted)]"
         >
           <span className="inline-flex items-center gap-1">
             <IpFlag kind="fhir" labelled={false} />

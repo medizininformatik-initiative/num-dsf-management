@@ -49,7 +49,7 @@ export function CertificateFingerprint({
   return (
     <div role="group" aria-labelledby={labelId} className={className}>
       <div className="flex items-center justify-between gap-2">
-        <span id={labelId} className="text-[11px] font-semibold text-[color:var(--text-secondary)]">
+        <span id={labelId} className="text-2xs font-semibold text-[color:var(--text-secondary)]">
           {label}
         </span>
         <CopyButton
@@ -59,13 +59,13 @@ export function CertificateFingerprint({
         />
       </div>
       {description && (
-        <p className="mt-0.5 text-[11px] leading-relaxed text-[color:var(--text-muted)]">
+        <p className="mt-0.5 text-xs leading-relaxed text-[color:var(--text-muted)]">
           {description}
         </p>
       )}
       <code
         data-testid="thumbprint-value"
-        className="mono-id mt-1 block select-all break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1.5 text-[11px] leading-5 text-[color:var(--text-primary)]"
+        className="mono-id mt-1 block select-all break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1.5 text-2xs leading-5 text-[color:var(--text-primary)]"
       >
         {normalizeFingerprint(hex)}
       </code>
@@ -73,7 +73,7 @@ export function CertificateFingerprint({
         <div className="mt-1.5 flex items-center gap-2">
           <code
             data-testid="thumbprint-command"
-            className="mono-id min-w-0 flex-1 select-all break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1.5 text-[11px] leading-5 text-[color:var(--text-primary)]"
+            className="mono-id min-w-0 flex-1 select-all break-all rounded-control border border-[color:var(--border)] bg-[color:var(--bg-card)] px-2 py-1.5 text-2xs leading-5 text-[color:var(--text-primary)]"
           >
             {command.text}
           </code>
@@ -130,7 +130,7 @@ function CopyButton({
     >
       <Icon
         name="content_copy"
-        size={16}
+        size={18}
         className={`absolute transition duration-short ease-spring ${
           copied ? 'scale-50 opacity-0' : 'scale-100 opacity-100'
         }`}

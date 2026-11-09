@@ -113,8 +113,8 @@ export function OrganizationCard({ instanceId }: Props) {
     return (
       <EntityCard {...card} onAdd={openOrganizationModal} addLabel={t('orgCardSetup')}>
         <div className="flex flex-col items-center gap-2 px-2 py-6 text-center text-xs">
-          <span className="entity-card-icon inline-flex h-10 w-10 items-center justify-center rounded-full text-[color:var(--card-accent)]">
-            <Icon name="domain_add" size={22} />
+          <span className="entity-card-icon inline-flex h-10 w-10 items-center justify-center text-[color:var(--text-muted)]">
+            <Icon name="domain_add" size={40} />
           </span>
           <p className="text-[color:var(--text-secondary)]">{t('emptyOrganizationHint')}</p>
           <p className="text-[color:var(--text-muted)]">{t('orgCardSetupHint')}</p>
@@ -156,7 +156,7 @@ export function OrganizationCard({ instanceId }: Props) {
         <div className="mb-3">
           <p
             id={sharedWithId}
-            className="mb-1.5 text-[11px] font-semibold text-[color:var(--text-muted)]"
+            className="mb-1.5 text-2xs font-semibold text-[color:var(--text-muted)]"
           >
             {t('orgCardSharedWith')}
           </p>
@@ -165,7 +165,7 @@ export function OrganizationCard({ instanceId }: Props) {
               <li
                 key={c.id}
                 title={c.name || c.email}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-50 text-[11px] font-semibold text-brand-700 dark:bg-brand-900/40 dark:text-brand-100"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-neutral-border bg-neutral-surface text-2xs font-semibold text-neutral-fg"
               >
                 <span aria-hidden="true">{(c.name || c.email)?.[0]?.toUpperCase()}</span>
                 <span className="sr-only">{c.name || c.email}</span>
@@ -358,7 +358,7 @@ function InlineField({ label, value, schema, type = 'text', emphasis, onSave }: 
             aria-label={t('orgCardEditFieldAria', { field: label })}
             onClick={open}
           >
-            <Icon name="edit" size={16} />
+            <Icon name="edit" size={18} />
           </Button>
         </dd>
       </div>
@@ -398,7 +398,7 @@ function InlineField({ label, value, schema, type = 'text', emphasis, onSave }: 
           >
             <Icon
               name={saving ? 'progress_activity' : 'check'}
-              size={16}
+              size={18}
               className={saving ? 'animate-spin' : undefined}
             />
           </Button>
@@ -410,14 +410,14 @@ function InlineField({ label, value, schema, type = 'text', emphasis, onSave }: 
             disabled={saving}
             onClick={() => close(true)}
           >
-            <Icon name="close" size={16} />
+            <Icon name="close" size={18} />
           </Button>
         </div>
         {error && (
           <p
             id={errorId}
             role="alert"
-            className="mt-1 text-right text-[11px] font-medium text-danger-fg"
+            className="mt-1 text-right text-xs font-medium text-danger-fg"
           >
             {error}
           </p>
