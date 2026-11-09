@@ -2,7 +2,8 @@
  * certificate-uniqueness.test.ts – A certificate belongs to one organization:
  * uploading or renewing to a PEM that another organization already registered
  * (certificate thumbprint or login fingerprint) is refused with
- * CERT_REGISTERED_ELSEWHERE; the same organization may still re-upload it.
+ * CERT_REGISTERED_ELSEWHERE, also when two organizations race; the same
+ * organization may still re-upload it.
  * Dependencies: db, certificate.service, lib/certFingerprint, helpers/allowListSites
  */
 import { v4 as uuidv4 } from 'uuid';
@@ -25,7 +26,12 @@ async function makeSite(label: string): Promise<Site> {
   const instanceId = uuidv4();
   const org = `uniq-${label}-${sfx}.example.de`;
   const email = `uniq-${label}-${sfx}@example.de`;
-  await db('users').insert({ id: userId, email, totp_enabled: true, created_at: new Date() });
+  await db('users').insert({
+    id: userId,
+    email,
+    totp_enabled: true,
+    created_at: new Date(),
+  });
   await db('instances').insert({
     id: instanceId,
     user_id: userId,
@@ -92,6 +98,55 @@ describe('certificate uniqueness across organizations', () => {
       renewCertificate(b.instanceId, old.id, { pem: pemA }, b.email, ip, false),
     ).rejects.toThrow('CERT_REGISTERED_ELSEWHERE');
     expect(await db('certificates').where({ id: old.id }).first()).toBeDefined();
+  });
+
+  it('lets only one of three concurrent uploads by different organizations win', async () => {
+    for (let round = 0; round < 3; round++) {
+      const a = await makeSite(`ra${round}`);
+      const b = await makeSite(`rb${round}`);
+
+      const c = await makeSite(`rc${round}`);
+      const pem = makeCertPem(`race${round}.${a.org}`);
+
+      const results = await Promise.allSettled(
+        [a, b, c].map((s) => createCertificate(s.instanceId, pem, s.email, ip, false)),
+      );
+
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+      expect(rejected.map((r) => (r.reason as Error).message)).toEqual([
+        'CERT_REGISTERED_ELSEWHERE',
+        'CERT_REGISTERED_ELSEWHERE',
+      ]);
+      expect(
+        await db('certificates').whereIn('organization_id', [a.org, b.org, c.org]).count('* as n'),
+      ).toEqual([{ n: 1 }]);
+    }
+  });
+
+  it('lets only one of a concurrent upload and renewal by different organizations win', async () => {
+    const a = await makeSite('rx');
+    const b = await makeSite('ry');
+    const old = await createCertificate(
+      b.instanceId,
+      makeCertPem(`old.${b.org}`),
+      b.email,
+      ip,
+      false,
+    );
+    const pem = makeCertPem(`race.${a.org}`);
+
+    const results = await Promise.allSettled([
+      createCertificate(a.instanceId, pem, a.email, ip, false),
+      renewCertificate(b.instanceId, old.id, { pem }, b.email, ip, false),
+    ]);
+
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    const thumbprintOwners = await db('certificates')
+      .whereIn('organization_id', [a.org, b.org])
+      .whereNot({ id: old.id })
+      .distinct('organization_id');
+    expect(thumbprintOwners).toHaveLength(1);
   });
 
   it('lets the same organization upload its certificate again', async () => {

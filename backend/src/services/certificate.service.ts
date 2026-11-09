@@ -197,21 +197,31 @@ export async function getCertificates(instanceId: string) {
 /**
  * A certificate belongs to one organization: refuse a PEM whose thumbprint
  * another organization registered or whose SHA-512 fingerprint logs in for one.
+ * Call inside the insert transaction: it first locks the thumbprint's row in
+ * certificate_thumbprint_locks (migration 034) until commit, so a concurrent registration
+ * of the same thumbprint waits for this transaction and then sees its row.
+ * The reads are locking reads, so they see rows committed after the
+ * transaction's snapshot.
  * @throws CERT_REGISTERED_ELSEWHERE
  */
 async function assertNotRegisteredElsewhere(
-  conn: Knex | Knex.Transaction,
+  trx: Knex.Transaction,
   organizationId: string,
   thumbprint: string,
   pem: string,
 ): Promise<void> {
-  const cert = await conn('certificates')
+  // ON DUPLICATE KEY UPDATE takes the exclusive row lock at once (INSERT IGNORE
+  // would take a shared one, and two waiters upgrading it would deadlock).
+  await trx('certificate_thumbprint_locks').insert({ thumbprint }).onConflict('thumbprint').merge();
+  const cert = await trx('certificates')
     .where({ thumbprint })
     .whereNot({ organization_id: organizationId })
+    .forShare()
     .first('id');
-  const login = await conn('org_login_certificates')
+  const login = await trx('org_login_certificates')
     .where({ fingerprint: sha512FingerprintFromPem(pem) })
     .whereNot({ organization_id: organizationId })
+    .forShare()
     .first('fingerprint');
   if (cert || login) throw new Error('CERT_REGISTERED_ELSEWHERE');
 }
@@ -242,20 +252,22 @@ export async function createCertificate(
     throw new Error('CA_BLACKLISTED');
   }
   await assertIssuerAllowed(issuerDn);
-  await assertNotRegisteredElsewhere(db, org.identifier, thumbprint, pem.trim());
   const id = uuidv4();
-  await db('certificates').insert({
-    id,
-    organization_id: org.identifier,
-    pem: pem.trim(),
-    subject,
-    thumbprint,
-    valid_until: validUntil,
-    created_at: new Date(),
-    uploaded_by: userEmail,
-    uploaded_by_admin: uploadedByAdmin ? 1 : 0,
+  await db.transaction(async (trx) => {
+    await assertNotRegisteredElsewhere(trx, org.identifier, thumbprint, pem.trim());
+    await trx('certificates').insert({
+      id,
+      organization_id: org.identifier,
+      pem: pem.trim(),
+      subject,
+      thumbprint,
+      valid_until: validUntil,
+      created_at: new Date(),
+      uploaded_by: userEmail,
+      uploaded_by_admin: uploadedByAdmin ? 1 : 0,
+    });
+    await linkUploadedCertificate(trx, org.identifier, id, pem.trim(), validUntil);
   });
-  await linkUploadedCertificate(db, org.identifier, id, pem.trim(), validUntil);
   await writeAuditLog({
     userEmail,
     instanceId,
