@@ -3,7 +3,8 @@
  * bottom-right, rich colours, and the theme taken from the theme store so
  * toasts follow the app's light/dark mode rather than a fixed palette.
  * Branding goes through classNames (.dsf-toast in src/index.css: glass
- * material for neutral toasts); sonner keeps its own reduced-motion handling.
+ * material for neutral toasts; text-sm sets the message in the 14px body size
+ * instead of sonner's 13px); sonner keeps its own reduced-motion handling.
  * Dependencies: sonner, theme store.
  */
 import { Toaster } from 'sonner';
@@ -16,7 +17,7 @@ export function ToastProvider() {
       position="bottom-right"
       theme={dark ? 'dark' : 'light'}
       richColors
-      toastOptions={{ classNames: { toast: 'dsf-toast' } }}
+      toastOptions={{ classNames: { toast: 'dsf-toast text-sm' } }}
     />
   );
 }
