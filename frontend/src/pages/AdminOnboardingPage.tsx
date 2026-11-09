@@ -199,17 +199,17 @@ export function AdminOnboardingPage() {
       <div className="space-y-6 px-6 py-6 sm:px-8">
         <OnboardingStepper current={step} />
 
-        <div key={step} className="animate-list-item-in space-y-5">
+        <div key={step} className="animate-list-item-in space-y-4">
           {step === 1 && <OnboardingMethodStep onChoose={chooseMethod} />}
 
           {step === 2 && (
             <>
               <div className="flex flex-wrap items-center gap-3">
                 <Button variant="ghost" size="sm" onClick={() => setStep(1)} disabled={busy}>
-                  <Icon name="arrow_back" size={18} />
+                  <Icon name="arrow_back" size={16} />
                   {t('onbBack')}
                 </Button>
-                <h2 className="text-[15px] font-semibold text-[color:var(--text-primary)]">
+                <h2 className="text-base font-semibold text-[color:var(--text-primary)]">
                   {t(method === 'editor' ? 'onbMethodEditorTitle' : 'onbMethodFileTitle')}
                 </h2>
               </div>
@@ -237,7 +237,7 @@ export function AdminOnboardingPage() {
                 <p
                   role="alert"
                   data-testid="onboarding-conflicts"
-                  className="rounded-card border border-danger-border bg-danger-surface px-4 py-3 text-[13px] text-danger-fg"
+                  className="rounded-card border border-danger-border bg-danger-surface px-4 py-3 text-sm text-danger-fg"
                 >
                   {t('onbConflictsNote', { count: conflictCount })}
                 </p>
@@ -247,7 +247,7 @@ export function AdminOnboardingPage() {
                 <p
                   role="status"
                   data-testid="onboarding-preview-note"
-                  className="glass-thin rounded-card px-4 py-3 text-[13px] text-[color:var(--text-secondary)]"
+                  className="surface-card px-4 py-3 text-sm text-[color:var(--text-secondary)]"
                 >
                   {t('onbPreviewNote', { ok: okCount, skipped })}
                 </p>
@@ -260,7 +260,7 @@ export function AdminOnboardingPage() {
                   disabled={busy || submission.inputs.length === 0}
                   data-testid="onboarding-validate-btn"
                 >
-                  <Icon name="fact_check" size={18} />
+                  <Icon name="fact_check" size={16} />
                   {dryRunner.isPending ? t('onbValidating') : t('onbValidate')}
                 </Button>
                 <Button
@@ -268,7 +268,7 @@ export function AdminOnboardingPage() {
                   disabled={busy || !preview || okCount === 0 || conflictCount > 0}
                   data-testid="onboarding-import-btn"
                 >
-                  <Icon name="upload" size={18} />
+                  <Icon name="upload" size={16} />
                   {importer.isPending
                     ? t('adminOnboardingImporting')
                     : t('onbImportN', { count: okCount })}
@@ -295,12 +295,12 @@ export function AdminOnboardingPage() {
                       setStep(2);
                     }}
                   >
-                    <Icon name="edit" size={18} />
+                    <Icon name="edit" size={16} />
                     {t('onbFixAndRetry')}
                   </Button>
                 )}
                 <Button onClick={startOver} data-testid="onboarding-start-over">
-                  <Icon name="add" size={18} />
+                  <Icon name="add" size={16} />
                   {t('onbOnboardMore')}
                 </Button>
               </div>

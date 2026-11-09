@@ -16,7 +16,7 @@ export function OnboardingStepper({ current }: { current: 1 | 2 | 3 }) {
     <ol
       aria-label={t('onbStepperLabel')}
       data-testid="onboarding-stepper"
-      className="glass-thin flex items-center gap-2 rounded-card px-4 py-3"
+      className="surface-card flex items-center gap-2 px-4 py-3"
     >
       {STEPS.map((key, i) => {
         const n = i + 1;
@@ -29,7 +29,7 @@ export function OnboardingStepper({ current }: { current: 1 | 2 | 3 }) {
             className="flex min-w-0 flex-1 items-center gap-2 last:flex-none"
           >
             <span
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors duration-medium ease-standard ${
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-medium ease-standard ${
                 done || active
                   ? 'bg-primary text-white'
                   : 'border border-[color:var(--border)] text-[color:var(--text-secondary)]'
@@ -38,7 +38,7 @@ export function OnboardingStepper({ current }: { current: 1 | 2 | 3 }) {
               {done ? <Icon name="check" size={16} className="animate-check-in" /> : n}
             </span>
             <span
-              className={`truncate text-[13px] ${
+              className={`truncate text-sm ${
                 active
                   ? 'font-semibold text-[color:var(--text-primary)]'
                   : 'text-[color:var(--text-secondary)]'

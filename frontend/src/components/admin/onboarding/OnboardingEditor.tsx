@@ -45,7 +45,7 @@ export interface OnboardingEditorProps {
 const EXIT_MS = 180;
 
 const CELL_CLASS =
-  'w-full rounded-input border bg-[color:var(--bg-input)] px-2 py-1.5 text-[13px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] transition-colors duration-short ease-standard hover:border-[color:var(--border-strong)] focus-visible:border-[color:var(--focus-ring)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50';
+  'w-full rounded-input border bg-[color:var(--bg-input)] px-2 py-1.5 text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] transition-colors duration-short ease-standard hover:border-[color:var(--border-strong)] focus-visible:border-[color:var(--focus-ring)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-50';
 
 export function OnboardingEditor({
   rows,
@@ -124,10 +124,10 @@ export function OnboardingEditor({
 
   return (
     <div ref={root} data-testid="onboarding-editor">
-      <div className="overflow-x-auto rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)]">
+      <div className="surface-card overflow-x-auto">
         <table className="w-full border-collapse text-left">
           <thead className="bg-[color:var(--bg-hover)]">
-            <tr className="text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-secondary)]">
+            <tr className="text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
               <th scope="col" className="w-10 px-2 py-2.5 text-center">
                 <span className="sr-only">{t('onbEditorRowNumber')}</span>#
               </th>
@@ -175,7 +175,7 @@ export function OnboardingEditor({
                     isRemoving ? 'animate-fade-out' : 'animate-list-item-in'
                   }`}
                 >
-                  <td className="px-2 py-1.5 text-center text-[11px] text-[color:var(--text-muted)]">
+                  <td className="px-2 py-1.5 text-center text-2xs text-[color:var(--text-muted)]">
                     {rowNo}
                   </td>
                   {hasSources && (
@@ -184,7 +184,7 @@ export function OnboardingEditor({
                         <span
                           title={row.source.name}
                           data-testid={`row-source-${rowIndex}`}
-                          className="glass-thin inline-flex max-w-[10rem] items-center gap-1 rounded-full px-2 py-0.5 text-[11px] text-[color:var(--text-secondary)]"
+                          className="inline-flex max-w-[10rem] items-center gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--bg-hover)] px-2 py-0.5 text-2xs text-[color:var(--text-secondary)]"
                         >
                           <Icon name="description" size={14} />
                           <span className="truncate">{row.source.name}</span>
@@ -209,7 +209,7 @@ export function OnboardingEditor({
                           autoComplete="off"
                           spellCheck={false}
                           data-testid={`cell-${rowIndex}-${c.key}`}
-                          className={`${CELL_CLASS} ${c.mono ? 'font-mono text-xs' : ''} ${
+                          className={`${CELL_CLASS} ${c.mono ? 'font-mono text-xs' : 'text-sm'} ${
                             show
                               ? 'border-danger-border bg-danger-surface'
                               : 'border-[color:var(--border)]'
@@ -234,7 +234,7 @@ export function OnboardingEditor({
                       onClick={() => removeRow(row.id)}
                       disabled={disabled || isRemoving}
                       aria-label={t('onbEditorRemoveRow', { row: rowNo })}
-                      className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--text-muted)] transition-colors duration-short ease-standard hover:bg-[color:var(--bg-hover)] hover:text-danger-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-40"
+                      className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-muted)] transition-colors duration-short ease-standard hover:bg-[color:var(--bg-hover)] hover:text-danger-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-40"
                     >
                       <Icon name="delete" size={18} />
                     </button>
@@ -253,7 +253,7 @@ export function OnboardingEditor({
           disabled={disabled || rows.length >= MAX_ONBOARDING_ROWS}
           data-testid="onboarding-add-row"
         >
-          <Icon name="add" size={18} />
+          <Icon name="add" size={16} />
           {t('onbEditorAddRow')}
         </Button>
         <span className="text-xs text-[color:var(--text-muted)]">

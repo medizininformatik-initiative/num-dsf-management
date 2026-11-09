@@ -47,11 +47,13 @@ export function OnboardingUpload({
         }}
         onDragLeave={() => setOver(false)}
         onDrop={onDrop}
-        className={`glass-thin flex cursor-pointer flex-col items-center gap-2 rounded-card border border-dashed px-6 py-8 text-center transition-colors duration-short ease-standard focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--focus-ring)] ${
-          over ? 'border-primary bg-primary/5' : 'border-[color:var(--border-strong)]'
+        className={`flex cursor-pointer flex-col items-center gap-2 rounded-card border border-dashed px-6 py-8 text-center transition-colors duration-short ease-standard focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--focus-ring)] ${
+          over
+            ? 'border-[color:var(--focus-ring)] bg-[color:var(--accent-surface)]'
+            : 'border-[color:var(--border-strong)] bg-[color:var(--bg-card)]'
         }`}
       >
-        <Icon name="upload_file" size={32} className="text-primary dark:text-brand-400" />
+        <Icon name="upload_file" size={24} className="text-primary dark:text-brand-400" />
         <span className="text-sm font-semibold text-[color:var(--text-primary)]">
           {files.length > 0 ? t('onbUploadMore') : t('onbUploadPrompt')}
         </span>

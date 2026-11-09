@@ -1,5 +1,5 @@
 /**
- * OnboardingFileList.tsx – the chosen onboarding files as glass chips: name,
+ * OnboardingFileList.tsx – the chosen onboarding files as chips: name,
  * type, size, row count and parse status, a note on rows the server skipped,
  * and a remove button. Chips enter with a staggered animation and fade out
  * while being removed.
@@ -31,13 +31,13 @@ export function OnboardingFileList({ files, removing, onRemove }: OnboardingFile
           key={f.id}
           data-testid="onboarding-file"
           style={{ '--stagger-index': i } as CSSProperties}
-          className={`glass-thin rounded-card px-4 py-2.5 ${
+          className={`surface-card px-4 py-2.5 ${
             removing.has(f.id) ? 'animate-fade-out' : 'animate-list-item-in'
           }`}
         >
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <Icon name="description" size={20} className="text-[color:var(--text-muted)]" />
-            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[color:var(--text-primary)]">
+            <Icon name="description" size={16} className="text-[color:var(--text-muted)]" />
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[color:var(--text-primary)]">
               {f.name}
             </span>
             <span className="text-xs uppercase text-[color:var(--text-muted)]">
@@ -61,7 +61,7 @@ export function OnboardingFileList({ files, removing, onRemove }: OnboardingFile
               onClick={() => onRemove(f.id)}
               disabled={removing.has(f.id)}
               aria-label={t('onbFileRemove', { name: f.name })}
-              className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--text-muted)] transition-colors duration-short ease-standard hover:bg-[color:var(--bg-hover)] hover:text-danger-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-40"
+              className="press-effect inline-flex h-8 w-8 items-center justify-center rounded-control text-[color:var(--text-muted)] transition-colors duration-short ease-standard hover:bg-[color:var(--bg-hover)] hover:text-danger-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)] disabled:opacity-40"
             >
               <Icon name="close" size={18} />
             </button>

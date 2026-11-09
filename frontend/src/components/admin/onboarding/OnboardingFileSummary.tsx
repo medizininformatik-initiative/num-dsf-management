@@ -14,7 +14,7 @@ export function OnboardingFileSummary({ items }: { items: FileSummaryItem[] }) {
   if (items.length === 0) return null;
   return (
     <section data-testid="onboarding-file-summary" className="space-y-2">
-      <h3 className="text-[13px] font-semibold text-[color:var(--text-primary)]">
+      <h3 className="text-base font-semibold text-[color:var(--text-primary)]">
         {t('onbFileSummaryTitle')}
       </h3>
       <ul className="space-y-2">
@@ -23,10 +23,10 @@ export function OnboardingFileSummary({ items }: { items: FileSummaryItem[] }) {
             key={f.id}
             data-testid="onboarding-file-summary-item"
             style={{ '--stagger-index': i } as CSSProperties}
-            className="glass-thin animate-list-item-in flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card px-4 py-2.5"
+            className="surface-card animate-list-item-in flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5"
           >
-            <Icon name="description" size={20} className="text-[color:var(--text-muted)]" />
-            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[color:var(--text-primary)]">
+            <Icon name="description" size={16} className="text-[color:var(--text-muted)]" />
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[color:var(--text-primary)]">
               {f.name}
             </span>
             <span className="text-xs text-[color:var(--text-secondary)]">

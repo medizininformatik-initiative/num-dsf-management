@@ -29,10 +29,10 @@ export function OnboardingResults({ result }: { result: OnboardingImportResult }
         })}
       </p>
       {result.rows.length > 0 && (
-        <div className="overflow-x-auto rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)]">
-          <table className="w-full border-collapse text-left text-[13px]">
+        <div className="surface-card overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
             <thead className="bg-[color:var(--bg-hover)]">
-              <tr className="text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-secondary)]">
+              <tr className="text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
                 <th className="px-4 py-2.5">{t('adminOnboardingColIdentifier')}</th>
                 <th className="px-4 py-2.5">{t('adminOnboardingColAction')}</th>
                 <th className="px-4 py-2.5">{t('adminOnboardingColStatus')}</th>
@@ -79,7 +79,7 @@ export function OnboardingResults({ result }: { result: OnboardingImportResult }
           className="rounded-card border border-warning-border bg-warning-surface p-4 text-warning-fg"
         >
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold">
-            <Icon name="warning" size={16} />
+            <Icon name="warning" size={14} />
             {t('adminOnboardingParseErrorsTitle')}
           </p>
           <ul className="space-y-0.5 text-xs">
