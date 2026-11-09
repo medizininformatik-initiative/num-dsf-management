@@ -122,14 +122,15 @@ async function notifyOrganization(
 
 /**
  * Audit and mail a login-certificate change made by the system (approval sync,
- * expiry cleanup). Never throws: the change is already committed.
+ * expiry cleanup) or by an onboarding re-import of an existing organization.
+ * Never throws: the change is already committed.
  */
 export async function recordSystemLoginChange(
   identifier: string,
   change: 'enable' | 'disable',
   actor: string,
   fingerprint: string,
-  reason: 'approval' | 'expired',
+  reason: 'approval' | 'expired' | 'onboarding',
 ): Promise<void> {
   try {
     const org = await db('organizations').where({ identifier }).first();

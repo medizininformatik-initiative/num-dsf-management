@@ -10,7 +10,8 @@
  * rest of the import.
  * Dependencies: lib/csv (parseCsv), lib/certFingerprint (normalize/validate),
  * db/connection, services/audit.service (writeAuditLog), lib/errMessage
- * (errCode/errMessage), uuid, zod.
+ * (errCode/errMessage), services/org-login-certificates.service
+ * (recordSystemLoginChange), uuid, zod.
  */
 import { z } from 'zod';
 import ExcelJS from 'exceljs';
@@ -21,6 +22,7 @@ import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
 import { errCode, errMessage } from '../lib/errMessage';
 import { isAdminEmail } from '../lib/isAdmin';
+import { recordSystemLoginChange } from './org-login-certificates.service';
 
 const MAX_FILE_BYTES = 1_000_000;
 const MAX_ROWS = 1000;
@@ -314,6 +316,8 @@ export async function importSites(
       continue;
     }
     seenIds.add(identifier);
+    // Login changes of an existing organization, told to the clinic after commit.
+    const loginChanges: { enabled: string[]; disabled: string[] } = { enabled: [], disabled: [] };
     try {
       const action = await db.transaction(async (trx) => {
         // 1. The fingerprint must not already belong to a different org.
@@ -413,6 +417,17 @@ export async function importSites(
         // for the clinic. organizations.client_cert_fingerprint (deprecated,
         // no longer read) is still mirrored above for rollback.
         try {
+          const replaced: string[] = await trx('org_login_certificates')
+            .where({ organization_id: identifier, source: 'ONBOARDING' })
+            .whereNot({ fingerprint: row.clientCertFingerprint })
+            .pluck('fingerprint');
+          const alreadyLogin = await trx('org_login_certificates')
+            .where({ fingerprint: row.clientCertFingerprint })
+            .first('fingerprint');
+          if (existingOrg) {
+            loginChanges.disabled.push(...replaced);
+            if (!alreadyLogin) loginChanges.enabled.push(row.clientCertFingerprint);
+          }
           await trx('org_login_certificates')
             .where({ organization_id: identifier, source: 'ONBOARDING' })
             .whereNot({ fingerprint: row.clientCertFingerprint })
@@ -478,6 +493,12 @@ export async function importSites(
       });
 
       rowResults.push({ identifier, action, ok: true });
+      for (const fp of loginChanges.enabled) {
+        await recordSystemLoginChange(identifier, 'enable', actorEmail, fp, 'onboarding');
+      }
+      for (const fp of loginChanges.disabled) {
+        await recordSystemLoginChange(identifier, 'disable', actorEmail, fp, 'onboarding');
+      }
     } catch (err: unknown) {
       rowResults.push({
         identifier,
