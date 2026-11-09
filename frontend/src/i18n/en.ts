@@ -58,7 +58,7 @@ export const en = {
   genericActionFailed: 'Action failed',
   certStepUpFailedToast: 'Certificate re-verification failed. Reload the page and try again.',
   instances: 'Instances',
-  newInstance: '+ New instance',
+  newInstance: 'New instance',
   noInstanceSelected: 'No instance selected',
   sendForApproval: 'Send for Approval',
   downloadAllowList: 'Download Allow List',

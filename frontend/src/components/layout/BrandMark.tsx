@@ -7,9 +7,10 @@
  * nodes pop in once on mount, a sheen sweeps across, hovering replays a
  * gentle breathe; all of it only without Reduce Motion.
  * public/favicon.svg is the static twin of this glyph.
- * Dependencies: brand-mark.css.
+ * Dependencies: brand-mark.css, sidebarStyles (the name's text size).
  */
 import { useId, type CSSProperties, type ReactNode } from 'react';
+import { SIDEBAR_TEXT } from './sidebarStyles';
 import './brand-mark.css';
 
 export const PRODUCT_NAME = 'DSF Management Tool';
@@ -159,7 +160,9 @@ export function BrandMark({
         </g>
       </svg>
       <span className={`flex min-w-0 flex-col ${nameClassName}`}>
-        <span className="truncate text-[13px] font-semibold leading-tight tracking-tight text-[color:var(--text-primary)]">
+        <span
+          className={`truncate ${SIDEBAR_TEXT} font-semibold leading-tight tracking-tight text-[color:var(--text-primary)]`}
+        >
           {PRODUCT_NAME}
         </span>
         {children}

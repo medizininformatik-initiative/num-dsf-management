@@ -16,7 +16,7 @@ import { useInstances } from '../../hooks/useInstance';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
 import { InstanceCreateModal } from '../modals/InstanceCreateModal';
-import { ACTIVE, ROW_FOCUS, SECTION_HEADER } from './sidebarStyles';
+import { ACTIVE, ROW_FOCUS, SECTION_HEADER, SIDEBAR_TEXT } from './sidebarStyles';
 
 const PINNED_KEY = 'dsf-pinned-instances';
 
@@ -70,6 +70,7 @@ export function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
           onClick={() => setShowCreate(true)}
           className="min-h-0 px-2 py-1 text-xs font-medium text-[color:var(--primary)]"
         >
+          <Icon name="add" size={14} />
           {t('newInstance')}
         </Button>
       </div>
@@ -90,7 +91,7 @@ export function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
                 type="button"
                 onClick={() => select(inst.id)}
                 aria-current={isActive ? 'true' : undefined}
-                className={`h-full min-w-0 flex-1 truncate rounded-control pl-[10px] text-left text-[13px] ${
+                className={`h-full min-w-0 flex-1 truncate rounded-control pl-[10px] text-left ${SIDEBAR_TEXT} ${
                   isActive ? 'font-semibold' : 'font-medium'
                 } ${ROW_FOCUS}`}
               >
@@ -108,7 +109,7 @@ export function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
                     : 'text-[color:var(--text-muted)] [@media(hover:hover)]:opacity-0'
                 } ${ROW_FOCUS}`}
               >
-                <Icon name="push_pin" size={14} filled={isPinned} />
+                <Icon name="push_pin" size={16} filled={isPinned} />
               </button>
             </li>
           );

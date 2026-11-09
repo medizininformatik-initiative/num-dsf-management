@@ -30,7 +30,7 @@ import { Button } from '../ui/Button';
 import { BrandMark } from './BrandMark';
 import { Collapse } from './Collapse';
 import { InstanceSwitcher } from './InstanceSwitcher';
-import { ACTIVE, IDLE, ROW, SECTION_HEADER, fade, iconTone } from './sidebarStyles';
+import { ACTIVE, IDLE, ROW, SECTION_HEADER, SIDEBAR_TEXT, fade, iconTone } from './sidebarStyles';
 
 export type SidebarVariant = 'full' | 'rail' | 'drawer';
 export type SidebarGroup = 'admin' | 'resources';
@@ -130,7 +130,7 @@ function NavSection({
         <span className={`min-w-0 flex-1 truncate ${fade(rail)}`}>{label}</span>
         <Icon
           name="chevron_right"
-          size={18}
+          size={14}
           className={`shrink-0 text-[color:var(--text-muted)] transition-[transform,opacity] duration-medium ease-spring ${
             open && !rail ? 'rotate-90' : ''
           } ${rail ? 'opacity-0' : ''}`}
@@ -155,7 +155,7 @@ function EnvBadge() {
   return (
     <span
       data-env={DSF_ENVIRONMENT}
-      className="mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-medium leading-tight text-[color:var(--text-muted)]"
+      className="mt-0.5 inline-flex items-center gap-1.5 text-2xs font-medium leading-tight text-[color:var(--text-muted)]"
     >
       <span
         aria-hidden="true"
@@ -278,11 +278,11 @@ export function Sidebar({
       aria-controls={controls}
       className={
         drawer
-          ? 'h-9 w-9 shrink-0 p-0'
+          ? 'h-8 w-8 shrink-0 p-0'
           : `${ROW} ${IDLE} min-h-0 justify-start border-0 py-0 font-medium`
       }
     >
-      <Icon name={toggle.icon} size={20} className={`shrink-0 ${iconTone(false)}`} />
+      <Icon name={toggle.icon} size={drawer ? 18 : 20} className={`shrink-0 ${iconTone(false)}`} />
       {!drawer && <span className={`min-w-0 truncate ${fade(rail)}`}>{toggle.label}</span>}
     </Button>
   );
@@ -391,7 +391,7 @@ export function Sidebar({
             {initials}
           </div>
           <p
-            className={`min-w-0 truncate text-[13px] font-medium text-[color:var(--text-primary)] ${fade(rail)}`}
+            className={`min-w-0 truncate ${SIDEBAR_TEXT} font-medium text-[color:var(--text-primary)] ${fade(rail)}`}
           >
             {user?.email}
           </p>
