@@ -399,6 +399,14 @@ Which client certificates may log in as an organization (029). A login through a
 | created_by | VARCHAR(255) | yes | NULL | |
 | created_at | DATETIME(3) | no | — | |
 
+## certificate_thumbprint_locks
+
+Serializes registrations of the same certificate (034). Uploading or renewing a certificate upserts the row of its SHA-256 thumbprint (`INSERT ... ON DUPLICATE KEY UPDATE`, an exclusive row lock held until commit) and only then checks that no other organization holds the certificate. A concurrent registration of the same thumbprint waits and then sees the first one's row (`CERT_REGISTERED_ELSEWHERE`). The row carries no ownership and is never deleted. No personal data.
+
+| Column | Type | Null | Default | Notes |
+|--------|------|------|---------|-------|
+| thumbprint | VARCHAR(64) | no | — | PK; SHA-256 thumbprint as in `certificates.thumbprint` |
+
 ## allowlist_fetches
 
 The newest allow-list version each site (instance) has obtained (032). One row per instance, upserted when the site's DSF fetches its receiver bundle over mTLS (200, or 304 with a matching ETag) or when someone downloads the bundle for that instance in the portal. The version number never decreases. The portal compares it with the current `bundle_versions` row to show the "new allow list available" nudge. No personal data.
