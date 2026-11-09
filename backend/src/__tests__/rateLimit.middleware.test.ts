@@ -96,8 +96,10 @@ describe('rateLimit.middleware', () => {
     });
 
     it('keeps a different IP in its own bucket (no cross-IP bleed)', async () => {
-      const ipA = `198.51.100.${Math.floor(Math.random() * 250) + 1}`;
-      const ipB = `198.51.100.${Math.floor(Math.random() * 250) + 1 + 1}`;
+      // Derive B from A so the two octets can never collide (1..250, distinct).
+      const octetA = Math.floor(Math.random() * 250) + 1;
+      const ipA = `198.51.100.${octetA}`;
+      const ipB = `198.51.100.${(octetA % 250) + 1}`;
       touchedKeys.add(otpKey(ipA));
       touchedKeys.add(otpKey(ipB));
       const app = buildApp(otpRateLimit);
