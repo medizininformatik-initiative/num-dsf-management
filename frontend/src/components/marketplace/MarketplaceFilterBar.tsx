@@ -1,5 +1,5 @@
 /**
- * MarketplaceFilterBar.tsx — the browse controls: a glass search field ("/"
+ * MarketplaceFilterBar.tsx — the browse controls: a search field ("/"
  * focuses it, handled by the page), status chips (aria-pressed), and select
  * pickers for topic, DSF compatibility, trust level and sort order.
  * Controlled by the page; it holds no state of its own.
@@ -21,7 +21,7 @@ interface Props {
 }
 
 const SELECT_CLASS =
-  'glass-thin press-effect min-h-[40px] rounded-full px-3.5 py-2 text-[13px] text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--primary)]';
+  'press-effect min-h-[40px] rounded-full border border-[color:var(--border-strong)] bg-[color:var(--bg-input)] px-3.5 py-2 text-sm text-[color:var(--text-primary)] outline-none focus:border-[color:var(--focus-ring)] focus:ring-[3px] focus:ring-primary/20 dark:focus:ring-brand-400/30';
 
 export function MarketplaceFilterBar({
   searchValue,
@@ -43,8 +43,8 @@ export function MarketplaceFilterBar({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="glass relative flex max-w-xl items-center gap-2 rounded-full px-4 py-1.5">
-        <Icon name="search" size={20} className="text-[color:var(--text-muted)]" />
+      <div className="relative flex max-w-xl items-center gap-2 rounded-full border border-[color:var(--border-strong)] bg-[color:var(--bg-input)] px-4 py-1.5 focus-within:border-[color:var(--focus-ring)] focus-within:ring-[3px] focus-within:ring-primary/20 dark:focus-within:ring-brand-400/30">
+        <Icon name="search" size={16} className="text-[color:var(--text-muted)]" />
         <input
           ref={searchRef}
           type="search"
@@ -53,12 +53,12 @@ export function MarketplaceFilterBar({
           placeholder={t('marketplaceSearchPlaceholder')}
           aria-label={t('marketplaceSearchPlaceholder')}
           aria-keyshortcuts="/"
-          className="min-h-[36px] min-w-0 flex-1 border-0 bg-transparent text-[15px] text-[color:var(--text-primary)] outline-none placeholder:text-[color:var(--text-muted)]"
+          className="min-h-[36px] min-w-0 flex-1 border-0 bg-transparent text-sm text-[color:var(--text-primary)] outline-none placeholder:text-[color:var(--text-muted)]"
         />
         <kbd
           aria-hidden="true"
           title={t('marketplaceSearchKeyHint')}
-          className="hidden rounded-small border border-[color:var(--border)] px-1.5 text-[11px] text-[color:var(--text-muted)] sm:inline"
+          className="hidden rounded-small border border-[color:var(--border)] px-1.5 text-2xs text-[color:var(--text-muted)] sm:inline"
         >
           /
         </kbd>
@@ -73,10 +73,10 @@ export function MarketplaceFilterBar({
               type="button"
               aria-pressed={active}
               onClick={() => onChange({ status: c.key })}
-              className={`press-effect min-h-[36px] rounded-full border px-4 text-[13px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--primary)] ${
+              className={`press-effect min-h-[36px] rounded-full border px-4 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] ${
                 active
                   ? 'border-transparent bg-[color:var(--accent-solid)] text-white'
-                  : 'glass-thin text-[color:var(--text-primary)]'
+                  : 'border-[color:var(--border)] bg-[color:var(--bg-card)] text-[color:var(--text-primary)] hover:border-[color:var(--border-strong)] hover:bg-[color:var(--bg-hover)]'
               }`}
             >
               {c.label}
@@ -123,7 +123,7 @@ export function MarketplaceFilterBar({
           <option value="community">{t('marketplaceTrustCommunity')}</option>
           <option value="caution">{t('marketplaceTrustCaution')}</option>
         </select>
-        <label className="ml-auto flex items-center gap-2 text-[13px] text-[color:var(--text-secondary)]">
+        <label className="ml-auto flex items-center gap-2 text-sm text-[color:var(--text-secondary)]">
           {t('marketplaceSort')}
           <select
             value={filters.sort}

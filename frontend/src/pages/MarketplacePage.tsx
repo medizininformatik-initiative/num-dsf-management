@@ -1,7 +1,7 @@
 /**
  * MarketplacePage.tsx – Process Marketplace browse page, App-Store style:
  * header with search ("/" focuses it) and filter chips/pickers, a recommended
- * row, and a responsive grid of glass cards with skeleton, empty and error
+ * row, and a responsive grid of process cards with skeleton, empty and error
  * states. Filters live in the URL (so Back from a detail page restores them)
  * and the scroll position is restored on Back. Admins get Add/Edit/Remove.
  * Dependencies: useMarketplace, useMe, i18n.store, marketplace components,
@@ -59,11 +59,7 @@ function CardSkeletons() {
     >
       <span className="sr-only">{t('loading')}</span>
       {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          aria-hidden="true"
-          className="glass flex h-[208px] flex-col gap-3 rounded-card p-4"
-        >
+        <div key={i} aria-hidden="true" className="surface-card flex h-[208px] flex-col gap-3 p-4">
           <div className="flex items-center gap-3">
             <div className="skeleton h-12 w-12 rounded-control" />
             <div className="flex-1 space-y-2">
@@ -217,13 +213,13 @@ export function MarketplacePage() {
         actions={
           isAdmin ? (
             <Button onClick={() => setAddOpen(true)}>
-              <Icon name="add" size={18} />
+              <Icon name="add" size={16} />
               {t('marketplaceAdd')}
             </Button>
           ) : undefined
         }
       />
-      <div className="flex animate-scale-in flex-col gap-6 px-4 py-6 sm:px-8 sm:py-8">
+      <div className="flex animate-scale-in flex-col gap-6 px-6 py-6 sm:px-8">
         <MarketplaceFilterBar
           searchValue={searchInput}
           onSearchChange={setSearchInput}
@@ -239,9 +235,9 @@ export function MarketplacePage() {
         {isError && !isLoading && (
           <div
             role="alert"
-            className="glass flex flex-col items-center gap-3 rounded-card p-10 text-center"
+            className="surface-card flex flex-col items-center gap-3 px-6 py-10 text-center"
           >
-            <Icon name="cloud_off" size={36} className="text-[color:var(--text-muted)]" />
+            <Icon name="cloud_off" size={40} className="text-[color:var(--text-muted)]" />
             <p className="m-0 text-sm text-[color:var(--text-secondary)]">
               {t('marketplaceLoadFailed')}
             </p>
@@ -256,7 +252,7 @@ export function MarketplacePage() {
             <p
               role="status"
               aria-live="polite"
-              className="m-0 text-[13px] font-medium text-[color:var(--text-secondary)]"
+              className="m-0 text-xs font-medium text-[color:var(--text-secondary)]"
             >
               {countLabel}
             </p>
@@ -265,7 +261,7 @@ export function MarketplacePage() {
               <section aria-labelledby="mp-featured" className="flex flex-col gap-3">
                 <h2
                   id="mp-featured"
-                  className="m-0 text-[17px] font-bold text-[color:var(--text-primary)]"
+                  className="m-0 text-base font-semibold text-[color:var(--text-primary)]"
                 >
                   {t('marketplaceFeatured')}
                 </h2>
@@ -276,7 +272,7 @@ export function MarketplacePage() {
             )}
 
             {filtered.length === 0 ? (
-              <div className="glass flex flex-col items-center gap-3 rounded-card p-12 text-center">
+              <div className="surface-card flex flex-col items-center gap-3 px-6 py-10 text-center">
                 <Icon name="deployed_code" size={40} className="text-[color:var(--text-muted)]" />
                 <p className="m-0 text-sm text-[color:var(--text-secondary)]">
                   {entries.length === 0 ? t('marketplaceEmpty') : t('marketplaceNoResults')}
@@ -292,7 +288,7 @@ export function MarketplacePage() {
                 {featured.length > 0 && (
                   <h2
                     id="mp-all"
-                    className="m-0 text-[17px] font-bold text-[color:var(--text-primary)]"
+                    className="m-0 text-base font-semibold text-[color:var(--text-primary)]"
                   >
                     {t('marketplaceAllProcesses')}
                   </h2>

@@ -1,5 +1,5 @@
 /**
- * MarketplaceCard.tsx — glass process card linking to the detail page. Hierarchy:
+ * MarketplaceCard.tsx — process card linking to the detail page. Hierarchy:
  * initial tile + name (+ verified mark) + publisher, one-line-ish description,
  * key badges (status, DSF floor, latest release, caution), role chips, and a
  * footer with the last update and the "View details" affordance. Admin actions
@@ -64,12 +64,10 @@ export function MarketplaceCard({ entry }: { entry: MarketplaceEntry }) {
   return (
     <Link
       to={`/app/marketplace/${entry.slug}`}
-      className="glass hover-lift press-effect flex h-full min-w-0 flex-col gap-3 rounded-card p-4 text-[color:var(--text-primary)] no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--primary)]"
+      className="surface-card hover-lift press-effect flex h-full min-w-0 flex-col gap-3 p-4 text-[color:var(--text-primary)] no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
     >
       {entry.advisorySeverity && (
-        <div
-          className={`inline-flex items-center gap-1.5 self-start rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${ADVISORY_CLASS[entry.advisorySeverity]}`}
-        >
+        <div className={`pill self-start ${ADVISORY_CLASS[entry.advisorySeverity]}`}>
           <Icon name="warning" size={14} />
           {entry.advisorySeverity}
         </div>
@@ -79,7 +77,7 @@ export function MarketplaceCard({ entry }: { entry: MarketplaceEntry }) {
         <MarketplaceTile entry={entry} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="truncate text-[15px] font-semibold leading-tight">
+            <span className="truncate text-base font-semibold leading-tight">
               {displayName(entry)}
             </span>
             {entry.verified && (
@@ -101,11 +99,11 @@ export function MarketplaceCard({ entry }: { entry: MarketplaceEntry }) {
       </div>
 
       {entry.description ? (
-        <p className="m-0 line-clamp-2 text-[13px] leading-snug text-[color:var(--text-secondary)]">
+        <p className="m-0 line-clamp-2 text-sm leading-snug text-[color:var(--text-secondary)]">
           {entry.description}
         </p>
       ) : (
-        <p className="m-0 text-[13px] italic leading-snug text-[color:var(--text-muted)]">
+        <p className="m-0 text-sm italic leading-snug text-[color:var(--text-muted)]">
           {t('marketplaceNoDescription')}
         </p>
       )}
@@ -134,13 +132,13 @@ export function MarketplaceCard({ entry }: { entry: MarketplaceEntry }) {
           {entry.requiredRoles.slice(0, MAX_ROLES).map((role) => (
             <span
               key={role}
-              className="rounded-full bg-[color:var(--bg-hover)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--text-secondary)]"
+              className="rounded-full bg-[color:var(--bg-hover)] px-2 py-0.5 text-2xs font-semibold text-[color:var(--text-secondary)]"
             >
               {role}
             </span>
           ))}
           {entry.requiredRoles.length > MAX_ROLES && (
-            <span className="text-[11px] text-[color:var(--text-muted)]">
+            <span className="text-2xs text-[color:var(--text-muted)]">
               +{entry.requiredRoles.length - MAX_ROLES}
             </span>
           )}
@@ -162,7 +160,7 @@ export function MarketplaceCard({ entry }: { entry: MarketplaceEntry }) {
         )}
         <span className="ml-auto inline-flex items-center gap-0.5 font-semibold text-[color:var(--primary)]">
           {t('marketplaceViewDetails')}
-          <Icon name="chevron_right" size={16} />
+          <Icon name="chevron_right" size={14} />
         </span>
       </div>
     </Link>
