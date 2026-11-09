@@ -118,7 +118,7 @@ export function MarketplaceEditStatusModal({
           </select>
         </FormField>
 
-        <label className="flex w-fit cursor-pointer items-center gap-2 text-xs font-semibold text-[color:var(--text-secondary)]">
+        <label className="flex w-fit cursor-pointer items-center gap-2 text-sm font-medium text-[color:var(--text-primary)]">
           <input type="checkbox" {...register('verified')} className={checkboxClass} />
           {t('marketplaceVerified')}
         </label>

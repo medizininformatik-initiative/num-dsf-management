@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
-import { FormField, inputClass, ModalFooter } from './FormField';
+import { FormField, fieldHintClass, inputClass, ModalFooter } from './FormField';
 import { Icon } from '../ui/Icon';
 import { organizationSchema, OrganizationFormData } from '../../schemas/organization.schema';
 import { useUpdateOrganization } from '../../hooks/useOrganization';
@@ -103,7 +103,7 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
                 data-testid="org-identifier-input"
               />
               {locked && (
-                <p className="flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+                <p className={`flex items-center gap-1 ${fieldHintClass}`}>
                   <Icon name="lock" size={14} />
                   <span>{t('identifierLocked')}</span>
                 </p>
@@ -126,7 +126,7 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
             placeholder={t('orgModalFieldEmailPlaceholder')}
           />
         </FormField>
-        <div className="flex items-center justify-between gap-4 rounded-control border border-[color:var(--border)] bg-white/50 p-3 dark:bg-white/[0.03]">
+        <div className="flex items-center justify-between gap-4 rounded-control border border-[color:var(--border)] p-3">
           <div>
             <label
               htmlFor={activeId}
@@ -134,7 +134,7 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
             >
               {t('orgModalActiveLabel')}
             </label>
-            <p id={activeHintId} className="text-xs text-[color:var(--text-muted)]">
+            <p id={activeHintId} className={fieldHintClass}>
               {t('orgModalActiveHint')}
             </p>
           </div>

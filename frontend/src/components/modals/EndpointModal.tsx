@@ -15,7 +15,15 @@ import { useForm, useFieldArray, type UseFormRegister } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
-import { FieldError, FormField, checkboxClass, inputClass, ModalFooter } from './FormField';
+import {
+  FieldError,
+  FormField,
+  checkboxClass,
+  fieldHintClass,
+  fieldLabelClass,
+  inputClass,
+  ModalFooter,
+} from './FormField';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { endpointSchema, EndpointFormData } from '../../schemas/endpoint.schema';
@@ -77,7 +85,7 @@ function IpAddressRow({ index, register, error, leaving, onRemove, onExited }: I
           style={{ '--stagger-index': index } as CSSProperties}
         >
           <div
-            className={`space-y-2 rounded-control border bg-white/50 p-3 dark:bg-white/[0.03] ${
+            className={`space-y-2 rounded-control border p-3 ${
               error ? 'border-danger-border' : 'border-[color:var(--border)]'
             }`}
           >
@@ -96,7 +104,7 @@ function IpAddressRow({ index, register, error, leaving, onRemove, onExited }: I
               <Button
                 variant="ghost"
                 size="sm"
-                className="shrink-0 px-2 hover:text-danger-fg"
+                className="h-8 w-8 shrink-0 px-0 hover:text-danger-fg"
                 aria-label={t('formIpRemove', { n })}
                 title={t('formIpRemove', { n })}
                 onClick={onRemove}
@@ -139,7 +147,7 @@ function IpAddressRow({ index, register, error, leaving, onRemove, onExited }: I
 function LockedNote() {
   const { t } = useI18n();
   return (
-    <p className="flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+    <p className={`flex items-center gap-1 ${fieldHintClass}`}>
       <Icon name="lock" size={14} />
       <span>{t('identifierLocked')}</span>
     </p>
@@ -312,10 +320,7 @@ export function EndpointModal({ open, onClose, instanceId, endpointId, defaultVa
           className="space-y-2"
         >
           <div className="flex items-center justify-between gap-3">
-            <span
-              id={ipLabelId}
-              className="text-xs font-semibold text-[color:var(--text-secondary)]"
-            >
+            <span id={ipLabelId} className={fieldLabelClass}>
               {t('endpointModalIpLabel')}
             </span>
             <Button
@@ -324,16 +329,16 @@ export function EndpointModal({ open, onClose, instanceId, endpointId, defaultVa
               size="sm"
               onClick={() => append(EMPTY_IP)}
             >
-              <Icon name="add" size={16} />
+              <Icon name="add" size={14} />
               {t('endpointModalAddIp')}
             </Button>
           </div>
-          <div id={ipHintId} className="space-y-0.5 text-xs text-[color:var(--text-muted)]">
+          <div id={ipHintId} className={`space-y-0.5 ${fieldHintClass}`}>
             <p>{t('endpointModalIpHint')}</p>
             <p>{t('hintEndpointIp')}</p>
           </div>
           {fields.length === 0 ? (
-            <p className="rounded-control border border-dashed border-[color:var(--border-strong)] px-3 py-2.5 text-center text-xs text-[color:var(--text-muted)]">
+            <p className="rounded-control border border-dashed border-[color:var(--border-strong)] p-3 text-center text-xs text-[color:var(--text-muted)]">
               {t('formIpEmpty')}
             </p>
           ) : (
