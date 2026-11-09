@@ -34,7 +34,7 @@ export function InfoHint({ text, label }: InfoHintProps) {
             setOpen(false);
           }
         }}
-        className="ml-0.5 inline-flex h-6 w-6 cursor-help items-center justify-center rounded-full text-[color:var(--text-muted)] transition-colors duration-short ease-standard hover:text-[color:var(--primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+        className="ml-0.5 inline-flex h-6 w-6 cursor-help items-center justify-center rounded-full text-[color:var(--text-muted)] transition-colors duration-short ease-standard hover:text-[color:var(--primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
       >
         <Icon name="help" size={16} />
       </button>
@@ -42,7 +42,7 @@ export function InfoHint({ text, label }: InfoHintProps) {
         <span
           role="tooltip"
           id={tipId}
-          className="glass-thick animate-popover-in absolute left-0 top-7 z-50 w-56 rounded-control p-2.5 text-[12px] leading-snug text-[color:var(--text-primary)]"
+          className="glass-thick animate-popover-in absolute left-0 top-7 z-50 w-56 rounded-control p-2.5 text-xs leading-snug text-[color:var(--text-primary)]"
         >
           {text}
         </span>

@@ -47,14 +47,14 @@ export function ConfirmDialog({
       zIndex={300}
       className="max-w-sm p-6"
     >
-      <h2 id={titleId} className="text-base font-bold text-[color:var(--text-primary)]">
+      <h2 id={titleId} className="text-base font-semibold text-[color:var(--text-primary)]">
         {title}
       </h2>
       <div id={messageId} className="mt-2 space-y-2 text-sm text-[color:var(--text-secondary)]">
         <div>{message}</div>
         {consequence && (
           <div className="flex gap-1.5 font-medium text-[color:var(--text-primary)]">
-            <Icon name="warning" size={18} className="shrink-0 text-danger-fg" />
+            <Icon name="warning" size={16} className="mt-0.5 shrink-0 text-danger-fg" />
             <div>{consequence}</div>
           </div>
         )}

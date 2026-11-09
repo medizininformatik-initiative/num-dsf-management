@@ -67,7 +67,7 @@ describe('CardSkeleton', () => {
   it('renders a card shell wrapping a four-line skeleton', () => {
     const { container } = render(<CardSkeleton />);
 
-    const shell = container.querySelector('div.entity-card-shadow');
+    const shell = container.querySelector('div.surface-card');
     expect(shell).not.toBeNull();
     expect(shell).not.toHaveClass('bg-white');
 
