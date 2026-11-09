@@ -198,7 +198,6 @@ export function HelpPage() {
   return (
     <div ref={rootRef} className="flex-1 overflow-y-auto">
       <AdminPageHeader
-        icon="help"
         title={t('helpTitle')}
         subtitle={t('helpSubtitle')}
         actions={

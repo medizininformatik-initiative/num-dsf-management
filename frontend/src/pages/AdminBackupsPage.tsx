@@ -122,7 +122,6 @@ export function AdminBackupsPage() {
   return (
     <div className="flex-1 overflow-y-auto" data-testid="admin-backups">
       <AdminPageHeader
-        icon="backup"
         title={t('backupPageTitle')}
         subtitle={t('backupPageSubtitle')}
         actions={

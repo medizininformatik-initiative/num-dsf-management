@@ -110,11 +110,7 @@ export function AdminBundleVersionsPage() {
 
   return (
     <div className="flex-1 overflow-y-auto" data-testid="admin-bundle-versions">
-      <AdminPageHeader
-        icon="history"
-        title={t('bundleVersionsTitle')}
-        subtitle={t('historyIntro')}
-      />
+      <AdminPageHeader title={t('bundleVersionsTitle')} subtitle={t('historyIntro')} />
       <div className="p-6 md:p-8">
         {pendingRestore && (
           <PendingRestoreCard

@@ -70,11 +70,7 @@ export function DsfResourcesPage() {
 
   return (
     <div className="flex-1 overflow-y-auto font-sans">
-      <AdminPageHeader
-        icon="menu_book"
-        title={t('dsfResourcesTitle')}
-        subtitle={t('dsfResourcesIntro')}
-      />
+      <AdminPageHeader title={t('dsfResourcesTitle')} subtitle={t('dsfResourcesIntro')} />
       <div className="flex w-full flex-col gap-8 px-4 py-8 sm:px-8">
         <div className="flex flex-col gap-3">
           <div className="glass flex max-w-xl items-center gap-2 rounded-full px-4 py-1.5">

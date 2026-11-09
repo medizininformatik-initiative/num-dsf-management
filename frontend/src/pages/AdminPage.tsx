@@ -30,7 +30,6 @@ export function AdminPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <AdminPageHeader
-        icon="admin_panel_settings"
         title={t('adminPageTitle')}
         subtitle={t('adminPageSubtitle')}
         actions={

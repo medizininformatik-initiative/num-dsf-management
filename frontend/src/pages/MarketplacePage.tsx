@@ -212,7 +212,6 @@ export function MarketplacePage() {
       className="flex-1 overflow-y-auto"
     >
       <AdminPageHeader
-        icon="storefront"
         title={t('marketplaceTitle')}
         subtitle={t('marketplaceSubtitle')}
         actions={

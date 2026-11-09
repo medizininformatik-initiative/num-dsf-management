@@ -146,11 +146,7 @@ export function AdminPromotionsPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <AdminPageHeader
-        icon="verified_user"
-        title={t('adminPromotionsTitle')}
-        subtitle={t('adminPromotionsSubtitle')}
-      />
+      <AdminPageHeader title={t('adminPromotionsTitle')} subtitle={t('adminPromotionsSubtitle')} />
 
       <div className="space-y-5 px-6 py-6 sm:px-8">
         <div className="flex gap-3 rounded-xl border border-info-border bg-info-surface p-4 text-info-fg">

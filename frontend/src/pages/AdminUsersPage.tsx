@@ -229,11 +229,7 @@ export function AdminUsersPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <AdminPageHeader
-        icon="group"
-        title={t('adminUsersTitle')}
-        subtitle={t('adminUsersSubtitle')}
-      />
+      <AdminPageHeader title={t('adminUsersTitle')} subtitle={t('adminUsersSubtitle')} />
 
       <div className="space-y-5 px-6 py-6 sm:px-8">
         {/* Add row */}

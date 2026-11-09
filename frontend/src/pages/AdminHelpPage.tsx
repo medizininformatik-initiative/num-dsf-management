@@ -59,7 +59,6 @@ export function AdminHelpPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <AdminPageHeader
-        icon="help"
         title={t('adminHelpTitle')}
         subtitle={t('adminHelpSubtitle')}
         toolbar={

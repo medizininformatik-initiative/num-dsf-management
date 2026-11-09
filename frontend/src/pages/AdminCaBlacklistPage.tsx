@@ -51,7 +51,6 @@ export function AdminCaBlacklistPage() {
   return (
     <div className="flex-1 overflow-y-auto" data-testid="admin-ca-blacklist">
       <AdminPageHeader
-        icon="verified_user"
         title={t('caListsTitle')}
         subtitle={t('caListsSubtitle')}
         toolbar={

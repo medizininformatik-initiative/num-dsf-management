@@ -194,11 +194,7 @@ export function AdminOnboardingPage() {
 
   return (
     <div className="flex-1 overflow-y-auto" data-testid="admin-onboarding">
-      <AdminPageHeader
-        icon="upload_file"
-        title={t('adminOnboardingTitle')}
-        subtitle={t('adminOnboardingIntro')}
-      />
+      <AdminPageHeader title={t('adminOnboardingTitle')} subtitle={t('adminOnboardingIntro')} />
 
       <div className="space-y-6 px-6 py-6 sm:px-8">
         <OnboardingStepper current={step} />

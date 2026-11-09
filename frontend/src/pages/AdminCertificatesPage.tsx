@@ -68,7 +68,6 @@ export function AdminCertificatesPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <AdminPageHeader
-        icon="badge"
         title={t('adminCertTitle')}
         subtitle={t('adminCertSubtitle')}
         actions={

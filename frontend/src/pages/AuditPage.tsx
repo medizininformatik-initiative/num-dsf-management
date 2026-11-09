@@ -115,7 +115,6 @@ export function AuditPage() {
   return (
     <div className="flex-1 overflow-y-auto font-sans">
       <AdminPageHeader
-        icon="history"
         title={t('auditLog')}
         subtitle={isAdmin ? t('auditScopeAdmin') : t('auditScopeOwner')}
       />
