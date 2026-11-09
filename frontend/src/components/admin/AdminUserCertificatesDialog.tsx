@@ -90,7 +90,7 @@ export function AdminUserCertificatesDialog({
               ))}
             </ul>
           )}
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
             <Button variant="secondary" onClick={onClose}>
               {t('adminCertClose')}
             </Button>

@@ -26,7 +26,7 @@ export function AdminCertificateRow({
   const validity = cert.validUntil ? certValidity(cert.validUntil) : null;
   return (
     <li className="flex flex-wrap items-start gap-x-4 gap-y-2 border-t border-[color:var(--border)] px-4 py-3 first:border-t-0">
-      <div className="min-w-0 flex-1 space-y-1">
+      <div className="min-w-[min(100%,16rem)] flex-1 space-y-1">
         <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[color:var(--text-primary)]">
           <span className="break-all">{cert.label || cert.subject || t('adminCertUnnamed')}</span>
           {current && (
@@ -38,7 +38,7 @@ export function AdminCertificateRow({
         {cert.label && cert.subject && (
           <p className="break-all text-xs text-[color:var(--text-secondary)]">{cert.subject}</p>
         )}
-        <p className="break-all font-mono text-[11px] text-[color:var(--text-muted)]">
+        <p className="break-all font-mono text-2xs text-[color:var(--text-muted)]">
           {fingerprintGroups(cert.fingerprint.slice(0, 32)).join(' ')}…
         </p>
         <p className="text-xs text-[color:var(--text-secondary)]">

@@ -148,23 +148,23 @@ export function AdminPromotionsPage() {
     <div className="flex-1 overflow-y-auto">
       <AdminPageHeader title={t('adminPromotionsTitle')} subtitle={t('adminPromotionsSubtitle')} />
 
-      <div className="space-y-5 px-6 py-6 sm:px-8">
-        <div className="flex gap-3 rounded-card border border-info-border bg-info-surface p-4 text-info-fg">
-          <Icon name="shield" size={22} className="mt-px shrink-0" />
-          <div className="text-[13px] leading-5">
+      <div className="space-y-4 px-6 py-6 sm:px-8">
+        <div className="flex gap-3 rounded-card border border-info-border bg-info-surface p-4 text-sm text-info-fg">
+          <Icon name="shield" size={20} className="shrink-0" />
+          <div className="space-y-0.5">
             <p className="font-semibold">{t('adminPromotionsRule')}</p>
             <p>{t('adminPromotionsRuleHint')}</p>
           </div>
         </div>
 
         {isLoading && (
-          <div className="rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">
+          <div className="surface-card p-5">
             <Skeleton lines={3} />
           </div>
         )}
         {!isLoading && requests && requests.length === 0 && (
-          <p className="flex items-center gap-2 rounded-card border border-dashed border-[color:var(--border)] p-4 text-sm text-[color:var(--text-muted)]">
-            <Icon name="check_circle" size={20} className="text-success-fg" />
+          <p className="surface-card flex items-center gap-2 p-5 text-sm text-[color:var(--text-muted)]">
+            <Icon name="check_circle" size={16} className="shrink-0 text-success-fg" />
             {t('adminPromotionsEmpty')}
           </p>
         )}
@@ -240,12 +240,12 @@ function PromotionItem({
   return (
     <li
       style={{ '--stagger-index': index } as CSSProperties}
-      className="animate-list-item-in rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] px-5 py-4"
+      className="animate-list-item-in surface-card p-4"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="break-all text-sm font-bold text-[color:var(--text-primary)]">
+            <span className="break-all text-sm font-semibold text-[color:var(--text-primary)]">
               {req.target_email}
             </span>
             {req.status === 'PENDING' && (
@@ -255,7 +255,7 @@ function PromotionItem({
             )}
           </div>
           <div className="mt-1 text-xs text-[color:var(--text-muted)]">
-            {t('adminPromotionsRequestedBy')}: <span className="font-mono">{req.requested_by}</span>
+            {t('adminPromotionsRequestedBy')}: <span>{req.requested_by}</span>
             {' · '}
             <span>{relTime(req.requested_at, t)}</span>
           </div>
@@ -294,7 +294,7 @@ function PromotionItem({
           id={reasonId}
           className="mt-2 flex items-center gap-1.5 text-xs text-[color:var(--text-secondary)]"
         >
-          <Icon name="info" size={16} className="shrink-0" />
+          <Icon name="info" size={14} className="shrink-0" />
           {t('adminPromotionsSameSiteHint')}
         </p>
       )}

@@ -180,23 +180,23 @@ export function AddAdminCertificateDialog({
         )}
         {preview && validity && (
           <dl
-            className="glass-thin space-y-2 rounded-control p-4 text-xs"
+            className="space-y-2 rounded-control border border-[color:var(--border)] p-3 text-xs"
             aria-label={t('formCertPreviewTitle')}
           >
             <div>
-              <dt className="font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+              <dt className="text-2xs font-semibold text-[color:var(--text-secondary)]">
                 {t('formCertPreviewSubject')}
               </dt>
               <dd className="break-all text-[color:var(--text-primary)]">{preview.subject}</dd>
             </div>
             <div>
-              <dt className="font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+              <dt className="text-2xs font-semibold text-[color:var(--text-secondary)]">
                 {t('formCertPreviewIssuer')}
               </dt>
               <dd className="break-all text-[color:var(--text-primary)]">{preview.issuerDn}</dd>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <dt className="font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+              <dt className="text-2xs font-semibold text-[color:var(--text-secondary)]">
                 {t('formCertPreviewValidUntil')}
               </dt>
               <dd className="flex items-center gap-2 text-[color:var(--text-primary)]">
@@ -209,10 +209,10 @@ export function AddAdminCertificateDialog({
               </dd>
             </div>
             <div>
-              <dt className="font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+              <dt className="text-2xs font-semibold text-[color:var(--text-secondary)]">
                 {t('certCardDsfThumbprintLabel')}
               </dt>
-              <dd className="break-all font-mono text-[11px] text-[color:var(--text-primary)]">
+              <dd className="break-all font-mono text-2xs text-[color:var(--text-primary)]">
                 {fingerprintGroups(preview.thumbprintSha512).join(' ')}
               </dd>
             </div>

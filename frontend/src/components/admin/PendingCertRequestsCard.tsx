@@ -117,7 +117,7 @@ export function PendingCertRequestsCard({ meEmail }: { meEmail: string | null })
     <section
       aria-labelledby={titleId}
       data-testid="pending-cert-requests"
-      className="glass-thin rounded-card p-4"
+      className="surface-card p-5"
     >
       <div className="flex flex-wrap items-center gap-2">
         <h2 id={titleId} className="text-base font-semibold text-[color:var(--text-primary)]">
@@ -128,13 +128,16 @@ export function PendingCertRequestsCard({ meEmail }: { meEmail: string | null })
         </StatusPill>
       </div>
       <p className="mt-1 text-sm text-[color:var(--text-secondary)]">{t('adminCertReqHint')}</p>
-      <ul className="mt-3 divide-y divide-[color:var(--border)]">
+      <ul className="mt-4 divide-y divide-[color:var(--border)]">
         {pending.map((req) => {
           const blocker = approveBlocker(req, meEmail);
           const mine = same(req.requestedBy, meEmail);
           const hintId = `${titleId}-${req.id}`;
           return (
-            <li key={req.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+            <li
+              key={req.id}
+              className="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
+            >
               <div className="min-w-0 space-y-0.5 text-sm">
                 <p className="font-semibold text-[color:var(--text-primary)]">
                   {t('adminCertReqFor', { who: req.targetEmail })}
@@ -157,7 +160,7 @@ export function PendingCertRequestsCard({ meEmail }: { meEmail: string | null })
                     id={hintId}
                     className="flex items-center gap-1.5 pt-1 text-xs text-[color:var(--text-secondary)]"
                   >
-                    <Icon name="info" size={16} className="shrink-0" />
+                    <Icon name="info" size={14} className="shrink-0" />
                     {t(blocker)}
                   </p>
                 )}

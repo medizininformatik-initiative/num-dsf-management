@@ -82,7 +82,7 @@ export function StepUpConfirmDialog({
         {message && <div className="text-sm text-[color:var(--text-secondary)]">{message}</div>}
         {consequence && (
           <div className="flex gap-1.5 text-sm font-medium text-[color:var(--text-primary)]">
-            <Icon name="warning" size={18} className="shrink-0 text-danger-fg" />
+            <Icon name="warning" size={16} className="mt-0.5 shrink-0 text-danger-fg" />
             <div>{consequence}</div>
           </div>
         )}

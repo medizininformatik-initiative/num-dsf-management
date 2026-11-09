@@ -231,12 +231,9 @@ export function AdminUsersPage() {
     <div className="flex-1 overflow-y-auto">
       <AdminPageHeader title={t('adminUsersTitle')} subtitle={t('adminUsersSubtitle')} />
 
-      <div className="space-y-5 px-6 py-6 sm:px-8">
+      <div className="space-y-6 px-6 py-6 sm:px-8">
         {/* Add row */}
-        <form
-          onSubmit={requestAdd}
-          className="flex flex-wrap items-end gap-3 rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4"
-        >
+        <form onSubmit={requestAdd} className="surface-card flex flex-wrap items-end gap-3 p-5">
           <div className="min-w-[14rem] flex-1">
             <label htmlFor={emailId} className={LABEL_CLASS}>
               {t('adminUsersAddLabel')}
@@ -252,7 +249,7 @@ export function AdminUsersPage() {
             />
           </div>
           <Button type="submit">
-            <Icon name="person_add" size={18} />
+            <Icon name="person_add" size={16} />
             {t('adminUsersAdd')}
           </Button>
         </form>
@@ -260,16 +257,16 @@ export function AdminUsersPage() {
         <PendingCertRequestsCard meEmail={me?.email ?? null} />
 
         {isLoading && (
-          <div className="rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">
+          <div className="surface-card p-5">
             <Skeleton lines={4} />
           </div>
         )}
 
         {users && (
-          <div className="overflow-x-auto rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)]">
-            <table className="w-full border-collapse text-left text-[13px]">
+          <div className="surface-card overflow-x-auto">
+            <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
               <thead className="bg-[color:var(--bg-hover)]">
-                <tr className="text-[11px] font-bold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                <tr className="text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
                   <th className="px-4 py-2.5">{t('adminUsersColEmail')}</th>
                   <th className="px-4 py-2.5">{t('adminUsersColRole')}</th>
                   <th className="px-4 py-2.5">{t('adminUsersColStatus')}</th>
@@ -361,10 +358,10 @@ function Row({
       style={{ '--stagger-index': index } as CSSProperties}
       className="animate-list-item-in border-t border-[color:var(--border)] align-middle"
     >
-      <td className="px-4 py-3 text-[color:var(--text-primary)]">
-        <span className="break-all">{u.email}</span>
+      <td className="whitespace-nowrap px-4 py-3 text-[color:var(--text-primary)]">
+        <span>{u.email}</span>
         {isMe && (
-          <span className="ml-1.5 text-[11px] text-[color:var(--text-muted)]">
+          <span className="ml-1.5 text-2xs text-[color:var(--text-muted)]">
             ({t('adminUsersYou')})
           </span>
         )}
@@ -392,11 +389,11 @@ function Row({
       <td className="px-4 py-3 text-xs text-[color:var(--text-secondary)]">
         {u.is_admin ? <CertSummary certs={certs} /> : '—'}
       </td>
-      <td className="px-4 py-3 font-mono text-xs text-[color:var(--text-muted)]">
+      <td className="whitespace-nowrap px-4 py-3 text-xs text-[color:var(--text-muted)]">
         {u.created_by ?? '—'}
       </td>
       <td className="px-4 py-3">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 max-sm:flex-nowrap">
           {!isLocked && !isMe && (
             <Button size="sm" variant="secondary" onClick={() => onAction('lock')}>
               {t('adminUsersLock')}

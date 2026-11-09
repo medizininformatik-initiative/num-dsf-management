@@ -72,28 +72,28 @@ export function AdminCertificatesPage() {
         subtitle={t('adminCertSubtitle')}
         actions={
           <Button onClick={() => setAdding(true)}>
-            <Icon name="add_circle" size={18} />
+            <Icon name="add_circle" size={16} />
             {t('adminCertAddButton')}
           </Button>
         }
       />
-      <div className="space-y-5 px-6 py-6 sm:px-8">
+      <div className="space-y-4 px-6 py-6 sm:px-8">
         <p className="text-sm text-[color:var(--text-secondary)]">{t('adminCertExplain')}</p>
 
         {isLoading && (
-          <div className="rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5">
+          <div className="surface-card p-5">
             <Skeleton lines={3} />
           </div>
         )}
 
         {certs && certs.length === 0 && (
-          <p className="rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)] p-5 text-sm text-[color:var(--text-muted)]">
+          <p className="surface-card p-5 text-sm text-[color:var(--text-muted)]">
             {t('adminCertEmpty')}
           </p>
         )}
 
         {certs && certs.length > 0 && (
-          <ul className="overflow-hidden rounded-card border border-[color:var(--border)] bg-[color:var(--bg-card)]">
+          <ul className="surface-card overflow-hidden">
             {certs.map((c) => (
               <AdminCertificateRow
                 key={c.id}
@@ -110,7 +110,7 @@ export function AdminCertificatesPage() {
                     >
                       <input
                         aria-label={t('adminCertLabelField')}
-                        className={`${FIELD_CLASS} w-40`}
+                        className={`${FIELD_CLASS} max-w-[10rem]`}
                         maxLength={100}
                         value={editing.label}
                         onChange={(e) => setEditing({ id: c.id, label: e.target.value })}
