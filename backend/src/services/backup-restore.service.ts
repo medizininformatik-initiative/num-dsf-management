@@ -10,7 +10,8 @@
  * off; any error rolls everything back. Tables that exist in the database but
  * not in the backup (added by a newer migration) keep their rows.
  *
- * audit_logs is append-only (DELETE/UPDATE triggers, migration 013). Restoring
+ * audit_logs is append-only (DELETE/UPDATE triggers, migration 013; the
+ * incident timeline and thumbprint blocks likewise, migration 035). Restoring
  * into an emptied table is the one documented exception: the triggers of the
  * restored tables are dropped before the transaction and re-created afterwards
  * (also after a failure), without their original DEFINER clause. With binary
@@ -220,7 +221,9 @@ export async function restoreBackup(
     dropped = await captureAndDropTriggers(conn, triggers);
     if (dropped.length > 0) {
       log(`Temporarily dropped ${dropped.length} trigger(s); they are re-created at the end.`);
-      log('If this process is killed now, re-apply db/migrations/013 and 015 to restore them.');
+      log(
+        'If this process is killed now, re-apply db/migrations/013, 015 and 035 to restore them.',
+      );
     }
     await db.query('SET FOREIGN_KEY_CHECKS = 0');
     await db.query('START TRANSACTION');
