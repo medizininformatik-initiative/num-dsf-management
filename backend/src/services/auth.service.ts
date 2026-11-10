@@ -444,6 +444,12 @@ async function resolveOrgLogin(fingerprint: string): Promise<{
     .join('instances as i', 'i.id', 'o.instance_id')
     .join('users as u', 'u.id', 'i.user_id')
     .where('l.fingerprint', fingerprint)
+    // A thumbprint blocked by an incident never logs in, whatever re-added it.
+    .whereNotExists(
+      db('blocked_certificate_thumbprints').whereRaw(
+        'blocked_certificate_thumbprints.fingerprint = l.fingerprint',
+      ),
+    )
     .select('i.id as instance_id', 'u.id as user_id', 'u.email as user_email')
     .first();
   if (!row) return null;
