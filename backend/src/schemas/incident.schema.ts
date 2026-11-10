@@ -1,15 +1,34 @@
 /**
  * incident.schema.ts – Zod validation for the incident register (report,
- * admin updates and actions). Lengths are capped; links must be https.
+ * admin updates and actions). Lengths are capped; links must be https;
+ * single-line fields (title, organization) refuse control characters; the
+ * detection time lies between one year before now and now (it starts the
+ * NIS2 deadlines, so an older or future value is a typo, not an incident).
  */
 import { z } from 'zod';
 
 const escalationLevel = z.union([z.literal(1), z.literal(2), z.literal(3)]);
 
-const notInFuture = z
+const ONE_YEAR_MS = 366 * 86_400_000;
+
+const detectionTime = z
   .string()
   .datetime({ offset: true })
-  .refine((v) => new Date(v).getTime() <= Date.now() + 60_000, 'detectedAt lies in the future');
+  .refine((v) => new Date(v).getTime() <= Date.now() + 60_000, 'detectedAt lies in the future')
+  .refine(
+    (v) => new Date(v).getTime() >= Date.now() - ONE_YEAR_MS,
+    'detectedAt lies more than a year back',
+  );
+
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS = /[\x00-\x1f\x7f]/;
+const singleLine = (min: number, max: number) =>
+  z
+    .string()
+    .trim()
+    .min(min)
+    .max(max)
+    .refine((v) => !CONTROL_CHARS.test(v), 'Control characters are not allowed');
 
 const httpsUrl = z
   .string()
@@ -20,11 +39,11 @@ const httpsUrl = z
 const totpCode = z.string().length(6).optional();
 
 export const reportIncidentSchema = z.object({
-  organizationId: z.string().min(1).max(255).nullable().optional(),
-  title: z.string().trim().min(3).max(200),
+  organizationId: singleLine(1, 255).nullable().optional(),
+  title: singleLine(3, 200),
   description: z.string().trim().min(1).max(5000),
   escalationLevel,
-  detectedAt: notInFuture.optional(),
+  detectedAt: detectionTime.optional(),
   dpoInformed: z.boolean().optional(),
   zulipUrl: httpsUrl.optional(),
 });
@@ -32,7 +51,7 @@ export const reportIncidentSchema = z.object({
 export const updateIncidentSchema = z
   .object({
     escalationLevel: escalationLevel.optional(),
-    detectedAt: notInFuture.optional(),
+    detectedAt: detectionTime.optional(),
     zulipUrl: httpsUrl.nullable().optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), 'Nothing to update');
