@@ -20,11 +20,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
 import { revokeAllSessions } from './auth.service';
-import { rejectPrivateKey, parseCertificate } from './certificate.service';
+import { parseCertificate } from './certificate.service';
 import { isCaBlacklisted } from './ca-blacklist.service';
 import { isIssuerWhitelisted, isWhitelistEnforced } from './ca-whitelist.service';
 import { isVerifiedAdminEmail } from '../lib/adminGrants';
-import { sha512FingerprintFromPem } from '../lib/certFingerprint';
+import { sha512FingerprintFromPem, canonicalCertificatePem } from '../lib/certFingerprint';
 
 export class AdminCertError extends Error {
   constructor(public code: string) {
@@ -85,13 +85,14 @@ function toApi(r: Row): AdminCertificate {
  * check validity or uniqueness (see assertAcceptable).
  * @throws AdminCertError PRIVATE_KEY_REJECTED / INVALID_PEM
  */
-export function parseAdminCert(pem: string): ParsedAdminCert {
+export function parseAdminCert(rawPem: string): ParsedAdminCert {
   try {
-    rejectPrivateKey(pem);
-    const { subject, validUntil, issuerDn } = parseCertificate(pem.trim());
-    const x509 = new crypto.X509Certificate(pem.trim());
+    // Exactly one certificate block, as for organization uploads.
+    const pem = canonicalCertificatePem(rawPem);
+    const { subject, validUntil, issuerDn } = parseCertificate(pem);
+    const x509 = new crypto.X509Certificate(pem);
     return {
-      fingerprint: sha512FingerprintFromPem(pem.trim()),
+      fingerprint: sha512FingerprintFromPem(pem),
       subject,
       validFrom: new Date(x509.validFrom),
       validUntil,
