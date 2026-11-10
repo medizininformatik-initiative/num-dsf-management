@@ -47,6 +47,8 @@ const ERROR_KEY: Record<string, TranslationKey> = {
   NOT_AN_ADMIN: 'adminCertErr_NOT_AN_ADMIN',
   USE_SELF_SERVICE: 'adminCertErr_USE_SELF_SERVICE',
   REQUEST_ALREADY_PENDING: 'adminCertErr_REQUEST_ALREADY_PENDING',
+  CA_CERTIFICATE_REJECTED: 'adminCertErr_CA_CERTIFICATE_REJECTED',
+  CERT_BLOCKED: 'adminCertErr_CERT_BLOCKED',
 };
 
 export interface AddAdminCertificateDialogProps {
