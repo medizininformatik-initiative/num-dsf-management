@@ -63,3 +63,22 @@ SET @sql := IF(@t = 0,
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+SET @t := (SELECT COUNT(*) FROM information_schema.TABLES
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'incident_events');
+SET @sql := IF(@t = 0,
+  'CREATE TABLE incident_events (
+     id           CHAR(36)      NOT NULL PRIMARY KEY,
+     incident_id  CHAR(36)      NOT NULL,
+     seq          INT           NOT NULL,
+     at           DATETIME(3)   NOT NULL,
+     actor_email  VARCHAR(255)  NOT NULL,
+     type         ENUM("REPORTED","CONFIRMED","SUSPENDED","MEASURE","COMMENT","SUSPENSION_LIFTED","CLOSED","FALSE_ALARM","UPDATED") NOT NULL,
+     details      JSON          NULL,
+     prev_hash    CHAR(64)      NOT NULL,
+     hash         CHAR(64)      NOT NULL,
+     UNIQUE KEY uq_incident_events_seq (incident_id, seq),
+     CONSTRAINT fk_incident_events_incident FOREIGN KEY (incident_id) REFERENCES incidents (id)
+   ) ENGINE=InnoDB',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
