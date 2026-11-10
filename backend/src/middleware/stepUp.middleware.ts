@@ -33,7 +33,7 @@
  * db/connection
  */
 import { Request, Response, NextFunction } from 'express';
-import { verifySecondFactor, isDevTotpBypassActive } from '../services/totp.service';
+import { verifyTotpCode, verifyBackupCode, isDevTotpBypassActive } from '../services/totp.service';
 import { extractClientCert } from '../lib/clientCert';
 import { resolveCertLogin } from '../services/auth.service';
 import { db } from '../db/connection';
@@ -143,7 +143,10 @@ async function verifySecondFactorStep(
     return unconfigured;
   }
 
-  const valid = await verifySecondFactor(req.user!.id, code);
+  const normalized = code.replace(/[\s-]/g, '');
+  const valid = /^\d{6}$/.test(normalized)
+    ? await verifyTotpCode(req.user!.id, normalized)
+    : await verifyBackupCode(req.user!.id, normalized);
   if (!valid) {
     return { ok: false, status: 401, code: 'TOTP_INVALID', message: 'Invalid TOTP code or TAN' };
   }

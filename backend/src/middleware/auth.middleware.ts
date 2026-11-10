@@ -168,7 +168,14 @@ async function authenticate(
   };
   // An admin who signed in with a certificate must enrol TOTP first; until
   // then the session reaches only the enrolment endpoints.
-  if (!allowUnenrolled && (await isTotpEnrolmentRequired(req.user))) {
+  // (The cheap session-type test comes first: OTP and org-scoped sessions never
+  // reach the database lookup.)
+  if (
+    !allowUnenrolled &&
+    req.user.authMethod === 'cert' &&
+    !req.user.scopeInstanceId &&
+    (await isTotpEnrolmentRequired(req.user))
+  ) {
     res.status(403).json({
       error: {
         code: 'TOTP_ENROLMENT_REQUIRED',
