@@ -344,15 +344,27 @@ export function hashedFieldsOf(row: IncidentRow): HashedFields {
   };
 }
 
-/** Update incident columns and append the event in one transaction. */
+/**
+ * Update incident columns and append the event in one transaction. `check`
+ * runs on the row locked FOR UPDATE, so a status test cannot race a
+ * concurrent change (two confirms, two ticks of one stage, ...).
+ */
 async function changeWithEvent(
   id: string,
   update: Record<string, unknown> | null,
   actor: string,
   type: IncidentEventType,
   details: Record<string, unknown> | null,
+  check?: (locked: IncidentRow) => void,
 ): Promise<IncidentEvent> {
   return db.transaction(async (trx) => {
+    if (check) {
+      const locked = (await trx('incidents').where({ id }).forUpdate().first()) as
+        | IncidentRow
+        | undefined;
+      if (!locked) throw new Error('INCIDENT_NOT_FOUND');
+      check(locked);
+    }
     if (update) await trx('incidents').where({ id }).update(update);
     return appendEvent(trx, id, actor, type, details);
   });
@@ -436,6 +448,9 @@ export async function confirmIncident(id: string, caller: IncidentCaller): Promi
     caller.email,
     'CONFIRMED',
     {},
+    (locked) => {
+      if (locked.status !== 'REPORTED') throw new Error('INVALID_STATUS');
+    },
   );
   const updated = (await loadRow(id))!;
   await auditIncident(updated, caller, 'UPDATE', { action: 'incident_confirm' });
@@ -490,6 +505,8 @@ export async function updateIncident(
   }
   if (changes.length > 0) {
     await db.transaction(async (trx) => {
+      const locked = (await trx('incidents').where({ id }).forUpdate().first()) as IncidentRow;
+      if (isClosed(locked)) throw new Error('INVALID_STATUS');
       for (const c of changes) {
         const value = c.column === 'detected_at' ? new Date(String(c.to)) : c.to;
         await trx('incidents')
@@ -513,7 +530,7 @@ export async function updateIncident(
   return toApi((await loadRow(id))!, caller);
 }
 
-/** Tick "reported to BSI" for one NIS2 stage. @throws FORBIDDEN / ALREADY_ACKNOWLEDGED */
+/** Tick "reported to BSI" for one NIS2 stage. @throws FORBIDDEN / ALREADY_ACKNOWLEDGED / INVALID_STATUS (closed) */
 export async function acknowledgeNis2(
   id: string,
   stage: Nis2Stage,
@@ -522,29 +539,41 @@ export async function acknowledgeNis2(
   const row = await requireVisible(id, caller);
   if (!canAcknowledge(row, caller)) throw new Error('FORBIDDEN');
   const cols = NIS2_COLUMNS[stage];
-  if ((row as unknown as Record<string, unknown>)[cols.at]) throw new Error('ALREADY_ACKNOWLEDGED');
+  const check = (locked: IncidentRow) => {
+    if (isClosed(locked)) throw new Error('INVALID_STATUS');
+    if ((locked as unknown as Record<string, unknown>)[cols.at]) {
+      throw new Error('ALREADY_ACKNOWLEDGED');
+    }
+  };
+  check(row);
   await changeWithEvent(
     id,
     { [cols.at]: new Date(), [cols.by]: caller.email },
     caller.email,
     'UPDATED',
     { field: 'nis2', stage, from: null, to: 'REPORTED_TO_BSI' },
+    check,
   );
   await auditIncident(row, caller, 'UPDATE', { action: 'incident_nis2', stage });
   return toApi((await loadRow(id))!, caller);
 }
 
-/** Tick "data protection officer informed". @throws FORBIDDEN / ALREADY_ACKNOWLEDGED */
+/** Tick "data protection officer informed". @throws FORBIDDEN / ALREADY_ACKNOWLEDGED / INVALID_STATUS (closed) */
 export async function acknowledgeDpo(id: string, caller: IncidentCaller): Promise<ApiIncident> {
   const row = await requireVisible(id, caller);
   if (!canAcknowledge(row, caller)) throw new Error('FORBIDDEN');
-  if (row.dpo_informed_at) throw new Error('ALREADY_ACKNOWLEDGED');
+  const check = (locked: IncidentRow) => {
+    if (isClosed(locked)) throw new Error('INVALID_STATUS');
+    if (locked.dpo_informed_at) throw new Error('ALREADY_ACKNOWLEDGED');
+  };
+  check(row);
   await changeWithEvent(
     id,
     { dpo_informed_at: new Date(), dpo_informed_by: caller.email },
     caller.email,
     'UPDATED',
     { field: 'dpoInformed', from: false, to: true },
+    check,
   );
   await auditIncident(row, caller, 'UPDATE', { action: 'incident_dpo_informed' });
   return toApi((await loadRow(id))!, caller);
@@ -574,14 +603,18 @@ export async function closeIncident(
   caller: IncidentCaller,
 ): Promise<ApiIncident> {
   const row = await requireAdminRow(id);
-  if (isClosed(row)) throw new Error('INVALID_STATUS');
-  if (row.suspended) throw new Error('STILL_SUSPENDED');
+  const check = (locked: IncidentRow) => {
+    if (isClosed(locked)) throw new Error('INVALID_STATUS');
+    if (locked.suspended) throw new Error('STILL_SUSPENDED');
+  };
+  check(row);
   await changeWithEvent(
     id,
     { status: outcome, closed_by: caller.email, closed_at: new Date() },
     caller.email,
     outcome,
     outcome === 'CLOSED' ? { reviewNote: note } : { reason: note },
+    check,
   );
   const updated = (await loadRow(id))!;
   await auditIncident(updated, caller, 'UPDATE', { action: 'incident_close', outcome });
