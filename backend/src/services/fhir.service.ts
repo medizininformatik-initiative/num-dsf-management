@@ -307,6 +307,18 @@ export async function loadAllowListInput(
   return { members, removed, parentNames: Object.fromEntries(parentNames) };
 }
 
+/**
+ * Approved, active sites the incident register withdraws from the allow list
+ * (suspended, or every thumbprint blocked; see applyIncidentBlocks). The IP
+ * address list and the network map leave them out, like the bundle does.
+ */
+export async function incidentWithdrawnOrganizations(): Promise<Set<string>> {
+  const approved = await loadApprovedState();
+  const { members } = await withIncidentBlocks({ ...approved, parentNames: {} });
+  const kept = new Set(members.map((m) => m.identifier));
+  return new Set(approved.members.map((m) => m.identifier).filter((id) => !kept.has(id)));
+}
+
 /** An input with the current incident suspensions and thumbprint blocks applied. */
 export async function withIncidentBlocks(
   input: StoredAllowListInput,
