@@ -47,6 +47,7 @@ export function incidentExportCsv(doc: IncidentExport): string {
     ['escalation_level', i.escalationLevel],
     ['organization', i.organization?.identifier ?? ''],
     ['reported_by', i.reportedBy],
+    ['reported_by_organization_certificate', i.reportedByOrganization],
     ['reported_at', iso(i.reportedAt)],
     ['detected_at', iso(i.detectedAt)],
     ['confirmed_by', i.confirmedBy],

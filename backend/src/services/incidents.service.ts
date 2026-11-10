@@ -4,7 +4,8 @@
  * suspension of a site lives in incident-suspension.service.
  *
  * Visibility: admins see everything; other users see incidents that were
- * confirmed at some point and their own reports. The description and the
+ * confirmed at some point and their own reports (same e-mail and same
+ * session scope, see isReporter). The description and the
  * reporter are shown to admins and the reporter only. A single admin acts
  * alone (no four-eyes); the routes require the step-up for sensitive actions.
  * Every change is an incident event (hash chain) and an audit_logs entry;
@@ -35,6 +36,9 @@ export interface IncidentRow {
   description: string;
   status: IncidentStatus;
   reported_by: string;
+  reported_by_instance_id?: string | null;
+  /** Organization of reported_by_instance_id (joined). */
+  reporter_org?: string | null;
   reported_at: Date;
   detected_at: Date;
   escalation_level: number;
@@ -61,6 +65,8 @@ export interface IncidentCaller {
   /** Instances whose organization the caller acts for. */
   instanceIds: string[];
   ip: string;
+  /** Instance of an organization certificate session; null for a personal login. */
+  scopeInstanceId: string | null;
 }
 
 export interface ApiIncident {
@@ -71,6 +77,8 @@ export interface ApiIncident {
   escalationLevel: number;
   organization: { identifier: string; name: string } | null;
   reportedBy: string | null;
+  /** Set when the report came through this organization's certificate session. */
+  reportedByOrganization: string | null;
   reportedAt: Date;
   detectedAt: Date;
   confirmedBy: string | null;
@@ -99,21 +107,39 @@ export async function callerOf(
   const instanceIds = user.scopeInstanceId
     ? [user.scopeInstanceId]
     : await db('instances').where({ user_id: user.id }).pluck('id');
-  return { email: user.email.toLowerCase().trim(), isAdmin, instanceIds, ip };
+  return {
+    email: user.email.toLowerCase().trim(),
+    isAdmin,
+    instanceIds,
+    ip,
+    scopeInstanceId: user.scopeInstanceId ?? null,
+  };
 }
 
 function baseQuery() {
   return db('incidents as i')
     .leftJoin('organizations as o', 'o.identifier', 'i.organization_id')
-    .select('i.*', 'o.name as org_name', 'o.instance_id as org_instance_id');
+    .leftJoin('organizations as ro', 'ro.instance_id', 'i.reported_by_instance_id')
+    .select(
+      'i.*',
+      'o.name as org_name',
+      'o.instance_id as org_instance_id',
+      'ro.identifier as reporter_org',
+    );
 }
 
 async function loadRow(id: string): Promise<IncidentRow | undefined> {
   return (await baseQuery().where('i.id', id).first()) as IncidentRow | undefined;
 }
 
+/**
+ * The reporter is the e-mail AND the session scope: an organization
+ * certificate session carries the instance owner's e-mail, so without the
+ * scope it would inherit the owner's own reports (and the other way round).
+ */
 const isReporter = (row: IncidentRow, caller: IncidentCaller) =>
-  row.reported_by.toLowerCase() === caller.email;
+  row.reported_by.toLowerCase() === caller.email &&
+  (row.reported_by_instance_id ?? null) === caller.scopeInstanceId;
 
 export function canView(row: IncidentRow, caller: IncidentCaller): boolean {
   return caller.isAdmin || isReporter(row, caller) || row.confirmed_at !== null;
@@ -137,6 +163,7 @@ export function toApi(row: IncidentRow, caller: IncidentCaller): ApiIncident {
       ? { identifier: row.organization_id, name: row.org_name ?? row.organization_id }
       : null,
     reportedBy: privileged ? row.reported_by : null,
+    reportedByOrganization: privileged ? (row.reporter_org ?? null) : null,
     reportedAt: row.reported_at,
     detectedAt,
     confirmedBy: row.confirmed_by,
@@ -170,7 +197,13 @@ export async function listIncidents(caller: IncidentCaller): Promise<ApiIncident
     .orderByRaw("CASE WHEN i.status IN ('REPORTED','CONFIRMED') THEN 0 ELSE 1 END")
     .orderBy('i.reported_at', 'desc');
   if (!caller.isAdmin) {
-    query.where((q) => q.whereNotNull('i.confirmed_at').orWhere('i.reported_by', caller.email));
+    query.where((q) =>
+      q.whereNotNull('i.confirmed_at').orWhere((own) => {
+        own.where('i.reported_by', caller.email);
+        if (caller.scopeInstanceId) own.where('i.reported_by_instance_id', caller.scopeInstanceId);
+        else own.whereNull('i.reported_by_instance_id');
+      }),
+    );
   }
   const rows = (await query) as IncidentRow[];
   return rows.map((r) => toApi(r, caller));
@@ -307,6 +340,7 @@ export async function reportIncident(
       description: input.description,
       status: 'REPORTED',
       reported_by: caller.email,
+      reported_by_instance_id: caller.scopeInstanceId,
       reported_at: now,
       detected_at: input.detectedAt ? new Date(input.detectedAt) : now,
       escalation_level: input.escalationLevel,

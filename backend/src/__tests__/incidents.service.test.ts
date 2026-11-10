@@ -33,12 +33,14 @@ const admin = (): svc.IncidentCaller => ({
   isAdmin: true,
   instanceIds: [],
   ip: '127.0.0.1',
+  scopeInstanceId: null,
 });
 const siteCaller = (site: Site): svc.IncidentCaller => ({
   email: site.email,
   isAdmin: false,
   instanceIds: [site.instanceId],
   ip: '127.0.0.1',
+  scopeInstanceId: null,
 });
 
 beforeAll(async () => {

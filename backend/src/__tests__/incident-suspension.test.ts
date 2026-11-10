@@ -30,6 +30,7 @@ const admin = (): svc.IncidentCaller => ({
   isAdmin: true,
   instanceIds: [],
   ip: '127.0.0.1',
+  scopeInstanceId: null,
 });
 
 const checklist = {
