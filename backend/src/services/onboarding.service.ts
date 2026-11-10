@@ -28,6 +28,7 @@ import { writeAuditLog } from './audit.service';
 import { errCode, errMessage } from '../lib/errMessage';
 import { isAdminEmail } from '../lib/isAdmin';
 import { recordSystemLoginChange, loginNoticeRecipients } from './org-login-certificates.service';
+import { certificateOwnersOfFingerprint, lockFingerprint } from './certificate.service';
 
 const MAX_FILE_BYTES = 1_000_000;
 const MAX_ROWS = 1000;
@@ -255,7 +256,8 @@ export async function previewSites(rows: OnboardingRow[]): Promise<ImportResult>
       continue;
     }
     const fileOwner = fileFingerprintOwner.get(fp);
-    if (owner || (fileOwner && fileOwner !== identifier)) {
+    const certOwners = await certificateOwnersOfFingerprint(db, fp, identifier);
+    if (owner || certOwners.length || (fileOwner && fileOwner !== identifier)) {
       results.push({ identifier, action: 'failed', ok: false, issue: 'FINGERPRINT_IN_USE' });
       continue;
     }
@@ -374,6 +376,16 @@ export async function importSites(
       // reach the addresses the clinic had before.
       const priorRecipients = await loginNoticeRecipients(identifier);
       const action = await db.transaction(async (trx) => {
+        // 0. Serialize with certificate uploads of the same certificate
+        // (certificate_thumbprint_locks). First statement of the transaction,
+        // so the reads below see every upload committed before the lock.
+        await lockFingerprint(trx, row.clientCertFingerprint);
+        // A certificate another organization registered is not this site's.
+        if (
+          (await certificateOwnersOfFingerprint(trx, row.clientCertFingerprint, identifier)).length
+        ) {
+          throw new Error('FINGERPRINT_IN_USE');
+        }
         // 1. The fingerprint must not already belong to a different org.
         // The uq_org_cert_fp unique index enforces this too; the insert/
         // update below catches that race as a backstop.
