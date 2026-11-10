@@ -13,7 +13,11 @@ import {
   whitelistedIssuers,
 } from './ca-whitelist.service';
 import { errMessage } from '../lib/errMessage';
-import { sha512FingerprintFromPem, rejectPrivateKeyMaterial } from '../lib/certFingerprint';
+import {
+  sha512FingerprintFromPem,
+  rejectPrivateKeyMaterial,
+  canonicalCertificatePem,
+} from '../lib/certFingerprint';
 import {
   linkUploadedCertificate,
   unlinkRenewedCertificate,
@@ -139,12 +143,23 @@ async function assertIssuerAllowed(issuerDn: string): Promise<void> {
 }
 
 /**
+ * The PEM an upload stores: exactly one certificate block, re-encoded
+ * canonically (lib/certFingerprint.canonicalCertificatePem). The raw upload
+ * itself is never stored or logged.
+ * @throws PRIVATE_KEY_REJECTED / INVALID_PEM
+ */
+export function uploadedCertificatePem(rawPem: string): string {
+  return canonicalCertificatePem(rawPem);
+}
+
+/**
  * Parse a PEM without storing it, for the upload preview: what the portal
  * would register (subject, expiry, both thumbprints) and how the upload
  * checks would decide (blacklisted issuer, issuer on the CA whitelist).
+ * Applies the same input checks as an upload (uploadedCertificatePem).
  * @throws PRIVATE_KEY_REJECTED / INVALID_PEM on a bad PEM.
  */
-export async function previewCertificate(pem: string): Promise<{
+export async function previewCertificate(rawPem: string): Promise<{
   subject: string;
   validUntil: Date;
   thumbprint: string;
@@ -154,6 +169,7 @@ export async function previewCertificate(pem: string): Promise<{
   issuerBlacklisted: boolean;
   whitelistEnforced: boolean;
 }> {
+  const pem = uploadedCertificatePem(rawPem);
   const { subject, thumbprint, validUntil, issuerDn } = parseCertificate(pem);
   return {
     subject,
@@ -239,26 +255,26 @@ async function assertNotRegisteredElsewhere(
  */
 export async function createCertificate(
   instanceId: string,
-  pem: string,
+  rawPem: string,
   userEmail: string,
   ipAddress: string,
   uploadedByAdmin = true,
 ) {
-  rejectPrivateKey(pem);
+  const pem = uploadedCertificatePem(rawPem);
   const org = await db('organizations').where({ instance_id: instanceId }).first();
   if (!org) throw new Error('ORGANIZATION_NOT_FOUND');
-  const { subject, thumbprint, validUntil, issuerDn } = parseCertificate(pem.trim());
+  const { subject, thumbprint, validUntil, issuerDn } = parseCertificate(pem);
   if (await isCaBlacklisted({ subjectDn: issuerDn })) {
     throw new Error('CA_BLACKLISTED');
   }
   await assertIssuerAllowed(issuerDn);
   const id = uuidv4();
   await db.transaction(async (trx) => {
-    await assertNotRegisteredElsewhere(trx, org.identifier, thumbprint, pem.trim());
+    await assertNotRegisteredElsewhere(trx, org.identifier, thumbprint, pem);
     await trx('certificates').insert({
       id,
       organization_id: org.identifier,
-      pem: pem.trim(),
+      pem,
       subject,
       thumbprint,
       valid_until: validUntil,
@@ -266,7 +282,7 @@ export async function createCertificate(
       uploaded_by: userEmail,
       uploaded_by_admin: uploadedByAdmin ? 1 : 0,
     });
-    await linkUploadedCertificate(trx, org.identifier, id, pem.trim(), validUntil);
+    await linkUploadedCertificate(trx, org.identifier, id, pem, validUntil);
   });
   await writeAuditLog({
     userEmail,
@@ -333,8 +349,8 @@ export async function renewCertificate(
   ipAddress: string,
   uploadedByAdmin = true,
 ) {
-  rejectPrivateKey(body.pem);
-  const { subject, thumbprint, validUntil, issuerDn } = parseCertificate(body.pem.trim());
+  const pem = uploadedCertificatePem(body.pem);
+  const { subject, thumbprint, validUntil, issuerDn } = parseCertificate(pem);
   if (await isCaBlacklisted({ subjectDn: issuerDn })) {
     throw new Error('CA_BLACKLISTED');
   }
@@ -350,14 +366,14 @@ export async function renewCertificate(
       .forUpdate()
       .first();
     if (!oldCert) throw new Error('CERTIFICATE_NOT_FOUND');
-    await assertNotRegisteredElsewhere(trx, org.identifier, thumbprint, body.pem.trim());
+    await assertNotRegisteredElsewhere(trx, org.identifier, thumbprint, pem);
 
     // Insert new cert
     const newId = uuidv4();
     await trx('certificates').insert({
       id: newId,
       organization_id: org.identifier,
-      pem: body.pem.trim(),
+      pem,
       subject,
       thumbprint,
       valid_until: validUntil,
@@ -369,7 +385,7 @@ export async function renewCertificate(
     // Delete old cert; its login entry stays until the old certificate expires
     await unlinkRenewedCertificate(trx, oldCertId);
     await trx('certificates').where({ id: oldCertId }).delete();
-    await linkUploadedCertificate(trx, org.identifier, newId, body.pem.trim(), validUntil);
+    await linkUploadedCertificate(trx, org.identifier, newId, pem, validUntil);
 
     // Audit both actions (outside transaction lock; failures must not block)
     await writeAuditLog({

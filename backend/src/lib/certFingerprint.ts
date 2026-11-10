@@ -33,6 +33,39 @@ export function rejectPrivateKeyMaterial(text: string): void {
   if (PRIVATE_KEY_MARKER.test(text)) throw new Error('PRIVATE_KEY_REJECTED');
 }
 
+const SINGLE_CERTIFICATE =
+  /^\s*-----BEGIN CERTIFICATE-----([A-Za-z0-9+/=\s]+)-----END CERTIFICATE-----\s*$/;
+
+/**
+ * Validate an uploaded certificate and return its canonical PEM (what
+ * X509Certificate re-encodes from the DER), the only form that is stored.
+ * The input must be exactly one CERTIFICATE block, whitespace allowed around
+ * and inside it: a second block (chain file), text around it, or data
+ * appended inside the block (the DER must be exactly the block's content) is
+ * refused. Never logs the input.
+ * @throws PRIVATE_KEY_REJECTED if the input carries private-key material.
+ * @throws INVALID_PEM otherwise.
+ */
+export function canonicalCertificatePem(input: string): string {
+  rejectPrivateKeyMaterial(input);
+  const block = SINGLE_CERTIFICATE.exec(input);
+  if (!block) throw new Error('INVALID_PEM');
+  // Parse the block's DER itself (any line length), and require that it is
+  // exactly one certificate with nothing appended.
+  const b64 = block[1].replace(/\s+/g, '');
+  const der = Buffer.from(b64, 'base64');
+  // Strict base64: the decoder silently drops anything after padding.
+  if (der.toString('base64') !== b64) throw new Error('INVALID_PEM');
+  let cert: crypto.X509Certificate;
+  try {
+    cert = new crypto.X509Certificate(der);
+  } catch {
+    throw new Error('INVALID_PEM');
+  }
+  if (!der.equals(cert.raw)) throw new Error('INVALID_PEM');
+  return cert.toString();
+}
+
 /**
  * Parse an X.509 PEM and compute the SHA-512 fingerprint of its DER, the value
  * DSF publishes as certificate thumbprint. node:crypto parses RSA, EC and EdDSA
