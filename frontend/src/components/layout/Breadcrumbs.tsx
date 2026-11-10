@@ -24,6 +24,7 @@ const ROUTES = {
   'admin/bundle-versions': { label: 'bundleVersionsNavLabel' },
   'admin/onboarding': { label: 'adminOnboardingNavLabel' },
   'admin/backups': { label: 'backupNavLabel' },
+  'admin/incidents': { label: 'incidentsAdminNavLabel' },
   map: { label: 'networkMap' },
   marketplace: { label: 'sidebarMarketplace' },
   resources: { label: 'dsfResourcesNavLabel' },
