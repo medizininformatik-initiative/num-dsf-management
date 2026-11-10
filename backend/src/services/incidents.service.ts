@@ -458,4 +458,16 @@ export async function acknowledgeDpo(id: string, caller: IncidentCaller): Promis
   return toApi((await loadRow(id))!, caller);
 }
 
+/** Free-text admin entry, e.g. a measure taken outside the portal. Allowed in every status. */
+export async function commentIncident(
+  id: string,
+  text: string,
+  caller: IncidentCaller,
+): Promise<IncidentEvent> {
+  const row = await requireAdminRow(id);
+  const event = await changeWithEvent(id, null, caller.email, 'COMMENT', { text });
+  await auditIncident(row, caller, 'UPDATE', { action: 'incident_comment', seq: event.seq });
+  return event;
+}
+
 export { loadRow as loadIncidentRow, changeWithEvent };
