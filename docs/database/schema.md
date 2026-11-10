@@ -453,3 +453,19 @@ One row per backup attempt, scheduled or manual (028). Pruned files keep their r
 | file_deleted | TINYINT(1) | no | 0 | Removed by retention |
 
 `audit_logs.resource_type` gains `'BACKUP'` and `audit_logs.operation` gains `'DOWNLOAD'` in 028 (appended to the ENUMs as they stand in the live database).
+
+## incident_events
+
+Append-only timeline of an incident (035): no UPDATE or DELETE in code, like `audit_logs`. Each row is chained to its predecessor: `hash = SHA-256(prev_hash + canonical JSON of {incidentId, seq, at, actorEmail, type, details})` with sorted object keys, `prev_hash` of the first event is 64 zeros. Appending locks the incident row (`SELECT ... FOR UPDATE`) inside the transaction, so concurrent events cannot fork the chain. The detail view and the export verify the chain and name the first broken `seq`.
+
+| Column | Type | Null | Default | Notes |
+|--------|------|------|---------|-------|
+| id | CHAR(36) | no | — | PK |
+| incident_id | CHAR(36) | no | — | FK → incidents.id |
+| seq | INT | no | — | 1, 2, 3 … per incident; unique (incident_id, seq) |
+| at | DATETIME(3) | no | — | |
+| actor_email | VARCHAR(255) | no | — | |
+| type | ENUM | no | — | REPORTED, CONFIRMED, SUSPENDED, MEASURE, COMMENT, SUSPENSION_LIFTED, CLOSED, FALSE_ALARM, UPDATED |
+| details | JSON | yes | NULL | Measure results, restart checklist, review note, field changes |
+| prev_hash | CHAR(64) | no | — | Hash of the previous event |
+| hash | CHAR(64) | no | — | Hash of this event |
