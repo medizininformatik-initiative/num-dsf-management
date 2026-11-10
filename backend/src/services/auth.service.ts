@@ -62,6 +62,11 @@ export function verifyAccessToken(token: string): JwtPayload {
   const payload = jwt.verify(token, JWT_PUBLIC_KEY, { algorithms: ['RS256'] }) as JwtPayload;
   // Temp tokens share the key; one with a `purpose` must never pass as an access token.
   if ('purpose' in payload) throw new Error('INVALID_TOKEN_TYPE');
+  // Bundle signatures share the key too and carry no identity; every access
+  // token names its user, so anything without string sub and email is refused.
+  if (typeof payload.sub !== 'string' || !payload.sub || typeof payload.email !== 'string') {
+    throw new Error('INVALID_TOKEN_TYPE');
+  }
   return payload;
 }
 
