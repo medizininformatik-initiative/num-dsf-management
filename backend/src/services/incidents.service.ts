@@ -442,4 +442,20 @@ export async function acknowledgeNis2(
   return toApi((await loadRow(id))!, caller);
 }
 
+/** Tick "data protection officer informed". @throws FORBIDDEN / ALREADY_ACKNOWLEDGED */
+export async function acknowledgeDpo(id: string, caller: IncidentCaller): Promise<ApiIncident> {
+  const row = await requireVisible(id, caller);
+  if (!canAcknowledge(row, caller)) throw new Error('FORBIDDEN');
+  if (row.dpo_informed_at) throw new Error('ALREADY_ACKNOWLEDGED');
+  await changeWithEvent(
+    id,
+    { dpo_informed_at: new Date(), dpo_informed_by: caller.email },
+    caller.email,
+    'UPDATED',
+    { field: 'dpoInformed', from: false, to: true },
+  );
+  await auditIncident(row, caller, 'UPDATE', { action: 'incident_dpo_informed' });
+  return toApi((await loadRow(id))!, caller);
+}
+
 export { loadRow as loadIncidentRow, changeWithEvent };
