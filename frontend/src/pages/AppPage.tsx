@@ -21,9 +21,13 @@
  * roots (Map, Admin lists) fill the viewport while block-rooted routes
  * (Legal) take natural height and the footer stays pinned.
  *
+ * While a confirmed incident is open, the red IncidentBanner sits above the
+ * content on every route.
+ *
  * Dependencies: stores/canvas, stores/i18n, hooks/useInstance, useModals,
  * useOrganization, usePresence, lib/motion, layout/* (Sidebar, TopBar,
- * RightPanel, Drawer, useWideLayout, …), canvas/*, modals/*, ui/*.
+ * RightPanel, Drawer, useWideLayout, …), canvas/*, modals/*, incidents/*,
+ * ui/*.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useMatch } from 'react-router-dom';
@@ -52,6 +56,7 @@ import { DownloadModal } from '../components/modals/DownloadModal';
 import { CertRenewalModal } from '../components/modals/CertRenewalModal';
 import { ExpiryWarningBanner } from '../components/layout/ExpiryWarningBanner';
 import { CrossUserInstanceBanner } from '../components/layout/CrossUserInstanceBanner';
+import { IncidentBanner } from '../components/incidents/IncidentBanner';
 import { AppFooter } from '../components/layout/AppFooter';
 import { MapHeader } from '../components/map/MapHeader';
 import { ActivityFeed } from '../components/canvas/ActivityFeed';
@@ -258,6 +263,7 @@ export function AppPage() {
           {!isWide && sidebarColumn}
 
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <IncidentBanner />
             {isMapRoute && <MapHeader />}
             {isCanvasRoute && <CrossUserInstanceBanner instanceId={activeInstanceId} />}
             {isCanvasRoute && <ExpiryWarningBanner />}
