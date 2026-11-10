@@ -23,7 +23,7 @@ export function IncidentBanner() {
 
   const base = me?.isAdmin ? '/app/admin/incidents' : '/app/incidents';
   const only = active.length === 1 ? active[0] : null;
-  const to = only ? `${base}?incident=${encodeURIComponent(only.id)}` : base;
+  const to = only ? `${base}?id=${encodeURIComponent(only.id)}` : base;
 
   return (
     <section

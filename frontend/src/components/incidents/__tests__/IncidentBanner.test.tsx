@@ -53,7 +53,7 @@ describe('IncidentBanner', () => {
     expect(banner).toHaveTextContent('Incident a · Uniklinik Münster · confirmed');
     expect(screen.getByRole('link', { name: 'View incidents' })).toHaveAttribute(
       'href',
-      '/app/incidents?incident=a',
+      '/app/incidents?id=a',
     );
   });
 
