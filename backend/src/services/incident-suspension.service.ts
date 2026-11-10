@@ -2,8 +2,9 @@
  * incident-suspension.service.ts – "Standort sperren": the measures a single
  * admin takes against the affected site of an incident, each recorded as an
  * incident event with its result:
- *   BLOCK_CERTIFICATES  every current certificate and login thumbprint of the
- *                       site goes on the permanent block list;
+ *   BLOCK_CERTIFICATES  every certificate and login thumbprint of the site,
+ *                       including those its latest approved and its pending
+ *                       requests list, goes on the permanent block list;
  *   REMOVE_LOGINS       its login certificates are removed and the sessions of
  *                       its users revoked (skipped for an owner who is an admin);
  *   WITHDRAW            the site is suspended: published as withdrawn whatever
@@ -14,7 +15,8 @@
  * blocked, so the site returns only with a new, approved certificate.
  * Dependencies: db/connection, incidents.service, incident-events.service,
  *               incident-blocks.service, org-login-certificates.service,
- *               auth.service, bundle-versions.service, lib/certFingerprint, lib/isAdmin
+ *               auth.service, bundle-versions.service, approved-snapshot.service,
+ *               lib/certFingerprint, lib/isAdmin
  */
 import { db } from '../db/connection';
 import {
@@ -35,6 +37,7 @@ import { revokeAllSessions } from './auth.service';
 import { createSnapshot } from './bundle-versions.service';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
 import { isAdminEmail } from '../lib/isAdmin';
+import { allowListSection, snapshotCertificateIds } from './approved-snapshot.service';
 import type { IncidentMeasure } from '../schemas/incident.schema';
 
 export type MeasureResult = { measure: IncidentMeasure } & Record<string, unknown>;
@@ -42,22 +45,77 @@ export type MeasureResult = { measure: IncidentMeasure } & Record<string, unknow
 /** Measures run in this order: block before publishing, publish before mailing. */
 const ORDER: IncidentMeasure[] = ['BLOCK_CERTIFICATES', 'REMOVE_LOGINS', 'WITHDRAW', 'MAIL_SITES'];
 
-async function siteFingerprints(identifier: string): Promise<string[]> {
-  const [certs, logins] = await Promise.all([
-    db('certificates').where({ organization_id: identifier }).select('id', 'pem') as Promise<
-      Array<{ id: string; pem: string }>
-    >,
-    db('org_login_certificates').where({ organization_id: identifier }).pluck('fingerprint'),
-  ]);
-  const fps: string[] = [...(logins as string[])];
-  for (const c of certs) {
+/** SHA-512 thumbprints of stored PEMs. */
+function pemFingerprints(pems: string[]): string[] {
+  const fps: string[] = [];
+  for (const pem of pems) {
     try {
-      fps.push(sha512FingerprintFromPem(c.pem));
+      fps.push(sha512FingerprintFromPem(pem));
     } catch {
-      // An unreadable stored PEM cannot log in or be published either.
+      // An unreadable stored PEM is never published and cannot log in.
     }
   }
   return fps;
+}
+
+function parseSnapshot(raw: unknown): Record<string, unknown> | null {
+  try {
+    const value = typeof raw === 'string' ? (JSON.parse(raw) as unknown) : raw;
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Thumbprints of the site's latest APPROVED request and of its PENDING ones:
+ * the allow list publishes the approved snapshot, not the live certificate
+ * list, so a certificate deleted before the suspension would come back when
+ * it is lifted (and a pending request could approve it later). Legacy
+ * snapshots only list certificate ids; those still stored are resolved.
+ */
+async function snapshotFingerprints(instanceId: string | null | undefined): Promise<string[]> {
+  if (!instanceId) return [];
+  const [approved, pending] = await Promise.all([
+    db('approval_requests')
+      .where({ instance_id: instanceId, status: 'APPROVED' })
+      .orderBy([
+        { column: 'created_at', order: 'desc' },
+        { column: 'id', order: 'desc' },
+      ])
+      .first('snapshot_json') as Promise<{ snapshot_json: unknown } | undefined>,
+    db('approval_requests')
+      .where({ instance_id: instanceId, status: 'PENDING' })
+      .select('snapshot_json') as Promise<Array<{ snapshot_json: unknown }>>,
+  ]);
+  const snapshots = [approved, ...pending]
+    .filter((r): r is { snapshot_json: unknown } => r !== undefined)
+    .map((r) => parseSnapshot(r.snapshot_json));
+  const fps: string[] = [];
+  const certIds: string[] = [];
+  for (const snapshot of snapshots) {
+    const section = allowListSection(snapshot);
+    if (section) fps.push(...section.member.thumbprints.filter((t) => typeof t === 'string'));
+    else certIds.push(...(snapshotCertificateIds(snapshot) ?? []));
+  }
+  if (certIds.length > 0) {
+    const pems: string[] = await db('certificates').whereIn('id', certIds).pluck('pem');
+    fps.push(...pemFingerprints(pems));
+  }
+  return fps;
+}
+
+/** Every thumbprint the site holds now or that its approved or pending data lists. */
+async function siteFingerprints(row: IncidentRow): Promise<string[]> {
+  const identifier = row.organization_id as string;
+  const [pems, logins, snapshots] = await Promise.all([
+    db('certificates').where({ organization_id: identifier }).pluck('pem') as Promise<string[]>,
+    db('org_login_certificates').where({ organization_id: identifier }).pluck('fingerprint'),
+    snapshotFingerprints(row.org_instance_id),
+  ]);
+  return [...(logins as string[]), ...pemFingerprints(pems), ...snapshots];
 }
 
 async function record(
@@ -76,7 +134,7 @@ async function runMeasure(
 ): Promise<MeasureResult> {
   const org = row.organization_id as string;
   if (measure === 'BLOCK_CERTIFICATES') {
-    const fps = await siteFingerprints(org);
+    const fps = await siteFingerprints(row);
     const blocked = await db.transaction((trx) =>
       blockFingerprints(trx, fps, row.id, caller.email),
     );
