@@ -7,7 +7,7 @@
  * affected site) can tick a stage or "DPO informed" after a confirmation; the
  * ticks are one-way. The portal never reports to the BSI itself.
  * Dependencies: useAcknowledgeNis2, useAcknowledgeDpo, useConfirm, useNow,
- * lib/nis2, incidentLabels, lib/dateUtils, getErrorMessage, Button, Icon,
+ * lib/nis2, incidentLabels, lib/dateUtils, incidentErrors, Button, Icon,
  * i18n store, sonner.
  */
 import { useId } from 'react';
@@ -18,7 +18,7 @@ import { useConfirm } from '../../hooks/useConfirm';
 import { useNow } from '../../hooks/useNow';
 import { nis2State, type Nis2State } from '../../lib/nis2';
 import { formatDateTime } from '../../lib/dateUtils';
-import { getErrorMessage } from '../../lib/getErrorMessage';
+import { incidentErrorMessage } from './incidentErrors';
 import { useI18n } from '../../stores/i18n.store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
@@ -57,7 +57,7 @@ export function Nis2Panel({ incident }: { incident: Incident }) {
     if (!ok) return;
     nis2.mutate(entry.stage, {
       onSuccess: () => toast.success(t('incidentAckRecorded')),
-      onError: (err) => toast.error(getErrorMessage(err, t('incidentAckFailed'))),
+      onError: (err) => toast.error(incidentErrorMessage(err, t('incidentAckFailed'), t)),
     });
   }
 
@@ -71,7 +71,7 @@ export function Nis2Panel({ incident }: { incident: Incident }) {
     if (!ok) return;
     dpo.mutate(undefined, {
       onSuccess: () => toast.success(t('incidentAckRecorded')),
-      onError: (err) => toast.error(getErrorMessage(err, t('incidentAckFailed'))),
+      onError: (err) => toast.error(incidentErrorMessage(err, t('incidentAckFailed'), t)),
     });
   }
 
