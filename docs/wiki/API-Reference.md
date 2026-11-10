@@ -300,6 +300,22 @@ Mounted at `/api/v1/admin/marketplace`. All `requireAdmin`; writes also `require
 
 ---
 
+### Incidents (admin)
+
+Mounted at `/api/v1/admin/incidents`. All `requireAdmin`. One admin acts alone;
+the marked writes also need `requireTotp` (or the re-presented client
+certificate in a certificate session).
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | /api/v1/admin/incidents/:id/confirm | requireAdmin + requireTotp | REPORTED → CONFIRMED; mails all sites and admins. |
+| POST | /api/v1/admin/incidents/:id/suspend | requireAdmin + requireTotp | Body `{ measures: [BLOCK_CERTIFICATES, REMOVE_LOGINS, WITHDRAW, MAIL_SITES], confirm?, totpCode }`. WITHDRAW publishes a new allow-list version with the site withdrawn. |
+| POST | /api/v1/admin/incidents/:id/lift-suspension | requireAdmin + requireTotp | Restart checklist `{ causeFixed: true, fixTested: true, releasedByTechBoard: true, note, totpCode }`; publishes a new version, blocked thumbprints stay blocked. |
+| POST | /api/v1/admin/incidents/:id/close | requireAdmin + requireTotp | `{ outcome: CLOSED or FALSE_ALARM, note, totpCode }`; refused while suspended. |
+| POST | /api/v1/admin/incidents/:id/comment | requireAdmin | `{ text }` (201), e.g. a measure taken outside the portal. |
+| PATCH | /api/v1/admin/incidents/:id | requireAdmin | `{ escalationLevel?, detectedAt?, zulipUrl? }`; each change is a timeline event. |
+| GET | /api/v1/admin/incidents/:id/export?format=json\|csv | requireAdmin | Download one incident with its full timeline and hash chain. |
+
 ## Marketplace (read)
 
 Mounted at `/api/v1/marketplace`. `requireAuth`.
