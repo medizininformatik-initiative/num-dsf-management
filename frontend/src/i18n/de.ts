@@ -2010,7 +2010,7 @@ export const de: Record<TranslationKey, string> = {
   helpAdminLink: 'Administratoren: zur Admin-Referenz',
   helpFaqToc: 'FAQ',
   helpFaqTitle: 'Häufige Fragen',
-  helpContactToc: 'Kontakt',
+  helpContactToc: 'Support',
   helpLegalLink: 'Rechtlicher Hinweis',
   helpS_start_title: 'Erste Schritte',
   helpS_start_toc: 'Erste Schritte',
@@ -2128,7 +2128,7 @@ export const de: Record<TranslationKey, string> = {
   helpFaq_4_q: 'Kann ich zu einer früheren Version meines Eintrags zurück?',
   helpFaq_4_a:
     'Frühere Versionen sehen Sie im Download-Dialog. Um Daten wiederherzustellen, ändern Sie sie auf der Seite und reichen sie erneut zur Genehmigung ein.',
-  helpContactTitle: 'Kontakt und Support',
+  helpContactTitle: 'Support und Kontakt',
   helpContactBody:
     'Bei Fragen zu Ihrem Eintrag oder zu einer Prüfung wenden Sie sich an das IMI-Betriebsteam des Instituts für Medizinische Informatik Münster. Der rechtliche Hinweis nennt die Kontaktwege.',
 

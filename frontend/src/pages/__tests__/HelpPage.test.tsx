@@ -43,7 +43,7 @@ describe('HelpPage', () => {
     }
     expect(screen.getByRole('heading', { name: 'Frequently asked questions' })).toBeInTheDocument();
     expect(within(toc).getByRole('link', { name: 'FAQ' })).toHaveAttribute('href', '#faq');
-    expect(within(toc).getByRole('link', { name: 'Contact' })).toHaveAttribute('href', '#contact');
+    expect(within(toc).getByRole('link', { name: 'Support' })).toHaveAttribute('href', '#contact');
   });
 
   it('is fully translated into German with the formal address', () => {

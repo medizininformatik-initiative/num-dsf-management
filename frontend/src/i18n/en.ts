@@ -1968,7 +1968,7 @@ export const en = {
   helpAdminLink: 'Administrators: open the admin reference',
   helpFaqToc: 'FAQ',
   helpFaqTitle: 'Frequently asked questions',
-  helpContactToc: 'Contact',
+  helpContactToc: 'Support',
   helpLegalLink: 'Legal notice',
   helpS_start_title: 'Getting started',
   helpS_start_toc: 'Getting started',
@@ -2083,7 +2083,7 @@ export const en = {
   helpFaq_4_q: 'Can I go back to an earlier version of my entry?',
   helpFaq_4_a:
     'Earlier versions are listed in the Download dialog. To restore data, change it on the page and submit it for approval again.',
-  helpContactTitle: 'Contact and support',
+  helpContactTitle: 'Support and contact',
   helpContactBody:
     'For questions about your entry or a review, contact the IMI operator team of the Institute of Medical Informatics Muenster. The legal notice lists how to reach them.',
 
