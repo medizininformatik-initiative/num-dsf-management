@@ -421,4 +421,25 @@ export async function updateIncident(
   return toApi((await loadRow(id))!, caller);
 }
 
+/** Tick "reported to BSI" for one NIS2 stage. @throws FORBIDDEN / ALREADY_ACKNOWLEDGED */
+export async function acknowledgeNis2(
+  id: string,
+  stage: Nis2Stage,
+  caller: IncidentCaller,
+): Promise<ApiIncident> {
+  const row = await requireVisible(id, caller);
+  if (!canAcknowledge(row, caller)) throw new Error('FORBIDDEN');
+  const cols = NIS2_COLUMNS[stage];
+  if ((row as unknown as Record<string, unknown>)[cols.at]) throw new Error('ALREADY_ACKNOWLEDGED');
+  await changeWithEvent(
+    id,
+    { [cols.at]: new Date(), [cols.by]: caller.email },
+    caller.email,
+    'UPDATED',
+    { field: 'nis2', stage, from: null, to: 'REPORTED_TO_BSI' },
+  );
+  await auditIncident(row, caller, 'UPDATE', { action: 'incident_nis2', stage });
+  return toApi((await loadRow(id))!, caller);
+}
+
 export { loadRow as loadIncidentRow, changeWithEvent };
