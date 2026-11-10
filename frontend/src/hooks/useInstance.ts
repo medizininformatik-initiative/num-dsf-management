@@ -1,5 +1,5 @@
 /**
- * useInstance.ts — TanStack Query hooks for a single instance and the instance list.
+ * useInstance.ts — TanStack Query hooks for a single instance, the instance list and the dashboard overview.
  * Gated on an authenticated user; useInstances auto-selects the first instance as active.
  */
 import { useQuery } from '@tanstack/react-query';
@@ -53,4 +53,37 @@ export function useInstances() {
   }, [query.data, activeInstanceId, setActiveInstance]);
 
   return query;
+}
+
+export type InstanceApprovalStatus =
+  | 'NONE'
+  | 'DRAFT'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'WITHDRAWN';
+
+/** One row of the instance list with its approval summary, for the dashboard overview. */
+export interface InstanceOverviewRow {
+  id: string;
+  label: string;
+  /** The caller owns the instance (only owners can archive or delete it). */
+  is_owner: boolean;
+  archived_at: string | null;
+  approval_status: InstanceApprovalStatus;
+  last_approved_at: string | null;
+}
+
+/** Instance list including archived ones; archived rows carry archived_at. */
+export function useInstanceOverview() {
+  const user = useAuthStore((s) => s.user);
+  return useQuery({
+    queryKey: ['instances', 'overview'],
+    queryFn: () =>
+      api('_')
+        .getInstances(true)
+        .then((r) => r.data.data as InstanceOverviewRow[]),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
 }
