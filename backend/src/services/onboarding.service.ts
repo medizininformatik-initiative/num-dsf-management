@@ -11,7 +11,7 @@
  * Dependencies: lib/csv (parseCsv), lib/certFingerprint (normalize/validate),
  * db/connection, services/audit.service (writeAuditLog), lib/errMessage
  * (errCode/errMessage), services/org-login-certificates.service
- * (recordSystemLoginChange), uuid, zod.
+ * (recordSystemLoginChange), services/incident-blocks.service, uuid, zod.
  */
 import { z } from 'zod';
 import ExcelJS from 'exceljs';
@@ -29,6 +29,7 @@ import { errCode, errMessage } from '../lib/errMessage';
 import { isAdminEmail } from '../lib/isAdmin';
 import { recordSystemLoginChange, loginNoticeRecipients } from './org-login-certificates.service';
 import { certificateOwnersOfFingerprint, lockFingerprint } from './certificate.service';
+import { isFingerprintBlocked } from './incident-blocks.service';
 
 const MAX_FILE_BYTES = 1_000_000;
 const MAX_ROWS = 1000;
@@ -255,6 +256,10 @@ export async function previewSites(rows: OnboardingRow[]): Promise<ImportResult>
       results.push({ identifier, action: 'failed', ok: false, issue: 'ADMIN_CERTIFICATE' });
       continue;
     }
+    if (await isFingerprintBlocked(fp)) {
+      results.push({ identifier, action: 'failed', ok: false, issue: 'CERT_BLOCKED' });
+      continue;
+    }
     const fileOwner = fileFingerprintOwner.get(fp);
     const certOwners = await certificateOwnersOfFingerprint(db, fp, identifier);
     if (owner || certOwners.length || (fileOwner && fileOwner !== identifier)) {
@@ -401,6 +406,10 @@ export async function importSites(
             .first()
         ) {
           throw new Error('ADMIN_CERTIFICATE');
+        }
+        // A thumbprint blocked by an incident never becomes a login again.
+        if (await isFingerprintBlocked(row.clientCertFingerprint, trx)) {
+          throw new Error('CERT_BLOCKED');
         }
 
         // 2. Idempotently ensure the contact has a user + whitelist row.
