@@ -2387,6 +2387,7 @@ export const en = {
   tanListIntro:
     'Ten single-use codes. Each one replaces the authenticator code once, for example when your phone is lost. They are shown only now.',
   tanPrint: 'Print',
+  tanStoredConfirm: 'I have stored the TAN list in a safe place.',
   tanPrintHeading: 'TAN list ({env})',
   tanFileNote: 'Each TAN can be used once. Keep this list offline in a safe place.',
   // Security page and low-TAN warning

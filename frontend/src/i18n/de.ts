@@ -2438,6 +2438,7 @@ export const de: Record<TranslationKey, string> = {
   tanListIntro:
     'Zehn Einmal-Codes. Jeder ersetzt einmal den Authenticator-Code, zum Beispiel bei verlorenem Telefon. Sie werden nur jetzt angezeigt.',
   tanPrint: 'Drucken',
+  tanStoredConfirm: 'Ich habe die TAN-Liste sicher aufbewahrt.',
   tanPrintHeading: 'TAN-Liste ({env})',
   tanFileNote: 'Jede TAN gilt nur einmal. Bewahren Sie die Liste offline und sicher auf.',
   // Sicherheitsseite und Warnung bei wenigen TANs

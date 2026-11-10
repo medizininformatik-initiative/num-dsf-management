@@ -9,6 +9,8 @@ import { useAuthStore } from '../stores/auth.store';
 export interface MeInfo {
   email: string;
   isAdmin: boolean;
+  /** An admin certificate session that has to set up TOTP before anything else. */
+  totpEnrolmentRequired?: boolean;
 }
 
 export function useMe() {

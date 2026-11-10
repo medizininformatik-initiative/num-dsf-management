@@ -129,7 +129,7 @@ export const authApi = {
     ),
 
   getMe: () =>
-    axios.get<{ data: { email: string; isAdmin: boolean } }>('/auth/me', {
+    axios.get<{ data: { email: string; isAdmin: boolean; totpEnrolmentRequired?: boolean } }>('/auth/me', {
       ...authConfig,
       headers: { ...authConfig.headers, ...authHeader() },
     }),
