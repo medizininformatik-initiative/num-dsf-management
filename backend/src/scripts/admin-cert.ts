@@ -29,7 +29,9 @@ const MESSAGES: Record<string, string> = {
   NOT_AN_ADMIN:
     'This e-mail has no verified admin grant. Granting admin rights needs the normal four-eyes promotion in the portal; this tool only restores access for an existing admin.',
   PRIVATE_KEY_REJECTED: 'The file contains a private key. Provide the public certificate only.',
-  INVALID_PEM: 'The file is not a readable X.509 certificate in PEM format.',
+  INVALID_PEM:
+    'The file is not exactly one readable X.509 certificate in PEM format (no chain, nothing else).',
+  CA_CERTIFICATE_REJECTED: 'This is a CA certificate; give the admin’s own client certificate.',
   CERTIFICATE_EXPIRED: 'The certificate has already expired.',
   CERTIFICATE_NOT_YET_VALID: 'The certificate is not valid yet.',
   CA_BLACKLISTED: 'The issuing CA is blacklisted.',

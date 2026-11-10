@@ -33,6 +33,15 @@ export function rejectPrivateKeyMaterial(text: string): void {
   if (PRIVATE_KEY_MARKER.test(text)) throw new Error('PRIVATE_KEY_REJECTED');
 }
 
+/**
+ * DSF site (client/server) and login certificates are end-entity
+ * certificates; one with basicConstraints CA:TRUE is a CA, never one of them.
+ * @throws CA_CERTIFICATE_REJECTED
+ */
+export function assertLeafCertificate(pem: string): void {
+  if (new crypto.X509Certificate(pem).ca) throw new Error('CA_CERTIFICATE_REJECTED');
+}
+
 const SINGLE_CERTIFICATE =
   /^\s*-----BEGIN CERTIFICATE-----([A-Za-z0-9+/=\s]+)-----END CERTIFICATE-----\s*$/;
 

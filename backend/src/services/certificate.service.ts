@@ -17,6 +17,7 @@ import {
   sha512FingerprintFromPem,
   rejectPrivateKeyMaterial,
   canonicalCertificatePem,
+  assertLeafCertificate,
 } from '../lib/certFingerprint';
 import {
   linkUploadedCertificate,
@@ -145,11 +146,14 @@ async function assertIssuerAllowed(issuerDn: string): Promise<void> {
 /**
  * The PEM an upload stores: exactly one certificate block, re-encoded
  * canonically (lib/certFingerprint.canonicalCertificatePem). The raw upload
- * itself is never stored or logged.
- * @throws PRIVATE_KEY_REJECTED / INVALID_PEM
+ * itself is never stored or logged. A CA certificate is refused: DSF site
+ * certificates are end-entity certificates.
+ * @throws PRIVATE_KEY_REJECTED / INVALID_PEM / CA_CERTIFICATE_REJECTED
  */
 export function uploadedCertificatePem(rawPem: string): string {
-  return canonicalCertificatePem(rawPem);
+  const pem = canonicalCertificatePem(rawPem);
+  assertLeafCertificate(pem);
+  return pem;
 }
 
 /**

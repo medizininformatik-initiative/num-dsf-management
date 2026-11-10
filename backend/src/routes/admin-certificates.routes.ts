@@ -43,6 +43,7 @@ const previewSchema = z.object({ pem: z.string().min(1).max(20000) });
 const STATUS: Record<string, number> = {
   PRIVATE_KEY_REJECTED: 400,
   INVALID_PEM: 400,
+  CA_CERTIFICATE_REJECTED: 400,
   CERTIFICATE_EXPIRED: 400,
   CERTIFICATE_NOT_YET_VALID: 400,
   CA_BLACKLISTED: 400,

@@ -24,7 +24,11 @@ import { parseCertificate } from './certificate.service';
 import { isCaBlacklisted } from './ca-blacklist.service';
 import { isIssuerWhitelisted, isWhitelistEnforced } from './ca-whitelist.service';
 import { isVerifiedAdminEmail } from '../lib/adminGrants';
-import { sha512FingerprintFromPem, canonicalCertificatePem } from '../lib/certFingerprint';
+import {
+  sha512FingerprintFromPem,
+  canonicalCertificatePem,
+  assertLeafCertificate,
+} from '../lib/certFingerprint';
 
 export class AdminCertError extends Error {
   constructor(public code: string) {
@@ -83,12 +87,13 @@ function toApi(r: Row): AdminCertificate {
 /**
  * Parse a PEM into the metadata stored for an admin certificate. Does not
  * check validity or uniqueness (see assertAcceptable).
- * @throws AdminCertError PRIVATE_KEY_REJECTED / INVALID_PEM
+ * @throws AdminCertError PRIVATE_KEY_REJECTED / INVALID_PEM / CA_CERTIFICATE_REJECTED
  */
 export function parseAdminCert(rawPem: string): ParsedAdminCert {
   try {
     // Exactly one certificate block, as for organization uploads.
     const pem = canonicalCertificatePem(rawPem);
+    assertLeafCertificate(pem);
     const { subject, validUntil, issuerDn } = parseCertificate(pem);
     const x509 = new crypto.X509Certificate(pem);
     return {
@@ -101,6 +106,9 @@ export function parseAdminCert(rawPem: string): ParsedAdminCert {
   } catch (err) {
     if (err instanceof Error && err.message === 'PRIVATE_KEY_REJECTED') {
       throw new AdminCertError('PRIVATE_KEY_REJECTED');
+    }
+    if (err instanceof Error && err.message === 'CA_CERTIFICATE_REJECTED') {
+      throw new AdminCertError('CA_CERTIFICATE_REJECTED');
     }
     throw new AdminCertError('INVALID_PEM');
   }
