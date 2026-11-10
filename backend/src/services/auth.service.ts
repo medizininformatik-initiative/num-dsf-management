@@ -445,10 +445,10 @@ async function resolveOrgLogin(fingerprint: string): Promise<{
     .join('users as u', 'u.id', 'i.user_id')
     .where('l.fingerprint', fingerprint)
     // A thumbprint blocked by an incident never logs in, whatever re-added it.
+    // Compared with the bound value, not column to column: the two tables may
+    // carry different collations in older databases (see migration 031).
     .whereNotExists(
-      db('blocked_certificate_thumbprints').whereRaw(
-        'blocked_certificate_thumbprints.fingerprint = l.fingerprint',
-      ),
+      db('blocked_certificate_thumbprints').where('fingerprint', fingerprint.toLowerCase()),
     )
     .select('i.id as instance_id', 'u.id as user_id', 'u.email as user_email')
     .first();
