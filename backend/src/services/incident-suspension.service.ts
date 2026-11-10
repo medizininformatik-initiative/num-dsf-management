@@ -107,15 +107,23 @@ async function snapshotFingerprints(instanceId: string | null | undefined): Prom
   return fps;
 }
 
-/** Every thumbprint the site holds now or that its approved or pending data lists. */
+/**
+ * Every thumbprint the site holds now or that its approved or pending data
+ * lists. An admin certificate is never blocked by a site incident: it is the
+ * admins' own login, which admin certificate management handles.
+ */
 async function siteFingerprints(row: IncidentRow): Promise<string[]> {
   const identifier = row.organization_id as string;
-  const [pems, logins, snapshots] = await Promise.all([
+  const [pems, logins, snapshots, adminFps] = await Promise.all([
     db('certificates').where({ organization_id: identifier }).pluck('pem') as Promise<string[]>,
     db('org_login_certificates').where({ organization_id: identifier }).pluck('fingerprint'),
     snapshotFingerprints(row.org_instance_id),
+    db('admin_cert_fingerprints').pluck('fingerprint') as Promise<string[]>,
   ]);
-  return [...(logins as string[]), ...pemFingerprints(pems), ...snapshots];
+  const admin = new Set(adminFps.map((f) => f.toLowerCase()));
+  return [...(logins as string[]), ...pemFingerprints(pems), ...snapshots].filter(
+    (f) => !admin.has(f.toLowerCase()),
+  );
 }
 
 async function record(
