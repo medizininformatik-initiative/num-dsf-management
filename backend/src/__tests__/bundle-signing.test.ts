@@ -44,6 +44,19 @@ d('signBundle', () => {
     expect(header.kid).toBe(expectedKid);
   });
 
+  it('marks the signature with a purpose claim so it can never be an access token', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { verifyAccessToken } = require('../services/auth.service');
+    const { signature } = signBundle({ resourceType: 'Bundle' });
+    const decoded = jwt.verify(signature, pub, { algorithms: ['RS256'] }) as {
+      purpose?: string;
+      sub?: string;
+    };
+    expect(decoded.purpose).toBe('bundle_signature');
+    expect(decoded.sub).toBeUndefined();
+    expect(() => verifyAccessToken(signature)).toThrow();
+  });
+
   it('a tampered bundle would not match the signed contentHash', () => {
     const original = { resourceType: 'Bundle', entry: [{ id: 'a' }] };
     const { signature } = signBundle(original);
