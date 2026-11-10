@@ -43,6 +43,9 @@ import { apiRateLimit } from './middleware/rateLimit.middleware';
 import { randomUUID } from 'crypto';
 import { logger } from './lib/logger';
 import { NOT_FOUND_CODES } from './lib/notFoundCodes';
+import { installProcessHandlers } from './lib/processHandlers';
+
+installProcessHandlers();
 
 const app = express();
 
