@@ -43,6 +43,7 @@ const STATUS: Record<string, number> = {
   CA_NOT_WHITELISTED: 400,
   ADMIN_CERTIFICATE_IN_USE: 409,
   ORG_LOGIN_CERTIFICATE_IN_USE: 409,
+  CERT_BLOCKED: 409,
 };
 
 function fail(res: Response, err: unknown): boolean {

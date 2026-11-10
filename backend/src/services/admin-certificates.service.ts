@@ -13,7 +13,7 @@
  *
  * Dependencies: db/connection, audit.service, auth.service (revokeAllSessions),
  *               certificate.service (PEM checks),
- * ca-whitelist/blacklist, lib/adminGrants, lib/certFingerprint
+ * ca-whitelist/blacklist, incident-blocks.service, lib/adminGrants, lib/certFingerprint
  */
 import crypto from 'crypto';
 import type { Knex } from 'knex';
@@ -32,6 +32,7 @@ import {
   canonicalCertificatePem,
   assertLeafCertificate,
 } from '../lib/certFingerprint';
+import { isFingerprintBlocked } from './incident-blocks.service';
 
 export class AdminCertError extends Error {
   constructor(public code: string) {
@@ -121,7 +122,7 @@ export function parseAdminCert(rawPem: string): ParsedAdminCert {
  * Everything a new admin certificate must satisfy.
  * @throws AdminCertError CERTIFICATE_EXPIRED / CERTIFICATE_NOT_YET_VALID /
  *   CA_BLACKLISTED / CA_NOT_WHITELISTED / ADMIN_CERTIFICATE_IN_USE /
- *   ORG_LOGIN_CERTIFICATE_IN_USE
+ *   ORG_LOGIN_CERTIFICATE_IN_USE / CERT_BLOCKED (blocked by an incident)
  */
 export async function assertAcceptable(parsed: ParsedAdminCert, now: Date): Promise<void> {
   if (parsed.validUntil.getTime() <= now.getTime()) throw new AdminCertError('CERTIFICATE_EXPIRED');
@@ -140,6 +141,7 @@ export async function assertAcceptable(parsed: ParsedAdminCert, now: Date): Prom
   if (await db('org_login_certificates').where({ fingerprint: parsed.fingerprint }).first()) {
     throw new AdminCertError('ORG_LOGIN_CERTIFICATE_IN_USE');
   }
+  if (await isFingerprintBlocked(parsed.fingerprint)) throw new AdminCertError('CERT_BLOCKED');
 }
 
 function isDuplicateKey(err: unknown): boolean {
