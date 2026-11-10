@@ -25,6 +25,7 @@ import {
   renderFullBundle,
   renderReceiverBundle,
   resolveReceiver,
+  withIncidentBlocks,
 } from './fhir.service';
 import {
   parseAllowListInput,
@@ -264,7 +265,8 @@ export async function restoreVersion(
     .first();
   if (!source) throw new Error('NOT_FOUND');
   if (!source.input_json) throw new Error('VERSION_NOT_RESTORABLE');
-  const input = parseAllowListInput(source.input_json);
+  // A restored version never brings back a suspended site or a blocked thumbprint.
+  const input = await withIncidentBlocks(parseAllowListInput(source.input_json));
   const snapshot = await createSnapshot({
     triggeredBy: 'RESTORE',
     triggeredByEmail: adminEmail,

@@ -9,8 +9,9 @@
  * - generateFullBundle: network-wide bundle from the approved state.
  * The bundle shape itself lives in lib/allowListBundle. Contact data,
  * including the organization e-mail, is never loaded here (GDPR, F-BND-04).
+ * Incident suspensions and blocked thumbprints override the approved state.
  * Dependencies: db/connection, approved-snapshot.service, lib/allowListBundle, lib/allowListInput,
- *               lib/certFingerprint, lib/jsonColumn, lib/logger
+ *               lib/certFingerprint, lib/jsonColumn, lib/logger, incident-blocks.service
  */
 import type { Knex } from 'knex';
 import { db } from '../db/connection';
@@ -39,7 +40,14 @@ import {
   type ApprovedSite,
 } from './approved-snapshot.service';
 import { KNOWN_PARENT_NAMES } from '../lib/knownParents';
-import { fullViewInput, receiverViewInput, type StoredAllowListInput } from '../lib/allowListInput';
+import {
+  applyIncidentBlocks,
+  fullViewInput,
+  receiverViewInput,
+  toRemoval,
+  type StoredAllowListInput,
+} from '../lib/allowListInput';
+import { blockedFingerprints, suspendedOrganizations } from './incident-blocks.service';
 
 interface OrgSummary {
   identifier: string;
@@ -166,18 +174,6 @@ function logUnpublishable(members: AllowListMember[]): void {
   }
 }
 
-/** A withdrawn organization as the DELETE entries need it. */
-function toRemoval(member: AllowListMember): AllowListRemoval {
-  return {
-    identifier: member.identifier,
-    endpoints: member.endpoints.map((e) => e.identifier),
-    affiliations: [...member.affiliations, ...member.removedAffiliations].map((a) => ({
-      parent: a.parent,
-      endpoint: a.endpoint,
-    })),
-  };
-}
-
 type CertPem = Pick<CertRow, 'id' | 'pem'>;
 
 /**
@@ -288,16 +284,26 @@ async function loadApprovedState(): Promise<{
 
 /**
  * The state to publish: the approved data of every site, the withdrawn
- * organizations and the parent display names. Stored with each bundle version.
+ * organizations and the parent display names, with the incident register's
+ * suspensions and blocked thumbprints applied. Stored with each bundle version.
  */
 export async function loadAllowListInput(): Promise<StoredAllowListInput> {
-  const { members, removed } = await loadApprovedState();
+  const approved = await loadApprovedState();
+  const { members, removed } = await withIncidentBlocks({ ...approved, parentNames: {} });
   logUnpublishable(members);
   const parentIds = Array.from(
     new Set(members.flatMap((m) => m.affiliations.map((a) => a.parent))),
   ).filter(Boolean);
   const parentNames = await loadParentNames(parentIds);
   return { members, removed, parentNames: Object.fromEntries(parentNames) };
+}
+
+/** An input with the current incident suspensions and thumbprint blocks applied. */
+export async function withIncidentBlocks(
+  input: StoredAllowListInput,
+): Promise<StoredAllowListInput> {
+  const [suspended, blocked] = await Promise.all([suspendedOrganizations(), blockedFingerprints()]);
+  return applyIncidentBlocks(input, suspended, blocked);
 }
 
 /** Network-wide allow list rendered from a stored or live input. */
