@@ -28,6 +28,7 @@ import {
   type IncidentCaller,
   type IncidentRow,
 } from './incidents.service';
+import { appendEvent } from './incident-events.service';
 import { blockFingerprints } from './incident-blocks.service';
 import { removeAllForOrganization } from './org-login-certificates.service';
 import { revokeAllSessions } from './auth.service';
@@ -143,4 +144,48 @@ export async function suspendIncident(
   }
   await auditIncident(row, caller, 'UPDATE', { action: 'incident_suspend', results });
   return { incident: toApi((await loadIncidentRow(id)) as IncidentRow, caller), results };
+}
+
+export interface RestartChecklist {
+  causeFixed: true;
+  fixTested: true;
+  releasedByTechBoard: true;
+  note: string;
+}
+
+/**
+ * End the suspension after the restart checklist; publishes a new version.
+ * Blocked thumbprints stay blocked.
+ * @throws INCIDENT_NOT_FOUND / NOT_SUSPENDED
+ */
+export async function liftSuspension(
+  id: string,
+  checklist: RestartChecklist,
+  caller: IncidentCaller,
+): Promise<ApiIncident> {
+  const row = await loadIncidentRow(id);
+  if (!row) throw new Error('INCIDENT_NOT_FOUND');
+  if (!row.suspended) throw new Error('NOT_SUSPENDED');
+  await db('incidents').where({ id }).update({ suspended: 0 });
+  const version = await createSnapshot({
+    triggeredBy: 'MANUAL',
+    triggeredByEmail: caller.email,
+    notes: `Incident: suspension of ${row.organization_id ?? 'unknown site'} lifted`,
+  });
+  await db.transaction((trx) =>
+    appendEvent(trx, id, caller.email, 'SUSPENSION_LIFTED', {
+      causeFixed: checklist.causeFixed,
+      fixTested: checklist.fixTested,
+      releasedByTechBoard: checklist.releasedByTechBoard,
+      note: checklist.note,
+      versionNumber: version.versionNumber,
+    }),
+  );
+  await auditIncident(row, caller, 'UPDATE', {
+    action: 'incident_lift_suspension',
+    versionNumber: version.versionNumber,
+  });
+  const updated = (await loadIncidentRow(id)) as IncidentRow;
+  await notifyIncident(updated, 'lifted', caller.email, { versionNumber: version.versionNumber });
+  return toApi(updated, caller);
 }
