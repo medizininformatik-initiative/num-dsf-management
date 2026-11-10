@@ -150,10 +150,14 @@ export function Nis2Panel({ incident }: { incident: Incident }) {
           </p>
           <p className="text-xs text-[color:var(--text-muted)]">
             {incident.dpoInformed
-              ? t('incidentDpoInformed', {
-                  date: formatDateTime(incident.dpoInformed.at, lang),
-                  by: incident.dpoInformed.by,
-                })
+              ? incident.dpoInformed.by
+                ? t('incidentDpoInformed', {
+                    date: formatDateTime(incident.dpoInformed.at, lang),
+                    by: incident.dpoInformed.by,
+                  })
+                : t('incidentDpoInformedNoActor', {
+                    date: formatDateTime(incident.dpoInformed.at, lang),
+                  })
               : t('incidentDpoNotInformed')}
           </p>
         </div>

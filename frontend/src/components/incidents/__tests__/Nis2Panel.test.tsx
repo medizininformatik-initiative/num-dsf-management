@@ -26,6 +26,7 @@ const base: Incident = {
   escalationLevel: 2,
   organization: { identifier: 'ukm.de', name: 'Uniklinik Münster' },
   reportedBy: null,
+  reportedByOrganization: null,
   reportedAt: '2026-11-09T10:00:00Z',
   detectedAt: '2026-11-09T10:00:00Z',
   confirmedBy: null,
@@ -114,5 +115,13 @@ describe('Nis2Panel', () => {
     );
     expect(screen.getByText(/by dpo@ukm\.de/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Mark as informed' })).not.toBeInTheDocument();
+  });
+
+  it('shows the DPO tick without an actor hidden from the caller', () => {
+    renderWithProviders(
+      <Nis2Panel incident={{ ...base, dpoInformed: { at: '2026-11-10T08:00:00Z', by: null } }} />,
+    );
+    expect(screen.getByText(/^Informed /)).toBeInTheDocument();
+    expect(screen.queryByText(/^Informed .* by /)).not.toBeInTheDocument();
   });
 });
