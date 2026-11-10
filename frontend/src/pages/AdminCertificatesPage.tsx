@@ -49,6 +49,7 @@ export function AdminCertificatesPage() {
     successMessage: t('adminCertRemovedToast'),
     onSuccess: invalidate,
     errorFallback: t('genericActionFailed'),
+    errorMessages: { LAST_OTHER_ADMIN_CERT: t('adminCertErr_LAST_OTHER_ADMIN_CERT') },
   });
   const rename = useToastMutation({
     mutationFn: (vars: { id: string; label: string }) =>

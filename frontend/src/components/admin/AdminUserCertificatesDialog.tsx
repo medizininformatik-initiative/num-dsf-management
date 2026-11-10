@@ -45,6 +45,7 @@ export function AdminUserCertificatesDialog({
     successMessage: t('adminCertRemovedToast'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'certificates'] }),
     errorFallback: t('genericActionFailed'),
+    errorMessages: { LAST_OTHER_ADMIN_CERT: t('adminCertErr_LAST_OTHER_ADMIN_CERT') },
   });
 
   function closeRemove() {
