@@ -6,7 +6,8 @@
  * cert mode, where no code field renders and confirm passes undefined.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, within } from '@testing-library/react';
+import { screen, fireEvent, within, act } from '@testing-library/react';
+import { useStepUpErrorStore } from '../../../stores/stepUpError.store';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 import { useState } from 'react';
 
@@ -95,5 +96,19 @@ describe('StepUpConfirmDialog', () => {
     expect(screen.queryByLabelText('TOTP Code')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Lock' }));
     expect(onConfirm).toHaveBeenCalledWith(undefined);
+  });
+});
+
+describe('StepUpConfirmDialog step-up errors', () => {
+  it.each([
+    ['TOTP_INVALID', 'Invalid code. Please try again.'],
+    ['TOTP_NOT_CONFIGURED', /Two-factor authentication is not set up/],
+  ])('explains %s inline and clears it when the code is edited', (code, text) => {
+    renderWithProviders(<Harness />);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    act(() => useStepUpErrorStore.getState().setError(code));
+    expect(screen.getByRole('alert')).toHaveTextContent(text);
+    fireEvent.change(screen.getByLabelText('TOTP Code'), { target: { value: '1' } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

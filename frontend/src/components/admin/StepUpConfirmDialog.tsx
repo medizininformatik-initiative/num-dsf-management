@@ -7,13 +7,18 @@
  * pure confirmations without a code field use useConfirm() instead.
  * The code is controlled by the caller so it can clear a spent code after a
  * failed attempt while the dialog stays open.
- * Dependencies: Modal, Button, Icon, TotpCodeField, lib/authMode, i18n store.
+ * A failed step-up (wrong code, TOTP not set up, failed certificate check) is
+ * published by the axios interceptor and shown inline above the buttons.
+ * Dependencies: Modal, Button, Icon, TotpCodeField, lib/authMode,
+ * lib/stepUpErrors, stepUpError store, i18n store.
  */
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Modal } from '../modals/Modal';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { needsTotpStepUp } from '../../lib/authMode';
+import { stepUpErrorKey } from '../../lib/stepUpErrors';
+import { useStepUpErrorStore } from '../../stores/stepUpError.store';
 import { useI18n } from '../../stores/i18n.store';
 import { TotpCodeField } from './TotpCodeField';
 
@@ -61,6 +66,12 @@ export function StepUpConfirmDialog({
 }: StepUpConfirmDialogProps) {
   const { t } = useI18n();
   const stepUp = needsTotpStepUp();
+  const errorCode = useStepUpErrorStore((s) => s.code);
+  const clearError = useStepUpErrorStore((s) => s.clear);
+  useEffect(() => {
+    if (open) clearError();
+  }, [open, clearError]);
+  const errorKey = open && errorCode ? stepUpErrorKey(errorCode) : undefined;
   const canConfirm = !pending && !confirmDisabled && (!stepUp || totpCode.length === 6);
 
   return (
@@ -91,9 +102,17 @@ export function StepUpConfirmDialog({
           <TotpCodeField
             label={t('totpCodeLabel')}
             value={totpCode}
-            onChange={onTotpCodeChange}
+            onChange={(c) => {
+              clearError();
+              onTotpCodeChange(c);
+            }}
             hint={t('totpDigitsRequired')}
           />
+        )}
+        {errorKey && (
+          <p role="alert" className="text-sm font-medium text-danger-fg">
+            {t(errorKey)}
+          </p>
         )}
         <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
           <Button variant="secondary" onClick={onCancel}>
