@@ -235,6 +235,7 @@ export function Sidebar({
     { to: '/app/admin/bundle-versions', icon: 'history', label: t('bundleVersionsNavLabel') },
     { to: '/app/admin/onboarding', icon: 'upload', label: t('adminOnboardingNavLabel') },
     { to: '/app/admin/backups', icon: 'backup', label: t('backupNavLabel') },
+    { to: '/app/admin/incidents', icon: 'gpp_maybe', label: t('incidentsAdminNavLabel') },
     { to: '/app/audit', icon: 'fact_check', label: t('auditLog') },
   ];
   const resourceLinks: LinkItem[] = [
