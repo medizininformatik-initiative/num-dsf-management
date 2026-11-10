@@ -124,14 +124,16 @@ export async function approvePromotion(
   const sig = signGrant(req.target_email, grantedAt, req.requested_by, lower(approverEmail));
 
   await db.transaction(async (trx) => {
-    await trx('admin_promotion_requests')
-      .where({ id: requestId })
+    // First decision wins: only a still-PENDING row can be flipped.
+    const won = await trx('admin_promotion_requests')
+      .where({ id: requestId, status: 'PENDING' })
       .update({
         status: 'APPROVED',
         approver_b: lower(approverEmail),
         approved_at: now,
         resolved_at: now,
       });
+    if (!won) throw new PromotionError('NOT_PENDING', 'Request is no longer pending');
     await trx('admin_grants')
       .insert({
         email: req.target_email,
@@ -177,14 +179,15 @@ export async function rejectPromotion(
   if (!cleanReason) throw new PromotionError('REASON_REQUIRED', 'Rejection reason required');
 
   const now = new Date();
-  await db('admin_promotion_requests')
-    .where({ id: requestId })
+  const won = await db('admin_promotion_requests')
+    .where({ id: requestId, status: 'PENDING' })
     .update({
       status: 'REJECTED',
       rejected_by: lower(rejectorEmail),
       rejection_reason: cleanReason,
       resolved_at: now,
     });
+  if (!won) throw new PromotionError('NOT_PENDING', 'Request is no longer pending');
 
   await writeAuditLog({
     userEmail: rejectorEmail,
@@ -216,10 +219,10 @@ export async function cancelPromotion(
   }
 
   const now = new Date();
-  await db('admin_promotion_requests').where({ id: requestId }).update({
-    status: 'CANCELLED',
-    resolved_at: now,
-  });
+  const won = await db('admin_promotion_requests')
+    .where({ id: requestId, status: 'PENDING' })
+    .update({ status: 'CANCELLED', resolved_at: now });
+  if (!won) throw new PromotionError('NOT_PENDING', 'Request is no longer pending');
 
   await writeAuditLog({
     userEmail: requesterEmail,
