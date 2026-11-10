@@ -16,6 +16,10 @@ import { HelpPage } from './pages/HelpPage';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminCertificatesPage } from './pages/AdminCertificatesPage';
 import { AdminCertExpiryBanner } from './components/layout/AdminCertExpiryBanner';
+import { TanLowBanner } from './components/layout/TanLowBanner';
+import { TotpEnrolmentPage } from './pages/TotpEnrolmentPage';
+import { SecurityPage } from './pages/SecurityPage';
+import { useMe } from './hooks/useMe';
 import { AdminPromotionsPage } from './pages/AdminPromotionsPage';
 import { AdminCaBlacklistPage } from './pages/AdminCaBlacklistPage';
 import { AdminBundleVersionsPage } from './pages/AdminBundleVersionsPage';
@@ -33,9 +37,27 @@ import { useAuthStore } from './stores/auth.store';
 import { isCertMode } from './lib/authMode';
 import { CrossUserGuardProvider } from './components/layout/CrossUserGuardProvider';
 
-function RequireAuth({ children }: { children: React.ReactNode }) {
+/**
+ * Sends an unauthenticated visitor to /login. An admin certificate session that
+ * still has to set up TOTP (the /auth/me flag, or a 403 TOTP_ENROLMENT_REQUIRED
+ * seen by the interceptor) goes to the enrolment page instead of the app;
+ * allowUnenrolled marks that page itself. In the certificate deployment the app
+ * waits for /auth/me first, so no request is fired that would only be refused.
+ */
+export function RequireAuth({
+  children,
+  allowUnenrolled = false,
+}: {
+  children: React.ReactNode;
+  allowUnenrolled?: boolean;
+}) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const flagged = useAuthStore((s) => s.totpEnrolmentRequired);
+  const me = useMe();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (allowUnenrolled) return <>{children}</>;
+  if (flagged || me.data?.totpEnrolmentRequired) return <Navigate to="/totp-enrolment" replace />;
+  if (isCertMode() && me.isPending) return null;
   return <>{children}</>;
 }
 
@@ -55,6 +77,15 @@ export const router = createBrowserRouter([
     element: isCertMode() ? <Navigate to="/" replace /> : <TotpSetupPage />,
   },
   { path: '/totp', element: isCertMode() ? <Navigate to="/" replace /> : <TotpPage /> },
+  // Forced one-time TOTP setup of a certificate admin (see RequireAuth).
+  {
+    path: '/totp-enrolment',
+    element: (
+      <RequireAuth allowUnenrolled>
+        <TotpEnrolmentPage />
+      </RequireAuth>
+    ),
+  },
   {
     path: '/app',
     element: (
@@ -62,6 +93,7 @@ export const router = createBrowserRouter([
         <CrossUserGuardProvider>
           <AppPage />
           <AdminCertExpiryBanner />
+          <TanLowBanner />
         </CrossUserGuardProvider>
       </RequireAuth>
     ),
@@ -78,6 +110,7 @@ export const router = createBrowserRouter([
       { path: 'admin/onboarding', element: <AdminOnboardingPage /> },
       { path: 'admin/backups', element: <AdminBackupsPage /> },
       { path: 'admin/incidents', element: <AdminIncidentsPage /> },
+      { path: 'security', element: <SecurityPage /> },
       // The instance status page was folded into the overview and the approval flow.
       { path: 'status', element: <Navigate to="/app" replace /> },
       { path: 'map', element: <MapPage /> },

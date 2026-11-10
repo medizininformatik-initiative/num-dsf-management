@@ -215,7 +215,8 @@ export function Sidebar({
 
   // A section header is highlighted while one of its routes is active and its
   // list is out of sight, so the user can see where they are.
-  const isAdminRoute = pathname.startsWith('/app/admin') || pathname === '/app/audit';
+  const isAdminRoute =
+    pathname.startsWith('/app/admin') || pathname === '/app/audit' || pathname === '/app/security';
   const isResourcesRoute = pathname.startsWith('/app/marketplace') || pathname === '/app/resources';
 
   const initials = (user?.email || '??').slice(0, 2).toUpperCase();
@@ -236,6 +237,7 @@ export function Sidebar({
     { to: '/app/admin/onboarding', icon: 'upload', label: t('adminOnboardingNavLabel') },
     { to: '/app/admin/backups', icon: 'backup', label: t('backupNavLabel') },
     { to: '/app/admin/incidents', icon: 'gpp_maybe', label: t('incidentsAdminNavLabel') },
+    { to: '/app/security', icon: 'password', label: t('navSecurity') },
     { to: '/app/audit', icon: 'fact_check', label: t('auditLog') },
   ];
   const resourceLinks: LinkItem[] = [

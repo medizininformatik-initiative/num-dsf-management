@@ -15,6 +15,7 @@ import { Icon } from '../ui/Icon';
 /** Route (below /app) -> label key and the route of its parent crumb, if any. */
 const ROUTES = {
   audit: { label: 'auditLog' },
+  security: { label: 'securityTitle' },
   admin: { label: 'approvalReview' },
   'admin/help': { label: 'adminHelpLink', parent: 'admin' },
   'admin/users': { label: 'sidebarUserManagement' },
