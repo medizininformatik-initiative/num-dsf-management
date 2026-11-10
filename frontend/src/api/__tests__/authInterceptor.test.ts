@@ -62,6 +62,18 @@ describe('auth interceptor and step-up failures', () => {
     expect(useStepUpErrorStore.getState().code).toBe(code);
   });
 
+  it('keeps the session on 403 TOTP_ENROLMENT_REQUIRED and flags the enrolment', async () => {
+    await expect(
+      axios.get('/api/v1/instances', {
+        adapter: failingAdapter(403, 'TOTP_ENROLMENT_REQUIRED') as never,
+      }),
+    ).rejects.toBeDefined();
+    expect(refreshMock).not.toHaveBeenCalled();
+    expect(redirectMock).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().isAuthenticated).toBe(true);
+    expect(useAuthStore.getState().totpEnrolmentRequired).toBe(true);
+  });
+
   it('still ends the session when a plain 401 cannot be refreshed', async () => {
     refreshMock.mockRejectedValue(new Error('expired'));
     await expect(

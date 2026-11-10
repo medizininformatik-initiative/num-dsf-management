@@ -101,7 +101,7 @@ describe('StepUpConfirmDialog', () => {
 
 describe('StepUpConfirmDialog step-up errors', () => {
   it.each([
-    ['TOTP_INVALID', 'Invalid code. Please try again.'],
+    ['TOTP_INVALID', 'Invalid code or TAN. Please try again.'],
     ['TOTP_NOT_CONFIGURED', /Two-factor authentication is not set up/],
   ])('explains %s inline and clears it when the code is edited', (code, text) => {
     renderWithProviders(<Harness />);

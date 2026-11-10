@@ -89,6 +89,11 @@ export function installAuthInterceptor(): void {
       if (status === 403 && isStepUpErrorCode(stepUpCode)) {
         useStepUpErrorStore.getState().setError(stepUpCode!);
       }
+      // An admin certificate session that has not set up TOTP yet: keep the
+      // session and let the router send it to the enrolment page.
+      if (status === 403 && stepUpCode === 'TOTP_ENROLMENT_REQUIRED') {
+        useAuthStore.getState().setTotpEnrolmentRequired(true);
+      }
 
       // Global error toasts (avoid duplicates with _handled flag)
       if (!error._handled) {
