@@ -3,7 +3,9 @@
  * not (or no longer) in the live certificate list: a certificate deleted
  * before the suspension but still in the approved or a pending snapshot is
  * blocked too, so lifting the suspension does not republish it and it cannot
- * be uploaded again.
+ * be uploaded again. Publishing: blocking alone publishes a new version too;
+ * the suspension flag, its event and the published version succeed or fail
+ * together, and a retry republishes.
  * Dependencies: db, helpers/allowListSites, incidents.service,
  *               incident-suspension.service, fhir.service, certificate.service,
  *               lib/adminGrants, lib/certFingerprint
@@ -15,9 +17,12 @@ import { signGrant } from '../lib/adminGrants';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
 import * as svc from '../services/incidents.service';
 import { liftSuspension, suspendIncident } from '../services/incident-suspension.service';
+import { listEvents } from '../services/incident-events.service';
 import { loadAllowListInput } from '../services/fhir.service';
 import { createCertificate } from '../services/certificate.service';
 import { AdminCertError, assertAcceptable } from '../services/admin-certificates.service';
+import * as bundleVersions from '../services/bundle-versions.service';
+import { parseAllowListInput } from '../lib/allowListInput';
 
 const sfx = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 const adminEmail = `inc-susp-admin-${sfx}@imi-test.example.de`;
@@ -175,5 +180,66 @@ describe('admin certificates and incident blocks', () => {
     ).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(AdminCertError);
     expect((err as AdminCertError).code).toBe('CERT_BLOCKED');
+  });
+});
+
+async function publishedInput(versionNumber: unknown) {
+  const row = await db('bundle_versions')
+    .where({ version_number: Number(versionNumber) })
+    .first('input_json');
+  return parseAllowListInput(row.input_json);
+}
+
+describe('publishing suspension measures', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('publishes a new version when only certificates are blocked', async () => {
+    const site = await seed('inc-block-only');
+    const id = await reportFor(site);
+    const { results } = await suspendIncident(id, ['BLOCK_CERTIFICATES'], true, admin());
+    const published = results.find((r) => typeof r.versionNumber === 'number');
+    expect(published).toBeDefined();
+    const input = await publishedInput(published!.versionNumber);
+    expect(input.members.some((m) => m.identifier === site.orgId)).toBe(false);
+    expect(input.removed.some((r) => r.identifier === site.orgId)).toBe(true);
+  });
+
+  it('leaves the site unsuspended when publishing fails, and a retry suspends it', async () => {
+    const site = await seed('inc-publish-fail');
+    const id = await reportFor(site);
+    jest.spyOn(bundleVersions, 'createSnapshot').mockRejectedValueOnce(new Error('disk full'));
+    await expect(suspendIncident(id, ['WITHDRAW'], true, admin())).rejects.toThrow('disk full');
+    expect((await svc.loadIncidentRow(id))?.suspended).toBeFalsy();
+
+    const { incident, results } = await suspendIncident(id, ['WITHDRAW'], false, admin());
+    expect(incident.suspended).toBe(true);
+    expect(typeof results[0].versionNumber).toBe('number');
+  });
+
+  it('republishes when an already suspended site is withdrawn again', async () => {
+    const site = await seed('inc-republish');
+    const id = await reportFor(site);
+    await suspendIncident(id, ['WITHDRAW'], true, admin());
+    const { results } = await suspendIncident(id, ['WITHDRAW'], false, admin());
+    expect(results[0]).toMatchObject({ measure: 'WITHDRAW', alreadySuspended: true });
+    const input = await publishedInput(results[0].versionNumber);
+    expect(input.removed.some((r) => r.identifier === site.orgId)).toBe(true);
+  });
+
+  it('keeps the suspension when publishing the lift fails, and a retry lifts it', async () => {
+    const site = await seed('inc-lift-fail');
+    const id = await reportFor(site);
+    await suspendIncident(id, ['WITHDRAW'], true, admin());
+    jest.spyOn(bundleVersions, 'createSnapshot').mockRejectedValueOnce(new Error('disk full'));
+    await expect(liftSuspension(id, checklist, admin())).rejects.toThrow('disk full');
+    expect((await svc.loadIncidentRow(id))?.suspended).toBeTruthy();
+
+    const lifted = await liftSuspension(id, checklist, admin());
+    expect(lifted.suspended).toBe(false);
+    const events = await listEvents(id);
+    const last = events.at(-1);
+    expect(last?.type).toBe('SUSPENSION_LIFTED');
+    const input = await publishedInput(last?.details?.versionNumber);
+    expect(input.members.some((m) => m.identifier === site.orgId)).toBe(true);
   });
 });
