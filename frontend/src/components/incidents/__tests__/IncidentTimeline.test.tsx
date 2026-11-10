@@ -1,7 +1,9 @@
 /**
  * IncidentTimeline.test.tsx — the event log: chain verified or broken at an
  * entry, measure results in words, comment text, the restart checklist, a
- * changed field with from and to, and the hidden reporter.
+ * changed field with from and to, the hidden reporter, certificate sessions
+ * of the site, a republished suspension and incident fields changed outside
+ * the timeline.
  */
 import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/react';
@@ -61,5 +63,28 @@ describe('IncidentTimeline', () => {
   it('flags a broken chain at its entry', () => {
     renderWithProviders(<IncidentTimeline events={events} chain={{ valid: false, brokenAt: 3 }} />);
     expect(screen.getByRole('status')).toHaveTextContent('Hash chain broken at entry 3');
+  });
+
+  it('names certificate sessions, a republish and changed incident fields', () => {
+    const more = [
+      ev('MEASURE', {
+        measure: 'REMOVE_LOGINS',
+        removedLogins: 1,
+        sessionsRevoked: 0,
+        scopedSessionsRevoked: 2,
+      }),
+      ev('SUSPENDED', { measure: 'WITHDRAW', versionNumber: 50, alreadySuspended: true }),
+    ];
+    renderWithProviders(
+      <IncidentTimeline
+        events={more}
+        chain={{ valid: false, brokenAt: null, tamperedFields: ['description'] }}
+      />,
+    );
+    expect(screen.getByText(/2 certificate sessions of the site ended/)).toBeInTheDocument();
+    expect(screen.getByText(/Already suspended, published again/)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Incident data changed outside the timeline: description',
+    );
   });
 });

@@ -34,8 +34,9 @@ function measureResult(d: Details, t: T): string | null {
   if (removed !== null) {
     parts.push(t('incidentResultLogins', { n: removed, s: num(d, 'sessionsRevoked') ?? 0 }));
   }
-  if (str(d, 'sessionsSkipped') === 'OWNER_IS_ADMIN')
-    parts.push(t('incidentResultSessionsSkipped'));
+  const scoped = num(d, 'scopedSessionsRevoked');
+  if (scoped !== null) parts.push(t('incidentResultScopedSessions', { n: scoped }));
+  if (d.alreadySuspended === true) parts.push(t('incidentResultRepublished'));
   if (version !== null) parts.push(t('incidentResultVersion', { v: version }));
   if (mailed !== null) parts.push(t('incidentResultMailed', { n: mailed }));
   return parts.length ? parts.join(' · ') : null;
@@ -135,11 +136,14 @@ export function ChainStatus({ chain }: { chain: IncidentChain }) {
       </StatusPill>
     );
   }
+  const fields = chain.tamperedFields ?? [];
   return (
     <StatusPill tone="danger" icon="gpp_bad" role="status" title={t('incidentChainHint')}>
       {chain.brokenAt !== null
         ? t('incidentChainBroken', { n: chain.brokenAt })
-        : t('incidentChainBrokenUnknown')}
+        : fields.length > 0
+          ? t('incidentChainFieldsChanged', { fields: fields.join(', ') })
+          : t('incidentChainBrokenUnknown')}
     </StatusPill>
   );
 }
