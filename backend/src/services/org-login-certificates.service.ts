@@ -14,8 +14,10 @@
  * organization's DSF_ADMIN contacts (fallback: the organization e-mail) get a
  * mail whenever a login certificate is enabled or removed.
  *
+ * A thumbprint blocked by an incident is never enabled; removeAllForOrganization
+ * is the incident suspension's bulk removal.
  * Dependencies: db/connection, audit.service, notification.service,
- *               lib/certFingerprint, lib/jsonColumn, lib/logger
+ *               incident-blocks.service, lib/certFingerprint, lib/jsonColumn, lib/logger
  */
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
@@ -23,6 +25,7 @@ import { sendOrgLoginCertificateChangedEmail } from './notification.service';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
 import { parseJsonStringArray } from '../lib/jsonColumn';
 import { logger } from '../lib/logger';
+import { isFingerprintBlocked } from './incident-blocks.service';
 
 export interface LoginCertificate {
   fingerprint: string;
@@ -172,6 +175,7 @@ export async function recordSystemLoginChange(
  *   (an admin upload, or an upload of unknown origin, never qualifies).
  * @throws ADMIN_CERTIFICATE if the fingerprint is an admin certificate.
  * @throws FINGERPRINT_IN_USE if another organization already uses it.
+ * @throws CERT_BLOCKED if an incident blocked the certificate.
  */
 export async function enable(
   identifier: string,
@@ -194,6 +198,7 @@ export async function enable(
   if (await db('admin_cert_fingerprints').where({ fingerprint }).first()) {
     throw new Error('ADMIN_CERTIFICATE');
   }
+  if (await isFingerprintBlocked(fingerprint)) throw new Error('CERT_BLOCKED');
   const existing = await db('org_login_certificates').where({ fingerprint }).first();
   if (existing && existing.organization_id !== identifier) throw new Error('FINGERPRINT_IN_USE');
   if (existing) {
