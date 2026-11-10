@@ -5,6 +5,8 @@
  * certificate session of a site owned by an admin does not inherit the
  * admin's own reports, and its own reports are shown as made through that
  * organization's certificate.
+ * Other users never learn who reported: ticks and events made by the
+ * reporter show no actor to them.
  * The affected site's own audit log never shows incident entries (an
  * unconfirmed report and its reporter stay with the admins).
  * Dependencies: db, helpers/allowListSites, incidents.service, auditQuery.service,
@@ -15,8 +17,11 @@ import { removeSites, seedSite, type Site } from './helpers/allowListSites';
 import { signGrant } from '../lib/adminGrants';
 import * as svc from '../services/incidents.service';
 import { queryAudit } from '../services/auditQuery.service';
+import { listEvents } from '../services/incident-events.service';
 
 let site: Site;
+let reporterSite: Site;
+let viewerSite: Site;
 let ownerEmail: string;
 const incidentIds: string[] = [];
 
@@ -39,6 +44,8 @@ const scoped = (): svc.IncidentCaller => ({
 
 beforeAll(async () => {
   site = await seedSite({ label: 'inc-scope' });
+  reporterSite = await seedSite({ label: 'inc-scope-reporter' });
+  viewerSite = await seedSite({ label: 'inc-scope-viewer' });
   ownerEmail = site.email;
   const grantedAt = new Date(Math.floor(Date.now() / 1000) * 1000);
   await db('admin_grants').insert({
@@ -57,7 +64,7 @@ afterAll(async () => {
   }
   await db('audit_logs').where({ user_email: ownerEmail }).del();
   await db('admin_grants').where({ email: ownerEmail }).del();
-  await removeSites([site]);
+  await removeSites([site, reporterSite, viewerSite]);
 });
 
 async function report(by: svc.IncidentCaller) {
@@ -112,5 +119,41 @@ describe('audit entries of incidents', () => {
     const all = await queryAudit({ kind: 'all' }, params);
     const entry = all.rows.find((r) => r.resource_id === incident.id);
     expect(entry?.instance_id).toBeNull();
+  });
+});
+
+const userOf = (s: Site): svc.IncidentCaller => ({
+  email: s.email,
+  isAdmin: false,
+  instanceIds: [s.instanceId],
+  ip: '127.0.0.1',
+  scopeInstanceId: null,
+});
+
+describe("the reporter's own ticks", () => {
+  it('show no actor to other users, but to admins', async () => {
+    const reporter = userOf(reporterSite);
+    const incident = await report(reporter);
+    await svc.confirmIncident(incident.id, owner());
+    await svc.acknowledgeDpo(incident.id, reporter);
+    await svc.acknowledgeNis2(incident.id, 'EARLY_WARNING', reporter);
+
+    const seen = (await svc.listIncidents(userOf(viewerSite))).find((i) => i.id === incident.id);
+    expect(seen?.dpoInformed?.by ?? null).toBeNull();
+    expect(seen?.dpoInformed?.at).toBeTruthy();
+    expect(seen?.nis2[0].reportedBy).toBeNull();
+    expect(seen?.nis2[0].reportedAt).toBeTruthy();
+    const row = await svc.requireVisible(incident.id, userOf(viewerSite));
+    const events = (await listEvents(incident.id)).map((e) =>
+      svc.eventForCaller(e, row, userOf(viewerSite)),
+    );
+    expect(events.filter((e) => e.type === 'UPDATED').map((e) => e.actorEmail)).toEqual([
+      null,
+      null,
+    ]);
+
+    const forAdmin = (await svc.listIncidents(owner())).find((i) => i.id === incident.id);
+    expect(forAdmin?.dpoInformed?.by).toBe(reporterSite.email);
+    expect(forAdmin?.nis2[0].reportedBy).toBe(reporterSite.email);
   });
 });
