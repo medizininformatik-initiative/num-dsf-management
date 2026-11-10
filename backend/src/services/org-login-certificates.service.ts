@@ -101,15 +101,27 @@ async function noticeRecipients(org: OrgRow): Promise<string[]> {
   return [...new Set(list)];
 }
 
+/**
+ * Who is told about a login change of the organization right now. A caller
+ * that is about to change the organization's addresses (onboarding re-import)
+ * captures this first and passes it to recordSystemLoginChange.
+ */
+export async function loginNoticeRecipients(identifier: string): Promise<string[]> {
+  const org = await db('organizations').where({ identifier }).first();
+  return org ? noticeRecipients(org as OrgRow) : [];
+}
+
 /** Tell the clinic about the change; a failing mail never undoes it. */
 async function notifyOrganization(
   org: OrgRow,
   change: 'enable' | 'disable',
   byAdmin: string,
   fingerprint: string,
+  extraRecipients: string[] = [],
 ): Promise<void> {
   try {
-    await sendOrgLoginCertificateChangedEmail(await noticeRecipients(org), {
+    const to = [...new Set([...extraRecipients, ...(await noticeRecipients(org))])];
+    await sendOrgLoginCertificateChangedEmail(to, {
       change,
       orgName: org.name || org.identifier,
       byAdmin,
@@ -123,6 +135,8 @@ async function notifyOrganization(
 /**
  * Audit and mail a login-certificate change made by the system (approval sync,
  * expiry cleanup) or by an onboarding re-import of an existing organization.
+ * `priorRecipients` (addresses captured before the change) are mailed as well,
+ * so a change cannot be hidden by also replacing the addresses.
  * Never throws: the change is already committed.
  */
 export async function recordSystemLoginChange(
@@ -131,6 +145,7 @@ export async function recordSystemLoginChange(
   actor: string,
   fingerprint: string,
   reason: 'approval' | 'expired' | 'onboarding',
+  priorRecipients: string[] = [],
 ): Promise<void> {
   try {
     const org = await db('organizations').where({ identifier }).first();
@@ -141,7 +156,7 @@ export async function recordSystemLoginChange(
       reason,
       fingerprintPrefix: fingerprint.slice(0, 16),
     });
-    await notifyOrganization(org as OrgRow, change, actor, fingerprint);
+    await notifyOrganization(org as OrgRow, change, actor, fingerprint, priorRecipients);
   } catch (err) {
     logger.error({ err }, '[OrgLoginCertificates] recording a system change failed');
   }

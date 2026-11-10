@@ -27,7 +27,7 @@ import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
 import { errCode, errMessage } from '../lib/errMessage';
 import { isAdminEmail } from '../lib/isAdmin';
-import { recordSystemLoginChange } from './org-login-certificates.service';
+import { recordSystemLoginChange, loginNoticeRecipients } from './org-login-certificates.service';
 
 const MAX_FILE_BYTES = 1_000_000;
 const MAX_ROWS = 1000;
@@ -370,6 +370,9 @@ export async function importSites(
     // Login changes of an existing organization, told to the clinic after commit.
     const loginChanges: { enabled: string[]; disabled: string[] } = { enabled: [], disabled: [] };
     try {
+      // The row may replace the organization e-mail; the notice must also
+      // reach the addresses the clinic had before.
+      const priorRecipients = await loginNoticeRecipients(identifier);
       const action = await db.transaction(async (trx) => {
         // 1. The fingerprint must not already belong to a different org.
         // The uq_org_cert_fp unique index enforces this too; the insert/
@@ -552,10 +555,24 @@ export async function importSites(
 
       rowResults.push({ identifier, action, ok: true });
       for (const fp of loginChanges.enabled) {
-        await recordSystemLoginChange(identifier, 'enable', actorEmail, fp, 'onboarding');
+        await recordSystemLoginChange(
+          identifier,
+          'enable',
+          actorEmail,
+          fp,
+          'onboarding',
+          priorRecipients,
+        );
       }
       for (const fp of loginChanges.disabled) {
-        await recordSystemLoginChange(identifier, 'disable', actorEmail, fp, 'onboarding');
+        await recordSystemLoginChange(
+          identifier,
+          'disable',
+          actorEmail,
+          fp,
+          'onboarding',
+          priorRecipients,
+        );
       }
     } catch (err: unknown) {
       rowResults.push({
