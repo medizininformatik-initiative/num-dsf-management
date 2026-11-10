@@ -480,19 +480,38 @@ export async function sendAdminCertExpiryWarning(
   });
 }
 
-/** Notice to an admin that a colleague added or removed a certificate of their account. */
+/**
+ * Notice that a certificate was added to or removed from an admin account.
+ * Without `targetEmail` it addresses the account holder ("your account");
+ * with it, another admin is told about that colleague's account.
+ */
 export async function sendAdminCertChangedEmail(
   to: string,
-  opts: { change: 'add' | 'remove'; byAdmin: string; fingerprintPrefix: string },
+  opts: {
+    change: 'add' | 'remove';
+    byAdmin: string;
+    fingerprintPrefix: string;
+    targetEmail?: string;
+  },
 ): Promise<void> {
   if (IS_TEST) return;
   const added = opts.change === 'add';
-  const de = added
-    ? `Für Ihr Admin-Konto wurde von ${opts.byAdmin} ein neues Zertifikat hinterlegt (Fingerabdruck ${opts.fingerprintPrefix}…).`
-    : `Von Ihrem Admin-Konto wurde durch ${opts.byAdmin} ein Zertifikat entfernt (Fingerabdruck ${opts.fingerprintPrefix}…).`;
-  const en = added
-    ? `${opts.byAdmin} registered a new certificate for your admin account (fingerprint ${opts.fingerprintPrefix}…).`
-    : `${opts.byAdmin} removed a certificate from your admin account (fingerprint ${opts.fingerprintPrefix}…).`;
+  const fp = opts.fingerprintPrefix;
+  const t = opts.targetEmail;
+  const de = t
+    ? added
+      ? `Für das Admin-Konto ${t} wurde von ${opts.byAdmin} ein neues Zertifikat hinterlegt (Fingerabdruck ${fp}…).`
+      : `Vom Admin-Konto ${t} wurde durch ${opts.byAdmin} ein Zertifikat entfernt (Fingerabdruck ${fp}…).`
+    : added
+      ? `Für Ihr Admin-Konto wurde von ${opts.byAdmin} ein neues Zertifikat hinterlegt (Fingerabdruck ${fp}…).`
+      : `Von Ihrem Admin-Konto wurde durch ${opts.byAdmin} ein Zertifikat entfernt (Fingerabdruck ${fp}…).`;
+  const en = t
+    ? added
+      ? `${opts.byAdmin} registered a new certificate for the admin account ${t} (fingerprint ${fp}…).`
+      : `${opts.byAdmin} removed a certificate from the admin account ${t} (fingerprint ${fp}…).`
+    : added
+      ? `${opts.byAdmin} registered a new certificate for your admin account (fingerprint ${fp}…).`
+      : `${opts.byAdmin} removed a certificate from your admin account (fingerprint ${fp}…).`;
   const warn =
     'Wenn Sie das nicht veranlasst haben, melden Sie sich sofort beim IMI-Betrieb. / If you did not ask for this, contact the IMI operators immediately.';
   const text = [`DSF Management Tool – ${ENV}`, ``, de, ``, en, ``, warn].join('\n');
