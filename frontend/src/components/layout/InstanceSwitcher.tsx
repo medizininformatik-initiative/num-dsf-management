@@ -9,7 +9,7 @@
  * sidebarStyles, ui/Icon, ui/Button, InstanceCreateModal.
  */
 import { useId, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useCanvasStore } from '../../stores/canvas.store';
 import { useI18n } from '../../stores/i18n.store';
 import { useInstances } from '../../hooks/useInstance';
@@ -19,6 +19,9 @@ import { InstanceCreateModal } from '../modals/InstanceCreateModal';
 import { ACTIVE, ROW_FOCUS, SECTION_HEADER, SIDEBAR_TEXT } from './sidebarStyles';
 
 const PINNED_KEY = 'dsf-pinned-instances';
+
+/** Routes whose content does not depend on the selected instance. */
+const NOT_INSTANCE_SCOPED = /^\/app\/(help|admin|map|marketplace|resources)(\/|$)/;
 
 function readPinned(): string[] {
   try {
@@ -32,6 +35,7 @@ function readPinned(): string[] {
 export function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { data: instances = [] } = useInstances();
   const activeInstanceId = useCanvasStore((s) => s.activeInstanceId);
   const setActiveInstance = useCanvasStore((s) => s.setActiveInstance);
@@ -52,6 +56,10 @@ export function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
     navigate('/app');
     onNavigate?.();
   }
+
+  // The selection only marks the instance where the page shows it; on the
+  // network-wide and general pages it would compete with the current nav item.
+  const instanceScoped = !NOT_INSTANCE_SCOPED.test(pathname);
 
   // Pinned instances first; the sort is stable, so the API order is kept otherwise.
   const sorted = [...instances].sort(
@@ -77,7 +85,7 @@ export function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
       <ul className="flex max-h-[200px] flex-col gap-0.5 overflow-y-auto">
         {sorted.map((inst) => {
           const isPinned = pinnedIds.includes(inst.id);
-          const isActive = inst.id === activeInstanceId;
+          const isActive = inst.id === activeInstanceId && instanceScoped;
           return (
             <li
               key={inst.id}

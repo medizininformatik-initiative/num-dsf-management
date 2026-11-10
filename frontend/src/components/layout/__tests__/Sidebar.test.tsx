@@ -66,6 +66,13 @@ describe('Sidebar navigation', () => {
     expect(resources.compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('does not mark an instance as selected on pages that are not instance-specific', () => {
+    renderWithProviders(<Sidebar />, { route: '/app/help' });
+    expect(screen.getByRole('button', { name: 'alpha.example.de' })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
   it('highlights a closed group that contains the current route and expands it on click', async () => {
     const user = userEvent.setup();
     renderWithProviders(<Sidebar />, { route: '/app/admin/users' });
