@@ -62,3 +62,19 @@ adminIncidentsRouter.post(
     await act(res, 200, async () => svc.confirmIncident(req.params.id, await caller(req)));
   }),
 );
+
+adminIncidentsRouter.post(
+  '/:id/suspend',
+  ...stepUp,
+  validate(suspendIncidentSchema),
+  asyncHandler(async (req, res) => {
+    await act(res, 200, async () =>
+      suspendIncident(
+        req.params.id,
+        req.body.measures,
+        req.body.confirm === true,
+        await caller(req),
+      ),
+    );
+  }),
+);
