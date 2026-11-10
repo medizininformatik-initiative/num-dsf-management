@@ -51,9 +51,10 @@ function makeReq(
   authMethod: 'otp' | 'cert',
   body: Record<string, unknown> = {},
   headers: Record<string, string> = {},
+  scopeInstanceId?: string,
 ): Request {
   return {
-    user: { id: userId, email: 'stepup@example.de', authMethod },
+    user: { id: userId, email: 'stepup@example.de', authMethod, scopeInstanceId },
     body,
     headers,
   } as unknown as Request;
@@ -229,7 +230,7 @@ describe('checkStepUp — cert sessions', () => {
     await db('users').whereIn('id', [ownerId, otherId]).del();
   });
 
-  it('(c) calls through when the registered owner re-presents their cert', async () => {
+  it('(c) calls through for an org-scoped session that re-presents its cert (no code needed)', async () => {
     const req = makeReq(
       ownerId,
       'cert',
@@ -238,6 +239,7 @@ describe('checkStepUp — cert sessions', () => {
         'x-client-verify': 'SUCCESS',
         'x-client-cert': encodeURIComponent(ownerPem),
       },
+      'instance-1',
     );
     const result = await checkStepUp(req);
     expect(result).toEqual({ ok: true });
@@ -303,6 +305,7 @@ describe('requireStepUp middleware', () => {
         'x-client-verify': 'SUCCESS',
         'x-client-cert': encodeURIComponent(ownerPem),
       },
+      'instance-1',
     );
     const { res, captured } = makeRes();
     const next = jest.fn() as unknown as NextFunction;
