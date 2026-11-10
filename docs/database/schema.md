@@ -469,3 +469,16 @@ Append-only timeline of an incident (035): no UPDATE or DELETE in code, like `au
 | details | JSON | yes | NULL | Measure results, restart checklist, review note, field changes |
 | prev_hash | CHAR(64) | no | — | Hash of the previous event |
 | hash | CHAR(64) | no | — | Hash of this event |
+
+## blocked_certificate_thumbprints
+
+SHA-512 thumbprints blocked by an incident (035), for good: such a certificate is refused on upload and renewal for every organization (`CERT_BLOCKED`), never enabled or synced as a login certificate, never logs in, and is left out of every published allow list. A site whose every thumbprint is blocked is published as withdrawn until a new certificate is approved. Rows are never deleted. No personal data besides the acting admin.
+
+| Column | Type | Null | Default | Notes |
+|--------|------|------|---------|-------|
+| fingerprint | CHAR(128) | no | — | PK; SHA-512, lower-case hex, as in `org_login_certificates.fingerprint` |
+| incident_id | CHAR(36) | no | — | FK → incidents.id |
+| created_by | VARCHAR(255) | no | — | |
+| created_at | DATETIME(3) | no | — | |
+
+`audit_logs.resource_type` gains `'INCIDENT'` in 035 (appended to the ENUM as it stands in the live database).
