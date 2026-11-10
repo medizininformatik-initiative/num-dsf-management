@@ -11,6 +11,7 @@
  * certificateUpload helpers, lib/certStatus, lib/authMode, i18n store.
  */
 import { useEffect, useId, useState } from 'react';
+import { isStepUpCodeComplete } from '../../lib/stepUpCode';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Modal } from '../modals/Modal';
@@ -138,7 +139,7 @@ export function AddAdminCertificateDialog({
     preview.issuerBlacklisted ||
     (preview.whitelistEnforced && !preview.issuerTrusted) ||
     validity?.state === 'expired';
-  const canSave = !save.isPending && !blocked && (!stepUp || totpCode.length === 6);
+  const canSave = !save.isPending && !blocked && (!stepUp || isStepUpCodeComplete(totpCode));
 
   return (
     <Modal

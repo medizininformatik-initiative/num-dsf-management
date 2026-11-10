@@ -3,6 +3,7 @@
  * Dependencies: zod
  */
 import { z } from 'zod';
+import { isStepUpCodeComplete } from '../lib/stepUpCode';
 import { needsTotpStepUp } from '../lib/authMode';
 
 // Cert-mode sessions prove possession via the client certificate instead of a
@@ -11,7 +12,7 @@ import { needsTotpStepUp } from '../lib/authMode';
 // The check runs inside the refine callback (not at module load) so it always
 // reflects the auth mode at validation time.
 const totpStepUpRefine = (data: { totpCode?: string }) =>
-  !needsTotpStepUp() || data.totpCode?.length === 6;
+  !needsTotpStepUp() || (data.totpCode !== undefined && isStepUpCodeComplete(data.totpCode));
 
 export const marketplaceAddFormSchema = z
   .object({

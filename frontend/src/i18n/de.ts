@@ -2414,4 +2414,49 @@ export const de: Record<TranslationKey, string> = {
   instanceDeleteFailed: 'Die Instanz konnte nicht gelöscht werden.',
   instanceErrorINSTANCE_HAS_HISTORY:
     'Diese Instanz wurde freigegeben, veröffentlicht oder hat einen Vorfall und kann daher nicht gelöscht werden. Archivieren Sie sie stattdessen.',
+
+  // TAN (Einmal-Code) als zweiter Faktor einer Bestätigung
+  tanLabel: 'TAN',
+  tanHint: 'Einer der 8-stelligen Codes Ihrer TAN-Liste. Jeder Code gilt nur einmal.',
+  tanUseTan: 'Stattdessen TAN verwenden',
+  tanUseCode: 'Stattdessen Authenticator-Code verwenden',
+  totpInvalidCodeOrTan: 'Ungültiger Code oder ungültige TAN. Bitte erneut versuchen.',
+  totpEnrolmentRequired:
+    'Richten Sie zuerst die Zwei-Faktor-Authentifizierung ein. Sie werden zur Einrichtung weitergeleitet.',
+  // Pflicht-Einrichtung und TAN-Liste
+  totpEnrolTitle: 'Authenticator-App einrichten',
+  totpEnrolSubtitle: 'Einmalige Einrichtung für Administratoren.',
+  totpEnrolWhoWhat:
+    'Nur Administratoren brauchen eine Authenticator-App. Sie wird bei heiklen Aktionen abgefragt (Vorfälle bestätigen und Standorte sperren, Admin-Zertifikate und Rollen ändern, Wiederherstellungen). Die tägliche Anmeldung läuft weiter über Ihr Zertifikat. Standorte brauchen kein TOTP.',
+  totpEnrolTanIntro:
+    'Dazu erhalten Sie eine TAN-Liste: zehn Einmal-Codes für den Fall, dass das Telefon nicht zur Hand ist. Bewahren Sie die Liste offline auf, zum Beispiel ausgedruckt.',
+  totpEnrolStartBtn: 'Einrichtung starten',
+  totpEnrolSecretLabel: 'Scannen nicht möglich? Geben Sie diesen Schlüssel in der App ein:',
+  totpEnrolStartFailed:
+    'Die Einrichtung konnte nicht gestartet werden. Laden Sie die Seite neu und versuchen Sie es erneut.',
+  tanListTitle: 'Ihre TAN-Liste',
+  tanListIntro:
+    'Zehn Einmal-Codes. Jeder ersetzt einmal den Authenticator-Code, zum Beispiel bei verlorenem Telefon. Sie werden nur jetzt angezeigt.',
+  tanPrint: 'Drucken',
+  tanPrintHeading: 'TAN-Liste ({env})',
+  tanFileNote: 'Jede TAN gilt nur einmal. Bewahren Sie die Liste offline und sicher auf.',
+  // Sicherheitsseite und Warnung bei wenigen TANs
+  securityTitle: 'Sicherheit',
+  securitySubtitle: 'Ihre Authenticator-App und Ihre TAN-Liste.',
+  securityOnlyAdmins:
+    'Nur Administratoren nutzen eine Authenticator-App. Standorte melden sich allein mit ihrem Zertifikat an.',
+  securityTotpActive: 'Authenticator-App aktiv',
+  securityTotpInactive: 'Authenticator-App nicht eingerichtet',
+  securityTansRemaining: 'Noch {n} TANs',
+  securityTansLow: 'Nur noch {n} TANs. Erzeugen Sie bald eine neue Liste.',
+  securityRegenerate: 'Neue TAN-Liste erzeugen',
+  securityRegenerateTitle: 'Neue TAN-Liste',
+  securityRegenerateConsequence: 'Die alte TAN-Liste verliert sofort ihre Gültigkeit.',
+  securityRegenerateFailed: 'Die TAN-Liste konnte nicht erzeugt werden.',
+  securityResetup: 'Neue Authenticator-App einrichten',
+  securityResetupHint:
+    'Für ein neues Telefon. Bestätigen Sie zuerst mit Ihrem aktuellen Code oder einer TAN; die TAN-Liste wird erneuert.',
+  securityResetupContinue: 'Weiter',
+  securityLowBannerLink: 'Sicherheitseinstellungen öffnen',
+  navSecurity: 'Sicherheit',
 };

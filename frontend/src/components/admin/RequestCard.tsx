@@ -10,6 +10,7 @@
  * Button, StatusPill, Icon, TotpCodeField, fieldClasses, sonner toast.
  */
 import { useId, useState } from 'react';
+import { isStepUpCodeComplete } from '../../lib/stepUpCode';
 import { toast } from 'sonner';
 import { useApproveRequest, useRejectRequest } from '../../hooks/useAdmin';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -87,7 +88,7 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
 
   async function handleApprove() {
     if (busy) return;
-    if (needsTotpStepUp() && (!totpCode || totpCode.length !== 6)) {
+    if (needsTotpStepUp() && (!totpCode || !isStepUpCodeComplete(totpCode))) {
       toast.error(t('adminToastTotpRequired'));
       return;
     }
@@ -125,7 +126,7 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
       toast.error(t('adminToastReasonRequired'));
       return;
     }
-    if (needsTotpStepUp() && (!totpCode || totpCode.length !== 6)) {
+    if (needsTotpStepUp() && (!totpCode || !isStepUpCodeComplete(totpCode))) {
       toast.error(t('adminToastTotpRequired'));
       return;
     }

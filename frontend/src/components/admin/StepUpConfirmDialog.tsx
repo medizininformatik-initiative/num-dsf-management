@@ -13,6 +13,7 @@
  * lib/stepUpErrors, stepUpError store, i18n store.
  */
 import { useEffect, type ReactNode } from 'react';
+import { isStepUpCodeComplete } from '../../lib/stepUpCode';
 import { Modal } from '../modals/Modal';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
@@ -72,7 +73,7 @@ export function StepUpConfirmDialog({
     if (open) clearError();
   }, [open, clearError]);
   const errorKey = open && errorCode ? stepUpErrorKey(errorCode) : undefined;
-  const canConfirm = !pending && !confirmDisabled && (!stepUp || totpCode.length === 6);
+  const canConfirm = !pending && !confirmDisabled && (!stepUp || isStepUpCodeComplete(totpCode));
 
   return (
     <Modal

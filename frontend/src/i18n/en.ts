@@ -2364,6 +2364,50 @@ export const en = {
   instanceDeleteFailed: 'The instance could not be deleted.',
   instanceErrorINSTANCE_HAS_HISTORY:
     'This instance was approved, published or has an incident, so it cannot be deleted. Archive it instead.',
+
+  // TAN (single-use backup code) as the second factor of a step-up
+  tanLabel: 'TAN',
+  tanHint: 'One of the 8-character codes from your TAN list. Each code works once.',
+  tanUseTan: 'Use a TAN instead',
+  tanUseCode: 'Use the authenticator code instead',
+  totpInvalidCodeOrTan: 'Invalid code or TAN. Please try again.',
+  totpEnrolmentRequired:
+    'Set up two-factor authentication first. You are being taken to the setup page.',
+  // Forced enrolment page and TAN list
+  totpEnrolTitle: 'Set up your authenticator app',
+  totpEnrolSubtitle: 'One-time setup for administrators.',
+  totpEnrolWhoWhat:
+    'Only administrators need an authenticator app. It is asked for on sensitive actions: confirming incidents and suspending sites, changing admin certificates and roles, and restores. Daily sign-in still works with your certificate. Sites do not need TOTP.',
+  totpEnrolTanIntro:
+    'You also get a TAN list: ten single-use codes for when your phone is not at hand. Store the list offline, for example printed.',
+  totpEnrolStartBtn: 'Start setup',
+  totpEnrolSecretLabel: 'Cannot scan the code? Enter this key in your app:',
+  totpEnrolStartFailed: 'The setup could not be started. Reload the page and try again.',
+  tanListTitle: 'Your TAN list',
+  tanListIntro:
+    'Ten single-use codes. Each one replaces the authenticator code once, for example when your phone is lost. They are shown only now.',
+  tanPrint: 'Print',
+  tanPrintHeading: 'TAN list ({env})',
+  tanFileNote: 'Each TAN can be used once. Keep this list offline in a safe place.',
+  // Security page and low-TAN warning
+  securityTitle: 'Security',
+  securitySubtitle: 'Your authenticator app and TAN list.',
+  securityOnlyAdmins:
+    'Only administrators use an authenticator app. Sites sign in with their certificate alone.',
+  securityTotpActive: 'Authenticator app active',
+  securityTotpInactive: 'Authenticator app not set up',
+  securityTansRemaining: '{n} TANs left',
+  securityTansLow: 'Only {n} TANs left. Generate a new list soon.',
+  securityRegenerate: 'Generate new TAN list',
+  securityRegenerateTitle: 'New TAN list',
+  securityRegenerateConsequence: 'The old TAN list stops working at once.',
+  securityRegenerateFailed: 'The TAN list could not be generated.',
+  securityResetup: 'Set up a new authenticator app',
+  securityResetupHint:
+    'For a new phone. Confirm with your current code or a TAN first; the TAN list is renewed.',
+  securityResetupContinue: 'Continue',
+  securityLowBannerLink: 'Open security settings',
+  navSecurity: 'Security',
 } as const;
 
 export type TranslationKey = keyof typeof en;

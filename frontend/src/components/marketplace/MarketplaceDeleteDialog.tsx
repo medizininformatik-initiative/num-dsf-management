@@ -6,6 +6,7 @@
  *               getErrorMessage, sonner
  */
 import { useState } from 'react';
+import { isStepUpCodeComplete } from '../../lib/stepUpCode';
 import { toast } from 'sonner';
 import { Modal } from '../modals/Modal';
 import { inputClass } from '../modals/FormField';
@@ -34,7 +35,7 @@ export function MarketplaceDeleteDialog({ entry, onClose }: Props) {
 
   async function handleDelete() {
     if (!entry) return;
-    if (stepUp && code.length !== 6) {
+    if (stepUp && !isStepUpCodeComplete(code)) {
       toast.error(t('totpRequired'));
       return;
     }

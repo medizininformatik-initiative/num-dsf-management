@@ -10,6 +10,7 @@
  * TotpCodeField, fieldClasses, i18n store, sonner, TanStack Query.
  */
 import { useId, useState } from 'react';
+import { isStepUpCodeComplete } from '../../lib/stepUpCode';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { caWhitelistApi, type CaWhitelistKind } from '../../api/caWhitelist.api';
@@ -48,7 +49,7 @@ export function CaWhitelistAddForm({ knownCas }: { knownCas: KnownCaRow[] }) {
   const dnValid = dn.length >= 3 && dn.length <= 500;
   const fingerprintValid =
     fingerprint.trim() === '' || (/^[0-9a-f:\s-]*$/i.test(fingerprint) && hex.length === 64);
-  const totpValid = !stepUp || totpCode.length === 6;
+  const totpValid = !stepUp || isStepUpCodeComplete(totpCode);
 
   const addMut = useMutation({
     mutationFn: () =>

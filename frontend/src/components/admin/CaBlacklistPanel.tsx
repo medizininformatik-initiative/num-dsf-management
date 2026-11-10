@@ -12,6 +12,7 @@
  * TanStack Query.
  */
 import { useId, useState, type CSSProperties } from 'react';
+import { isStepUpCodeComplete } from '../../lib/stepUpCode';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { caBlacklistApi, type CaBlacklistRow, type KnownCaRow } from '../../api/caBlacklist.api';
@@ -61,7 +62,7 @@ export function CaBlacklistPanel({
   const dn = subjectDn.trim();
   // Mirror the backend addSchema: subjectDn must be 3–500 chars.
   const subjectDnValid = dn.length >= 3 && dn.length <= 500;
-  const totpValid = !stepUp || totpCode.length === 6;
+  const totpValid = !stepUp || isStepUpCodeComplete(totpCode);
 
   const addMut = useMutation({
     mutationFn: () =>
