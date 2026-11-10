@@ -137,7 +137,7 @@ function NavSection({
         />
       </button>
       <Collapse id={id} open={open && !rail}>
-        <ul className="flex flex-col gap-0.5 pb-1 pt-0.5">
+        <ul className="ml-5 flex flex-col gap-0.5 border-l border-[color:var(--border)] pb-1 pl-2 pt-0.5">
           {links.map((item, i) => (
             <li key={item.to} className="animate-list-item-in" style={stagger(i)}>
               <NavItem item={item} rail={false} onNavigate={onNavigate} />
