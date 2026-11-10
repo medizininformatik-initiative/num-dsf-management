@@ -38,6 +38,7 @@ export function useLoginCertificateActions(
     if (known === 'ADMIN_CERTIFICATE') return toast.error(t('loginCertErrAdminCert'));
     if (known === 'NOT_CLINIC_UPLOADED') return toast.error(t('loginCertErrNotClinic'));
     if (known === 'FINGERPRINT_IN_USE') return toast.error(t('loginCertErrInUse'));
+    if (known === 'CERT_BLOCKED') return toast.error(t('loginCertErrBlocked'));
     toast.error(
       getErrorMessageForStepUp(err, t('loginCertChangeFailed'), t('certStepUpFailedToast')),
     );
