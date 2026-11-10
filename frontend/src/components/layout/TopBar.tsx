@@ -10,11 +10,14 @@
  * stays distinct from the filled submit CTA but is hard to overlook. While a
  * newer allow-list version exists than the site has obtained, it shimmers softly
  * and carries a red dot with a hint (nothing while loading or up to date).
- * Dependencies: SearchBar, NotificationCenter, Button, Icon, canvas.store,
- * useApproval, useAllowListFreshness, theme.store, i18n.store
+ * The "Report incident" button is there on every route, for every user.
+ * Dependencies: SearchBar, NotificationCenter, ReportIncidentButton, Button,
+ * Icon, canvas.store, useApproval, useAllowListFreshness, theme.store,
+ * i18n.store
  */
 import { SearchBar } from './SearchBar';
 import { NotificationCenter } from './NotificationCenter';
+import { ReportIncidentButton } from '../incidents/ReportIncidentButton';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { StatusPill } from '../ui/StatusPill';
@@ -54,6 +57,7 @@ export function TopBar({
       )}
 
       <div className="flex flex-shrink-0 items-center gap-1.5">
+        <ReportIncidentButton />
         <Button
           variant="ghost"
           size="sm"
