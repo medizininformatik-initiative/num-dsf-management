@@ -6,7 +6,8 @@
  *                       including those its latest approved and its pending
  *                       requests list, goes on the permanent block list;
  *   REMOVE_LOGINS       its login certificates are removed and the sessions of
- *                       its users revoked (skipped for an owner who is an admin);
+ *                       its organization scope ended (also for an admin owner);
+ *                       a non-admin owner loses every session;
  *   WITHDRAW            the site is suspended: published as withdrawn whatever
  *                       its approved snapshot says;
  *   MAIL_SITES          every site and admin is told.
@@ -16,7 +17,7 @@
  * blocked, so the site returns only with a new, approved certificate.
  * Dependencies: db/connection, incidents.service, incident-events.service,
  *               incident-blocks.service, org-login-certificates.service,
- *               auth.service, bundle-versions.service, fhir.service,
+ *               auth.service, scope-revocation.service, bundle-versions.service, fhir.service,
  *               approved-snapshot.service,
  *               lib/certFingerprint, lib/isAdmin
  */
@@ -37,6 +38,7 @@ import { appendEvent } from './incident-events.service';
 import { blockFingerprints } from './incident-blocks.service';
 import { removeAllForOrganization } from './org-login-certificates.service';
 import { revokeAllSessions } from './auth.service';
+import { revokeInstanceSessions } from './scope-revocation.service';
 import { createSnapshot } from './bundle-versions.service';
 import { loadAllowListInput } from './fhir.service';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
@@ -153,32 +155,35 @@ async function blockCertificates(row: IncidentRow, caller: IncidentCaller): Prom
   });
 }
 
+/**
+ * Remove the site's login certificates and end the sessions of its
+ * organization scope (certificate logins of the instance), also when an
+ * admin owns the instance. A non-admin owner also loses every personal
+ * session; an admin's own account is not locked out by a site incident.
+ */
 async function removeLogins(row: IncidentRow, caller: IncidentCaller): Promise<MeasureResult> {
-  const measure = 'REMOVE_LOGINS' as const;
   const removed = await removeAllForOrganization(
     row.organization_id as string,
     caller.email,
     caller.ip,
   );
+  const scopedSessionsRevoked = row.org_instance_id
+    ? await revokeInstanceSessions(row.org_instance_id)
+    : 0;
   const owner = (await db('instances as i')
     .join('users as u', 'u.id', 'i.user_id')
     .where('i.id', row.org_instance_id ?? '')
     .first('u.id', 'u.email')) as { id: string; email: string } | undefined;
-  let result: MeasureResult;
-  if (!owner) {
-    result = { measure, removedLogins: removed.length, sessionsRevoked: 0 };
-  } else if (await isAdminEmail(owner.email)) {
-    // An admin's own account is not locked out by a site incident.
-    result = {
-      measure,
-      removedLogins: removed.length,
-      sessionsRevoked: 0,
-      sessionsSkipped: 'OWNER_IS_ADMIN',
-    };
-  } else {
-    const revoked = await revokeAllSessions({ id: owner.id }).catch(() => 0);
-    result = { measure, removedLogins: removed.length, sessionsRevoked: revoked };
-  }
+  const sessionsRevoked =
+    owner && !(await isAdminEmail(owner.email))
+      ? await revokeAllSessions({ id: owner.id }).catch(() => 0)
+      : 0;
+  const result: MeasureResult = {
+    measure: 'REMOVE_LOGINS',
+    removedLogins: removed.length,
+    scopedSessionsRevoked,
+    sessionsRevoked,
+  };
   await record(row, caller, result);
   return result;
 }
