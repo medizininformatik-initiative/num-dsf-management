@@ -13,6 +13,7 @@ import { validate } from '../middleware/validate.middleware';
 import { incidentReportRateLimit } from '../middleware/rateLimit.middleware';
 import { asyncHandler } from '../lib/asyncHandler';
 import { sendIncidentError } from '../lib/incidentErrors';
+import { NIS2_STAGES, type Nis2Stage } from '../lib/nis2Deadlines';
 import { reportIncidentSchema } from '../schemas/incident.schema';
 import * as svc from '../services/incidents.service';
 import { listEvents, verifyEvents } from '../services/incident-events.service';
@@ -66,6 +67,32 @@ incidentsRouter.post(
   asyncHandler(async (req, res) => {
     try {
       res.status(201).json({ data: await svc.reportIncident(req.body, await caller(req)) });
+    } catch (err) {
+      if (!sendIncidentError(res, err)) throw err;
+    }
+  }),
+);
+
+incidentsRouter.post(
+  '/:id/nis2/:stage',
+  asyncHandler(async (req, res) => {
+    const stage = req.params.stage as Nis2Stage;
+    if (!NIS2_STAGES.includes(stage)) {
+      return res.status(400).json({ error: { code: 'VALIDATION', message: 'Unknown NIS2 stage' } });
+    }
+    try {
+      res.json({ data: await svc.acknowledgeNis2(req.params.id, stage, await caller(req)) });
+    } catch (err) {
+      if (!sendIncidentError(res, err)) throw err;
+    }
+  }),
+);
+
+incidentsRouter.post(
+  '/:id/dpo-informed',
+  asyncHandler(async (req, res) => {
+    try {
+      res.json({ data: await svc.acknowledgeDpo(req.params.id, await caller(req)) });
     } catch (err) {
       if (!sendIncidentError(res, err)) throw err;
     }
