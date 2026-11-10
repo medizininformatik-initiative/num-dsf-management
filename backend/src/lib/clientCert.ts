@@ -32,6 +32,7 @@ export interface ClientCertInfo {
  * this guard a caller could spoof `X-Client-Cert` with any thumbprint and
  * authenticate as the matching org. We check the verify result BEFORE doing
  * any thumbprint work so a forged/unverified cert never reaches a lookup.
+ * A certificate outside its validity period is refused here as well (null).
  */
 export function extractClientCert(req: Request): ClientCertInfo | null {
   const verify = req.headers['x-client-verify'];
@@ -56,6 +57,9 @@ export function extractClientCert(req: Request): ClientCertInfo | null {
   );
   if (der.length === 0) return null;
   const thumbprint = crypto.createHash('sha256').update(der).digest('hex');
+  // The proxy uses optional_no_ca, which does not check the validity period:
+  // a certificate that is expired or not yet valid is no client certificate.
+  if (!withinValidity(pem)) return null;
   let fingerprint: string | null;
   try {
     fingerprint = sha512FingerprintFromPem(pem);
@@ -63,4 +67,15 @@ export function extractClientCert(req: Request): ClientCertInfo | null {
     fingerprint = null;
   }
   return { thumbprint, fingerprint, pem };
+}
+
+/** False when the certificate parses and now is outside notBefore..notAfter. */
+function withinValidity(pem: string, now = Date.now()): boolean {
+  let cert: crypto.X509Certificate;
+  try {
+    cert = new crypto.X509Certificate(pem);
+  } catch {
+    return true; // unparseable: fingerprint stays null, nothing logs in with it
+  }
+  return Date.parse(cert.validFrom) <= now && now <= Date.parse(cert.validTo);
 }
