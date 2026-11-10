@@ -212,6 +212,25 @@ describe('GeoMap', () => {
     expect(layer.style.transform).toContain('scale(2.2)');
   });
 
+  it('returns to the previous view when the selection is cleared', () => {
+    const { container, rerender, onSelect } = renderMap();
+    const layer = container.querySelector('.map-zoom-layer') as SVGGElement;
+    const before = layer.style.transform;
+    const props = {
+      organizations: orgs,
+      allOrganizations: orgs,
+      onSelect,
+      verbunds: deriveVerbunds(orgs),
+      activeVerbunds: new Set<string>(),
+      showAllEdges: false,
+    };
+    rerender(<GeoMap {...props} selectedId="uksh.de" />);
+    expect(layer.style.transform).toContain('scale(2.2)');
+    rerender(<GeoMap {...props} selectedId="ukm.de" />);
+    rerender(<GeoMap {...props} selectedId={null} />);
+    expect(layer.style.transform).toBe(before);
+  });
+
   it('fans the members of a selected city cluster out as pins', () => {
     const berlinA = org('a.example.de', 'Alpha Berlin', 'Berlin');
     const berlinB = org('b.example.de', 'Beta Berlin', 'Berlin');

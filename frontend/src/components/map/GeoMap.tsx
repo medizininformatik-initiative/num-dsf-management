@@ -40,6 +40,7 @@ import {
   nearestInDirection,
   placeOrganizations,
   type Direction,
+  type MapView,
   type NodePoint,
   type Placed,
   type PlacedCluster,
@@ -208,16 +209,25 @@ export function GeoMap({
     [onSelect],
   );
 
-  // Glide to a newly selected organization or city. Only a new selection
+  // Glide to a newly selected organization or city, and back to the view the
+  // user had before once the selection is cleared. Only a selection change
   // moves the view; filter changes and resizes must not, so the latest
-  // placement and focus function are read through a ref.
-  const focusRef = useRef({ placed, focusOn, focusShiftPx });
-  focusRef.current = { placed, focusOn, focusShiftPx };
+  // placement, view and view functions are read through a ref.
+  const setView = viewport.setView;
+  const focusRef = useRef({ placed, focusOn, focusShiftPx, view, setView });
+  focusRef.current = { placed, focusOn, focusShiftPx, view, setView };
+  const viewBeforeFocusRef = useRef<MapView | null>(null);
   useEffect(() => {
-    if (!selectedId) return;
-    const { placed: nodes, focusOn: focus, focusShiftPx: shift } = focusRef.current;
+    const { placed: nodes, focusOn: focus, focusShiftPx: shift, view: now } = focusRef.current;
+    if (!selectedId) {
+      if (viewBeforeFocusRef.current) focusRef.current.setView(viewBeforeFocusRef.current);
+      viewBeforeFocusRef.current = null;
+      return;
+    }
     const target = nodes.find((p) => p.key === selectedId) ?? expandedClusterOf(nodes, selectedId);
-    if (target) focus(target.x, target.y, FOCUS_ZOOM, shift);
+    if (!target) return;
+    viewBeforeFocusRef.current ??= now;
+    focus(target.x, target.y, FOCUS_ZOOM, shift);
   }, [selectedId]);
 
   const nodePoints = useMemo<NodePoint[]>(() => {
