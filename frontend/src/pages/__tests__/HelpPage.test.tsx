@@ -109,6 +109,18 @@ describe('HelpPage', () => {
     expect(window.location.hash).toBe('#memberships');
   });
 
+  it('marks the clicked TOC entry as current even when the page cannot scroll to it', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<HelpPage />, { route: '/app/help' });
+    const toc = screen.getByRole('navigation', { name: 'On this page' });
+    await user.click(within(toc).getByRole('link', { name: 'FAQ' }));
+    expect(within(toc).getByRole('link', { name: 'FAQ' })).toHaveAttribute(
+      'aria-current',
+      'location',
+    );
+    expect(within(toc).getByRole('link', { name: 'Support' })).not.toHaveAttribute('aria-current');
+  });
+
   it('follows a #anchor on load and opens a FAQ answer deep link', () => {
     const id = HELP_FAQ[1].id;
     renderWithProviders(<HelpPage />, { route: `/app/help#${id}` });

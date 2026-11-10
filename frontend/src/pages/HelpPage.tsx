@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { useI18n } from '../stores/i18n.store';
 import { useMe } from '../hooks/useMe';
 import { scrollIntoViewSafe } from '../lib/motion';
+import { pickActiveSection } from '../lib/helpScrollSpy';
 import { HELP_FAQ, HELP_SECTIONS, type HelpBlock } from '../lib/helpContent';
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { Button } from '../components/ui/Button';
@@ -108,7 +109,7 @@ function Section({
       id={id}
       aria-labelledby={`${id}-title`}
       data-help-section
-      className="mb-8 animate-list-item-in scroll-mt-44"
+      className="mb-8 animate-list-item-in scroll-mt-[calc(var(--help-header-h,11rem)+1rem)]"
       style={stagger(index)}
     >
       <h2
@@ -169,29 +170,68 @@ export function HelpPage() {
     return true;
   }, []);
 
+  // The entry the reader just chose stays current until they scroll
+  // themselves: the last sections are too short to ever reach the reading
+  // line, so the scroll position alone could not select them.
+  const pinnedRef = useRef<string | null>(null);
+
   // Deep links: open the page on #anchor, and follow later hash changes.
   useEffect(() => {
     const id = decodeURIComponent(hash.replace(/^#/, ''));
-    if (id) reveal(id);
+    if (!id) return;
+    if (reveal(id) && toc.some((x) => x.id === id)) {
+      pinnedRef.current = id;
+      setActiveId(id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- follows the hash only
   }, [hash, reveal]);
 
-  // Highlight the table-of-contents entry of the section in view.
+  // Highlight the table-of-contents entry of the section in view, and keep
+  // the sticky header's height available to the sections' scroll margin.
   useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined' || !rootRef.current) return;
     const root = rootRef.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) if (e.isIntersecting) setActiveId(e.target.id);
-      },
-      { root, rootMargin: '-25% 0px -65% 0px' },
-    );
-    root.querySelectorAll('[data-help-section]').forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
+    if (!root) return;
+    const header = root.querySelector('header');
+    const update = () => {
+      const headerHeight = header?.getBoundingClientRect().height ?? 0;
+      root.style.setProperty('--help-header-h', `${headerHeight}px`);
+      const rootTop = root.getBoundingClientRect().top;
+      const tops = Array.from(root.querySelectorAll('[data-help-section]')).map((el) => ({
+        id: el.id,
+        top: el.getBoundingClientRect().top - rootTop,
+      }));
+      const atBottom = root.scrollTop + root.clientHeight >= root.scrollHeight - 2;
+      const next = pinnedRef.current ?? pickActiveSection(tops, headerHeight + 24, atBottom);
+      if (next) setActiveId(next);
+    };
+    const unpin = () => {
+      pinnedRef.current = null;
+      update();
+    };
+    update();
+    root.addEventListener('scroll', update, { passive: true });
+    for (const type of ['wheel', 'touchmove', 'keydown', 'pointerdown'] as const) {
+      root.addEventListener(type, unpin, { passive: true });
+    }
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(root);
+    if (header) observer?.observe(header);
+    return () => {
+      root.removeEventListener('scroll', update);
+      for (const type of ['wheel', 'touchmove', 'keydown', 'pointerdown'] as const) {
+        root.removeEventListener(type, unpin);
+      }
+      observer?.disconnect();
+    };
   }, [tocKey]);
 
   function jumpTo(e: MouseEvent<HTMLAnchorElement>, id: string) {
     e.preventDefault();
-    if (reveal(id)) window.history.replaceState(null, '', `#${id}`);
+    if (reveal(id)) {
+      pinnedRef.current = id;
+      setActiveId(id);
+      window.history.replaceState(null, '', `#${id}`);
+    }
   }
 
   return (
@@ -270,7 +310,7 @@ export function HelpPage() {
                     <details
                       key={f.id}
                       id={f.id}
-                      className="group/faq surface-card scroll-mt-44 px-4 py-2"
+                      className="group/faq surface-card scroll-mt-[calc(var(--help-header-h,11rem)+1rem)] px-4 py-2"
                     >
                       <summary className="flex min-h-8 cursor-pointer list-none items-center gap-2 rounded-control text-sm font-semibold text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)] [&::-webkit-details-marker]:hidden">
                         <Icon
