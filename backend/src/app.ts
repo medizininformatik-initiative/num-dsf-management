@@ -40,6 +40,7 @@ import { parentOrganizationsRouter } from './routes/parent-organizations.routes'
 import { marketplaceRouter } from './routes/marketplace.routes';
 import { adminMarketplaceRouter } from './routes/admin-marketplace.routes';
 import { incidentsRouter } from './routes/incidents.routes';
+import { adminIncidentsRouter } from './routes/admin-incidents.routes';
 import { apiRateLimit } from './middleware/rateLimit.middleware';
 import { randomUUID } from 'crypto';
 import { logger } from './lib/logger';
@@ -156,6 +157,7 @@ app.use('/api/v1/admin/ca-whitelist', adminCaWhitelistRouter);
 app.use('/api/v1/admin/bundle-versions', adminBundleVersionsRouter);
 app.use('/api/v1/admin/bundle-restores', adminBundleRestoresRouter);
 app.use('/api/v1/admin/backups', adminBackupsRouter);
+app.use('/api/v1/admin/incidents', adminIncidentsRouter);
 app.use('/api/v1/admin/organizations', adminLoginCertificatesRouter);
 app.use('/api/v1/admin', adminRouter);
 
