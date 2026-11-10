@@ -132,6 +132,18 @@ export const onboardingImportRateLimit = rateLimit({
   message: { error: { code: 'RATE_LIMITED', message: 'Too many import attempts. Please wait.' } },
 });
 
+// Incident reports mail every admin at once; cap them per user so a stolen
+// session cannot flood the admins, while a real report always goes through.
+export const incidentReportRateLimit = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_INCIDENT_REPORT_WINDOW_MS || '3600000'),
+  max: parseInt(process.env.RATE_LIMIT_INCIDENT_REPORT_MAX || '10'),
+  store: createRedisStore('incident-report'),
+  keyGenerator: (req) => `user:${(req as { user?: { id: string } }).user?.id || req.ip}`,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: 'Too many incident reports. Please wait.' } },
+});
+
 export const apiRateLimit = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_API_WINDOW_MS || '60000'),
   max: parseInt(process.env.RATE_LIMIT_API_MAX || '100'),
