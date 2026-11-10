@@ -117,3 +117,32 @@ adminIncidentsRouter.patch(
     await act(res, 200, async () => svc.updateIncident(req.params.id, req.body, await caller(req)));
   }),
 );
+
+adminIncidentsRouter.get(
+  '/:id/export',
+  validate(exportIncidentQuerySchema, 'query'),
+  asyncHandler(async (req, res) => {
+    const format = req.query.format === 'csv' ? 'csv' : 'json';
+    const c = await caller(req);
+    try {
+      const doc = await buildIncidentExport(req.params.id, c);
+      await svc.auditIncident(
+        { id: doc.incident.id, organization_id: doc.incident.organization?.identifier ?? null },
+        c,
+        'UPDATE',
+        { action: 'incident_export', format },
+      );
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${incidentExportFilename(doc.incident.id, format)}"`,
+      );
+      if (format === 'csv') {
+        res.type('text/csv; charset=utf-8').send(incidentExportCsv(doc));
+      } else {
+        res.type('application/json').send(JSON.stringify(doc, null, 2));
+      }
+    } catch (err) {
+      if (!sendIncidentError(res, err)) throw err;
+    }
+  }),
+);
