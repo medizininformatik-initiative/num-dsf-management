@@ -2326,6 +2326,44 @@ export const en = {
   incidentErrorNOT_SUSPENDED: 'The site is not suspended.',
   incidentErrorSTILL_SUSPENDED: 'Lift the suspension before closing the incident.',
   incidentErrorALREADY_ACKNOWLEDGED: 'This was already recorded.',
+
+  // Instance overview and lifecycle (archive / delete)
+  instanceOverviewTitle: 'Your instances',
+  instanceOverviewLabel: 'Instance overview',
+  instanceStatusNONE: 'No request yet',
+  instanceStatusDRAFT: 'Draft',
+  instanceStatusPENDING: 'Pending',
+  instanceStatusAPPROVED: 'Approved',
+  instanceStatusREJECTED: 'Rejected',
+  instanceStatusWITHDRAWN: 'Withdrawn',
+  instanceLastApproved: 'Last approved {date}',
+  instanceNeverApproved: 'Never approved',
+  instanceArchivedBadge: 'Archived',
+  instanceShowArchived: 'Show archived',
+  instanceOpen: 'Open {label}',
+  instanceArchive: 'Archive',
+  instanceUnarchive: 'Restore',
+  instanceDelete: 'Delete',
+  instanceActionsLabel: 'Actions for {label}',
+  instanceArchiveTitle: 'Archive instance?',
+  instanceArchiveMessage:
+    '{label} disappears from the instance list and the dashboard. Its data stays as it is and you can restore it any time.',
+  instanceArchiveConsequence:
+    'Archiving does not withdraw the site: it stays on the published allow list.',
+  instanceArchiveConfirm: 'Archive',
+  instanceArchivedToast: 'Instance archived',
+  instanceUnarchivedToast: 'Instance restored',
+  instanceArchiveFailed: 'The instance could not be archived or restored.',
+  instanceDeleteTitle: 'Delete instance?',
+  instanceDeleteMessage:
+    'This permanently deletes {label} with its organization, contacts, endpoints, certificates, memberships and approval drafts.',
+  instanceDeleteConsequence:
+    'This cannot be undone. Only an instance that was never approved or published can be deleted.',
+  instanceDeleteConfirm: 'Delete instance',
+  instanceDeletedToast: 'Instance deleted',
+  instanceDeleteFailed: 'The instance could not be deleted.',
+  instanceErrorINSTANCE_HAS_HISTORY:
+    'This instance was approved, published or has an incident, so it cannot be deleted. Archive it instead.',
 } as const;
 
 export type TranslationKey = keyof typeof en;

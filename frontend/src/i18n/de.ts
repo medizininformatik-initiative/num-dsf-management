@@ -2376,4 +2376,42 @@ export const de: Record<TranslationKey, string> = {
   incidentErrorNOT_SUSPENDED: 'Der Standort ist nicht gesperrt.',
   incidentErrorSTILL_SUSPENDED: 'Heben Sie die Sperre auf, bevor Sie den Vorfall abschließen.',
   incidentErrorALREADY_ACKNOWLEDGED: 'Das wurde bereits festgehalten.',
+
+  // Instance overview and lifecycle (archive / delete)
+  instanceOverviewTitle: 'Ihre Instanzen',
+  instanceOverviewLabel: 'Instanzübersicht',
+  instanceStatusNONE: 'Noch kein Antrag',
+  instanceStatusDRAFT: 'Entwurf',
+  instanceStatusPENDING: 'In Prüfung',
+  instanceStatusAPPROVED: 'Freigegeben',
+  instanceStatusREJECTED: 'Abgelehnt',
+  instanceStatusWITHDRAWN: 'Zurückgezogen',
+  instanceLastApproved: 'Zuletzt freigegeben am {date}',
+  instanceNeverApproved: 'Noch nie freigegeben',
+  instanceArchivedBadge: 'Archiviert',
+  instanceShowArchived: 'Archivierte anzeigen',
+  instanceOpen: '{label} öffnen',
+  instanceArchive: 'Archivieren',
+  instanceUnarchive: 'Wiederherstellen',
+  instanceDelete: 'Löschen',
+  instanceActionsLabel: 'Aktionen für {label}',
+  instanceArchiveTitle: 'Instanz archivieren?',
+  instanceArchiveMessage:
+    '{label} verschwindet aus der Instanzliste und vom Dashboard. Die Daten bleiben unverändert, und Sie können die Instanz jederzeit wiederherstellen.',
+  instanceArchiveConsequence:
+    'Archivieren zieht den Standort nicht zurück: Er bleibt auf der veröffentlichten Allow-List.',
+  instanceArchiveConfirm: 'Archivieren',
+  instanceArchivedToast: 'Instanz archiviert',
+  instanceUnarchivedToast: 'Instanz wiederhergestellt',
+  instanceArchiveFailed: 'Die Instanz konnte nicht archiviert oder wiederhergestellt werden.',
+  instanceDeleteTitle: 'Instanz löschen?',
+  instanceDeleteMessage:
+    '{label} wird mit Organisation, Kontakten, Endpunkten, Zertifikaten, Mitgliedschaften und Antragsentwürfen endgültig gelöscht.',
+  instanceDeleteConsequence:
+    'Das lässt sich nicht rückgängig machen. Nur eine Instanz, die nie freigegeben oder veröffentlicht wurde, kann gelöscht werden.',
+  instanceDeleteConfirm: 'Instanz löschen',
+  instanceDeletedToast: 'Instanz gelöscht',
+  instanceDeleteFailed: 'Die Instanz konnte nicht gelöscht werden.',
+  instanceErrorINSTANCE_HAS_HISTORY:
+    'Diese Instanz wurde freigegeben, veröffentlicht oder hat einen Vorfall und kann daher nicht gelöscht werden. Archivieren Sie sie stattdessen.',
 };
