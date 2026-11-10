@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4](https://github.com/Mukeyii/num-dsf-allowlist/compare/v0.1.3...v0.1.4) (2026-11-10)
+
+
+### Features
+
+* **db:** add certificate_thumbprint_locks (migration 034) ([3bc93cf](https://github.com/Mukeyii/num-dsf-allowlist/commit/3bc93cffe1108f95bb8bc13dd799c1700ebb52b9))
+* **map:** add a hover store shared by the map and the site list ([1879ab0](https://github.com/Mukeyii/num-dsf-allowlist/commit/1879ab0f0e85fbf0f9c415258b310df261c8043b))
+* **map:** connect sites to one hub per Verbund instead of to every peer ([b88809d](https://github.com/Mukeyii/num-dsf-allowlist/commit/b88809d68c58c108ac400380ef8df186f90f3a5a))
+* **map:** explain Verbund hubs and peer rings in the legend ([f45297c](https://github.com/Mukeyii/num-dsf-allowlist/commit/f45297c6f48eb5d25a54787ef2769cd53df49e01))
+* **map:** group map organizations by Verbund ([ec40458](https://github.com/Mukeyii/num-dsf-allowlist/commit/ec4045804c131d424e1d38e790dde924baa831d3))
+* **map:** lay out one hub per Verbund with a spoke to each member ([8701364](https://github.com/Mukeyii/num-dsf-allowlist/commit/87013642371fc66e1f3eff561d53ca1d472f62a2))
+* **map:** match city names loosely and place unknown towns by postcode region ([507bccf](https://github.com/Mukeyii/num-dsf-allowlist/commit/507bccf5fac4553df39f2ebfa6cd4362b62a0f31))
+* **map:** place pins by the site's own postcode when its city is not listed ([3f6a1bf](https://github.com/Mukeyii/num-dsf-allowlist/commit/3f6a1bfc332aeb54e24ae3828280fcd91c2b4469))
+* **map:** ring the Verbund peers of a selected site ([5d2cb47](https://github.com/Mukeyii/num-dsf-allowlist/commit/5d2cb477012c706ed5099b0304cb3365fa3861fc))
+* **network:** include the organization postcode in the map projection ([29fa507](https://github.com/Mukeyii/num-dsf-allowlist/commit/29fa5077a0a806e1b73d51775bb0ed2ece372c5d))
+
+
+### Bug Fixes
+
+* **admin-certificates:** end the admin's sessions when a certificate is removed ([1539c08](https://github.com/Mukeyii/num-dsf-allowlist/commit/1539c08699a737f5c76737ea0ca362cdc8b0202b))
+* **certificates:** make the one-organization-per-certificate check atomic ([9b37b6f](https://github.com/Mukeyii/num-dsf-allowlist/commit/9b37b6f439bf10f4d43ac5598ff213dc9717f8a8))
+* **ci:** give the secret scan the token gitleaks-action v3 needs on pull requests ([a039417](https://github.com/Mukeyii/num-dsf-allowlist/commit/a039417003d557e8481f51b5bdfb7241c671c2bb))
+* **ci:** let the secret scan read the pull request's commits ([83b2681](https://github.com/Mukeyii/num-dsf-allowlist/commit/83b268104c26f107a69f5329a894eb450ca83c9f))
+* **login-sync:** require two sites for deleted or unknown-origin certificates ([0f367d6](https://github.com/Mukeyii/num-dsf-allowlist/commit/0f367d695ec2f32d5e4aabf01c3f871215f52419))
+* **onboarding:** tell the clinic when a re-import changes its login certificate ([479c0e4](https://github.com/Mukeyii/num-dsf-allowlist/commit/479c0e402465e0033a9cb13d3fe9c0355fd6ac66))
+
+
+### Performance Improvements
+
+* **map:** counter-scale markers with one CSS variable on the zoom layer ([5ef1358](https://github.com/Mukeyii/num-dsf-allowlist/commit/5ef1358900477e8305f925b837e48051cdb264ba))
+* **map:** draw the land shadow from a pre-rendered image, not a live filter ([dd59f19](https://github.com/Mukeyii/num-dsf-allowlist/commit/dd59f191a9c3580ca98d68f0df522ae3fea7bcb4))
+* **map:** keep hover out of page state so it re-renders only what it highlights ([e7fb088](https://github.com/Mukeyii/num-dsf-allowlist/commit/e7fb088bb5a4e8a4b2a1115c5fb3618304fbb1c9))
+* **map:** memoize map markers and site list rows ([3282e63](https://github.com/Mukeyii/num-dsf-allowlist/commit/3282e637cd19666607084067ea912358919e0699))
+* **map:** paint pan and zoom gestures per frame and commit them at the end ([e31709d](https://github.com/Mukeyii/num-dsf-allowlist/commit/e31709dcf5acb6f64bc61e14eb421c302afdfeda))
+* **map:** simplify the Germany outline to a tenth of its path data ([e30ab48](https://github.com/Mukeyii/num-dsf-allowlist/commit/e30ab484568016322e53196720b5c294670be3c1))
+
 ## [0.1.3](https://github.com/Mukeyii/num-dsf-allowlist/compare/v0.1.2...v0.1.3) (2026-11-09)
 
 
