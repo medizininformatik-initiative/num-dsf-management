@@ -44,7 +44,7 @@ All configuration flows through env vars (no hardcoded secrets). Copy `.env.exam
 
 **Admin team:**
 - `IMI_ADMIN_EMAILS` — comma-separated list. Each admin's email **domain** is treated as their "site" for the 4-eyes approval rule.
-- `IMI_ADMIN_CERT_FINGERPRINTS` (cert-auth variant only). Comma-separated `email=fingerprint` pairs that let IMI admins sign in by client certificate on the login-screen-free box. The fingerprint is the SHA-512 hash of the admin's client cert (128 hex chars; colons and case are ignored). It is re-seeded on every boot, so pairs can be appended later. Use the same address here and in `IMI_ADMIN_EMAILS`: the first grants the login, the second grants the admin role.
+- `IMI_ADMIN_CERT_FINGERPRINTS` (cert-auth variant only). Comma-separated `email=fingerprint` pairs that let IMI admins sign in by client certificate on the login-screen-free box. The fingerprint is the SHA-512 hash of the admin's client cert (128 hex chars; colons and case are ignored). Like `IMI_ADMIN_EMAILS` it only bootstraps: the pairs are read at boot **only while no admin certificate exists at all**, and the seeded e-mails are whitelisted in the same step. Afterwards the variable is ignored, so a certificate removed in the portal or with the server CLI (for example a compromised one) is not brought back by a restart. Further admin certificates are added in the portal or with `scripts/admin-cert.sh add` (see "Admin-Zertifikat abgelaufen oder verloren"). A certificate login never whitelists an e-mail: an admin removed from the whitelist stays out even if a certificate row is left. Use the same address here and in `IMI_ADMIN_EMAILS`: the first grants the login, the second grants the admin role.
 
 **Certificate authorities:**
 - `CA_WHITELIST_ENFORCE`. Set to `true` to reject certificate uploads whose issuer is not on the CA whitelist (`CA_NOT_WHITELISTED`). Unset by default: other issuers, self-signed test certificates included, are accepted and shown without the DSF CA badge. The whitelist is seeded at init with the CAs DSF 2.1.1 accepts by default (migration 022: DFN, D-TRUST, GEANT and HARICA, Sectigo/USERTrust, T-TeleSec and others) and is managed through `/api/v1/admin/ca-whitelist`.
@@ -261,7 +261,7 @@ Apache weist abgelaufene Client-Zertifikate ab; mit einem abgelaufenen Admin-Zer
    ```
 
    Das Skript nutzt dieselben Umgebungsvariablen wie `restore-backup.sh` (`DSF_ROOT`, `DSF_COMPOSE`), kopiert die Datei in den Backend-Container und prüft wie das Portal: kein privater Schlüssel, gültig, CA-Regeln, nicht bereits als Admin- oder Organisations-Login-Zertifikat vergeben. Der Eintrag erhält `created_by = server-cli` und einen Audit-Eintrag. Die CLI umgeht bewusst das Vier-Augen-Verfahren aus Schritt 1: Root auf dem Server ist der Vertrauensanker.
-3. **Legacy.** `IMI_ADMIN_CERT_FINGERPRINTS` in `.env.prod` ergänzen und das Backend neu erstellen (wird bei jedem Start eingelesen). Ablaufdatum und Name werden bei der ersten Anmeldung ergänzt. Nur nutzen, wenn 1 und 2 nicht möglich sind.
+3. **Erstinstallation.** `IMI_ADMIN_CERT_FINGERPRINTS` in `.env.prod` wird nur eingelesen, solange noch gar kein Admin-Zertifikat existiert (danach ignoriert, damit ein entferntes Zertifikat nach einem Neustart nicht wiederkommt). Für eine Wiederherstellung im laufenden Betrieb also Schritt 1 oder 2 nutzen. Ablaufdatum und Name werden bei der ersten Anmeldung ergänzt.
 
 ### Debian install, step by step (cert-auth variant)
 
