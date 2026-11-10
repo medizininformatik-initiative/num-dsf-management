@@ -354,4 +354,71 @@ export async function confirmIncident(id: string, caller: IncidentCaller): Promi
   return toApi(updated, caller);
 }
 
+export interface UpdateInput {
+  escalationLevel?: 1 | 2 | 3;
+  detectedAt?: string;
+  zulipUrl?: string | null;
+}
+
+/** Admin changes of escalation level, detection time and Zulip link; each change is an event. */
+export async function updateIncident(
+  id: string,
+  input: UpdateInput,
+  caller: IncidentCaller,
+): Promise<ApiIncident> {
+  const row = await requireAdminRow(id);
+  if (isClosed(row)) throw new Error('INVALID_STATUS');
+  const changes: Array<{ field: string; column: string; from: unknown; to: unknown }> = [];
+  if (
+    input.escalationLevel !== undefined &&
+    input.escalationLevel !== Number(row.escalation_level)
+  ) {
+    changes.push({
+      field: 'escalationLevel',
+      column: 'escalation_level',
+      from: Number(row.escalation_level),
+      to: input.escalationLevel,
+    });
+  }
+  if (input.detectedAt !== undefined) {
+    const to = new Date(input.detectedAt);
+    if (to.getTime() !== new Date(row.detected_at).getTime()) {
+      changes.push({
+        field: 'detectedAt',
+        column: 'detected_at',
+        from: new Date(row.detected_at).toISOString(),
+        to: to.toISOString(),
+      });
+    }
+  }
+  if (input.zulipUrl !== undefined && input.zulipUrl !== row.zulip_url) {
+    changes.push({
+      field: 'zulipUrl',
+      column: 'zulip_url',
+      from: row.zulip_url,
+      to: input.zulipUrl,
+    });
+  }
+  if (changes.length > 0) {
+    await db.transaction(async (trx) => {
+      for (const c of changes) {
+        const value = c.column === 'detected_at' ? new Date(String(c.to)) : c.to;
+        await trx('incidents')
+          .where({ id })
+          .update({ [c.column]: value });
+        await appendEvent(trx, id, caller.email, 'UPDATED', {
+          field: c.field,
+          from: c.from,
+          to: c.to,
+        });
+      }
+    });
+    await auditIncident(row, caller, 'UPDATE', {
+      action: 'incident_update',
+      changes: changes.map(({ field, from, to }) => ({ field, from, to })),
+    });
+  }
+  return toApi((await loadRow(id))!, caller);
+}
+
 export { loadRow as loadIncidentRow, changeWithEvent };
