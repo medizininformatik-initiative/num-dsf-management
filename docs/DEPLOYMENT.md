@@ -260,6 +260,17 @@ Apache weist abgelaufene Client-Zertifikate ab; mit einem abgelaufenen Admin-Zer
    scripts/admin-cert.sh remove <fingerprint-prefix> --yes
    ```
 
+   **Entfernen im Portal und Untergrenze.** Ein Admin kann ein Zertifikat einer Kollegin oder eines Kollegen allein entfernen (Step-up, wirkt sofort, beendet deren Sitzungen). Das Portal verweigert das mit `LAST_OTHER_ADMIN_CERT` (HTTP 409), wenn danach außer der handelnden Person kein Admin mehr ein gültiges (nicht abgelaufenes) Admin-Zertifikat auf einem nicht gesperrten Konto hätte; ein Zertifikat ohne bekanntes Ablaufdatum (vor der ersten Anmeldung) zählt dabei als gültig. Das gilt ebenso für das Herabstufen eines Admins und das Entfernen von der Whitelist, die die Admin-Zertifikate der Person mit löschen. Die eigenen Zertifikate darf jede Person ohne diese Grenze entfernen (nur nicht das gerade benutzte). Jede Entfernung geht sofort per Mail an die betroffene Person und an alle anderen Admins, mit dem Namen der handelnden Person.
+
+   **Notfall: nur zwei Admins, einer kompromittiert.** Die Untergrenze verhindert dann, dass der verbleibende Admin das Zertifikat des kompromittierten im Portal entfernt. Der Serverbetreiber entfernt es auf der VM mit der Server-CLI (für sie gilt die Grenze nicht):
+
+   ```bash
+   scripts/admin-cert.sh list kompromittiert@example.de     # Fingerabdruck-Präfix ablesen
+   scripts/admin-cert.sh remove <fingerprint-prefix> --yes   # mindestens 8 Hex-Zeichen
+   ```
+
+   Das beendet die Sitzungen des Kontos sofort; im Zertifikatsbetrieb (`AUTH_MODE=cert`) kommt es ohne Zertifikat nicht mehr hinein. Sperren oder Herabstufen im Portal setzt das Quorum voraus (danach noch zwei entsperrte Admins von zwei Standorten), mit nur zwei Admins also erst, nachdem über die Vier-Augen-Beförderung weitere Admins aufgenommen wurden.
+
    Das Skript nutzt dieselben Umgebungsvariablen wie `restore-backup.sh` (`DSF_ROOT`, `DSF_COMPOSE`), kopiert die Datei in den Backend-Container und prüft wie das Portal: kein privater Schlüssel, gültig, CA-Regeln, nicht bereits als Admin- oder Organisations-Login-Zertifikat vergeben. Der Eintrag erhält `created_by = server-cli` und einen Audit-Eintrag. Die CLI umgeht bewusst das Vier-Augen-Verfahren aus Schritt 1: Root auf dem Server ist der Vertrauensanker.
 3. **Erstinstallation.** `IMI_ADMIN_CERT_FINGERPRINTS` in `.env.prod` wird nur eingelesen, solange noch gar kein Admin-Zertifikat existiert (danach ignoriert, damit ein entferntes Zertifikat nach einem Neustart nicht wiederkommt). Für eine Wiederherstellung im laufenden Betrieb also Schritt 1 oder 2 nutzen. Ablaufdatum und Name werden bei der ersten Anmeldung ergänzt.
 
