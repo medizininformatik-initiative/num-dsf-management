@@ -454,6 +454,31 @@ One row per backup attempt, scheduled or manual (028). Pruned files keep their r
 
 `audit_logs.resource_type` gains `'BACKUP'` and `audit_logs.operation` gains `'DOWNLOAD'` in 028 (appended to the ENUMs as they stand in the live database).
 
+## incidents
+
+The incident register (035). One row per reported security incident; rows are never deleted. Anyone signed in reports, one admin confirms, suspends, lifts and closes (step-up, no four-eyes). The description is shown to admins and the reporter only and never mailed. `detected_at` starts the NIS2 deadlines shown in the portal (early warning 24 h, notification 72 h, final report one calendar month); the `bsi_*` columns record who ticked "reported to BSI" per stage. The portal never reports to the BSI itself. Personal data: reporter, admin and acknowledging user e-mails.
+
+| Column | Type | Null | Default | Notes |
+|--------|------|------|---------|-------|
+| id | CHAR(36) | no | — | PK |
+| organization_id | VARCHAR(255) | yes | NULL | Affected site; FK → organizations.identifier ON DELETE SET NULL; NULL when unknown |
+| title | VARCHAR(200) | no | — | Short title; mailed |
+| description | TEXT | no | — | Reporter's free text; admins and reporter only, never mailed |
+| status | ENUM | no | 'REPORTED' | REPORTED, CONFIRMED, CLOSED, FALSE_ALARM |
+| reported_by / reported_at | VARCHAR(255) / DATETIME(3) | no | — | |
+| detected_at | DATETIME(3) | no | — | Defaults to the report time; admins may correct it |
+| escalation_level | TINYINT | no | 1 | 1 operation continues, 2 pause, 3 shutdown |
+| zulip_url | VARCHAR(500) | yes | NULL | https link to the coordination thread |
+| confirmed_by / confirmed_at | VARCHAR(255) / DATETIME(3) | yes | NULL | Confirmed incidents are visible to every signed-in user |
+| closed_by / closed_at | VARCHAR(255) / DATETIME(3) | yes | NULL | |
+| suspended | TINYINT(1) | no | 0 | 1 while the incident suspends the site: published as withdrawn whatever its approved snapshot says |
+| bsi_early_warning_at / _by | DATETIME(3) / VARCHAR(255) | yes | NULL | "Reported to BSI", stage 24 h |
+| bsi_notification_at / _by | DATETIME(3) / VARCHAR(255) | yes | NULL | Stage 72 h |
+| bsi_final_report_at / _by | DATETIME(3) / VARCHAR(255) | yes | NULL | Stage one month |
+| dpo_informed_at / _by | DATETIME(3) / VARCHAR(255) | yes | NULL | Data protection officer informed |
+
+Indexes: `idx_incidents_status (status, reported_at)`, `idx_incidents_org (organization_id, suspended)`.
+
 ## incident_events
 
 Append-only timeline of an incident (035): no UPDATE or DELETE in code, like `audit_logs`. Each row is chained to its predecessor: `hash = SHA-256(prev_hash + canonical JSON of {incidentId, seq, at, actorEmail, type, details})` with sorted object keys, `prev_hash` of the first event is 64 zeros. Appending locks the incident row (`SELECT ... FOR UPDATE`) inside the transaction, so concurrent events cannot fork the chain. The detail view and the export verify the chain and name the first broken `seq`.
