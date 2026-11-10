@@ -23,6 +23,7 @@ import { db } from '../db/connection';
 import { createTokenPair } from '../services/auth.service';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
 import { signGrant } from '../lib/adminGrants';
+import { saveTotpSecret, generateBackupCodes } from '../services/totp.service';
 
 function makeCert(cn: string): string {
   const keys = forge.pki.rsa.generateKeyPair({ bits: 1024 });
@@ -438,12 +439,15 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
     });
 
     it('an admin with the certificate passes authentication and step-up and reaches the service rule', async () => {
+      // An admin certificate session also needs the second factor: here a TAN.
+      await saveTotpSecret(adminUserId, 'JBSWY3DPEHPK3PXP');
+      const [tan] = await generateBackupCodes(adminUserId);
       const token = await certToken(adminUserId, adminEmail);
       const res = await request(app)
         .post('/api/v1/admin/promotions')
         .set('Authorization', `Bearer ${token}`)
         .set(certHeaders(ADMIN_PEM))
-        .send({ targetEmail: siteEmail });
+        .send({ targetEmail: siteEmail, totpCode: tan });
       // Reaches the promotion service (target is whitelisted and not an admin).
       expect(res.status).toBe(201);
       await db('admin_promotion_requests').where({ target_email: siteEmail }).del();

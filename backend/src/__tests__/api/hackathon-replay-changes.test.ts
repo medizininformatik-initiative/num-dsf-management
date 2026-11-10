@@ -159,6 +159,7 @@ describe('Hackathon replay: participants change the allow list', () => {
       .post('/api/v1/admin/onboarding/import')
       .set('Authorization', `Bearer ${operator.token}`)
       .set(mtlsHeaders(operator.pem))
+      .set('X-Totp-Code', '123456')
       .set('Content-Type', 'text/csv')
       .send(csv);
     expect(imported.status).toBe(200);

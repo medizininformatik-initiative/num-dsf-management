@@ -3,7 +3,7 @@
  * Covers:
  *   - GET  /pending          lists a PENDING approval request (with signatures)
  *   - POST /:rid/approve     second cross-site sign-off resolves it → APPROVED
- *   - POST /:rid/approve     a cert-session admin approves with NO totpCode
+ *   - POST /:rid/approve     a cert-session admin approves with the certificate and a TOTP code
  *   - POST /:rid/reject      reject with a comment resolves it → REJECTED
  *   - non-admin (whitelisted, no admin_grant) → 403 FORBIDDEN
  *   - no Authorization header → 401
@@ -280,7 +280,7 @@ describe('POST /api/v1/admin/approval/:rid/approve', () => {
     expect(res.body.error.code).toBe('TOTP_REQUIRED');
   });
 
-  it('a cert-session admin can approve with NO totpCode when the cert headers are presented', async () => {
+  it('a cert-session admin approves with the certificate plus a TOTP code, and is asked for the code otherwise', async () => {
     const rid = await seedPendingRequest();
 
     // Real cert-login mints amr:'cert' on the access token — this is the
@@ -293,12 +293,22 @@ describe('POST /api/v1/admin/approval/:rid/approve', () => {
     expect(loginRes.status).toBe(200);
     const { accessToken } = loginRes.body.data;
 
+    // Without the code the admin cert session is refused.
+    const noCode = await request(app)
+      .post(`/api/v1/admin/approval/${rid}/approve`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('x-client-verify', 'SUCCESS')
+      .set('x-client-cert', encodeURIComponent(CERT_ADMIN_PEM))
+      .send({});
+    expect(noCode.status).toBe(400);
+    expect(noCode.body.error.code).toBe('TOTP_REQUIRED');
+
     const res = await request(app)
       .post(`/api/v1/admin/approval/${rid}/approve`)
       .set('Authorization', `Bearer ${accessToken}`)
       .set('x-client-verify', 'SUCCESS')
       .set('x-client-cert', encodeURIComponent(CERT_ADMIN_PEM))
-      .send({}); // no totpCode
+      .send({ totpCode: '123456' }); // verifyTotpCode is mocked above
 
     expect(res.status).toBe(200);
 

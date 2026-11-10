@@ -15,6 +15,14 @@ import { hackathonManifestSchema, type HackathonUser } from '../../db/hackathon/
 import { sha512FingerprintFromPem } from '../../lib/certFingerprint';
 import { makeCertPem, mtlsHeaders, sha256Thumbprint } from './allowListSites';
 
+// Admins who sign in by certificate also need TOTP in production. The replay
+// does not simulate an authenticator app, so it runs with the development
+// TOTP bypass (enrolment gate off, any 6-digit code accepted) and sends a
+// fixed code on admin routes.
+process.env.DEV_AUTO_LOGIN = 'true';
+process.env.DEV_TOTP_BYPASS = 'true';
+const STEP_UP_CODE = '123456';
+
 export interface Participant {
   user: HackathonUser;
   /** Login certificate; the seed also registers it as the site's DSF certificate. */
@@ -92,15 +100,21 @@ export async function certLogin(pem: string): Promise<string> {
   return res.body.data.accessToken as string;
 }
 
+/** Admin routes take the step-up code in the body. */
+function withCode(url: string, body: object): object {
+  return url.includes('/api/v1/admin/') ? { totpCode: STEP_UP_CODE, ...body } : body;
+}
+
 /** Authenticated API call that also carries the client certificate (cert step-up). */
 export function api(p: Pick<Participant, 'token' | 'pem'>) {
   const auth = (r: request.Test) =>
     r.set('Authorization', `Bearer ${p.token}`).set(mtlsHeaders(p.pem));
   return {
     get: (url: string) => auth(request(app).get(url)),
-    post: (url: string, body?: object) => auth(request(app).post(url)).send(body ?? {}),
-    put: (url: string, body: object) => auth(request(app).put(url)).send(body),
-    del: (url: string) => auth(request(app).delete(url)),
+    post: (url: string, body?: object) =>
+      auth(request(app).post(url)).send(withCode(url, body ?? {})),
+    put: (url: string, body: object) => auth(request(app).put(url)).send(withCode(url, body)),
+    del: (url: string) => auth(request(app).delete(url)).send(withCode(url, {})),
   };
 }
 

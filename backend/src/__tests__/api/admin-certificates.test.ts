@@ -305,6 +305,7 @@ describe('PATCH + DELETE /admin/me/certificates/:id', () => {
       .delete(`${BASE}/${currentId}`)
       .set('Authorization', `Bearer ${claimToken({ amr: 'cert' })}`)
       .set(mtlsHeaders(CURRENT_PEM))
+      .send(code)
       .expect(409);
     expect(res.body.error.code).toBe('CURRENT_CERTIFICATE');
     expect(await db('admin_cert_fingerprints').where({ id: currentId }).first()).toBeTruthy();
@@ -318,6 +319,7 @@ describe('PATCH + DELETE /admin/me/certificates/:id', () => {
       .delete(`${BASE}/${own.id}`)
       .set('Authorization', `Bearer ${claimToken({ amr: 'cert' })}`)
       .set(mtlsHeaders(CURRENT_PEM))
+      .send(code)
       .expect(200);
     expect(await db('admin_cert_fingerprints').where({ id: own.id }).first()).toBeUndefined();
     const audit = await db('audit_logs')

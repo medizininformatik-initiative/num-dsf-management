@@ -75,7 +75,11 @@ describe('Hackathon replay: three sites, four-eyes approval, DSF allow-list down
       s.token = await certLogin(s.pem);
       const me = await api(s).get('/auth/me');
       expect(me.status).toBe(200);
-      expect(me.body.data).toEqual({ email: s.user.email, isAdmin: true });
+      expect(me.body.data).toEqual({
+        email: s.user.email,
+        isAdmin: true,
+        totpEnrolmentRequired: false,
+      });
     }
   });
 
