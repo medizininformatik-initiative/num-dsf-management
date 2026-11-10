@@ -50,6 +50,36 @@ describe('InstanceOverview', () => {
     unarchiveInstance.mockReset().mockResolvedValue({});
     deleteInstance.mockReset().mockResolvedValue({});
     useCanvasStore.setState({ activeInstanceId: 'i1' });
+    localStorage.clear();
+  });
+
+  it('shows the instance count and collapses, remembering the choice per user', () => {
+    rows = [row({ id: 'i1' }), row({ id: 'i2', label: 'ukb.de' })];
+    const first = renderWithProviders(<InstanceOverview />);
+    const toggle = screen.getByRole('button', { name: /Your instances \(2\)/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(toggle);
+    expect(screen.queryByTestId('instance-overview-i1')).not.toBeInTheDocument();
+    expect(localStorage.getItem('instance-overview-collapsed:owner@example.de')).toBe('1');
+    first.unmount();
+    renderWithProviders(<InstanceOverview />);
+    expect(screen.queryByTestId('instance-overview-i1')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Your instances \(2\)/ }));
+    expect(screen.getByTestId('instance-overview-i1')).toBeInTheDocument();
+  });
+
+  it('shows just the chip, without header, for a single instance', () => {
+    rows = [row({ id: 'i1' })];
+    renderWithProviders(<InstanceOverview />);
+    expect(screen.getByTestId('instance-overview-i1')).toBeInTheDocument();
+    expect(screen.queryByText(/Your instances/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the list in a height-limited scroll area for many instances', () => {
+    rows = Array.from({ length: 30 }, (_, n) => row({ id: `i${n}`, label: `site${n}.de` }));
+    renderWithProviders(<InstanceOverview />);
+    expect(screen.getByRole('list').className).toContain('overflow-y-auto');
+    expect(screen.getByRole('button', { name: /Your instances \(30\)/ })).toBeInTheDocument();
   });
 
   it('shows the status and the last approval of each instance', () => {
@@ -64,9 +94,15 @@ describe('InstanceOverview', () => {
     ];
     renderWithProviders(<InstanceOverview />);
     expect(screen.getByTestId('instance-overview-i1')).toHaveTextContent('Draft');
-    expect(screen.getByTestId('instance-overview-i1')).toHaveTextContent('Never approved');
+    expect(screen.getByTestId('instance-overview-i1')).toHaveAttribute(
+      'title',
+      expect.stringContaining('Never approved'),
+    );
     expect(screen.getByTestId('instance-overview-i2')).toHaveTextContent('Approved');
-    expect(screen.getByTestId('instance-overview-i2')).toHaveTextContent(/Last approved/);
+    expect(screen.getByTestId('instance-overview-i2')).toHaveAttribute(
+      'title',
+      expect.stringMatching(/Last approved/),
+    );
   });
 
   it('switches the active instance on click', () => {

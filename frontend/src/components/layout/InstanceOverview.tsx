@@ -6,10 +6,13 @@
  * published (step-up dialog); a "Show archived" toggle lists archived
  * instances. Archiving keeps the site on the published allow list. Admins see
  * only their own instances here; the sidebar switcher lists all.
+ * Rendered as a dense grid of chips (two rows, scrolls beyond that), collapsible
+ * per user (localStorage); the row actions appear on hover or keyboard focus.
+ * With a single instance only its chip is shown, without header.
  * Dependencies: useInstanceOverview, useMe, canvas.store, i18n.store, entities
  * API, StepUpConfirmDialog, useConfirm, StatusPill, Icon, Button.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api } from '../../api/entities.api';
@@ -58,8 +61,30 @@ export function InstanceOverview() {
   const activeInstanceId = useCanvasStore((s) => s.activeInstanceId);
   const setActiveInstance = useCanvasStore((s) => s.setActiveInstance);
   const [showArchived, setShowArchived] = useState(false);
+  const collapseKey = `instance-overview-collapsed:${me?.email ?? ''}`;
+  const readCollapsed = () => {
+    try {
+      return localStorage.getItem(collapseKey) === '1';
+    } catch {
+      return false;
+    }
+  };
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+  // The user arrives after the first render; pick up their stored choice then.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setCollapsed(readCollapsed()), [collapseKey]);
   const [deleting, setDeleting] = useState<InstanceOverviewRow | null>(null);
   const [deleteCode, setDeleteCode] = useState('');
+
+  function toggleCollapsed() {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      localStorage.setItem(collapseKey, next ? '1' : '0');
+    } catch {
+      /* storage unavailable: the choice just lasts for this visit */
+    }
+  }
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['instances'] });
 
@@ -112,42 +137,63 @@ export function InstanceOverview() {
     if (ok) archiveMut.mutate({ id: row.id, archive: true });
   }
 
+  const single = mine.length === 1;
+  const listVisible = single || !collapsed;
+
   return (
     <section aria-label={t('instanceOverviewLabel')} className="mx-4 mt-2 shrink-0">
-      <div className="mb-1 flex items-center justify-between gap-3">
-        <h2 className="m-0 text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
-          {t('instanceOverviewTitle')}
-        </h2>
-        {archivedCount > 0 && (
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-[color:var(--text-secondary)]">
-            <input
-              type="checkbox"
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
-            />
-            {t('instanceShowArchived')} ({archivedCount})
-          </label>
-        )}
-      </div>
-      <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
-        {visible.map((row) => {
-          const isActive = row.id === activeInstanceId;
-          return (
-            <li
-              key={row.id}
-              data-testid={`instance-overview-${row.id}`}
-              className={`surface-card flex items-center gap-1 py-1 pl-3 pr-1 ${
-                row.archived_at ? 'opacity-70' : ''
-              } ${isActive ? 'ring-1 ring-[color:var(--primary)]' : ''}`}
-            >
-              <button
-                type="button"
-                onClick={() => setActiveInstance(row.id)}
-                aria-current={isActive ? 'true' : undefined}
-                aria-label={t('instanceOpen', { label: row.label })}
-                className="flex min-w-0 flex-col items-start gap-0.5 text-left"
+      {!single && (
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-expanded={!collapsed}
+            aria-controls="instance-overview-list"
+            className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]"
+          >
+            <Icon name={collapsed ? 'chevron_right' : 'expand_more'} size={16} />
+            <h2 className="m-0 text-xs font-semibold uppercase tracking-wide">
+              {t('instanceOverviewTitle')} ({visible.length})
+            </h2>
+          </button>
+          {archivedCount > 0 && !collapsed && (
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-[color:var(--text-secondary)]">
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+              />
+              {t('instanceShowArchived')} ({archivedCount})
+            </label>
+          )}
+        </div>
+      )}
+      {listVisible && (
+        <ul
+          id="instance-overview-list"
+          className="m-0 grid max-h-[5.25rem] list-none grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-1.5 overflow-y-auto p-0.5"
+        >
+          {visible.map((row) => {
+            const isActive = row.id === activeInstanceId;
+            const approved = row.last_approved_at
+              ? t('instanceLastApproved', { date: formatDate(row.last_approved_at, lang) })
+              : t('instanceNeverApproved');
+            return (
+              <li
+                key={row.id}
+                data-testid={`instance-overview-${row.id}`}
+                title={`${row.label} - ${approved}`}
+                className={`surface-card group flex h-9 items-center gap-1 py-0 pl-2.5 pr-1 ${
+                  row.archived_at ? 'opacity-70' : ''
+                } ${isActive ? 'ring-1 ring-[color:var(--primary)]' : ''}`}
               >
-                <span className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveInstance(row.id)}
+                  aria-current={isActive ? 'true' : undefined}
+                  aria-label={t('instanceOpen', { label: row.label })}
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                >
                   <span className="truncate text-sm font-medium text-[color:var(--text-primary)]">
                     {row.label}
                   </span>
@@ -155,65 +201,60 @@ export function InstanceOverview() {
                     {t(`instanceStatus${row.approval_status}`)}
                   </StatusPill>
                   {row.archived_at && <StatusPill>{t('instanceArchivedBadge')}</StatusPill>}
-                </span>
-                <span className="text-2xs text-[color:var(--text-muted)]">
-                  {row.last_approved_at
-                    ? t('instanceLastApproved', { date: formatDate(row.last_approved_at, lang) })
-                    : t('instanceNeverApproved')}
-                </span>
-              </button>
-              {row.is_owner && (
-                <span
-                  className="flex items-center"
-                  role="group"
-                  aria-label={t('instanceActionsLabel', { label: row.label })}
-                >
-                  {row.archived_at ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => archiveMut.mutate({ id: row.id, archive: false })}
-                      disabled={archiveMut.isPending}
-                      title={t('instanceUnarchive')}
-                      aria-label={`${t('instanceUnarchive')}: ${row.label}`}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Icon name="unarchive" size={18} />
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => requestArchive(row)}
-                      disabled={archiveMut.isPending}
-                      title={t('instanceArchive')}
-                      aria-label={`${t('instanceArchive')}: ${row.label}`}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Icon name="archive" size={18} />
-                    </Button>
-                  )}
-                  {canDelete(row) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setDeleteCode('');
-                        setDeleting(row);
-                      }}
-                      title={t('instanceDelete')}
-                      aria-label={`${t('instanceDelete')}: ${row.label}`}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Icon name="delete" size={18} />
-                    </Button>
-                  )}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                </button>
+                {row.is_owner && (
+                  <span
+                    className="flex items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100"
+                    role="group"
+                    aria-label={t('instanceActionsLabel', { label: row.label })}
+                  >
+                    {row.archived_at ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => archiveMut.mutate({ id: row.id, archive: false })}
+                        disabled={archiveMut.isPending}
+                        title={t('instanceUnarchive')}
+                        aria-label={`${t('instanceUnarchive')}: ${row.label}`}
+                        className="h-7 w-7 p-0"
+                      >
+                        <Icon name="unarchive" size={16} />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => requestArchive(row)}
+                        disabled={archiveMut.isPending}
+                        title={t('instanceArchive')}
+                        aria-label={`${t('instanceArchive')}: ${row.label}`}
+                        className="h-7 w-7 p-0"
+                      >
+                        <Icon name="archive" size={16} />
+                      </Button>
+                    )}
+                    {canDelete(row) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setDeleteCode('');
+                          setDeleting(row);
+                        }}
+                        title={t('instanceDelete')}
+                        aria-label={`${t('instanceDelete')}: ${row.label}`}
+                        className="h-7 w-7 p-0"
+                      >
+                        <Icon name="delete" size={16} />
+                      </Button>
+                    )}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <StepUpConfirmDialog
         open={deleting !== null}
