@@ -35,6 +35,14 @@ describe('extractClientCert – X-Client-Verify gating', () => {
     expect(result!.thumbprint).toHaveLength(64);
   });
 
+  it('ignores the legacy X-Ssl-Client-Cert header (only X-Client-Cert is set by the proxy)', () => {
+    expect(
+      extractClientCert(
+        reqWith({ 'x-client-verify': 'SUCCESS', 'x-ssl-client-cert': encodedCert }),
+      ),
+    ).toBeNull();
+  });
+
   it('rejects a cert header when X-Client-Verify is absent', () => {
     expect(extractClientCert(reqWith({ 'x-client-cert': encodedCert }))).toBeNull();
   });
