@@ -127,3 +127,46 @@ SET @sql := IF(@ct IS NOT NULL AND @ct NOT LIKE '%''INCIDENT''%',
          SUBSTRING(@ct, 1, CHAR_LENGTH(@ct) - 1), ',''INCIDENT'') NOT NULL'),
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- incident_events and blocked_certificate_thumbprints are append-only at the
+-- DB level, like audit_logs (migration 013). The backup restore drops and
+-- re-creates the triggers of the tables it restores.
+DELIMITER //
+
+DROP TRIGGER IF EXISTS `incident_events_no_update`//
+CREATE TRIGGER `incident_events_no_update`
+BEFORE UPDATE ON `incident_events`
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = 'incident_events is append-only; UPDATE is not permitted';
+END//
+
+DROP TRIGGER IF EXISTS `incident_events_no_delete`//
+CREATE TRIGGER `incident_events_no_delete`
+BEFORE DELETE ON `incident_events`
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = 'incident_events is append-only; DELETE is not permitted';
+END//
+
+DROP TRIGGER IF EXISTS `blocked_certificate_thumbprints_no_update`//
+CREATE TRIGGER `blocked_certificate_thumbprints_no_update`
+BEFORE UPDATE ON `blocked_certificate_thumbprints`
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = 'blocked_certificate_thumbprints is append-only; UPDATE is not permitted';
+END//
+
+DROP TRIGGER IF EXISTS `blocked_certificate_thumbprints_no_delete`//
+CREATE TRIGGER `blocked_certificate_thumbprints_no_delete`
+BEFORE DELETE ON `blocked_certificate_thumbprints`
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = 'blocked_certificate_thumbprints is append-only; DELETE is not permitted';
+END//
+
+DELIMITER ;
