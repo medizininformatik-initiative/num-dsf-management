@@ -19,6 +19,7 @@ import { db } from '../db/connection';
 import { isVerifiedAdminEmail } from '../lib/adminGrants';
 import { siteOfEmail } from '../lib/approvalState';
 import { logger } from '../lib/logger';
+import { canonicalCertificatePem } from '../lib/certFingerprint';
 import { AdminCertError, assertAcceptable, parseAdminCert } from './admin-certificates.service';
 import { writeAuditLog } from './audit.service';
 import { sendAdminCertRequestEmail, type AdminCertRequestEvent } from './notification.service';
@@ -153,7 +154,8 @@ export async function createRequest(opts: CreateOptions): Promise<CertRequest> {
   const parsed = parseAdminCert(opts.pem);
   await assertAcceptable(parsed, opts.now ?? new Date());
   const id = uuidv4();
-  const pem = opts.pem.trim();
+  // parseAdminCert accepted exactly one block; keep only its canonical form.
+  const pem = canonicalCertificatePem(opts.pem);
   try {
     await db('admin_cert_requests').insert({
       id,
