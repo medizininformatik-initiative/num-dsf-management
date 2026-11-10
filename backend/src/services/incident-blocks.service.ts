@@ -13,14 +13,24 @@
 import type { Knex } from 'knex';
 import { db } from '../db/connection';
 
+/** Changes to the stored suspensions for a version published before they are committed. */
+export interface SuspensionOverrides {
+  /** Treat this organization as suspended. */
+  suspend?: string;
+  /** Leave out the suspension of this incident (it is being lifted). */
+  excludeIncidentId?: string;
+}
+
 /** Identifiers of the organizations an incident currently suspends. */
-export async function suspendedOrganizations(): Promise<Set<string>> {
-  const ids: string[] = await db('incidents')
-    .where({ suspended: 1 })
-    .whereNotNull('organization_id')
-    .distinct()
-    .pluck('organization_id');
-  return new Set(ids);
+export async function suspendedOrganizations(
+  overrides: SuspensionOverrides = {},
+): Promise<Set<string>> {
+  const query = db('incidents').where({ suspended: 1 }).whereNotNull('organization_id');
+  if (overrides.excludeIncidentId) query.whereNot('id', overrides.excludeIncidentId);
+  const ids: string[] = await query.distinct().pluck('organization_id');
+  const set = new Set(ids);
+  if (overrides.suspend) set.add(overrides.suspend);
+  return set;
 }
 
 /** Every blocked SHA-512 thumbprint (lower-case hex). */

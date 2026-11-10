@@ -47,7 +47,11 @@ import {
   toRemoval,
   type StoredAllowListInput,
 } from '../lib/allowListInput';
-import { blockedFingerprints, suspendedOrganizations } from './incident-blocks.service';
+import {
+  blockedFingerprints,
+  suspendedOrganizations,
+  type SuspensionOverrides,
+} from './incident-blocks.service';
 
 interface OrgSummary {
   identifier: string;
@@ -287,9 +291,14 @@ async function loadApprovedState(): Promise<{
  * organizations and the parent display names, with the incident register's
  * suspensions and blocked thumbprints applied. Stored with each bundle version.
  */
-export async function loadAllowListInput(): Promise<StoredAllowListInput> {
+export async function loadAllowListInput(
+  overrides: SuspensionOverrides = {},
+): Promise<StoredAllowListInput> {
   const approved = await loadApprovedState();
-  const { members, removed } = await withIncidentBlocks({ ...approved, parentNames: {} });
+  const { members, removed } = await withIncidentBlocks(
+    { ...approved, parentNames: {} },
+    overrides,
+  );
   logUnpublishable(members);
   const parentIds = Array.from(
     new Set(members.flatMap((m) => m.affiliations.map((a) => a.parent))),
@@ -301,8 +310,12 @@ export async function loadAllowListInput(): Promise<StoredAllowListInput> {
 /** An input with the current incident suspensions and thumbprint blocks applied. */
 export async function withIncidentBlocks(
   input: StoredAllowListInput,
+  overrides: SuspensionOverrides = {},
 ): Promise<StoredAllowListInput> {
-  const [suspended, blocked] = await Promise.all([suspendedOrganizations(), blockedFingerprints()]);
+  const [suspended, blocked] = await Promise.all([
+    suspendedOrganizations(overrides),
+    blockedFingerprints(),
+  ]);
   return applyIncidentBlocks(input, suspended, blocked);
 }
 
