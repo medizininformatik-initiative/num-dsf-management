@@ -5,7 +5,8 @@
  * blocked too, so lifting the suspension does not republish it and it cannot
  * be uploaded again. Publishing: blocking alone publishes a new version too;
  * the suspension flag, its event and the published version succeed or fail
- * together, and a retry republishes.
+ * together, and a retry republishes. Removing logins ends the sessions of
+ * the site's organization scope also for an admin owner.
  * Dependencies: db, helpers/allowListSites, incidents.service,
  *               incident-suspension.service, fhir.service, certificate.service,
  *               lib/adminGrants, lib/certFingerprint
@@ -23,6 +24,7 @@ import { createCertificate } from '../services/certificate.service';
 import { AdminCertError, assertAcceptable } from '../services/admin-certificates.service';
 import * as bundleVersions from '../services/bundle-versions.service';
 import { parseAllowListInput } from '../lib/allowListInput';
+import { redis, setRefreshToken } from '../services/redis.service';
 
 const sfx = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 const adminEmail = `inc-susp-admin-${sfx}@imi-test.example.de`;
@@ -241,5 +243,53 @@ describe('publishing suspension measures', () => {
     expect(last?.type).toBe('SUSPENSION_LIFTED');
     const input = await publishedInput(last?.details?.versionNumber);
     expect(input.members.some((m) => m.identifier === site.orgId)).toBe(true);
+  });
+});
+
+describe('removing the logins of a site', () => {
+  async function tokens(site: Site) {
+    const scoped = uuidv4();
+    const personal = uuidv4();
+    await setRefreshToken(scoped, site.userId, 600, site.instanceId);
+    await setRefreshToken(personal, site.userId, 600);
+    return { scoped, personal };
+  }
+  const alive = async (hash: string) => (await redis.get(`refresh:${hash}`)) !== null;
+
+  afterAll(async () => {
+    for (const site of sites) await redis.del(`scope-revoked:${site.instanceId}`);
+  });
+
+  it("ends the organization scope of an admin owner but keeps the admin's own sessions", async () => {
+    const site = await seed('inc-admin-owner');
+    const grantedAt = new Date(Math.floor(Date.now() / 1000) * 1000);
+    await db('admin_grants').insert({
+      email: site.email,
+      granted_at: grantedAt,
+      granted_by_a: 'SYSTEM:test',
+      granted_by_b: 'SYSTEM:test',
+      signature_hex: signGrant(site.email, grantedAt, 'SYSTEM:test', 'SYSTEM:test'),
+    });
+    try {
+      const { scoped, personal } = await tokens(site);
+      const id = await reportFor(site);
+      const { results } = await suspendIncident(id, ['REMOVE_LOGINS'], true, admin());
+      expect(results[0]).toMatchObject({ scopedSessionsRevoked: 1, sessionsRevoked: 0 });
+      expect(await alive(scoped)).toBe(false);
+      expect(await alive(personal)).toBe(true);
+      await redis.del(`refresh:${personal}`);
+    } finally {
+      await db('admin_grants').where({ email: site.email }).del();
+    }
+  });
+
+  it('ends every session of a non-admin owner', async () => {
+    const site = await seed('inc-user-owner');
+    const { scoped, personal } = await tokens(site);
+    const id = await reportFor(site);
+    const { results } = await suspendIncident(id, ['REMOVE_LOGINS'], true, admin());
+    expect(results[0]).toMatchObject({ scopedSessionsRevoked: 1, sessionsRevoked: 1 });
+    expect(await alive(scoped)).toBe(false);
+    expect(await alive(personal)).toBe(false);
   });
 });
