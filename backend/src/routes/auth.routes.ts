@@ -17,6 +17,7 @@ import {
   otpRateLimit,
   refreshRateLimit,
   certLoginRateLimit,
+  certLoginFailureIpRateLimit,
 } from '../middleware/rateLimit.middleware';
 import { REFRESH_TOKEN_TTL_MS } from '../lib/time';
 import { logger } from '../lib/logger';
@@ -80,7 +81,8 @@ const devEntryLimiter = isTest || isDevAutoLogin ? [] : [otpRateLimit];
 const refreshLimiter = isTest ? [] : [refreshRateLimit];
 // Certificate login has its own generous per-certificate bucket (see
 // rateLimit.middleware.certLoginRateLimit), not the tight OTP one.
-const certLoginLimiter = isTest ? [] : [certLoginRateLimit];
+// Plus a per-IP bucket that counts only failed certificate logins.
+const certLoginLimiter = isTest ? [] : [certLoginFailureIpRateLimit, certLoginRateLimit];
 
 // Certificate-only deployment (AUTH_MODE=cert): the e-mail login family is
 // refused by the backend itself, not just hidden in the UI or blocked at the

@@ -58,6 +58,24 @@ export const certLoginRateLimit = rateLimit({
   },
 });
 
+// Failed certificate logins per source IP. The per-certificate bucket above
+// cannot stop one source presenting many different certificates (each is a
+// new bucket); this one counts only failures (status >= 400), so working
+// clients behind one NAT are never throttled by it.
+export const certLoginFailureIpRateLimit = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_CERT_LOGIN_FAIL_WINDOW_MS || '900000'),
+  max: parseInt(process.env.RATE_LIMIT_CERT_LOGIN_FAIL_MAX || '30'),
+  store: createRedisStore('cert-login-fail'),
+  handler: auditedLimitHandler('cert-login-fail'),
+  keyGenerator: (req) => req.ip || 'unknown',
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: { code: 'RATE_LIMITED', message: 'Too many failed login attempts. Please wait.' },
+  },
+});
+
 // Session-maintenance limiter for /auth/refresh — a generous, SEPARATE bucket.
 // Refresh is routine (access tokens expire every ~15 min, multiplied by open
 // tabs), not a credential attempt, so it must not share the tight 5/15min OTP
