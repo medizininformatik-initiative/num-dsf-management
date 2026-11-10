@@ -23,6 +23,7 @@ const DENIAL_REASONS = new Set([
   'CA_BLACKLISTED',
   'CA_NOT_WHITELISTED',
   'CERT_REGISTERED_ELSEWHERE',
+  'CERT_BLOCKED',
 ]);
 
 /** Audit a refused certificate upload (never the PEM itself) without blocking the response. */
@@ -39,9 +40,10 @@ function auditCertificateDenial(req: Request, err: unknown): void {
   }).catch(() => {});
 }
 
-/** 409 when another organization holds the certificate, else 400. */
+/** 409 when another organization holds the certificate or an incident blocked it, else 400. */
 function uploadErrorStatus(err: unknown): number {
-  return err instanceof Error && err.message === 'CERT_REGISTERED_ELSEWHERE' ? 409 : 400;
+  const code = err instanceof Error ? err.message : '';
+  return code === 'CERT_REGISTERED_ELSEWHERE' || code === 'CERT_BLOCKED' ? 409 : 400;
 }
 
 export const certificatesRouter = Router({ mergeParams: true });
