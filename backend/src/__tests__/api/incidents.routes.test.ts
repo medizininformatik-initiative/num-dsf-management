@@ -196,6 +196,23 @@ describe('incident routes', () => {
     expect(
       (await request(app).patch(`/api/v1/admin/incidents/${id}`).set(adminAuth()).send({})).status,
     ).toBe(400);
+    // Detection time and Zulip link move the NIS2 deadlines / are shown to all
+    // sites: they need the step-up, the escalation level does not.
+    const detectedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const zulipUrl = 'https://zulip.example.de/#narrow/topic/y';
+    for (const body of [{ detectedAt }, { zulipUrl }]) {
+      const noCode = await request(app)
+        .patch(`/api/v1/admin/incidents/${id}`)
+        .set(adminAuth())
+        .send(body);
+      expect(noCode.status).toBe(400);
+      expect(noCode.body.error.code).toBe('TOTP_REQUIRED');
+      const withCode = await request(app)
+        .patch(`/api/v1/admin/incidents/${id}`)
+        .set(adminAuth())
+        .send({ ...body, ...TOTP });
+      expect(withCode.status).toBe(200);
+    }
     const tick = await request(app)
       .post(`/api/v1/incidents/${id}/nis2/NOTIFICATION`)
       .set(siteAuth(site));
