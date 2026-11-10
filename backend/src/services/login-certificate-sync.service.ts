@@ -8,7 +8,8 @@
  * an APPROVAL entry whose thumbprint a later approved snapshot no longer lists
  * is removed. Entries from onboarding, the migration or an admin are never
  * removed here. Admin certificates and thumbprints that already log in for
- * another organization are skipped. A certificate an admin uploaded (e.g. one
+ * another organization are skipped, and so are thumbprints an incident
+ * blocked (migration 035). A certificate an admin uploaded (e.g. one
  * a site sent by mail), one deleted after submit and one of unknown origin
  * (uploaded_by_admin NULL) log in only after real four-eyes approval: two
  * APPROVE signatures from distinct sites; one approval plus silent consent is
@@ -19,8 +20,8 @@
  * certificate unlinks its entry instead of deleting it, so the site keeps its
  * login until the new certificate is approved and the old one expires.
  *
- * Dependencies: db/connection, org-login-certificates.service, lib/certFingerprint,
- *               lib/logger
+ * Dependencies: db/connection, org-login-certificates.service, incident-blocks.service,
+ *               lib/certFingerprint, lib/logger
  */
 import type { Knex } from 'knex';
 import { db } from '../db/connection';
@@ -28,6 +29,7 @@ import { recordSystemLoginChange } from './org-login-certificates.service';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
 import { logger } from '../lib/logger';
 import { siteOfEmail } from '../lib/approvalState';
+import { blockedFingerprints } from './incident-blocks.service';
 
 export const APPROVAL_ACTOR = 'SYSTEM:allow-list-approval';
 
@@ -82,11 +84,13 @@ export async function syncLoginCertificatesFromApproval(
   if (!section || !section.active || !identifier || !Array.isArray(section.member?.thumbprints)) {
     return { added: [], removed: [] };
   }
+  const blocked = await blockedFingerprints();
   const approved = [
     ...new Set(
       (section.member.thumbprints as unknown[])
         .filter((t): t is string => typeof t === 'string')
-        .map((t) => t.toLowerCase()),
+        .map((t) => t.toLowerCase())
+        .filter((t) => !blocked.has(t)),
     ),
   ];
 
