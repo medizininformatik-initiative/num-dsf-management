@@ -81,13 +81,26 @@ no waiting period.
    the DSF_ADMIN contacts and then the organization e-mail.
 3. **Suspend the site** ("Standort sperren"). This can be done together with
    confirming. The measures are on by default:
-   - block every current certificate and login thumbprint of the site for good,
-   - remove its login certificates and end its users' sessions,
-   - publish the site as withdrawn in a new allow-list version, whatever its
-     approved snapshot says,
-   - mail all sites.
+   - block every certificate and login thumbprint of the site for good,
+     including those its approved and pending requests still list (admin
+     certificates are never blocked by a site incident),
+   - remove its login certificates and end every session of its organization
+     certificate scope (also when an admin owns the instance; a non-admin
+     owner loses all sessions),
+   - publish the site as withdrawn, whatever its approved snapshot says,
+   - mail all sites (the mail announces a suspension only when the site was
+     withdrawn).
 
-   Each measure and its result goes into the timeline.
+   Blocking or withdrawing publishes one new allow-list version right away;
+   if publishing fails nothing is marked as suspended and you can retry
+   (withdrawing an already suspended site publishes again). The IP address
+   list and the network map leave a withdrawn site out as well. Each measure
+   and its result goes into the timeline.
+
+   The owner of a suspended site can still sign in with the e-mail code
+   (OTP) and use the portal. That is on purpose: the site needs it to upload
+   a new certificate and submit it for approval. Its certificate logins and
+   its DSF stay locked out by the blocked thumbprints.
 4. **Comment.** Use comments for measures taken outside the portal. Every
    user who can see the incident can read them.
 5. **Lift the suspension.** You must confirm the restart checklist (cause
@@ -100,12 +113,16 @@ no waiting period.
 
 NIS2 deadlines (early warning after 24 h, notification after 72 h, final
 report after one month) count from the detection time, which an admin can
-correct. Users of the affected site and admins tick "reported to BSI" per
+correct (with the step-up, like the Zulip link; it may lie at most one year
+back). Users of the affected site and admins tick "reported to BSI" per
 stage and "data protection officer informed". The portal never reports to the
 BSI itself; that duty stays with the site.
 
 Every change is an event in an append-only timeline, chained with SHA-256.
-The detail view shows whether the chain verifies. For authority requests,
+The chain also covers title, description, site and detection time, and the
+chain head is stored with each audit entry. The detail view shows whether the
+chain verifies. Incident audit entries are not attached to the affected
+site's instance, so the site's own audit log does not show them. For authority requests,
 download one incident as JSON or CSV (`GET /api/v1/admin/incidents/:id/export`).
 The download includes the full timeline and the hash values. Mails never
 contain the description.
