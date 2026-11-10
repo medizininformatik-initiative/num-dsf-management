@@ -96,7 +96,8 @@ export async function createMembership(
 /**
  * Update provided fields of an active membership and write an UPDATE audit log.
  * Throws ORGANIZATION_NOT_FOUND if no org, MEMBERSHIP_NOT_FOUND if not an active row in this org,
- * INVALID_ROLES if roles are supplied but not all in DIC/HRP/DMS/AMS.
+ * INVALID_ROLES if roles are supplied but not all in DIC/HRP/DMS/AMS,
+ * ENDPOINT_NOT_FOUND if a supplied endpoint isn't in this org.
  * @returns The updated membership row.
  */
 export async function updateMembership(
@@ -115,6 +116,13 @@ export async function updateMembership(
   if (!membership) throw new Error('MEMBERSHIP_NOT_FOUND');
   if (data.roles && !data.roles.every((r) => VALID_ROLES.includes(r)))
     throw new Error('INVALID_ROLES');
+  // Same ownership rule as createMembership: only an endpoint of this org.
+  if (data.endpointId) {
+    const endpoint = await db('endpoints')
+      .where({ identifier: data.endpointId, organization_id: org.identifier })
+      .first();
+    if (!endpoint) throw new Error('ENDPOINT_NOT_FOUND');
+  }
   const updates: Record<string, any> = { updated_at: new Date() };
   if (data.parentOrganization) updates.parent_organization = data.parentOrganization;
   if (data.endpointId) updates.endpoint_id = data.endpointId;
