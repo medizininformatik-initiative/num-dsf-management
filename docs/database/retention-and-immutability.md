@@ -54,7 +54,13 @@ notified immediately; the affected site receives its mail after the 30-minute de
 Migration `035_incidents.sql`: `incidents`, `incident_events` and
 `blocked_certificate_thumbprints` have no retention and no delete path in code.
 Incidents are closed (CLOSED / FALSE_ALARM), never deleted; a blocked thumbprint
-stays blocked after the suspension is lifted. `incident_events` is append-only by
-convention (no triggers, so a backup restore can refill it) and protected by its
-SHA-256 hash chain instead: any edited, removed or reordered event is reported by
-the chain check in the detail view and the export.
+stays blocked after the suspension is lifted. `incident_events` and
+`blocked_certificate_thumbprints` are append-only at the DB level (BEFORE
+UPDATE / BEFORE DELETE triggers, like `audit_logs`; the backup restore drops and
+re-creates the triggers of the tables it restores). The timeline is also
+protected by its SHA-256 hash chain: any edited, removed or reordered event, an
+empty chain or one that does not start with the report, and an incident title,
+description, organization or detection time that no longer matches the hashes
+the timeline recorded, is reported by the chain check in the detail view and
+the export. The chain head (seq + hash) of each incident action is stored in its
+`audit_logs` entry.

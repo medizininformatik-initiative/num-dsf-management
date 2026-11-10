@@ -466,6 +466,7 @@ The incident register (035). One row per reported security incident; rows are ne
 | description | TEXT | no | — | Reporter's free text; admins and reporter only, never mailed |
 | status | ENUM | no | 'REPORTED' | REPORTED, CONFIRMED, CLOSED, FALSE_ALARM |
 | reported_by / reported_at | VARCHAR(255) / DATETIME(3) | no | — | |
+| reported_by_instance_id | CHAR(36) | yes | NULL | Instance of the organization certificate session the report came through; NULL for a personal login. The reporter is e-mail plus this scope. |
 | detected_at | DATETIME(3) | no | — | Defaults to the report time; admins may correct it |
 | escalation_level | TINYINT | no | 1 | 1 operation continues, 2 pause, 3 shutdown |
 | zulip_url | VARCHAR(500) | yes | NULL | https link to the coordination thread |
@@ -481,7 +482,7 @@ Indexes: `idx_incidents_status (status, reported_at)`, `idx_incidents_org (organ
 
 ## incident_events
 
-Append-only timeline of an incident (035): no UPDATE or DELETE in code, like `audit_logs`. Each row is chained to its predecessor: `hash = SHA-256(prev_hash + canonical JSON of {incidentId, seq, at, actorEmail, type, details})` with sorted object keys, `prev_hash` of the first event is 64 zeros. Appending locks the incident row (`SELECT ... FOR UPDATE`) inside the transaction, so concurrent events cannot fork the chain. The detail view and the export verify the chain and name the first broken `seq`.
+Append-only timeline of an incident (035): UPDATE/DELETE blocked by triggers, like `audit_logs`. The REPORTED event records `details.fieldSha256` (SHA-256 of title, description, organization and detection time), an UPDATED event of the detection time the new hash; the check compares them with the stored incident. The chain must start with REPORTED. Each row is chained to its predecessor: `hash = SHA-256(prev_hash + canonical JSON of {incidentId, seq, at, actorEmail, type, details})` with sorted object keys, `prev_hash` of the first event is 64 zeros. Appending locks the incident row (`SELECT ... FOR UPDATE`) inside the transaction, so concurrent events cannot fork the chain. The detail view and the export verify the chain and name the first broken `seq`.
 
 | Column | Type | Null | Default | Notes |
 |--------|------|------|---------|-------|
@@ -497,7 +498,7 @@ Append-only timeline of an incident (035): no UPDATE or DELETE in code, like `au
 
 ## blocked_certificate_thumbprints
 
-SHA-512 thumbprints blocked by an incident (035), for good: such a certificate is refused on upload and renewal for every organization (`CERT_BLOCKED`), never enabled or synced as a login certificate, never logs in, and is left out of every published allow list. A site whose every thumbprint is blocked is published as withdrawn until a new certificate is approved. Rows are never deleted. No personal data besides the acting admin.
+SHA-512 thumbprints blocked by an incident (035), for good: such a certificate is refused on upload and renewal for every organization (`CERT_BLOCKED`), never enabled or synced as a login certificate, never logs in, and is left out of every published allow list. A site whose every thumbprint is blocked is published as withdrawn until a new certificate is approved. Rows are never deleted (UPDATE/DELETE blocked by triggers). No personal data besides the acting admin.
 
 | Column | Type | Null | Default | Notes |
 |--------|------|------|---------|-------|
