@@ -23,6 +23,7 @@ import {
   linkUploadedCertificate,
   unlinkRenewedCertificate,
 } from './login-certificate-sync.service';
+import { recordSystemLoginChange } from './org-login-certificates.service';
 import { v4 as uuidv4 } from 'uuid';
 
 // Columns selected for the API-facing certificate row, before the
@@ -325,7 +326,17 @@ export async function deleteCertificate(
     .where({ id: certId, organization_id: org.identifier })
     .first();
   if (!cert) throw new Error('CERTIFICATE_NOT_FOUND');
+  // A login entry linked to this certificate goes with it (FK cascade): a
+  // deleted, possibly compromised certificate must not keep logging in. Unlike
+  // a renewal (unlinkRenewedCertificate) there is no successor, so the clinic
+  // is told like about every other login change.
+  const logins: string[] = await db('org_login_certificates')
+    .where({ certificate_id: certId })
+    .pluck('fingerprint');
   await db('certificates').where({ id: certId }).delete();
+  for (const fp of logins) {
+    await recordSystemLoginChange(org.identifier, 'disable', userEmail, fp, 'certificate_deleted');
+  }
   await writeAuditLog({
     userEmail,
     instanceId,

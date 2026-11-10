@@ -144,7 +144,7 @@ export async function recordSystemLoginChange(
   change: 'enable' | 'disable',
   actor: string,
   fingerprint: string,
-  reason: 'approval' | 'expired' | 'onboarding',
+  reason: 'approval' | 'expired' | 'onboarding' | 'certificate_deleted',
   priorRecipients: string[] = [],
 ): Promise<void> {
   try {
