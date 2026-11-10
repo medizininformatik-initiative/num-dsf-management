@@ -1,7 +1,9 @@
 /**
  * incident-hash-chain.test.ts – The incident timeline hash chain: canonical
  * JSON ignores key order, a correct chain verifies, and any change to content,
- * order or links is reported at the first broken event.
+ * order or links is reported at the first broken event. A chain must start
+ * with the REPORTED event; the field hashes it and later UPDATED events
+ * record must match the stored incident.
  * Pure test: no database.
  * Dependencies: lib/incidentHashChain
  */
@@ -9,7 +11,9 @@ import {
   GENESIS_HASH,
   canonicalJson,
   eventHash,
+  fieldHash,
   verifyChain,
+  verifyFields,
   type ChainedEvent,
 } from '../lib/incidentHashChain';
 
@@ -45,9 +49,19 @@ describe('canonicalJson', () => {
 });
 
 describe('verifyChain', () => {
-  it('accepts an intact chain and an empty one', () => {
+  it('accepts an intact chain', () => {
     expect(verifyChain(chain(4))).toEqual({ valid: true, brokenAt: null });
-    expect(verifyChain([])).toEqual({ valid: true, brokenAt: null });
+  });
+
+  it('refuses an empty chain', () => {
+    expect(verifyChain([])).toEqual({ valid: false, brokenAt: 1 });
+  });
+
+  it('refuses a chain that does not start with the report', () => {
+    const events = chain(2);
+    const first = { ...events[0], type: 'COMMENT' };
+    first.hash = eventHash(GENESIS_HASH, first);
+    expect(verifyChain([first])).toEqual({ valid: false, brokenAt: 1 });
   });
 
   it('does not depend on the key order of details', () => {
@@ -74,5 +88,58 @@ describe('verifyChain', () => {
     forged.hash = eventHash(forged.prevHash, forged);
     events[1] = forged;
     expect(verifyChain(events)).toEqual({ valid: false, brokenAt: 3 });
+  });
+});
+
+describe('verifyFields', () => {
+  const at = new Date(Date.UTC(2026, 10, 10, 12, 0, 0));
+  const reported = (fields: Record<string, unknown>) => ({
+    type: 'REPORTED',
+    details: {
+      fieldSha256: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, fieldHash(v)])),
+    },
+  });
+
+  it('accepts fields matching the latest recorded hashes', () => {
+    const later = new Date(at.getTime() - 3_600_000).toISOString();
+    const events = [
+      reported({
+        title: 't',
+        description: 'd',
+        organizationId: null,
+        detectedAt: at.toISOString(),
+      }),
+      {
+        type: 'UPDATED',
+        details: { field: 'detectedAt', fieldSha256: { detectedAt: fieldHash(later) } },
+      },
+    ];
+    expect(
+      verifyFields(events, {
+        title: 't',
+        description: 'd',
+        organizationId: null,
+        detectedAt: later,
+      }),
+    ).toEqual([]);
+  });
+
+  it('names fields changed outside the timeline', () => {
+    const events = [
+      reported({
+        title: 't',
+        description: 'd',
+        organizationId: 'a.example.de',
+        detectedAt: at.toISOString(),
+      }),
+    ];
+    expect(
+      verifyFields(events, {
+        title: 't',
+        description: 'edited',
+        organizationId: 'b.example.de',
+        detectedAt: at.toISOString(),
+      }),
+    ).toEqual(['description', 'organizationId']);
   });
 });
