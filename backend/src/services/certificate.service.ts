@@ -13,7 +13,7 @@ import {
   whitelistedIssuers,
 } from './ca-whitelist.service';
 import { errMessage } from '../lib/errMessage';
-import { sha512FingerprintFromPem } from '../lib/certFingerprint';
+import { sha512FingerprintFromPem, rejectPrivateKeyMaterial } from '../lib/certFingerprint';
 import {
   linkUploadedCertificate,
   unlinkRenewedCertificate,
@@ -35,22 +35,14 @@ interface CertificateRow {
   uploaded_by_admin?: number | null;
 }
 
-// Match BEGIN/END markers for any private-key variant, case-insensitive.
-// Substring checks against literal upper-case 'PRIVATE KEY' miss PEMs that
-// were lower-cased by an editor, a copy-paste tool, or the OpenSSL output
-// of a non-default locale. Pattern intentionally permissive on whitespace
-// between PRIVATE and KEY because some tooling emits hyphens or extra spaces.
-const PRIVATE_KEY_MARKER =
-  /-----BEGIN\s+(?:ENCRYPTED\s+|RSA\s+|EC\s+|DSA\s+|OPENSSH\s+)?PRIVATE[\s_-]+KEY-----/i;
-
 /**
  * Guard against a private key reaching storage or logs. SECURITY CRITICAL.
- * @throws PRIVATE_KEY_REJECTED if the PEM contains any private-key block.
+ * Recognizes PEM, PGP, SSH2 and PuTTY private keys (lib/certFingerprint
+ * PRIVATE_KEY_MARKER), case-insensitive.
+ * @throws PRIVATE_KEY_REJECTED if the text contains private-key material.
  */
 export function rejectPrivateKey(pem: string): void {
-  if (PRIVATE_KEY_MARKER.test(pem)) {
-    throw new Error('PRIVATE_KEY_REJECTED');
-  }
+  rejectPrivateKeyMaterial(pem);
 }
 
 /**

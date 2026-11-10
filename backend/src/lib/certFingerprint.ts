@@ -21,6 +21,19 @@ export function isValidSha512Fingerprint(s: string): boolean {
 }
 
 /**
+ * Private-key material in any common text format: PEM variants (PKCS#8,
+ * PKCS#1, EC, DSA, ENCRYPTED, OPENSSH), PGP "PRIVATE KEY BLOCK", the SSH2
+ * (RFC 4716 style) "ENCRYPTED PRIVATE KEY" and PuTTY .ppk files.
+ * Case-insensitive and lenient on the separator between PRIVATE and KEY.
+ */
+export const PRIVATE_KEY_MARKER = /PRIVATE[\s_-]*KEY|PuTTY-User-Key-File/i;
+
+/** @throws PRIVATE_KEY_REJECTED if the text carries private-key material. */
+export function rejectPrivateKeyMaterial(text: string): void {
+  if (PRIVATE_KEY_MARKER.test(text)) throw new Error('PRIVATE_KEY_REJECTED');
+}
+
+/**
  * Parse an X.509 PEM and compute the SHA-512 fingerprint of its DER, the value
  * DSF publishes as certificate thumbprint. node:crypto parses RSA, EC and EdDSA
  * certificates alike (node-forge only reads RSA keys) and hashes the DER
@@ -29,7 +42,7 @@ export function isValidSha512Fingerprint(s: string): boolean {
  * @throws PRIVATE_KEY_REJECTED if the PEM carries a private key.
  */
 export function sha512FingerprintFromPem(pem: string): string {
-  if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(pem)) throw new Error('PRIVATE_KEY_REJECTED');
+  rejectPrivateKeyMaterial(pem);
   const cert = new crypto.X509Certificate(pem);
   return crypto.createHash('sha512').update(cert.raw).digest('hex');
 }
