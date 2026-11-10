@@ -17,8 +17,9 @@ that the federation already provisions.
 
 The `/fhir/Bundle` routes (`backend/src/routes/fhir.routes.ts`) authenticate by
 client-certificate thumbprint over mTLS — **no JWT**. nginx terminates TLS and
-forwards the client certificate to the backend in an `x-client-cert` /
-`x-ssl-client-cert` header. `extractClientCert` (`backend/src/lib/clientCert.ts`)
+forwards the client certificate to the backend in an `x-client-cert` header
+(the legacy `x-ssl-client-cert` is cleared by the proxy and no longer read).
+`extractClientCert` (`backend/src/lib/clientCert.ts`)
 decodes the PEM, strips it to DER, and computes a SHA-256 thumbprint. The route
 looks up the organization registered for that thumbprint
 (`organizations.client_cert_thumbprint`); a missing cert → 401, an unregistered
