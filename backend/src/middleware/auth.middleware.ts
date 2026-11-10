@@ -9,12 +9,15 @@
  * An org-scoped session (token claims kind:'org' + inst, issued for an
  * organization login certificate) carries req.user.scopeInstanceId: it may
  * only use that one instance and is never admin (lib/isAdmin.isAdminCaller).
+ * Such a token is refused once an incident ended that scope
+ * (scope-revocation.service).
  * Dependencies: auth.service (verifyAccessToken, findCertBinding), lib/authMode,
- * lib/clientCert, db/connection
+ * lib/clientCert, db/connection, scope-revocation.service
  */
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, findCertBinding } from '../services/auth.service';
 import { redis } from '../services/redis.service';
+import { isScopeRevoked } from '../services/scope-revocation.service';
 import { isCertAuthMode } from '../lib/authMode';
 import { extractClientCert } from '../lib/clientCert';
 import { db } from '../db/connection';
@@ -97,6 +100,19 @@ async function authenticate(req: Request, res: Response, next: NextFunction): Pr
     return;
   }
   const scopeInstanceId = payload.kind === 'org' ? payload.inst : undefined;
+  // An incident ended this organization scope: tokens issued before are void.
+  if (scopeInstanceId) {
+    let revoked = true;
+    try {
+      revoked = await isScopeRevoked(scopeInstanceId, payload.iat);
+    } catch {
+      // Fail closed: without Redis the revocation cannot be checked.
+    }
+    if (revoked) {
+      res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Session ended' } });
+      return;
+    }
+  }
 
   if (isCertAuthMode()) {
     let ok = false;
