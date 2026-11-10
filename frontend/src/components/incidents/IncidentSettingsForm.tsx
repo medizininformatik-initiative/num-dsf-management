@@ -1,14 +1,16 @@
 /**
  * IncidentSettingsForm.tsx – the admin's classification of an open incident:
  * escalation level, detection time (the NIS2 deadlines move with it) and the
- * Zulip thread link (https only, empty removes it). No step-up; only changed
- * fields are sent and every change is logged by the backend. After raising
+ * Zulip thread link (https only, empty removes it). Only changed fields are
+ * sent and every change is logged by the backend; a change of the detection
+ * time or the Zulip link needs the step-up (StepUpConfirmDialog), the level
+ * alone does not. After raising
  * the level to 2 or 3, `onLevelRaised` lets the caller offer the suspension
  * right away.
- * Dependencies: React Hook Form, Zod, FormField, Button, useUpdateIncident,
+ * Dependencies: React Hook Form, Zod, FormField, Button, StepUpConfirmDialog, useUpdateIncident,
  * incident.schema, incidentErrors, i18n store, sonner.
  */
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,6 +26,7 @@ import {
 import { useI18n } from '../../stores/i18n.store';
 import { FormField, inputClass, selectClass } from '../modals/FormField';
 import { Button } from '../ui/Button';
+import { StepUpConfirmDialog } from '../admin/StepUpConfirmDialog';
 import { incidentErrorMessage } from './incidentErrors';
 
 const settingsSchema = z.object({
@@ -50,6 +53,8 @@ export function IncidentSettingsForm({ incident, onLevelRaised }: IncidentSettin
   const { t } = useI18n();
   const headingId = useId();
   const update = useUpdateIncident(incident.id);
+  const [stepUpBody, setStepUpBody] = useState<UpdateIncidentBody | null>(null);
+  const [code, setCode] = useState('');
   const {
     register,
     handleSubmit,
@@ -70,19 +75,34 @@ export function IncidentSettingsForm({ incident, onLevelRaised }: IncidentSettin
     }
     if (data.zulipUrl.trim() !== before.zulipUrl) body.zulipUrl = data.zulipUrl.trim() || null;
     if (Object.keys(body).length === 0) return;
+    if (body.detectedAt !== undefined || body.zulipUrl !== undefined) {
+      setCode('');
+      setStepUpBody(body);
+      return;
+    }
+    save(body);
+  }
 
-    update.mutate(body, {
-      onSuccess: () => {
-        toast.success(t('incidentSettingsSaved'));
-        if (body.escalationLevel !== undefined && level > incident.escalationLevel && level >= 2) {
-          onLevelRaised?.(level);
-        }
+  function save(body: UpdateIncidentBody, totpCode?: string) {
+    const before = defaults(incident);
+    const level = body.escalationLevel;
+    update.mutate(
+      { body, totpCode },
+      {
+        onSuccess: () => {
+          setStepUpBody(null);
+          toast.success(t('incidentSettingsSaved'));
+          if (level !== undefined && level > incident.escalationLevel && level >= 2) {
+            onLevelRaised?.(level);
+          }
+        },
+        onError: (err) => {
+          setCode('');
+          if (!stepUpBody) reset(before);
+          toast.error(incidentErrorMessage(err, t('genericActionFailed'), t));
+        },
       },
-      onError: (err) => {
-        reset(before);
-        toast.error(incidentErrorMessage(err, t('genericActionFailed'), t));
-      },
-    });
+    );
   }
 
   return (
@@ -138,6 +158,20 @@ export function IncidentSettingsForm({ incident, onLevelRaised }: IncidentSettin
           </Button>
         </div>
       </form>
+      <StepUpConfirmDialog
+        open={stepUpBody !== null}
+        title={t('incidentSettingsStepUpTitle')}
+        message={t('incidentSettingsStepUpBody')}
+        confirmLabel={t('incidentSettingsStepUpConfirm')}
+        pending={update.isPending}
+        totpCode={code}
+        onTotpCodeChange={setCode}
+        onConfirm={(totpCode) => stepUpBody && save(stepUpBody, totpCode)}
+        onCancel={() => {
+          setStepUpBody(null);
+          reset(defaults(incident));
+        }}
+      />
     </section>
   );
 }

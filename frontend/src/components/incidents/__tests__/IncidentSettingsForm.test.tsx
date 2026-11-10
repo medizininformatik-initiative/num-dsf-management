@@ -1,7 +1,9 @@
 /**
  * IncidentSettingsForm.test.tsx — only changed fields are sent; raising the
- * level to 2 or 3 calls onLevelRaised; an empty Zulip link removes it and a
- * plain http link is refused before any request. incidents.api is mocked.
+ * level to 2 or 3 calls onLevelRaised without a step-up; changing the Zulip
+ * link (an empty one removes it) or the detection time asks for the step-up
+ * code first; a plain http link is refused before any request.
+ * incidents.api is mocked.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
@@ -34,16 +36,24 @@ describe('IncidentSettingsForm', () => {
     renderWithProviders(<IncidentSettingsForm incident={incident} onLevelRaised={onLevelRaised} />);
     await user.selectOptions(screen.getByLabelText(/Escalation level/), '3');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
-    await waitFor(() => expect(updateMock).toHaveBeenCalledWith('i1', { escalationLevel: 3 }));
+    await waitFor(() =>
+      expect(updateMock).toHaveBeenCalledWith('i1', { escalationLevel: 3 }, undefined),
+    );
+    expect(screen.queryByLabelText('TOTP Code')).not.toBeInTheDocument();
     await waitFor(() => expect(onLevelRaised).toHaveBeenCalledWith(3));
   });
 
-  it('removes the Zulip link when emptied', async () => {
+  it('removes the Zulip link when emptied, after the step-up', async () => {
     const user = userEvent.setup();
     renderWithProviders(<IncidentSettingsForm incident={incident} />);
     await user.clear(screen.getByLabelText(/Zulip/));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
-    await waitFor(() => expect(updateMock).toHaveBeenCalledWith('i1', { zulipUrl: null }));
+    expect(updateMock).not.toHaveBeenCalled();
+    await user.type(await screen.findByLabelText('TOTP Code'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Confirm and save' }));
+    await waitFor(() =>
+      expect(updateMock).toHaveBeenCalledWith('i1', { zulipUrl: null }, '123456'),
+    );
   });
 
   it('refuses a plain http link', async () => {

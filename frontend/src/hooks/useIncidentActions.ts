@@ -108,8 +108,8 @@ export function useCommentIncident(id: string) {
 export function useUpdateIncident(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: UpdateIncidentBody) =>
-      incidentsApi.update(id, body).then((r) => r.data.data),
+    mutationFn: (vars: { body: UpdateIncidentBody; totpCode?: string }) =>
+      incidentsApi.update(id, vars.body, vars.totpCode).then((r) => r.data.data),
     onSuccess: () => refresh(qc, id),
   });
 }
