@@ -3,12 +3,14 @@ WORKDIR /app
 COPY package*.json ./
 
 FROM base AS dev
-RUN npm ci
+# npm 10 sometimes fails a fresh install with EEXIST/ENOENT in its cache; retry once with a clean cache.
+RUN npm ci || (npm cache clean --force && npm ci)
 COPY . .
 CMD ["npm", "run", "dev"]
 
 FROM base AS build
-RUN npm ci
+# npm 10 sometimes fails a fresh install with EEXIST/ENOENT in its cache; retry once with a clean cache.
+RUN npm ci || (npm cache clean --force && npm ci)
 COPY . .
 RUN npm run build
 RUN npm prune --omit=dev
