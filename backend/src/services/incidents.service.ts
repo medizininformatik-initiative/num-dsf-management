@@ -278,19 +278,25 @@ export async function notifyIncident(
   return sent;
 }
 
+/**
+ * Audit entry of an incident action. Never bound to the affected site's
+ * instance: the site's own audit views (instance, own instances, export)
+ * would otherwise show unconfirmed reports and who made them. The affected
+ * organization goes into diff_json instead; admins see the entries in the
+ * global audit log.
+ */
 export async function auditIncident(
-  row: Pick<IncidentRow, 'id' | 'organization_id'> & { org_instance_id?: string | null },
+  row: Pick<IncidentRow, 'id' | 'organization_id'>,
   caller: IncidentCaller,
   operation: 'CREATE' | 'UPDATE',
   diffJson: Record<string, unknown>,
 ): Promise<void> {
   await writeAuditLog({
     userEmail: caller.email,
-    instanceId: row.org_instance_id ?? undefined,
     resourceType: 'INCIDENT',
     resourceId: row.id,
     operation,
-    diffJson,
+    diffJson: { organization: row.organization_id, ...diffJson },
     ipAddress: caller.ip,
   });
 }
@@ -357,7 +363,6 @@ export async function reportIncident(
   await auditIncident(row, caller, 'CREATE', {
     action: 'incident_report',
     escalationLevel: input.escalationLevel,
-    organization: row.organization_id,
   });
   await notifyIncident(row, 'reported', caller.email);
   return toApi(row, caller);
