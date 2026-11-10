@@ -193,6 +193,11 @@ describe('POST /auth/client-cert-login — SHA-512 fingerprint resolution', () =
       created_at: new Date(),
       created_by: 'test',
     });
+    // A certificate login does not whitelist; the admin must already be on it.
+    await db('email_whitelist')
+      .insert({ id: uuidv4(), email: adminEmail, created_at: new Date() })
+      .onConflict('email')
+      .ignore();
 
     await db('users').insert({ id: orgUserId, email: orgOwnerEmail, created_at: new Date() });
     await db('email_whitelist').insert({
@@ -292,6 +297,10 @@ describe('POST /auth/client-cert-login — amr claim, carried through /auth/refr
       created_at: new Date(),
       created_by: 'test',
     });
+    await db('email_whitelist')
+      .insert({ id: uuidv4(), email: amrAdminEmail, created_at: new Date() })
+      .onConflict('email')
+      .ignore();
   });
 
   afterAll(async () => {

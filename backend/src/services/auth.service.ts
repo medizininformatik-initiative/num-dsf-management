@@ -386,9 +386,11 @@ export async function refreshAccessToken(
  * fingerprint against admins first, then organization login certificates.
  *
  * Admin path: the fingerprint is pre-registered in admin_cert_fingerprints
- * (out of band, by an existing admin). Ensures the users + email_whitelist
- * rows exist for that email — the same idempotent bootstrap dev-login uses —
- * so a first-time admin cert can log in without a prior OTP signup.
+ * (out of band, by an existing admin). Ensures the users row exists for that
+ * email, so a first-time admin cert can log in without a prior OTP signup.
+ * The email_whitelist row is NOT created: a de-whitelisted admin must not be
+ * re-admitted by presenting a certificate (the env bootstrap whitelists the
+ * first admins itself).
  * Admin-ness itself comes from admin_grants (seeded separately); this
  * function does not grant it. The session is unscoped.
  *
@@ -407,10 +409,8 @@ export async function resolveCertLogin(fingerprint: string): Promise<{
   const adminCert = await db('admin_cert_fingerprints').where({ fingerprint }).first();
   if (adminCert) {
     const email = String(adminCert.email).toLowerCase().trim();
-    await db('email_whitelist')
-      .insert({ id: uuidv4(), email, created_by: 'cert-login', created_at: new Date() })
-      .onConflict('email')
-      .ignore();
+    // Never (re-)create the whitelist row here: a removed or locked admin
+    // stays out; the caller's whitelist check refuses the login.
     await db('users')
       .insert({ id: uuidv4(), email, totp_enabled: true, created_at: new Date() })
       .onConflict('email')
