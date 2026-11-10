@@ -1,6 +1,7 @@
 /**
  * certificate.service.ts – PEM parsing, private key check, CRUD
  * SECURITY CRITICAL: Private keys IMMEDIATELY rejected, PEM NEVER in logs
+ * Thumbprints blocked by an incident are refused (incident-blocks.service).
  */
 import crypto from 'crypto';
 import type { Knex } from 'knex';
@@ -24,6 +25,7 @@ import {
   unlinkRenewedCertificate,
 } from './login-certificate-sync.service';
 import { recordSystemLoginChange } from './org-login-certificates.service';
+import { isFingerprintBlocked } from './incident-blocks.service';
 import { v4 as uuidv4 } from 'uuid';
 
 // Columns selected for the API-facing certificate row, before the
@@ -251,8 +253,9 @@ export async function certificateOwnersOfFingerprint(
  * certificate_thumbprint_locks (migration 034) until commit, so a concurrent registration
  * of the same thumbprint waits for this transaction and then sees its row.
  * The reads are locking reads, so they see rows committed after the
- * transaction's snapshot.
- * @throws CERT_REGISTERED_ELSEWHERE
+ * transaction's snapshot. A thumbprint blocked by an incident (migration 035)
+ * is refused for every organization.
+ * @throws CERT_BLOCKED / CERT_REGISTERED_ELSEWHERE
  */
 async function assertNotRegisteredElsewhere(
   trx: Knex.Transaction,
@@ -267,6 +270,9 @@ async function assertNotRegisteredElsewhere(
   // only knows that one and takes the same lock (always after the thumbprint
   // one here, so the two paths cannot deadlock).
   await lockFingerprint(trx, sha512FingerprintFromPem(pem));
+  if (await isFingerprintBlocked(sha512FingerprintFromPem(pem), trx)) {
+    throw new Error('CERT_BLOCKED');
+  }
   const cert = await trx('certificates')
     .where({ thumbprint })
     .whereNot({ organization_id: organizationId })
@@ -297,6 +303,7 @@ async function assertNotRegisteredElsewhere(
  * @throws CA_BLACKLISTED if the issuing CA is blacklisted.
  * @throws CA_NOT_WHITELISTED if the whitelist is enforced and the issuer is not on it.
  * @throws CERT_REGISTERED_ELSEWHERE if another organization holds the certificate.
+ * @throws CERT_BLOCKED if an incident blocked the certificate.
  */
 export async function createCertificate(
   instanceId: string,
@@ -395,6 +402,7 @@ export async function deleteCertificate(
  * @throws CA_BLACKLISTED if the issuing CA is blacklisted.
  * @throws CA_NOT_WHITELISTED if the whitelist is enforced and the issuer is not on it.
  * @throws CERT_REGISTERED_ELSEWHERE if another organization holds the new certificate.
+ * @throws CERT_BLOCKED if an incident blocked the new certificate.
  */
 export async function renewCertificate(
   instanceId: string,
