@@ -45,19 +45,20 @@ import { sha512FingerprintFromPem } from '../../lib/certFingerprint';
 import { parseCertificate } from '../../services/certificate.service';
 import { createSnapshot } from '../../services/bundle-versions.service';
 import { ECC_P256_CERT_PEM } from '../fixtures/eccCertificate';
-import { mtlsHeaders, removeSites, seedSite, type Site } from '../helpers/allowListSites';
+import {
+  makeCertPem,
+  mtlsHeaders,
+  removeSites,
+  seedSite,
+  type Site,
+} from '../helpers/allowListSites';
 import { dsfAllowListViolations } from '../helpers/dsfAllowListChecks';
 
-// Static self-signed cert (CERTIFICATE only — no private key). nginx would
-// forward exactly this PEM URL-encoded in the X-Client-Cert header.
-const SAMPLE_PEM = `-----BEGIN CERTIFICATE-----
-MIIBkTCB+wIJALRiMLAh2wLSMA0GCSqGSIb3DQEBCwUAMBExDzANBgNVBAMMBnRl
-c3RjYTAeFw0yNTAxMDEwMDAwMDBaFw0yNjAxMDEwMDAwMDBaMBExDzANBgNVBAMM
-BnRlc3RjYTBcMA0GCSqGSIb3DQEBAQUAA0sAMEgCQQC7o96HtiMR+dqpMgLzOPSx
-5IAoMpOZzFMqxA7E5JN9GK5FdJoG9brkCaJMnoYhbyXjxyoGS2YqvECRnpc1bN0z
-AgMBAAEwDQYJKoZIhvcNAQELBQADQQBY7lY1eByq0TA6M2qHTHmao+mSjHR8hEIq
-b7dUjzKHYESSYsXoPNMiPiX85ysSGrFcdPt4MfrDXJe9Zk/3RmeO
------END CERTIFICATE-----`;
+// Generated self-signed cert (CERTIFICATE only — no private key). nginx would
+// forward exactly this PEM URL-encoded in the X-Client-Cert header. It must
+// parse: the route refuses a certificate whose SHA-512 it cannot compute
+// (incident blocks are kept by SHA-512).
+const SAMPLE_PEM = makeCertPem('fhir-route-caller.example.de');
 
 // A different cert whose thumbprint matches no org → 403.
 const UNREGISTERED_PEM = `-----BEGIN CERTIFICATE-----
