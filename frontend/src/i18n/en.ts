@@ -2105,6 +2105,40 @@ export const en = {
   membershipParentRequired: 'Parent organization is required',
   membershipEndpointRequired: 'Endpoint is required',
   membershipRolesRequired: 'Select at least one role',
+
+  // Incident register — report dialog
+  incidentReportButton: 'Report security incident',
+  incidentReportButtonShort: 'Report incident',
+  incidentReportTitle: 'Report a security incident',
+  incidentReportSubtitle:
+    'All admins are notified by e-mail at once. Only admins and you see the description.',
+  incidentFieldSite: 'Affected site',
+  incidentSiteUnknown: 'Unknown',
+  incidentFieldTitle: 'Short title',
+  incidentFieldDescription: 'Description',
+  incidentDescriptionHint: 'What happened, what is affected and what has been done so far.',
+  incidentFieldLevel: 'Escalation level',
+  incidentLevel1: 'Level 1 – operation continues',
+  incidentLevel2: 'Level 2 – pause',
+  incidentLevel3: 'Level 3 – shutdown',
+  incidentFieldDetectedAt: 'Detected at',
+  incidentDetectedAtHint: 'The NIS2 reporting deadlines run from this time.',
+  incidentFieldDpo: 'The data protection officer has been informed',
+  incidentReportSubmit: 'Report incident',
+  incidentReportSending: 'Reporting…',
+  incidentReportedToast: 'Incident reported. The admins have been notified.',
+  incidentReportFailed: 'Could not report the incident',
+  incidentReportRateLimited:
+    'Too many reports in a short time. Try again later or call the admins.',
+  incidentTitleTooShort: 'At least 3 characters',
+  incidentTitleTooLong: 'At most 200 characters',
+  incidentDescriptionRequired: 'Describe what happened',
+  incidentTextTooLong: 'At most 5000 characters',
+  incidentNoteTooLong: 'At most 2000 characters',
+  incidentDetectedAtRequired: 'Enter when it was detected',
+  incidentDetectedAtFuture: 'Must not be in the future',
+  incidentZulipTooLong: 'At most 500 characters',
+  incidentZulipHttps: 'Must be an https:// link',
 } as const;
 
 export type TranslationKey = keyof typeof en;
