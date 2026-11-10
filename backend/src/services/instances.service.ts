@@ -38,6 +38,8 @@ export interface EnrichedInstanceRow extends InstanceRow {
   // time of its latest approval; the dashboard overview shows both.
   approval_status?: ApprovalSummaryStatus;
   last_approved_at?: Date | null;
+  // The caller owns the instance (list rows only).
+  is_owner?: boolean;
 }
 
 /**
@@ -103,6 +105,8 @@ export async function listForUser(
   return instances.map((inst) => ({
     ...inst,
     label: orgByInstance.get(inst.id) || inst.label || inst.id,
+    // Only the owner's own login may archive or delete; a site login never.
+    is_owner: !scopeInstanceId && inst.user_id === userId,
     approval_status: latestByInstance.get(inst.id) ?? 'NONE',
     last_approved_at: approvedAtByInstance.get(inst.id) ?? null,
   }));
