@@ -341,6 +341,13 @@ export function Sidebar({
               onNavigate={onNavigate}
             />
           </li>
+          <li>
+            <NavItem
+              item={{ to: '/app/incidents', icon: 'gpp_maybe', label: t('incidentsNavLabel') }}
+              rail={rail}
+              onNavigate={onNavigate}
+            />
+          </li>
           {me?.isAdmin && (
             <li className="mt-3">
               <NavSection
