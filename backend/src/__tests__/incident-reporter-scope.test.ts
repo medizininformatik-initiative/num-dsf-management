@@ -5,12 +5,16 @@
  * certificate session of a site owned by an admin does not inherit the
  * admin's own reports, and its own reports are shown as made through that
  * organization's certificate.
- * Dependencies: db, helpers/allowListSites, incidents.service, lib/adminGrants
+ * The affected site's own audit log never shows incident entries (an
+ * unconfirmed report and its reporter stay with the admins).
+ * Dependencies: db, helpers/allowListSites, incidents.service, auditQuery.service,
+ *               lib/adminGrants
  */
 import { db } from '../db/connection';
 import { removeSites, seedSite, type Site } from './helpers/allowListSites';
 import { signGrant } from '../lib/adminGrants';
 import * as svc from '../services/incidents.service';
+import { queryAudit } from '../services/auditQuery.service';
 
 let site: Site;
 let ownerEmail: string;
@@ -90,5 +94,23 @@ describe('reporter scope', () => {
     expect(forOwner?.isMine).toBe(false);
     expect(forOwner?.reportedBy).toBe(ownerEmail);
     expect(forOwner?.reportedByOrganization).toBe(site.orgId);
+  });
+});
+
+describe('audit entries of incidents', () => {
+  it("stay out of the affected site's instance and user audit views", async () => {
+    const incident = await svc.reportIncident(
+      { organizationId: site.orgId, title: 'Suspicious', description: 'd', escalationLevel: 1 },
+      owner(),
+    );
+    incidentIds.push(incident.id);
+    const params = { page: 1, limit: 100, resource: 'INCIDENT' };
+    const byInstance = await queryAudit({ kind: 'instance', instanceId: site.instanceId }, params);
+    const byUser = await queryAudit({ kind: 'user', userId: site.userId }, params);
+    expect(byInstance.rows.some((r) => r.resource_id === incident.id)).toBe(false);
+    expect(byUser.rows.some((r) => r.resource_id === incident.id)).toBe(false);
+    const all = await queryAudit({ kind: 'all' }, params);
+    const entry = all.rows.find((r) => r.resource_id === incident.id);
+    expect(entry?.instance_id).toBeNull();
   });
 });
