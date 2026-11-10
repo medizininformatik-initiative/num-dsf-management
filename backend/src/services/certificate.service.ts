@@ -196,7 +196,8 @@ export async function getCertificates(instanceId: string) {
 
 /**
  * A certificate belongs to one organization: refuse a PEM whose thumbprint
- * another organization registered or whose SHA-512 fingerprint logs in for one.
+ * another organization registered or claims as client_cert_thumbprint, or
+ * whose SHA-512 fingerprint logs in for one.
  * Call inside the insert transaction: it first locks the thumbprint's row in
  * certificate_thumbprint_locks (migration 034) until commit, so a concurrent registration
  * of the same thumbprint waits for this transaction and then sees its row.
@@ -223,7 +224,14 @@ async function assertNotRegisteredElsewhere(
     .whereNot({ organization_id: organizationId })
     .forShare()
     .first('fingerprint');
-  if (cert || login) throw new Error('CERT_REGISTERED_ELSEWHERE');
+  // The legacy SHA-256 login thumbprint of another organization (/fhir
+  // resolves sites by it as well).
+  const claim = await trx('organizations')
+    .whereRaw('LOWER(client_cert_thumbprint) = ?', [thumbprint.toLowerCase()])
+    .whereNot({ identifier: organizationId })
+    .forShare()
+    .first('identifier');
+  if (cert || login || claim) throw new Error('CERT_REGISTERED_ELSEWHERE');
 }
 
 /**
