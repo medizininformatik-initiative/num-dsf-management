@@ -51,7 +51,7 @@ incidentsRouter.get(
         data: {
           incident: svc.toApi(row, c),
           events: events.map((e) => svc.eventForCaller(e, row, c)),
-          chain: verifyEvents(row.id, events),
+          chain: verifyEvents(row.id, events, svc.hashedFieldsOf(row)),
         },
       });
     } catch (err) {

@@ -14,8 +14,10 @@ import {
   GENESIS_HASH,
   eventHash,
   verifyChain,
+  verifyFields,
   type ChainVerification,
   type ChainedEvent,
+  type HashedFields,
 } from '../lib/incidentHashChain';
 
 export const INCIDENT_EVENT_TYPES = [
@@ -110,7 +112,28 @@ export async function listEvents(incidentId: string): Promise<IncidentEvent[]> {
   }));
 }
 
-export function verifyEvents(incidentId: string, events: IncidentEvent[]): ChainVerification {
+export interface IncidentVerification extends ChainVerification {
+  /** Incident fields whose stored value does not match the timeline's hash. */
+  tamperedFields: string[];
+}
+
+/** Verify the chain and, given the stored incident fields, their recorded hashes. */
+export function verifyEvents(
+  incidentId: string,
+  events: IncidentEvent[],
+  fields?: HashedFields,
+): IncidentVerification {
   const chained: ChainedEvent[] = events.map((e) => ({ ...e, incidentId }));
-  return verifyChain(chained);
+  const chain = verifyChain(chained);
+  const tamperedFields = fields ? verifyFields(events, fields) : [];
+  return { ...chain, valid: chain.valid && tamperedFields.length === 0, tamperedFields };
+}
+
+/** The newest event of an incident (the chain head), or null. */
+export async function chainHead(incidentId: string): Promise<{ seq: number; hash: string } | null> {
+  const row = (await db('incident_events')
+    .where({ incident_id: incidentId })
+    .orderBy('seq', 'desc')
+    .first('seq', 'hash')) as { seq: number; hash: string } | undefined;
+  return row ? { seq: row.seq, hash: row.hash } : null;
 }

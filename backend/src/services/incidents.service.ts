@@ -16,7 +16,13 @@
  */
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/connection';
-import { appendEvent, type IncidentEvent, type IncidentEventType } from './incident-events.service';
+import {
+  appendEvent,
+  chainHead,
+  type IncidentEvent,
+  type IncidentEventType,
+} from './incident-events.service';
+import { fieldHashes, type HashedFields } from '../lib/incidentHashChain';
 import { adminRecipients, siteRecipients } from './incident-recipients.service';
 import { sendIncidentEmail } from './notification.service';
 import { writeAuditLog } from './audit.service';
@@ -235,8 +241,19 @@ export function eventForCaller(
   row: IncidentRow,
   caller: IncidentCaller,
 ): Omit<IncidentEvent, 'actorEmail'> & { actorEmail: string | null } {
-  const hideActor = event.type === 'REPORTED' && !caller.isAdmin && !isReporter(row, caller);
-  return { ...event, actorEmail: hideActor ? null : actorFor(row, caller)(event.actorEmail) };
+  const privileged = caller.isAdmin || isReporter(row, caller);
+  const hideActor = event.type === 'REPORTED' && !privileged;
+  // The field hashes cover the description, which only privileged callers see.
+  let details = event.details;
+  if (!privileged && details && 'fieldSha256' in details) {
+    const { fieldSha256: _hidden, ...rest } = details;
+    details = rest;
+  }
+  return {
+    ...event,
+    details,
+    actorEmail: hideActor ? null : actorFor(row, caller)(event.actorEmail),
+  };
 }
 
 export async function listOrganizations(): Promise<Array<{ identifier: string; name: string }>> {
@@ -304,14 +321,27 @@ export async function auditIncident(
   operation: 'CREATE' | 'UPDATE',
   diffJson: Record<string, unknown>,
 ): Promise<void> {
+  // The chain head (seq + hash) anchors the timeline in the append-only audit
+  // log: rewriting the events afterwards no longer matches the anchor.
+  const head = await chainHead(row.id);
   await writeAuditLog({
     userEmail: caller.email,
     resourceType: 'INCIDENT',
     resourceId: row.id,
     operation,
-    diffJson: { organization: row.organization_id, ...diffJson },
+    diffJson: { organization: row.organization_id, ...diffJson, chainHead: head },
     ipAddress: caller.ip,
   });
+}
+
+/** The incident fields the chain covers, as recorded by reportIncident / updateIncident. */
+export function hashedFieldsOf(row: IncidentRow): HashedFields {
+  return {
+    title: row.title,
+    description: row.description,
+    organizationId: row.organization_id,
+    detectedAt: new Date(row.detected_at).toISOString(),
+  };
 }
 
 /** Update incident columns and append the event in one transaction. */
@@ -351,6 +381,7 @@ export async function reportIncident(
   }
   const id = uuidv4();
   const now = new Date();
+  const detectedAt = input.detectedAt ? new Date(input.detectedAt) : now;
   await db.transaction(async (trx) => {
     await trx('incidents').insert({
       id,
@@ -361,7 +392,7 @@ export async function reportIncident(
       reported_by: caller.email,
       reported_by_instance_id: caller.scopeInstanceId,
       reported_at: now,
-      detected_at: input.detectedAt ? new Date(input.detectedAt) : now,
+      detected_at: detectedAt,
       escalation_level: input.escalationLevel,
       zulip_url: input.zulipUrl ?? null,
       dpo_informed_at: input.dpoInformed ? now : null,
@@ -370,6 +401,12 @@ export async function reportIncident(
     await appendEvent(trx, id, caller.email, 'REPORTED', {
       escalationLevel: input.escalationLevel,
       ...(input.dpoInformed ? { dpoInformed: true } : {}),
+      fieldSha256: fieldHashes({
+        title: input.title,
+        description: input.description,
+        organizationId: input.organizationId ?? null,
+        detectedAt: detectedAt.toISOString(),
+      }),
     });
   });
   const row = (await loadRow(id))!;
@@ -462,6 +499,9 @@ export async function updateIncident(
           field: c.field,
           from: c.from,
           to: c.to,
+          ...(c.field === 'detectedAt'
+            ? { fieldSha256: fieldHashes({ detectedAt: String(c.to) }) }
+            : {}),
         });
       }
     });

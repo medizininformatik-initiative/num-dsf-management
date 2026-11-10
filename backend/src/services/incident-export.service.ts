@@ -5,9 +5,19 @@
  * line per event with prev_hash and hash). Admin only (see the route).
  * Dependencies: incidents.service, incident-events.service, auditExport.service (csvCell)
  */
-import { loadIncidentRow, toApi, type ApiIncident, type IncidentCaller } from './incidents.service';
-import { listEvents, verifyEvents, type IncidentEvent } from './incident-events.service';
-import type { ChainVerification } from '../lib/incidentHashChain';
+import {
+  hashedFieldsOf,
+  loadIncidentRow,
+  toApi,
+  type ApiIncident,
+  type IncidentCaller,
+} from './incidents.service';
+import {
+  listEvents,
+  verifyEvents,
+  type IncidentEvent,
+  type IncidentVerification,
+} from './incident-events.service';
 import { csvCell } from './auditExport.service';
 
 export interface IncidentExport {
@@ -15,7 +25,7 @@ export interface IncidentExport {
   exportedBy: string;
   incident: ApiIncident;
   events: IncidentEvent[];
-  chain: ChainVerification;
+  chain: IncidentVerification;
 }
 
 /** @throws INCIDENT_NOT_FOUND */
@@ -31,7 +41,7 @@ export async function buildIncidentExport(
     exportedBy: caller.email,
     incident: toApi(row, caller),
     events,
-    chain: verifyEvents(id, events),
+    chain: verifyEvents(id, events, hashedFieldsOf(row)),
   };
 }
 
@@ -67,6 +77,7 @@ export function incidentExportCsv(doc: IncidentExport): string {
     ['dpo_informed_by', i.dpoInformed?.by ?? ''],
     ['chain_valid', doc.chain.valid],
     ['chain_broken_at', doc.chain.brokenAt ?? ''],
+    ['chain_tampered_fields', doc.chain.tamperedFields.join(' ')],
     ['exported_at', iso(doc.exportedAt)],
     ['exported_by', doc.exportedBy],
   ];
