@@ -21,6 +21,7 @@ import { isScopeRevoked } from '../services/scope-revocation.service';
 import { isCertAuthMode } from '../lib/authMode';
 import { extractClientCert } from '../lib/clientCert';
 import { db } from '../db/connection';
+import { isTotpEnrolmentRequired } from '../lib/totpEnrolment';
 
 // Extend req.user types
 declare global {
@@ -73,13 +74,34 @@ async function certSessionValid(
  */
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    await authenticate(req, res, next);
+    await authenticate(req, res, next, false);
   } catch (err) {
     next(err);
   }
 }
 
-async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
+/**
+ * Like requireAuth, but also lets an admin certificate session through that has
+ * not enrolled TOTP yet. Only for /auth/me and the TOTP enrolment endpoints.
+ */
+export async function requireAuthAllowEnrolment(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    await authenticate(req, res, next, true);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function authenticate(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  allowUnenrolled: boolean,
+): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Missing token' } });
@@ -144,6 +166,17 @@ async function authenticate(req: Request, res: Response, next: NextFunction): Pr
     authMethod: payload.amr ?? 'otp',
     ...(scopeInstanceId ? { scopeInstanceId } : {}),
   };
+  // An admin who signed in with a certificate must enrol TOTP first; until
+  // then the session reaches only the enrolment endpoints.
+  if (!allowUnenrolled && (await isTotpEnrolmentRequired(req.user))) {
+    res.status(403).json({
+      error: {
+        code: 'TOTP_ENROLMENT_REQUIRED',
+        message: 'Set up TOTP before using this session.',
+      },
+    });
+    return;
+  }
   // Update activity timestamp for idle timeout (fire-and-forget, non-blocking)
   const idleTimeout = parseInt(process.env.IDLE_TIMEOUT_MS || '1800000', 10);
   redis

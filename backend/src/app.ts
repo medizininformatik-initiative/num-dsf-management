@@ -11,6 +11,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { authRouter } from './routes/auth.routes';
 import { meRouter } from './routes/me.routes';
+import { meTotpRouter } from './routes/me-totp.routes';
 import { instancesRouter } from './routes/instances.routes';
 import { organizationRouter } from './routes/organization.routes';
 import { contactsRouter } from './routes/contacts.routes';
@@ -119,6 +120,7 @@ app.use('/fhir', fhirRouter);
 
 // Routes
 app.use('/auth/me', meRouter);
+app.use('/api/v1/me/totp', meTotpRouter);
 app.use('/auth', authRouter);
 app.use('/api/v1/instances', instancesRouter);
 
