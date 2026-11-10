@@ -28,8 +28,8 @@ const caller = (req: Request) => svc.callerOf(req.user!, req.ip || 'unknown');
 
 incidentsRouter.get(
   '/organizations',
-  asyncHandler(async (_req, res) => {
-    res.json({ data: await svc.listOrganizations() });
+  asyncHandler(async (req, res) => {
+    res.json({ data: await svc.listOrganizations(await caller(req)) });
   }),
 );
 

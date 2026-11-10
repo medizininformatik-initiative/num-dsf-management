@@ -12,7 +12,7 @@
  * mails never carry the description.
  * Dependencies: db/connection, incident-events.service, incident-recipients.service,
  *               notification.service, audit.service, lib/isAdmin, lib/nis2Deadlines,
- *               lib/logger, uuid
+ *               approved-snapshot.service, lib/incidentHashChain, lib/logger, uuid
  */
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/connection';
@@ -27,6 +27,7 @@ import { adminRecipients, siteRecipients } from './incident-recipients.service';
 import { sendIncidentEmail } from './notification.service';
 import { writeAuditLog } from './audit.service';
 import { isAdminCaller } from '../lib/isAdmin';
+import { approvedActive, loadLatestApprovedSites } from './approved-snapshot.service';
 import { NIS2_COLUMNS, NIS2_STAGES, nis2DueAt, type Nis2Stage } from '../lib/nis2Deadlines';
 import { logger } from '../lib/logger';
 import type { IncidentMailEvent } from './mail-templates/incident-mail';
@@ -256,8 +257,25 @@ export function eventForCaller(
   };
 }
 
-export async function listOrganizations(): Promise<Array<{ identifier: string; name: string }>> {
-  return db('organizations').select('identifier', 'name').orderBy('name');
+/**
+ * Sites offered in the report form: admins get every organization, other
+ * users the approved, active sites of the network plus their own (a site not
+ * yet approved is not shown to others).
+ */
+export async function listOrganizations(
+  caller: IncidentCaller,
+): Promise<Array<{ identifier: string; name: string }>> {
+  const query = db('organizations').select('identifier', 'name').orderBy('name');
+  if (!caller.isAdmin) {
+    const approved = (await loadLatestApprovedSites())
+      .filter(approvedActive)
+      .map((s) => s.orgIdentifier);
+    query.where((q) => {
+      q.whereIn('identifier', approved);
+      if (caller.instanceIds.length) q.orWhereIn('instance_id', caller.instanceIds);
+    });
+  }
+  return query;
 }
 
 // ---- notifications and audit ---------------------------------------------
