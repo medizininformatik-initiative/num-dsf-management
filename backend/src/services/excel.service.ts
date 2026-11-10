@@ -2,8 +2,9 @@
  * excel.service.ts – IP Address List export as Excel
  * Contains ALL outgoing IPs of all organizations, as approved: per site the
  * endpoints and IPs of its latest APPROVED request (same rule as the allow
- * list), never unreviewed live edits.
- * Dependencies: db/connection, approved-snapshot.service
+ * list), never unreviewed live edits. Sites the incident register withdraws
+ * (suspended, or every certificate blocked) are left out like in the bundle.
+ * Dependencies: db/connection, approved-snapshot.service, fhir.service
  */
 import ExcelJS from 'exceljs';
 import { db } from '../db/connection';
@@ -16,6 +17,7 @@ import {
   type ApprovedSite,
   type SnapshotEndpoint,
 } from './approved-snapshot.service';
+import { incidentWithdrawnOrganizations } from './fhir.service';
 
 interface IpRow {
   orgIdentifier: string;
@@ -65,7 +67,11 @@ async function loadIpRows(): Promise<IpRow[]> {
   // of sites that are active in their latest APPROVED request, taken from
   // that request's snapshot. A newer pending/rejected/withdrawn request does
   // not drop a site, an unsubmitted live edit does not add an IP.
-  const sites = (await loadLatestApprovedSites()).filter(approvedActive);
+  // Sites the incident register withdraws are left out, as in the bundle.
+  const withdrawn = await incidentWithdrawnOrganizations();
+  const sites = (await loadLatestApprovedSites()).filter(
+    (s) => approvedActive(s) && !withdrawn.has(s.orgIdentifier),
+  );
   const live = await liveEndpoints(sites.filter((s) => isSnapshotUnusable(s.snapshot)));
   const rows: IpRow[] = [];
   for (const site of sites) {
