@@ -208,6 +208,42 @@ export async function getCertificates(instanceId: string) {
 }
 
 /**
+ * Lock a SHA-512 fingerprint in certificate_thumbprint_locks (migration 034)
+ * until the transaction ends. The key is the SHA-256 of "sha512:<fingerprint>"
+ * (64 hex characters, the column's size); it cannot collide with a real
+ * certificate thumbprint in practice. No migration needed.
+ */
+export async function lockFingerprint(trx: Knex.Transaction, fingerprint: string): Promise<void> {
+  const key = crypto.createHash('sha256').update(`sha512:${fingerprint}`).digest('hex');
+  await trx('certificate_thumbprint_locks')
+    .insert({ thumbprint: key })
+    .onConflict('thumbprint')
+    .merge();
+}
+
+/**
+ * Organizations other than `exceptOrganization` that registered a certificate
+ * with this SHA-512 fingerprint (computed in SQL from the stored PEM, as in
+ * migration 029).
+ */
+export async function certificateOwnersOfFingerprint(
+  conn: Knex | Knex.Transaction,
+  fingerprint: string,
+  exceptOrganization: string,
+): Promise<string[]> {
+  return conn('certificates')
+    .whereNot({ organization_id: exceptOrganization })
+    .whereRaw(
+      `SHA2(FROM_BASE64(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(pem,
+        '-----BEGIN CERTIFICATE-----', ''), '-----END CERTIFICATE-----', ''),
+        CHAR(13), ''), CHAR(10), ''), ' ', '')), 512) = ?`,
+      [fingerprint.toLowerCase()],
+    )
+    .distinct('organization_id')
+    .pluck('organization_id');
+}
+
+/**
  * A certificate belongs to one organization: refuse a PEM whose thumbprint
  * another organization registered or claims as client_cert_thumbprint, or
  * whose SHA-512 fingerprint logs in for one.
@@ -227,6 +263,10 @@ async function assertNotRegisteredElsewhere(
   // ON DUPLICATE KEY UPDATE takes the exclusive row lock at once (INSERT IGNORE
   // would take a shared one, and two waiters upgrading it would deadlock).
   await trx('certificate_thumbprint_locks').insert({ thumbprint }).onConflict('thumbprint').merge();
+  // Second key, derived from the SHA-512 fingerprint: the onboarding import
+  // only knows that one and takes the same lock (always after the thumbprint
+  // one here, so the two paths cannot deadlock).
+  await lockFingerprint(trx, sha512FingerprintFromPem(pem));
   const cert = await trx('certificates')
     .where({ thumbprint })
     .whereNot({ organization_id: organizationId })
