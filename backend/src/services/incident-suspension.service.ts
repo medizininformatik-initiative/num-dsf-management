@@ -236,7 +236,9 @@ async function publish(
 
 async function mailSites(row: IncidentRow, caller: IncidentCaller): Promise<MeasureResult> {
   const fresh = (await loadIncidentRow(row.id)) as IncidentRow;
-  const mailed = await notifyIncident(fresh, 'suspended', caller.email, { sites: true });
+  // Only a withdrawn site is announced as suspended.
+  const event = fresh.suspended ? 'suspended' : 'measures';
+  const mailed = await notifyIncident(fresh, event, caller.email, { sites: true });
   const result: MeasureResult = { measure: 'MAIL_SITES', mailed };
   await record(row, caller, result);
   return result;
