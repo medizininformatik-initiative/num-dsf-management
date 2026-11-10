@@ -19,7 +19,8 @@ type ResourceType =
   | 'APPROVAL'
   | 'MARKETPLACE'
   | 'AUDIT'
-  | 'BACKUP';
+  | 'BACKUP'
+  | 'INCIDENT';
 type Operation =
   | 'CREATE'
   | 'UPDATE'
