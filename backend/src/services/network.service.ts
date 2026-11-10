@@ -2,7 +2,8 @@
  * network.service.ts – Cross-instance "allow list" view for the map
  * Admins receive full details. Non-admins receive only active/inactive +
  * endpoint names + aggregate cert status — no PII, no IPs, no exact expiry dates.
- * Dependencies: db, approved-snapshot.service
+ * Sites the incident register withdraws are not on the map.
+ * Dependencies: db, approved-snapshot.service, fhir.service
  */
 import { db } from '../db/connection';
 import { parseJsonStringArray as safeJsonArray } from '../lib/jsonColumn';
@@ -14,6 +15,7 @@ import {
   snapshotMemberships,
   snapshotOrgField,
 } from './approved-snapshot.service';
+import { incidentWithdrawnOrganizations } from './fhir.service';
 import type {
   OrganizationRow,
   EndpointRow,
@@ -56,7 +58,11 @@ export async function getNetworkMap(opts: { isAdmin: boolean }) {
   // organization master data come from that approved snapshot (what the
   // allow list publishes); contacts and the admin e-mail are live. A site
   // whose approved request has no usable snapshot is shown from live data.
-  const sites = (await loadLatestApprovedSites()).filter(approvedActive);
+  // Sites the incident register withdraws are left out, as in the bundle.
+  const withdrawn = await incidentWithdrawnOrganizations();
+  const sites = (await loadLatestApprovedSites()).filter(
+    (s) => approvedActive(s) && !withdrawn.has(s.orgIdentifier),
+  );
   const approvedOrgIds: string[] = sites.map((s) => s.orgIdentifier);
   if (approvedOrgIds.length === 0) return { organizations: [] };
   const siteByOrg = new Map(sites.map((s) => [s.orgIdentifier, s]));
