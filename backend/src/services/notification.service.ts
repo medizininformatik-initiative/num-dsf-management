@@ -6,6 +6,7 @@
  *   sendAdminNewRequestEmail    – notify admins of a new approval request
  *   sendAdminApprovalResultEmail – notify admins of approve/reject outcome
  *   sendSiteApprovalResultEmail  – notify site contacts of approve/reject outcome
+ *   sendIncidentEmail            – incident register notices (admins, sites)
  */
 import nodemailer from 'nodemailer';
 import { escapeHtml as esc } from '../lib/escapeHtml';
@@ -633,4 +634,24 @@ export async function sendOrgLoginCertificateChangedEmail(
     text,
     html,
   });
+}
+
+/**
+ * Incident register notice (mail-templates/incident-mail). One message per
+ * recipient, so sites never see each other's addresses. Never carries the
+ * incident description.
+ */
+import { renderIncidentMail, type IncidentMailContext } from './mail-templates/incident-mail';
+
+export async function sendIncidentEmail(
+  to: string[],
+  context: Omit<IncidentMailContext, 'environment'>,
+): Promise<number> {
+  const recipients = [...new Set(to.map((e) => e.toLowerCase().trim()).filter(Boolean))];
+  if (IS_TEST || recipients.length === 0) return 0;
+  const { subject, text, html } = renderIncidentMail({ ...context, environment: ENV });
+  for (const recipient of recipients) {
+    await transporter.sendMail({ from: FROM, to: recipient, subject, text, html });
+  }
+  return recipients.length;
 }
