@@ -17,6 +17,7 @@ import { useCanvasStore } from '../../stores/canvas.store';
 // Data hooks: keep them inert so no network is touched. useOrganization is a
 // spy so we can assert it is re-invoked with the switched instance id.
 vi.mock('../../hooks/useInstance', () => ({
+  useInstanceOverview: () => ({ data: [] }),
   useInstances: vi.fn(() => ({ data: [], isLoading: false })),
 }));
 vi.mock('../../hooks/useApproval', () => ({

@@ -56,6 +56,7 @@ import { DownloadModal } from '../components/modals/DownloadModal';
 import { CertRenewalModal } from '../components/modals/CertRenewalModal';
 import { ExpiryWarningBanner } from '../components/layout/ExpiryWarningBanner';
 import { CrossUserInstanceBanner } from '../components/layout/CrossUserInstanceBanner';
+import { InstanceOverview } from '../components/layout/InstanceOverview';
 import { IncidentBanner } from '../components/incidents/IncidentBanner';
 import { AppFooter } from '../components/layout/AppFooter';
 import { MapHeader } from '../components/map/MapHeader';
@@ -265,6 +266,7 @@ export function AppPage() {
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <IncidentBanner />
             {isMapRoute && <MapHeader />}
+            {isCanvasRoute && <InstanceOverview />}
             {isCanvasRoute && <CrossUserInstanceBanner instanceId={activeInstanceId} />}
             {isCanvasRoute && <ExpiryWarningBanner />}
             {isCanvasRoute ? (

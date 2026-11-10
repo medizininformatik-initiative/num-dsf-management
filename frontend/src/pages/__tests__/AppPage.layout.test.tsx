@@ -19,6 +19,7 @@ import {
 } from '../../components/layout/__tests__/fakeMatchMedia';
 
 vi.mock('../../hooks/useInstance', () => ({
+  useInstanceOverview: () => ({ data: [] }),
   useInstances: () => ({ data: [{ id: 'inst-1', label: 'alpha.example.de' }], isLoading: false }),
   useInstance: () => ({ data: undefined }),
 }));

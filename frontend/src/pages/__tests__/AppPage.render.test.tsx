@@ -18,6 +18,7 @@ import { useModals } from '../../hooks/useModals';
 
 // --- Leaf data hooks (the entity cards + right panel read these) -----------
 vi.mock('../../hooks/useInstance', () => ({
+  useInstanceOverview: () => ({ data: [] }),
   useInstances: vi.fn(() => ({ data: [], isLoading: false })),
   useInstance: vi.fn(() => ({ data: undefined })),
 }));
