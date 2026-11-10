@@ -197,4 +197,83 @@ export async function listOrganizations(): Promise<Array<{ identifier: string; n
   return db('organizations').select('identifier', 'name').orderBy('name');
 }
 
-export { loadRow as loadIncidentRow };
+// ---- notifications and audit ---------------------------------------------
+
+function portalLink(id: string, admin: boolean): string {
+  const base = process.env.FRONTEND_URL || 'http://localhost:5173';
+  return admin ? `${base}/app/admin/incidents?id=${id}` : `${base}/app/incidents?id=${id}`;
+}
+
+function siteLabel(row: IncidentRow): string | null {
+  if (!row.organization_id) return null;
+  return row.org_name ? `${row.org_name} (${row.organization_id})` : row.organization_id;
+}
+
+/**
+ * Mail admins and, when `sites` is set, every site. A failing mail never
+ * undoes the action; returns how many messages went out.
+ */
+export async function notifyIncident(
+  row: IncidentRow,
+  event: IncidentMailEvent,
+  actor: string,
+  opts: { sites?: boolean; versionNumber?: number | null } = {},
+): Promise<number> {
+  const context = {
+    event,
+    title: row.title,
+    site: siteLabel(row),
+    escalationLevel: Number(row.escalation_level),
+    actor,
+    versionNumber: opts.versionNumber ?? null,
+  };
+  let sent = 0;
+  try {
+    const admins = await adminRecipients();
+    sent += await sendIncidentEmail(admins, { ...context, link: portalLink(row.id, true) });
+    if (opts.sites) {
+      const adminSet = new Set(admins.map((a) => a.toLowerCase()));
+      const sites = (await siteRecipients()).filter((e) => !adminSet.has(e));
+      sent += await sendIncidentEmail(sites, { ...context, link: portalLink(row.id, false) });
+    }
+  } catch (err) {
+    logger.error(
+      { err: err instanceof Error ? err.message : 'unknown' },
+      '[Incidents] mail failed',
+    );
+  }
+  return sent;
+}
+
+export async function auditIncident(
+  row: Pick<IncidentRow, 'id' | 'organization_id'> & { org_instance_id?: string | null },
+  caller: IncidentCaller,
+  operation: 'CREATE' | 'UPDATE',
+  diffJson: Record<string, unknown>,
+): Promise<void> {
+  await writeAuditLog({
+    userEmail: caller.email,
+    instanceId: row.org_instance_id ?? undefined,
+    resourceType: 'INCIDENT',
+    resourceId: row.id,
+    operation,
+    diffJson,
+    ipAddress: caller.ip,
+  });
+}
+
+/** Update incident columns and append the event in one transaction. */
+async function changeWithEvent(
+  id: string,
+  update: Record<string, unknown> | null,
+  actor: string,
+  type: IncidentEventType,
+  details: Record<string, unknown> | null,
+): Promise<IncidentEvent> {
+  return db.transaction(async (trx) => {
+    if (update) await trx('incidents').where({ id }).update(update);
+    return appendEvent(trx, id, actor, type, details);
+  });
+}
+
+export { loadRow as loadIncidentRow, changeWithEvent };
