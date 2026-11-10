@@ -149,9 +149,9 @@ describe('incident register', () => {
     await expect(
       createCertificate(other.instanceId, affected.certPem!, other.email, '127.0.0.1', false),
     ).rejects.toThrow('CERT_BLOCKED');
-    await expect(suspendIncident(incident.id, ['WITHDRAW'], false, admin())).rejects.toThrow(
-      'ALREADY_SUSPENDED',
-    );
+    // Withdrawing again republishes (a retry after a failed publish).
+    const again = await suspendIncident(incident.id, ['WITHDRAW'], false, admin());
+    expect(again.results[0]).toMatchObject({ measure: 'WITHDRAW', alreadySuspended: true });
     await expect(svc.closeIncident(incident.id, 'CLOSED', 'review', admin())).rejects.toThrow(
       'STILL_SUSPENDED',
     );
@@ -192,6 +192,7 @@ describe('incident register', () => {
       'MEASURE',
       'SUSPENDED',
       'MEASURE',
+      'SUSPENDED',
       'SUSPENSION_LIFTED',
       'CLOSED',
     ]);

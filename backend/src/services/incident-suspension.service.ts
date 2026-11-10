@@ -8,16 +8,19 @@
  *   REMOVE_LOGINS       its login certificates are removed and the sessions of
  *                       its users revoked (skipped for an owner who is an admin);
  *   WITHDRAW            the site is suspended: published as withdrawn whatever
- *                       its approved snapshot says, and a new allow-list
- *                       version is published right away;
+ *                       its approved snapshot says;
  *   MAIL_SITES          every site and admin is told.
+ * A new allow-list version is published once, right away, whenever
+ * BLOCK_CERTIFICATES or WITHDRAW ran.
  * Lifting the suspension needs the restart checklist; blocked thumbprints stay
  * blocked, so the site returns only with a new, approved certificate.
  * Dependencies: db/connection, incidents.service, incident-events.service,
  *               incident-blocks.service, org-login-certificates.service,
- *               auth.service, bundle-versions.service, approved-snapshot.service,
+ *               auth.service, bundle-versions.service, fhir.service,
+ *               approved-snapshot.service,
  *               lib/certFingerprint, lib/isAdmin
  */
+import type { Knex } from 'knex';
 import { db } from '../db/connection';
 import {
   auditIncident,
@@ -35,15 +38,13 @@ import { blockFingerprints } from './incident-blocks.service';
 import { removeAllForOrganization } from './org-login-certificates.service';
 import { revokeAllSessions } from './auth.service';
 import { createSnapshot } from './bundle-versions.service';
+import { loadAllowListInput } from './fhir.service';
 import { sha512FingerprintFromPem } from '../lib/certFingerprint';
 import { isAdminEmail } from '../lib/isAdmin';
 import { allowListSection, snapshotCertificateIds } from './approved-snapshot.service';
 import type { IncidentMeasure } from '../schemas/incident.schema';
 
 export type MeasureResult = { measure: IncidentMeasure } & Record<string, unknown>;
-
-/** Measures run in this order: block before publishing, publish before mailing. */
-const ORDER: IncidentMeasure[] = ['BLOCK_CERTIFICATES', 'REMOVE_LOGINS', 'WITHDRAW', 'MAIL_SITES'];
 
 /** SHA-512 thumbprints of stored PEMs. */
 function pemFingerprints(pems: string[]): string[] {
@@ -129,62 +130,119 @@ async function siteFingerprints(row: IncidentRow): Promise<string[]> {
 async function record(
   row: IncidentRow,
   caller: IncidentCaller,
-  type: 'MEASURE' | 'SUSPENDED',
   result: MeasureResult,
 ): Promise<void> {
-  await changeWithEvent(row.id, null, caller.email, type, result);
+  await changeWithEvent(row.id, null, caller.email, 'MEASURE', result);
 }
 
-async function runMeasure(
-  measure: IncidentMeasure,
+/** The incident row, locked for the rest of the transaction. */
+async function lockIncident(trx: Knex.Transaction, id: string): Promise<IncidentRow> {
+  const row = (await trx('incidents').where({ id }).forUpdate().first()) as IncidentRow | undefined;
+  if (!row) throw new Error('INCIDENT_NOT_FOUND');
+  return row;
+}
+
+/** Block the thumbprints and record the event in one transaction. */
+async function blockCertificates(row: IncidentRow, caller: IncidentCaller): Promise<MeasureResult> {
+  const fps = await siteFingerprints(row);
+  return db.transaction(async (trx) => {
+    const blocked = await blockFingerprints(trx, fps, row.id, caller.email);
+    const result: MeasureResult = { measure: 'BLOCK_CERTIFICATES', blocked };
+    await appendEvent(trx, row.id, caller.email, 'MEASURE', result);
+    return result;
+  });
+}
+
+async function removeLogins(row: IncidentRow, caller: IncidentCaller): Promise<MeasureResult> {
+  const measure = 'REMOVE_LOGINS' as const;
+  const removed = await removeAllForOrganization(
+    row.organization_id as string,
+    caller.email,
+    caller.ip,
+  );
+  const owner = (await db('instances as i')
+    .join('users as u', 'u.id', 'i.user_id')
+    .where('i.id', row.org_instance_id ?? '')
+    .first('u.id', 'u.email')) as { id: string; email: string } | undefined;
+  let result: MeasureResult;
+  if (!owner) {
+    result = { measure, removedLogins: removed.length, sessionsRevoked: 0 };
+  } else if (await isAdminEmail(owner.email)) {
+    // An admin's own account is not locked out by a site incident.
+    result = {
+      measure,
+      removedLogins: removed.length,
+      sessionsRevoked: 0,
+      sessionsSkipped: 'OWNER_IS_ADMIN',
+    };
+  } else {
+    const revoked = await revokeAllSessions({ id: owner.id }).catch(() => 0);
+    result = { measure, removedLogins: removed.length, sessionsRevoked: revoked };
+  }
+  await record(row, caller, result);
+  return result;
+}
+
+/**
+ * Publish a new allow-list version and, for WITHDRAW, set the suspension
+ * flag, in one transaction with the event that records it. The version is
+ * built with the suspension already applied; when publishing fails the flag
+ * stays unset and the admin simply retries. An already suspended site is
+ * published again, so a retry after a failed publish also works.
+ * @throws INVALID_STATUS when the incident was closed meanwhile
+ */
+async function publish(
   row: IncidentRow,
   caller: IncidentCaller,
+  withdraw: boolean,
 ): Promise<MeasureResult> {
   const org = row.organization_id as string;
-  if (measure === 'BLOCK_CERTIFICATES') {
-    const fps = await siteFingerprints(row);
-    const blocked = await db.transaction((trx) =>
-      blockFingerprints(trx, fps, row.id, caller.email),
-    );
-    return { measure, blocked };
-  }
-  if (measure === 'REMOVE_LOGINS') {
-    const removed = await removeAllForOrganization(org, caller.email, caller.ip);
-    const owner = (await db('instances as i')
-      .join('users as u', 'u.id', 'i.user_id')
-      .where('i.id', row.org_instance_id ?? '')
-      .first('u.id', 'u.email')) as { id: string; email: string } | undefined;
-    if (!owner) return { measure, removedLogins: removed.length, sessionsRevoked: 0 };
-    // An admin's own account is not locked out by a site incident.
-    if (await isAdminEmail(owner.email)) {
-      return {
-        measure,
-        removedLogins: removed.length,
-        sessionsRevoked: 0,
-        sessionsSkipped: 'OWNER_IS_ADMIN',
-      };
+  return db.transaction(async (trx) => {
+    const locked = await lockIncident(trx, row.id);
+    if (locked.status === 'CLOSED' || locked.status === 'FALSE_ALARM') {
+      throw new Error('INVALID_STATUS');
     }
-    const revoked = await revokeAllSessions({ id: owner.id }).catch(() => 0);
-    return { measure, removedLogins: removed.length, sessionsRevoked: revoked };
-  }
-  if (measure === 'WITHDRAW') {
-    await db('incidents').where({ id: row.id }).update({ suspended: 1 });
+    const alreadySuspended = Boolean(locked.suspended);
     const version = await createSnapshot({
       triggeredBy: 'MANUAL',
       triggeredByEmail: caller.email,
-      notes: `Incident: ${org} suspended`,
+      notes: withdraw ? `Incident: ${org} suspended` : `Incident: certificates of ${org} blocked`,
+      input: await loadAllowListInput(withdraw ? { suspend: org } : {}),
     });
-    return { measure, versionNumber: version.versionNumber };
-  }
+    if (!withdraw) {
+      // Blocking alone: the blocked thumbprints leave the served bundle now.
+      const result: MeasureResult = {
+        measure: 'BLOCK_CERTIFICATES',
+        versionNumber: version.versionNumber,
+      };
+      await appendEvent(trx, row.id, caller.email, 'MEASURE', result);
+      return result;
+    }
+    if (!alreadySuspended) await trx('incidents').where({ id: row.id }).update({ suspended: 1 });
+    const result: MeasureResult = {
+      measure: 'WITHDRAW',
+      versionNumber: version.versionNumber,
+      ...(alreadySuspended ? { alreadySuspended: true } : {}),
+    };
+    await appendEvent(trx, row.id, caller.email, 'SUSPENDED', result);
+    return result;
+  });
+}
+
+async function mailSites(row: IncidentRow, caller: IncidentCaller): Promise<MeasureResult> {
   const fresh = (await loadIncidentRow(row.id)) as IncidentRow;
   const mailed = await notifyIncident(fresh, 'suspended', caller.email, { sites: true });
-  return { measure, mailed };
+  const result: MeasureResult = { measure: 'MAIL_SITES', mailed };
+  await record(row, caller, result);
+  return result;
 }
 
 /**
  * Suspend the affected site with the chosen measures. `confirm` first
- * confirms a REPORTED incident, so both fit in one dialog.
- * @throws INCIDENT_NOT_FOUND / INVALID_STATUS / NO_ORGANIZATION / ALREADY_SUSPENDED
+ * confirms a REPORTED incident, so both fit in one dialog. Order: block,
+ * remove logins, publish once (whenever blocking or withdrawing ran), mail.
+ * WITHDRAW on an already suspended site publishes again.
+ * @throws INCIDENT_NOT_FOUND / INVALID_STATUS / NO_ORGANIZATION
  */
 export async function suspendIncident(
   id: string,
@@ -197,17 +255,20 @@ export async function suspendIncident(
   if (!row.organization_id) throw new Error('NO_ORGANIZATION');
   if (row.status === 'REPORTED' && !confirm) throw new Error('INVALID_STATUS');
   if (row.status === 'CLOSED' || row.status === 'FALSE_ALARM') throw new Error('INVALID_STATUS');
-  if (measures.includes('WITHDRAW') && row.suspended) throw new Error('ALREADY_SUSPENDED');
   if (row.status === 'REPORTED') {
     await confirmIncident(id, caller);
     row = (await loadIncidentRow(id)) as IncidentRow;
   }
+  const chosen = new Set(measures);
   const results: MeasureResult[] = [];
-  for (const measure of ORDER.filter((m) => measures.includes(m))) {
-    const result = await runMeasure(measure, row, caller);
-    await record(row, caller, measure === 'WITHDRAW' ? 'SUSPENDED' : 'MEASURE', result);
-    results.push(result);
+  if (chosen.has('BLOCK_CERTIFICATES')) results.push(await blockCertificates(row, caller));
+  if (chosen.has('REMOVE_LOGINS')) results.push(await removeLogins(row, caller));
+  if (chosen.has('WITHDRAW') || chosen.has('BLOCK_CERTIFICATES')) {
+    const published = await publish(row, caller, chosen.has('WITHDRAW'));
+    if (chosen.has('WITHDRAW')) results.push(published);
+    else results[0] = { ...results[0], versionNumber: published.versionNumber };
   }
+  if (chosen.has('MAIL_SITES')) results.push(await mailSites(row, caller));
   await auditIncident(row, caller, 'UPDATE', { action: 'incident_suspend', results });
   return { incident: toApi((await loadIncidentRow(id)) as IncidentRow, caller), results };
 }
@@ -220,8 +281,10 @@ export interface RestartChecklist {
 }
 
 /**
- * End the suspension after the restart checklist; publishes a new version.
- * Blocked thumbprints stay blocked.
+ * End the suspension after the restart checklist. The new version (built
+ * without this incident's suspension), the cleared flag and the event are one
+ * transaction: when publishing fails the site stays suspended and the admin
+ * retries. Blocked thumbprints stay blocked.
  * @throws INCIDENT_NOT_FOUND / NOT_SUSPENDED
  */
 export async function liftSuspension(
@@ -231,27 +294,30 @@ export async function liftSuspension(
 ): Promise<ApiIncident> {
   const row = await loadIncidentRow(id);
   if (!row) throw new Error('INCIDENT_NOT_FOUND');
-  if (!row.suspended) throw new Error('NOT_SUSPENDED');
-  await db('incidents').where({ id }).update({ suspended: 0 });
-  const version = await createSnapshot({
-    triggeredBy: 'MANUAL',
-    triggeredByEmail: caller.email,
-    notes: `Incident: suspension of ${row.organization_id ?? 'unknown site'} lifted`,
-  });
-  await db.transaction((trx) =>
-    appendEvent(trx, id, caller.email, 'SUSPENSION_LIFTED', {
+  const versionNumber = await db.transaction(async (trx) => {
+    const locked = await lockIncident(trx, id);
+    if (!locked.suspended) throw new Error('NOT_SUSPENDED');
+    const version = await createSnapshot({
+      triggeredBy: 'MANUAL',
+      triggeredByEmail: caller.email,
+      notes: `Incident: suspension of ${row.organization_id ?? 'unknown site'} lifted`,
+      input: await loadAllowListInput({ excludeIncidentId: id }),
+    });
+    await trx('incidents').where({ id }).update({ suspended: 0 });
+    await appendEvent(trx, id, caller.email, 'SUSPENSION_LIFTED', {
       causeFixed: checklist.causeFixed,
       fixTested: checklist.fixTested,
       releasedByTechBoard: checklist.releasedByTechBoard,
       note: checklist.note,
       versionNumber: version.versionNumber,
-    }),
-  );
+    });
+    return version.versionNumber;
+  });
   await auditIncident(row, caller, 'UPDATE', {
     action: 'incident_lift_suspension',
-    versionNumber: version.versionNumber,
+    versionNumber,
   });
   const updated = (await loadIncidentRow(id)) as IncidentRow;
-  await notifyIncident(updated, 'lifted', caller.email, { versionNumber: version.versionNumber });
+  await notifyIncident(updated, 'lifted', caller.email, { versionNumber });
   return toApi(updated, caller);
 }
