@@ -32,6 +32,12 @@ describe('renderIncidentMail', () => {
     }
   });
 
+  it('does not claim a withdrawal for measures without a suspension', () => {
+    const { subject, text } = renderIncidentMail({ ...base, event: 'measures' });
+    expect(subject).toContain('Maßnahmen gegen einen Standort / Measures taken against a site');
+    expect(text).not.toMatch(/gesperrt und aus der Allow List|suspended and taken out/);
+  });
+
   it('shows the published allow-list version of a suspension', () => {
     expect(renderIncidentMail({ ...base, event: 'suspended', versionNumber: 42 }).text).toContain(
       'v42',

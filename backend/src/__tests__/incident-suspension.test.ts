@@ -25,6 +25,7 @@ import { AdminCertError, assertAcceptable } from '../services/admin-certificates
 import * as bundleVersions from '../services/bundle-versions.service';
 import { parseAllowListInput } from '../lib/allowListInput';
 import { redis, setRefreshToken } from '../services/redis.service';
+import * as notifications from '../services/notification.service';
 
 const sfx = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 const adminEmail = `inc-susp-admin-${sfx}@imi-test.example.de`;
@@ -291,5 +292,25 @@ describe('removing the logins of a site', () => {
     expect(results[0]).toMatchObject({ scopedSessionsRevoked: 1, sessionsRevoked: 1 });
     expect(await alive(scoped)).toBe(false);
     expect(await alive(personal)).toBe(false);
+  });
+});
+
+describe('mailing the sites', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  const mailedEvents = (spy: jest.SpyInstance) =>
+    spy.mock.calls.map((c) => (c[1] as { event: string }).event).filter((e) => e !== 'confirmed');
+
+  it('mails a suspension only when the site was withdrawn', async () => {
+    const spy = jest.spyOn(notifications, 'sendIncidentEmail');
+    const site = await seed('inc-mail-measures');
+    const id = await reportFor(site);
+    spy.mockClear();
+    await suspendIncident(id, ['BLOCK_CERTIFICATES', 'MAIL_SITES'], true, admin());
+    expect(mailedEvents(spy)).toEqual(['measures', 'measures']);
+
+    spy.mockClear();
+    await suspendIncident(id, ['WITHDRAW', 'MAIL_SITES'], false, admin());
+    expect(mailedEvents(spy)).toEqual(['suspended', 'suspended']);
   });
 });
