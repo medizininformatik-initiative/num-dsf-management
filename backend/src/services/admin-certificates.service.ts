@@ -16,14 +16,17 @@
  * ca-whitelist/blacklist, lib/adminGrants, lib/certFingerprint
  */
 import crypto from 'crypto';
+import type { Knex } from 'knex';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
 import { revokeAllSessions } from './auth.service';
+import { sendAdminCertChangedEmail } from './notification.service';
+import { logger } from '../lib/logger';
 import { parseCertificate } from './certificate.service';
 import { isCaBlacklisted } from './ca-blacklist.service';
 import { isIssuerWhitelisted, isWhitelistEnforced } from './ca-whitelist.service';
-import { isVerifiedAdminEmail } from '../lib/adminGrants';
+import { isVerifiedAdminEmail, listVerifiedAdminEmails } from '../lib/adminGrants';
 import {
   sha512FingerprintFromPem,
   canonicalCertificatePem,
@@ -209,11 +212,115 @@ export interface RemoveOptions {
   currentFingerprint?: string | null;
 }
 
+/** Actor name of the server CLI (scripts/admin-cert.ts), the emergency path. */
+export const SERVER_CLI_ACTOR = 'server-cli';
+
+/**
+ * Floor guard for removing admin certificates (inside the removing
+ * transaction): refuses when, without `removed`, no admin other than `actor`
+ * would still hold a valid certificate (valid_until unset or in the future)
+ * on a whitelisted, unlocked account with a verified admin grant. Not applied
+ * when admins remove their own certificates or the server CLI acts. Locks all
+ * admin certificate rows, so concurrent removals serialize. Removing the
+ * certificates of a non-admin is never restricted (they do not count).
+ * @throws AdminCertError LAST_OTHER_ADMIN_CERT
+ */
+async function assertOtherAdminCertRemains(
+  trx: Knex.Transaction,
+  removedIds: string[],
+  targetEmail: string,
+  actor: string,
+): Promise<void> {
+  const by = lower(actor);
+  if (by === lower(targetEmail) || by === SERVER_CLI_ACTOR) return;
+  const admins = new Set((await listVerifiedAdminEmails()).map(lower));
+  // Certificates of a non-admin never count, so removing them lowers nothing.
+  if (!admins.has(lower(targetEmail))) return;
+  const rows: Row[] = await trx('admin_cert_fingerprints').forUpdate();
+  const usable = new Set(
+    (await trx('email_whitelist').whereNull('locked_at').pluck('email')).map(lower),
+  );
+  const now = Date.now();
+  const remains = rows.some(
+    (r) =>
+      !removedIds.includes(r.id) &&
+      lower(r.email) !== by &&
+      admins.has(lower(r.email)) &&
+      usable.has(lower(r.email)) &&
+      (!r.valid_until || new Date(r.valid_until).getTime() > now),
+  );
+  if (!remains) throw new AdminCertError('LAST_OTHER_ADMIN_CERT');
+}
+
+/**
+ * Delete admin certificates of `email` (all, or only `ids`) inside `trx`,
+ * after the floor guard. Callers mail with notifyAdminCertRemoved after commit.
+ * @returns the removed rows
+ * @throws AdminCertError LAST_OTHER_ADMIN_CERT
+ */
+export async function deleteAdminCertificates(
+  trx: Knex.Transaction,
+  email: string,
+  actor: string,
+  ids?: string[],
+): Promise<Array<{ id: string; email: string; fingerprint: string }>> {
+  const target = lower(email);
+  const q = trx('admin_cert_fingerprints').whereRaw('LOWER(email) = ?', [target]);
+  if (ids) q.whereIn('id', ids);
+  const rows: Row[] = await q.clone().forUpdate();
+  if (rows.length === 0) return [];
+  await assertOtherAdminCertRemains(
+    trx,
+    rows.map((r) => r.id),
+    target,
+    actor,
+  );
+  await trx('admin_cert_fingerprints')
+    .whereIn(
+      'id',
+      rows.map((r) => r.id),
+    )
+    .del();
+  return rows;
+}
+
+/**
+ * Tell the affected admin and every other admin that a certificate was
+ * removed, naming the actor. A failing mail never undoes the removal.
+ */
+export async function notifyAdminCertRemoved(
+  targetEmail: string,
+  actor: string,
+  fingerprints: string[],
+): Promise<void> {
+  const target = lower(targetEmail);
+  let others: string[] = [];
+  try {
+    others = (await listVerifiedAdminEmails()).map(lower).filter((e) => e !== target);
+  } catch (err) {
+    logger.error({ err }, '[AdminCertificates] listing admins for the notice failed');
+  }
+  for (const fp of fingerprints) {
+    const opts = { change: 'remove' as const, byAdmin: actor, fingerprintPrefix: fp.slice(0, 16) };
+    const sends = [
+      sendAdminCertChangedEmail(target, opts),
+      ...[...new Set(others)].map((to) =>
+        sendAdminCertChangedEmail(to, { ...opts, targetEmail: target }),
+      ),
+    ];
+    for (const s of sends) {
+      await s.catch((err) => logger.error({ err }, '[AdminCertificates] notice mail failed'));
+    }
+  }
+}
+
 /**
  * Remove one admin certificate of `email` and end all sessions of `email`
- * (refresh tokens; access tokens run out within their 15 minutes).
+ * (refresh tokens; access tokens run out within their 15 minutes). Takes
+ * effect at once; the affected admin and all other admins are mailed.
  * @throws AdminCertError CERTIFICATE_NOT_FOUND / CURRENT_CERTIFICATE (a session
- *   may not remove the certificate it is using, so nobody locks themselves out).
+ *   may not remove the certificate it is using, so nobody locks themselves out)
+ *   / LAST_OTHER_ADMIN_CERT (see assertOtherAdminCertRemains).
  */
 export async function removeAdminCertificate(opts: RemoveOptions): Promise<AdminCertificate> {
   const email = lower(opts.email);
@@ -224,7 +331,10 @@ export async function removeAdminCertificate(opts: RemoveOptions): Promise<Admin
   if (opts.self && opts.currentFingerprint && row.fingerprint === opts.currentFingerprint) {
     throw new AdminCertError('CURRENT_CERTIFICATE');
   }
-  await db('admin_cert_fingerprints').where({ id: opts.id }).del();
+  const removed = await db.transaction((trx) =>
+    deleteAdminCertificates(trx, email, opts.actor, [opts.id]),
+  );
+  if (removed.length === 0) throw new AdminCertError('CERTIFICATE_NOT_FOUND');
   // End the admin's sessions, as lock and demote do: outside cert mode a
   // session created with this certificate would otherwise keep refreshing.
   await revokeAllSessions(email).catch(() => {});
@@ -242,6 +352,7 @@ export async function removeAdminCertificate(opts: RemoveOptions): Promise<Admin
     },
     ipAddress: opts.ip,
   });
+  await notifyAdminCertRemoved(email, opts.actor, [row.fingerprint]);
   return toApi(row);
 }
 

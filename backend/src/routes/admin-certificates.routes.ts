@@ -10,7 +10,9 @@
  *   GET    /admin-certificates                 all admins' certificates (overview)
  *   POST   /users/:email/certificates          REQUEST one for ANOTHER admin (four-eyes: a third
  *                                              admin approves via /admin-cert-requests; step-up, mail)
- *   DELETE /users/:email/certificates/:id      remove one of ANOTHER admin (step-up, mail)
+ *   DELETE /users/:email/certificates/:id      remove one of ANOTHER admin (step-up, at once; refused
+ *                                              with LAST_OTHER_ADMIN_CERT when no other admin would
+ *                                              keep a valid certificate; mails all admins)
  *
  * Every route is admin-only (org-scoped sessions never are). The PEM is never
  * logged or stored. Dependencies: auth/admin/totp/rateLimit middleware,
@@ -24,14 +26,12 @@ import { requireFreshTotp } from '../middleware/totp.middleware';
 import { stepUpTotpRateLimit } from '../middleware/rateLimit.middleware';
 import { asyncHandler } from '../lib/asyncHandler';
 import { extractClientCert } from '../lib/clientCert';
-import { logger } from '../lib/logger';
 import * as svc from '../services/admin-certificates.service';
 import { AdminCertError } from '../services/admin-certificates.service';
 import * as requests from '../services/admin-cert-requests.service';
 import { CertRequestError } from '../services/admin-cert-requests.service';
 import { previewCertificate } from '../services/certificate.service';
 import { writeAuditLog } from '../services/audit.service';
-import { sendAdminCertChangedEmail } from '../services/notification.service';
 
 const pemSchema = z.object({
   pem: z.string().min(1).max(20000),
@@ -54,6 +54,7 @@ const STATUS: Record<string, number> = {
   ADMIN_CERTIFICATE_IN_USE: 409,
   ORG_LOGIN_CERTIFICATE_IN_USE: 409,
   CURRENT_CERTIFICATE: 409,
+  LAST_OTHER_ADMIN_CERT: 409,
 };
 const DENIAL_REASONS = new Set(['PRIVATE_KEY_REJECTED', 'CA_BLACKLISTED', 'CA_NOT_WHITELISTED']);
 
@@ -76,20 +77,6 @@ function fail(req: Request, res: Response, err: unknown): boolean {
 
 function invalid(res: Response, message: string): void {
   res.status(400).json({ error: { code: 'VALIDATION', message } });
-}
-
-/** Mail the affected admin; a failing mail must not undo the change. */
-function notifyTarget(
-  to: string,
-  change: 'add' | 'remove',
-  byAdmin: string,
-  fingerprint: string,
-): void {
-  sendAdminCertChangedEmail(to, {
-    change,
-    byAdmin,
-    fingerprintPrefix: fingerprint.slice(0, 16),
-  }).catch((err) => logger.error({ err }, '[AdminCertificates] notification mail failed'));
 }
 
 export const adminCertificatesRouter = Router();
@@ -251,14 +238,14 @@ adminCertificatesRouter.delete(
       if (target === req.user!.email.toLowerCase().trim()) {
         throw new AdminCertError('USE_SELF_SERVICE');
       }
-      const removed = await svc.removeAdminCertificate({
+      // Takes effect at once; the service mails the affected and all other admins.
+      await svc.removeAdminCertificate({
         email: target,
         id: req.params.id,
         actor: req.user!.email,
         ip: req.ip || 'unknown',
         self: false,
       });
-      notifyTarget(target, 'remove', req.user!.email, removed.fingerprint);
       res.json({ data: { deleted: true } });
     } catch (err) {
       if (!fail(req, res, err)) throw err;
