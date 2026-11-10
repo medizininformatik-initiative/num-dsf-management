@@ -329,4 +329,29 @@ export async function reportIncident(
   return toApi(row, caller);
 }
 
+async function requireAdminRow(id: string): Promise<IncidentRow> {
+  const row = await loadRow(id);
+  if (!row) throw new Error('INCIDENT_NOT_FOUND');
+  return row;
+}
+
+const isClosed = (row: IncidentRow) => row.status === 'CLOSED' || row.status === 'FALSE_ALARM';
+
+/** REPORTED -> CONFIRMED, visible to all users, mail to all sites. @throws INVALID_STATUS */
+export async function confirmIncident(id: string, caller: IncidentCaller): Promise<ApiIncident> {
+  const row = await requireAdminRow(id);
+  if (row.status !== 'REPORTED') throw new Error('INVALID_STATUS');
+  await changeWithEvent(
+    id,
+    { status: 'CONFIRMED', confirmed_by: caller.email, confirmed_at: new Date() },
+    caller.email,
+    'CONFIRMED',
+    {},
+  );
+  const updated = (await loadRow(id))!;
+  await auditIncident(updated, caller, 'UPDATE', { action: 'incident_confirm' });
+  await notifyIncident(updated, 'confirmed', caller.email, { sites: true });
+  return toApi(updated, caller);
+}
+
 export { loadRow as loadIncidentRow, changeWithEvent };
