@@ -40,6 +40,7 @@ const incident: Incident = {
   escalationLevel: 1,
   organization: { identifier: 'ukm.de', name: 'Uniklinik Münster' },
   reportedBy: 'site@ukm.de',
+  reportedByOrganization: null,
   reportedAt: '2026-11-10T08:00:00Z',
   detectedAt: '2026-11-10T07:30:00Z',
   confirmedBy: null,

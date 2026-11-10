@@ -60,6 +60,8 @@ export interface Incident {
   escalationLevel: EscalationLevel;
   organization: IncidentSite | null;
   reportedBy: string | null;
+  /** Set when the report came through this organization's certificate session. */
+  reportedByOrganization: string | null;
   reportedAt: string;
   detectedAt: string;
   confirmedBy: string | null;
@@ -70,7 +72,8 @@ export interface Incident {
   zulipUrl: string | null;
   /** Always three entries, in stage order. */
   nis2: Nis2Entry[];
-  dpoInformed: { at: string; by: string } | null;
+  /** `by` is null when it would name a reporter hidden from the caller. */
+  dpoInformed: { at: string; by: string | null } | null;
   /** The caller may tick NIS2 stages and "DPO informed". */
   canAcknowledge: boolean;
   /** The caller reported it. */
@@ -91,6 +94,8 @@ export interface IncidentEvent {
 export interface IncidentChain {
   valid: boolean;
   brokenAt: number | null;
+  /** Incident fields whose stored value no longer matches the timeline. */
+  tamperedFields?: string[];
 }
 
 export interface IncidentDetail {
@@ -183,8 +188,11 @@ export const incidentsApi = {
     axios.post<{ data: IncidentEvent }>(`${ADMIN}/${id}/comment`, { text }, {
       headers: authHeader(),
     }),
-  update: (id: string, body: UpdateIncidentBody) =>
-    axios.patch<{ data: Incident }>(`${ADMIN}/${id}`, body, { headers: authHeader() }),
+  /** Changing detectedAt or zulipUrl needs the step-up code. */
+  update: (id: string, body: UpdateIncidentBody, totpCode?: string) =>
+    axios.patch<{ data: Incident }>(`${ADMIN}/${id}`, withCode(body, totpCode), {
+      headers: authHeader(),
+    }),
   export: (id: string, format: ExportFormat) =>
     axios.get<Blob>(`${ADMIN}/${id}/export`, {
       headers: authHeader(),
