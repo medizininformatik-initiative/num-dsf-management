@@ -68,8 +68,21 @@ function authHeader() {
 function api(instanceId: string) {
   const base = `${BASE}/instances/${instanceId}`;
   return {
-    getInstances: () =>
-      axios.get(`${BASE}/instances`, { headers: authHeader() }),
+    getInstances: (includeArchived = false) =>
+      axios.get(`${BASE}/instances`, {
+        headers: authHeader(),
+        params: includeArchived ? { includeArchived: true } : undefined,
+      }),
+    archiveInstance: (id: string) =>
+      axios.put(`${BASE}/instances/${id}/archive`, {}, { headers: authHeader() }),
+    unarchiveInstance: (id: string) =>
+      axios.put(`${BASE}/instances/${id}/unarchive`, {}, { headers: authHeader() }),
+    // totpCode is the step-up code of an OTP session; a certificate session sends none.
+    deleteInstance: (id: string, totpCode?: string) =>
+      axios.delete(`${BASE}/instances/${id}`, {
+        headers: authHeader(),
+        data: totpCode !== undefined ? { totpCode } : {},
+      }),
     createInstance: (data: { label: string }) =>
       axios.post(`${BASE}/instances`, data, { headers: authHeader() }),
     getInstance: (id: string) =>
