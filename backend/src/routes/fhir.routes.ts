@@ -68,22 +68,30 @@ async function findOrgByClientCert(cert: ClientCertInfo): Promise<ResolvedOrg | 
       .first();
     if (byFingerprint) return { org: byFingerprint, match: 'sha512' };
   }
+  // parseCertificate stores the SHA-256 in upper case, extractClientCert
+  // computes it in lower case; match both instead of relying on collation.
+  const thumbprints = [cert.thumbprint, cert.thumbprint.toUpperCase()];
+  const owners: Array<{ organization_id: string }> = await db('certificates')
+    .whereIn('thumbprint', thumbprints)
+    .distinct('organization_id');
+
   // client_cert_thumbprint is tenant-editable and not unique: identify the
-  // site only when exactly one organization claims the thumbprint.
+  // site by it only when exactly one organization claims the thumbprint and no
+  // OTHER organization registered the certificate. Otherwise (ambiguous, or a
+  // claim on another site's certificate) fall through to the certificate list.
   const byThumbprint = await db('organizations')
-    .whereIn('client_cert_thumbprint', [cert.thumbprint, cert.thumbprint.toUpperCase()])
+    .whereIn('client_cert_thumbprint', thumbprints)
     .limit(2);
-  if (byThumbprint.length > 1) return null;
-  if (byThumbprint.length === 1) return { org: byThumbprint[0], match: 'sha256' };
+  if (
+    byThumbprint.length === 1 &&
+    owners.every((o) => o.organization_id === byThumbprint[0].identifier)
+  ) {
+    return { org: byThumbprint[0], match: 'sha256' };
+  }
 
   // A DSF BPE presents the organization's DSF client certificate, which is
   // usually not the certificate used for the browser login. Accept it when
   // exactly one organization registered it; an ambiguous match is refused.
-  // parseCertificate stores the SHA-256 in upper case, extractClientCert
-  // computes it in lower case; match both instead of relying on collation.
-  const owners: Array<{ organization_id: string }> = await db('certificates')
-    .whereIn('thumbprint', [cert.thumbprint, cert.thumbprint.toUpperCase()])
-    .distinct('organization_id');
   if (owners.length !== 1) return null;
   const byCertificate = await db('organizations')
     .where({ identifier: owners[0].organization_id })
