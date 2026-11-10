@@ -41,6 +41,7 @@ All configuration flows through env vars (no hardcoded secrets). Copy `.env.exam
 - `RATE_LIMIT_OTP_MAX` (default 5), `RATE_LIMIT_OTP_WINDOW_MS` (default 900000)
 - `RATE_LIMIT_API_MAX` (default 100), `RATE_LIMIT_API_WINDOW_MS` (default 60000)
 - `RATE_LIMIT_CERT_LOGIN_MAX` (default 120), `RATE_LIMIT_CERT_LOGIN_WINDOW_MS` (default 900000). Limit of `POST /auth/client-cert-login` per presented certificate (SHA-512 fingerprint, the IP when there is none). Separate from the tight OTP bucket because the single-page app logs in on every reload and new tab.
+- `RATE_LIMIT_CERT_LOGIN_FAIL_MAX` (default 30), `RATE_LIMIT_CERT_LOGIN_FAIL_WINDOW_MS` (default 900000). Failed `POST /auth/client-cert-login` attempts per source IP, whichever certificate was presented; successful logins do not count.
 
 **Admin team:**
 - `IMI_ADMIN_EMAILS` — comma-separated list. Each admin's email **domain** is treated as their "site" for the 4-eyes approval rule.
