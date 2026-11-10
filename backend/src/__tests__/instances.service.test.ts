@@ -125,6 +125,35 @@ describe('instances.service lifecycle', () => {
     expect((await listForUser(userId, userEmail)).some((i) => i.id === id)).toBe(true);
   });
 
+  it('lists the newest approval status, the last approval date and ownership', async () => {
+    const id = await newInstance();
+    const fresh = await newInstance();
+    const approvedAt = new Date('2026-02-03T10:00:00Z');
+    await db('approval_requests').insert([
+      {
+        id: uuidv4(),
+        instance_id: id,
+        status: 'APPROVED',
+        created_at: new Date('2026-02-01T10:00:00Z'),
+        resolved_at: approvedAt,
+      },
+      {
+        id: uuidv4(),
+        instance_id: id,
+        status: 'DRAFT',
+        created_at: new Date('2026-03-01T10:00:00Z'),
+      },
+    ]);
+    const list = await listForUser(userId, userEmail);
+    const row = list.find((i) => i.id === id)!;
+    expect(row.approval_status).toBe('DRAFT');
+    expect(row.last_approved_at).toEqual(approvedAt);
+    expect(row.is_owner).toBe(true);
+    const none = list.find((i) => i.id === fresh)!;
+    expect(none.approval_status).toBe('NONE');
+    expect(none.last_approved_at).toBeNull();
+  });
+
   it('archiving keeps the organization and its published membership', async () => {
     const id = await newInstance();
     await addOrg(id);
