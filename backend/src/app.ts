@@ -200,6 +200,14 @@ app.use((_req: Request, res: Response) => {
 
 // Global error handler
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  // body-parser puts the raw request text into err.body, and that text may be
+  // a PEM or a private key: answer without logging the error object.
+  if ((err as { type?: string } | null)?.type === 'entity.parse.failed') {
+    logger.warn({ requestId: (req as Request & { id?: string }).id }, 'Malformed request body');
+    return res
+      .status(400)
+      .json({ error: { code: 'INVALID_JSON', message: 'Malformed request body' } });
+  }
   logger.error({ err, requestId: (req as Request & { id?: string }).id }, 'Unhandled error');
 
   // Narrow err
