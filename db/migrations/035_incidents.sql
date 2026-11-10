@@ -13,6 +13,13 @@
 --                                     (24 h / 72 h / 1 month); the bsi_* and
 --                                     dpo_* columns record who ticked "reported
 --                                     to BSI" per stage and "DPO informed".
+--                                     reported_by_instance_id is set when the
+--                                     report came through an organization
+--                                     certificate session (scoped to that
+--                                     instance; reported_by is then the
+--                                     instance owner's e-mail), so such a
+--                                     session is a different reporter than the
+--                                     owner's own login.
 --                                     Incidents are never deleted.
 --   incident_events                   append-only timeline of an incident
 --                                     (no UPDATE/DELETE in code, same rule as
@@ -46,6 +53,7 @@ SET @sql := IF(@t = 0, CONCAT(
      description      TEXT          NOT NULL,
      status           ENUM("REPORTED","CONFIRMED","CLOSED","FALSE_ALARM") NOT NULL DEFAULT "REPORTED",
      reported_by      VARCHAR(255)  NOT NULL,
+     reported_by_instance_id CHAR(36) NULL,
      reported_at      DATETIME(3)   NOT NULL,
      detected_at      DATETIME(3)   NOT NULL,
      escalation_level TINYINT       NOT NULL DEFAULT 1,
@@ -67,6 +75,14 @@ SET @sql := IF(@t = 0, CONCAT(
      KEY idx_incidents_org (organization_id, suspended),
      CONSTRAINT fk_incidents_org FOREIGN KEY (organization_id) REFERENCES organizations (identifier) ON DELETE SET NULL
    ) ENGINE=InnoDB'),
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Databases that ran an earlier draft of this migration lack the column.
+SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'incidents' AND COLUMN_NAME = 'reported_by_instance_id');
+SET @sql := IF(@c = 0,
+  'ALTER TABLE incidents ADD COLUMN reported_by_instance_id CHAR(36) NULL AFTER reported_by',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
