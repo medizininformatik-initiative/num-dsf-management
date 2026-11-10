@@ -247,15 +247,9 @@ venv/
 .svelte-kit/
 
 # -----------------------------------------------------------------------------
-# Graphify knowledge graph (https://github.com/Graphify-Labs/graphify)
-# Commit only the queryable graph + report for future sessions; ignore the
-# large/churny regenerables (graph.html, manifest.json, cache/, future subdirs).
+# Graphify knowledge graph (local tool output, never committed)
 # -----------------------------------------------------------------------------
-graphify-out/*
-!graphify-out/graph.json
-!graphify-out/GRAPH_REPORT.md
-!graphify-out/.graphify_labels.json
-!graphify-out/.graphify_root
+graphify-out/
 
 # DSF e2e harness: generated PKI, plugin jar and manifest
 scripts/dsf-e2e/.work/
