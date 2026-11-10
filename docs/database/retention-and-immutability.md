@@ -48,3 +48,13 @@ emails survive process restarts. On approve/reject, `notifySiteOnApproval`
 (`lib/time.ts`), i.e. a fixed 30-minute delay. The scheduler runs `flushPendingNotifications`
 every 5 minutes; rows with `send_after <= now` are sent and then removed. Admins are
 notified immediately; the affected site receives its mail after the 30-minute delay.
+
+## incident register kept forever
+
+Migration `035_incidents.sql`: `incidents`, `incident_events` and
+`blocked_certificate_thumbprints` have no retention and no delete path in code.
+Incidents are closed (CLOSED / FALSE_ALARM), never deleted; a blocked thumbprint
+stays blocked after the suspension is lifted. `incident_events` is append-only by
+convention (no triggers, so a backup restore can refill it) and protected by its
+SHA-256 hash chain instead: any edited, removed or reordered event is reported by
+the chain check in the detail view and the export.
