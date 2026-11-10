@@ -47,7 +47,7 @@ const KNOWN_VERBUND_LABELS: Record<string, string> = {
 };
 
 const KNOWN_VERBUND_COLORS: Record<string, string> = {
-  'mii-testverband.example.de': '#b01e66',
+  'mii-testverband.example.de': '#7c3fb8',
   'num-testverband.example.de': '#4a90d9',
 };
 
