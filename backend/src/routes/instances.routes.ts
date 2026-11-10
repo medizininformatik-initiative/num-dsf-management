@@ -1,14 +1,16 @@
 /**
- * instances.routes.ts – DSF Instance CRUD (list, create, show, rename)
- * Dependencies: auth.middleware, instances.service, asyncHandler, Zod
+ * instances.routes.ts – DSF Instance CRUD (list, create, show, rename, archive, delete)
+ * Dependencies: auth.middleware, stepUp.middleware, instances.service, asyncHandler, Zod
  *
  * All DB work lives in services/instances.service.ts — handlers stay
  * focused on request parsing + response shape.
  */
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireInstanceOwnership } from '../middleware/instance.middleware';
+import { requireStepUp } from '../middleware/stepUp.middleware';
+import { stepUpTotpRateLimit } from '../middleware/rateLimit.middleware';
 import { asyncHandler } from '../lib/asyncHandler';
 import * as svc from '../services/instances.service';
 import { resolveReceiver } from '../services/fhir.service';
@@ -25,7 +27,9 @@ instancesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     res.json({
-      data: await svc.listForUser(req.user!.id, req.user!.email, req.user!.scopeInstanceId),
+      data: await svc.listForUser(req.user!.id, req.user!.email, req.user!.scopeInstanceId, {
+        includeArchived: req.query.includeArchived === 'true',
+      }),
     });
   }),
 );
@@ -94,5 +98,83 @@ instancesRouter.put(
     const updated = await svc.renameInstance(req.params.id, req.user!.id, parsed.data.label);
     if (!updated) return res.status(403).json({ error: { code: 'FORBIDDEN' } });
     res.json({ data: updated });
+  }),
+);
+
+// Archive / unarchive / delete are owner actions. A site login (organization
+// certificate session) runs as the owner's user but must not manage the
+// instance itself.
+function ownerSessionOnly(req: Request, res: Response, next: NextFunction): void {
+  if (req.user!.scopeInstanceId) {
+    res.status(403).json({ error: { code: 'FORBIDDEN', message: 'A site login cannot do this' } });
+    return;
+  }
+  next();
+}
+
+const notOwner = { error: { code: 'FORBIDDEN', message: 'Only the owner can do this' } };
+
+instancesRouter.put(
+  '/:id/archive',
+  ownerSessionOnly,
+  asyncHandler(async (req, res) => {
+    const updated = await svc.archiveInstance(
+      req.params.id,
+      req.user!.id,
+      req.user!.email,
+      req.ip || 'unknown',
+    );
+    if (!updated) return res.status(403).json(notOwner);
+    res.json({ data: updated });
+  }),
+);
+
+instancesRouter.put(
+  '/:id/unarchive',
+  ownerSessionOnly,
+  asyncHandler(async (req, res) => {
+    const updated = await svc.unarchiveInstance(
+      req.params.id,
+      req.user!.id,
+      req.user!.email,
+      req.ip || 'unknown',
+    );
+    if (!updated) return res.status(403).json(notOwner);
+    res.json({ data: updated });
+  }),
+);
+
+// Step-up rate limiter guarding the TOTP re-verification (skipped under jest).
+const stepUpLimiter = process.env.NODE_ENV === 'test' ? [] : [stepUpTotpRateLimit];
+
+// Only an instance that was never approved or published can be deleted; any
+// other instance can only be archived (409 INSTANCE_HAS_HISTORY).
+instancesRouter.delete(
+  '/:id',
+  ownerSessionOnly,
+  ...stepUpLimiter,
+  requireStepUp,
+  asyncHandler(async (req, res) => {
+    try {
+      const deleted = await svc.deleteInstance(
+        req.params.id,
+        req.user!.id,
+        req.user!.email,
+        req.ip || 'unknown',
+      );
+      if (!deleted) return res.status(403).json(notOwner);
+      res.json({ data: { deleted: true } });
+    } catch (e) {
+      if (e instanceof Error && e.message === 'INSTANCE_HAS_HISTORY') {
+        return res.status(409).json({
+          error: {
+            code: 'INSTANCE_HAS_HISTORY',
+            message:
+              'This instance was approved, published or has an incident. Archive it instead.',
+          },
+        });
+      }
+      throw e;
+    }
   }),
 );
