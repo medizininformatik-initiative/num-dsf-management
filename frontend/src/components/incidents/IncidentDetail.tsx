@@ -83,7 +83,12 @@ export function IncidentDetail({ id, renderAdmin }: IncidentDetailProps) {
               : t('incidentSiteUnknownShort')}
           </Fact>
           <Fact label={t('incidentDetailReportedAt')}>
-            {byOn(incident.reportedAt, incident.reportedBy)}
+            {byOn(
+              incident.reportedAt,
+              incident.reportedByOrganization
+                ? t('incidentReporterOrgCert', { org: incident.reportedByOrganization })
+                : incident.reportedBy,
+            )}
           </Fact>
           <Fact label={t('incidentDetailDetectedAt')}>
             {formatDateTime(incident.detectedAt, lang)}
