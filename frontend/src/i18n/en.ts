@@ -382,7 +382,7 @@ export const en = {
   // Simple / detailed view of the entity cards
   viewSwitchLabel: 'View',
   viewSimple: 'Simple',
-  viewDetailed: 'Detailed',
+  viewDetailed: 'Details',
   cardShowDetails: 'Show details',
   cardHideDetails: 'Hide details',
   ipDiffCompact: 'IP changes',

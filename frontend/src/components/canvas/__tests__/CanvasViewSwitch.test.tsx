@@ -17,7 +17,7 @@ vi.mock('../../../hooks/useMe', () => ({
 import { CanvasViewSwitch } from '../CanvasViewSwitch';
 
 const simple = () => screen.getByRole('button', { name: 'Simple' });
-const detailed = () => screen.getByRole('button', { name: 'Detailed' });
+const detailed = () => screen.getByRole('button', { name: 'Details' });
 
 beforeEach(() => {
   useCanvasViewStore.setState({ choice: null });
