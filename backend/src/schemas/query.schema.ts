@@ -14,6 +14,7 @@ const RESOURCES = [
   'MARKETPLACE',
   'AUDIT',
   'BACKUP',
+  'INCIDENT',
 ] as const;
 
 const OPERATIONS = [
