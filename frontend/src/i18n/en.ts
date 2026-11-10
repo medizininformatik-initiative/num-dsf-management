@@ -814,6 +814,10 @@ export const en = {
     'Upload refused: the issuing certificate authority is not on the CA whitelist (CA_NOT_WHITELISTED).',
   formCertErrorRegisteredElsewhere:
     'Upload refused: this certificate is already registered for another organization (CERT_REGISTERED_ELSEWHERE).',
+  formCertErrorBlocked:
+    'Upload refused: this certificate was blocked by a security incident (CERT_BLOCKED). Use a new certificate.',
+  formCertErrorCaCertificate:
+    'Upload refused: this is a CA certificate, not the certificate of your DSF instance (CA_CERTIFICATE_REJECTED).',
   formCertExpired: 'Expired',
   formCertExpiresToday: 'Expires today',
   formCertDayLeft: '1 day left',
@@ -1190,6 +1194,11 @@ export const en = {
     'This certificate is already an organization login certificate.',
   adminCertErr_NOT_AN_ADMIN: 'This account is not an admin.',
   adminCertErr_USE_SELF_SERVICE: 'For your own account use "My admin certificates".',
+  adminCertErr_CA_CERTIFICATE_REJECTED:
+    'This is a CA certificate, not a personal client certificate.',
+  adminCertErr_CERT_BLOCKED: 'This certificate was blocked by a security incident.',
+  adminCertErr_LAST_OTHER_ADMIN_CERT:
+    'Refused: afterwards no other admin would have a valid admin certificate.',
   adminCertUserTitle: 'Admin certificates',
   adminCertUserNone: 'No certificate registered.',
   adminCertUserRemoveBody:
@@ -1279,6 +1288,8 @@ export const en = {
     'Only certificates uploaded by the clinic itself can be allowed for login here. Every certificate becomes a login certificate automatically once its request is approved.',
   loginCertErrNotClinic:
     'Only certificates uploaded by the clinic itself can be allowed for login.',
+  loginCertErrBlocked:
+    'This certificate was blocked by a security incident and cannot be used to sign in.',
 
   // AdminPromotionsPage
   adminPromotionsTitle: 'Admin promotion approvals',
@@ -2167,6 +2178,7 @@ export const en = {
   incidentDetailConfirmed: 'Confirmed',
   incidentDetailClosed: 'Closed',
   incidentDetailByOn: '{date} by {by}',
+  incidentReporterOrgCert: 'organization certificate of {org}',
   incidentDetailDescription: 'Description',
   incidentDetailDescriptionHint: 'Visible to admins and the reporter only.',
   incidentDetailZulip: 'Coordination thread (Zulip)',
@@ -2194,6 +2206,7 @@ export const en = {
   incidentAckFailed: 'Could not record it',
   incidentDpoTitle: 'Data protection officer',
   incidentDpoInformed: 'Informed {date} by {by}',
+  incidentDpoInformedNoActor: 'Informed {date}',
   incidentDpoNotInformed: 'Not recorded as informed yet.',
   incidentDpoTick: 'Mark as informed',
   incidentDpoConfirmTitle: 'Mark the DPO as informed?',
@@ -2205,6 +2218,7 @@ export const en = {
   incidentChainValid: 'Hash chain verified',
   incidentChainBroken: 'Hash chain broken at entry {n}',
   incidentChainBrokenUnknown: 'Hash chain broken',
+  incidentChainFieldsChanged: 'Incident data changed outside the timeline: {fields}',
   incidentChainHint:
     'Each entry is chained to the previous one by SHA-256, so a later change would show here.',
   incidentHashValues: 'Hash values',
@@ -2226,7 +2240,8 @@ export const en = {
   incidentMeasureMAIL_SITES: 'Inform all sites by e-mail',
   incidentResultBlocked: '{n} thumbprints blocked',
   incidentResultLogins: '{n} login certificates removed, {s} sessions ended',
-  incidentResultSessionsSkipped: 'Sessions kept: the account belongs to an admin',
+  incidentResultScopedSessions: '{n} certificate sessions of the site ended',
+  incidentResultRepublished: 'Already suspended, published again',
   incidentResultVersion: 'Allow list version {v} published',
   incidentResultMailed: '{n} sites mailed',
   incidentLiftCauseFixed: 'The cause is fixed',
@@ -2297,6 +2312,10 @@ export const en = {
   incidentSettingsTitle: 'Classification',
   incidentSettingsSave: 'Save changes',
   incidentSettingsSaved: 'Saved.',
+  incidentSettingsStepUpConfirm: 'Confirm and save',
+  incidentSettingsStepUpTitle: 'Confirm the change',
+  incidentSettingsStepUpBody:
+    'The detection time moves the NIS2 deadlines and the Zulip link is shown to every site.',
   incidentZulipHint: 'Link to the coordination thread, https only. Leave empty to remove it.',
   incidentErrorINVALID_STATUS:
     'The incident is no longer in a state that allows this. Its current state has been reloaded.',

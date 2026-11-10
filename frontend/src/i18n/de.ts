@@ -826,6 +826,10 @@ export const de: Record<TranslationKey, string> = {
     'Hochladen abgelehnt: Die ausstellende Zertifizierungsstelle steht nicht auf der CA-Whitelist (CA_NOT_WHITELISTED).',
   formCertErrorRegisteredElsewhere:
     'Hochladen abgelehnt: Dieses Zertifikat ist bereits für eine andere Organisation registriert (CERT_REGISTERED_ELSEWHERE).',
+  formCertErrorBlocked:
+    'Hochladen abgelehnt: Dieses Zertifikat wurde wegen eines Sicherheitsvorfalls gesperrt (CERT_BLOCKED). Verwenden Sie ein neues Zertifikat.',
+  formCertErrorCaCertificate:
+    'Hochladen abgelehnt: Das ist ein CA-Zertifikat, nicht das Zertifikat Ihrer DSF-Instanz (CA_CERTIFICATE_REJECTED).',
   formCertExpired: 'Abgelaufen',
   formCertExpiresToday: 'Läuft heute ab',
   formCertDayLeft: 'Noch 1 Tag',
@@ -1207,6 +1211,11 @@ export const de: Record<TranslationKey, string> = {
     'Dieses Zertifikat ist bereits ein Login-Zertifikat einer Organisation.',
   adminCertErr_NOT_AN_ADMIN: 'Dieses Konto ist kein Admin.',
   adminCertErr_USE_SELF_SERVICE: 'Für Ihr eigenes Konto nutzen Sie „Meine Admin-Zertifikate“.',
+  adminCertErr_CA_CERTIFICATE_REJECTED:
+    'Das ist ein CA-Zertifikat, kein persönliches Client-Zertifikat.',
+  adminCertErr_CERT_BLOCKED: 'Dieses Zertifikat wurde wegen eines Sicherheitsvorfalls gesperrt.',
+  adminCertErr_LAST_OTHER_ADMIN_CERT:
+    'Abgelehnt: Danach hätte kein anderer Admin mehr ein gültiges Admin-Zertifikat.',
   adminCertUserTitle: 'Admin-Zertifikate',
   adminCertUserNone: 'Kein Zertifikat hinterlegt.',
   adminCertUserRemoveBody:
@@ -1300,6 +1309,8 @@ export const de: Record<TranslationKey, string> = {
     'Hier können nur von der Klinik selbst hochgeladene Zertifikate für den Login freigegeben werden. Mit der Freigabe des Antrags wird jedes Zertifikat automatisch zum Login-Zertifikat.',
   loginCertErrNotClinic:
     'Nur von der Klinik selbst hochgeladene Zertifikate können für den Login freigegeben werden.',
+  loginCertErrBlocked:
+    'Dieses Zertifikat wurde wegen eines Sicherheitsvorfalls gesperrt und kann nicht zur Anmeldung dienen.',
 
   // AdminPromotionsPage
   adminPromotionsTitle: 'Admin-Beförderungs-Freigaben',
@@ -2212,6 +2223,7 @@ export const de: Record<TranslationKey, string> = {
   incidentDetailConfirmed: 'Bestätigt',
   incidentDetailClosed: 'Abgeschlossen',
   incidentDetailByOn: '{date} von {by}',
+  incidentReporterOrgCert: 'Organisationszertifikat von {org}',
   incidentDetailDescription: 'Beschreibung',
   incidentDetailDescriptionHint: 'Nur für Admins und die meldende Person sichtbar.',
   incidentDetailZulip: 'Koordinations-Thread (Zulip)',
@@ -2239,6 +2251,7 @@ export const de: Record<TranslationKey, string> = {
   incidentAckFailed: 'Konnte nicht festgehalten werden',
   incidentDpoTitle: 'Datenschutzbeauftragte(r)',
   incidentDpoInformed: 'Am {date} von {by} als informiert erfasst',
+  incidentDpoInformedNoActor: 'Am {date} als informiert erfasst',
   incidentDpoNotInformed: 'Noch nicht als informiert erfasst.',
   incidentDpoTick: 'Als informiert markieren',
   incidentDpoConfirmTitle: 'DSB als informiert markieren?',
@@ -2250,6 +2263,7 @@ export const de: Record<TranslationKey, string> = {
   incidentChainValid: 'Hash-Kette geprüft',
   incidentChainBroken: 'Hash-Kette bei Eintrag {n} unterbrochen',
   incidentChainBrokenUnknown: 'Hash-Kette unterbrochen',
+  incidentChainFieldsChanged: 'Vorfalldaten außerhalb der Zeitleiste geändert: {fields}',
   incidentChainHint:
     'Jeder Eintrag ist per SHA-256 mit dem vorigen verkettet, eine nachträgliche Änderung fiele hier auf.',
   incidentHashValues: 'Hash-Werte',
@@ -2273,7 +2287,8 @@ export const de: Record<TranslationKey, string> = {
   incidentMeasureMAIL_SITES: 'Alle Standorte per E-Mail informieren',
   incidentResultBlocked: '{n} Fingerprints gesperrt',
   incidentResultLogins: '{n} Login-Zertifikate entfernt, {s} Sitzungen beendet',
-  incidentResultSessionsSkipped: 'Sitzungen nicht beendet: das Konto gehört einem Admin',
+  incidentResultScopedSessions: '{n} Zertifikats-Sitzungen des Standorts beendet',
+  incidentResultRepublished: 'Bereits gesperrt, erneut veröffentlicht',
   incidentResultVersion: 'Allow-List-Version {v} veröffentlicht',
   incidentResultMailed: '{n} Standorte angeschrieben',
   incidentLiftCauseFixed: 'Die Ursache ist behoben',
@@ -2347,6 +2362,10 @@ export const de: Record<TranslationKey, string> = {
   incidentSettingsTitle: 'Einstufung',
   incidentSettingsSave: 'Änderungen speichern',
   incidentSettingsSaved: 'Gespeichert.',
+  incidentSettingsStepUpConfirm: 'Bestätigen und speichern',
+  incidentSettingsStepUpTitle: 'Änderung bestätigen',
+  incidentSettingsStepUpBody:
+    'Der Erkennungszeitpunkt verschiebt die NIS2-Fristen, und der Zulip-Link wird allen Standorten angezeigt.',
   incidentZulipHint: 'Link zum Koordinations-Thread, nur https. Leer lassen, um ihn zu entfernen.',
   incidentErrorINVALID_STATUS:
     'Der Vorfall ist nicht mehr in einem Zustand, der das erlaubt. Sein aktueller Stand wurde neu geladen.',
