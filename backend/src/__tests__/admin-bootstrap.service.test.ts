@@ -5,14 +5,15 @@
  * returns before touching IMI_ADMIN_EMAILS). The test seeds its own grant so
  * the precondition holds regardless of whether the DB was data-seeded.
  *
- * Also covers bootstrapAdminCertFingerprints(): valid `email=fingerprint`
- * pairs from IMI_ADMIN_CERT_FINGERPRINTS are inserted into
- * admin_cert_fingerprints, invalid entries are skipped, and re-running does
- * not duplicate rows (onConflict('fingerprint').ignore()).
+ * Also covers bootstrapAdminCertFingerprints(): into an empty
+ * admin_cert_fingerprints table, valid `email=fingerprint` pairs from
+ * IMI_ADMIN_CERT_FINGERPRINTS are inserted, invalid entries are skipped, and
+ * re-running does not duplicate rows.
  *
  * Dependencies: db/connection, admin-bootstrap.service, lib/adminGrants, crypto
  */
 import crypto from 'crypto';
+import type { Knex } from 'knex';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/connection';
 import { signGrant } from '../lib/adminGrants';
@@ -73,21 +74,40 @@ describe('admin-bootstrap.service – bootstrapAdminCertFingerprints', () => {
     await db('admin_cert_fingerprints').where({ email: validEmail }).del();
   });
 
+  // The bootstrap only seeds an empty table; the shared test DB is not empty,
+  // so each case empties it inside a transaction that is rolled back.
+  class Rollback extends Error {}
+  const inEmptyTable = (fn: (trx: Knex.Transaction) => Promise<void>) =>
+    expect(
+      db.transaction(async (trx) => {
+        await trx('admin_cert_fingerprints').del();
+        await fn(trx);
+        throw new Rollback();
+      }),
+    ).rejects.toBeInstanceOf(Rollback);
+
   it('seeds the valid fingerprint and skips the invalid one', async () => {
-    await bootstrapAdminCertFingerprints();
+    await inEmptyTable(async (trx) => {
+      await bootstrapAdminCertFingerprints(trx);
 
-    const validRow = await db('admin_cert_fingerprints').where({ email: validEmail }).first();
-    expect(validRow).toBeDefined();
-    expect(validRow.fingerprint).toBe(validFingerprint);
+      const validRow = await trx('admin_cert_fingerprints').where({ email: validEmail }).first();
+      expect(validRow).toBeDefined();
+      expect(validRow.fingerprint).toBe(validFingerprint);
 
-    const invalidRow = await db('admin_cert_fingerprints').where({ email: invalidEmail }).first();
-    expect(invalidRow).toBeUndefined();
+      const invalidRow = await trx('admin_cert_fingerprints')
+        .where({ email: invalidEmail })
+        .first();
+      expect(invalidRow).toBeUndefined();
+    });
   });
 
   it('running the bootstrap again does not duplicate the row', async () => {
-    await bootstrapAdminCertFingerprints();
+    await inEmptyTable(async (trx) => {
+      await bootstrapAdminCertFingerprints(trx);
+      await bootstrapAdminCertFingerprints(trx);
 
-    const rows = await db('admin_cert_fingerprints').where({ email: validEmail });
-    expect(rows).toHaveLength(1);
+      const rows = await trx('admin_cert_fingerprints').where({ email: validEmail });
+      expect(rows).toHaveLength(1);
+    });
   });
 });

@@ -2,10 +2,11 @@
  * admin-bootstrap.service.ts – On backend startup: if admin_grants is empty,
  * create signed grants from IMI_ADMIN_EMAILS env var. Idempotent.
  * After first successful run, the env var is ignored at runtime.
- * Also seeds admin_cert_fingerprints from IMI_ADMIN_CERT_FINGERPRINTS on every
- * run (not gated on existing rows, so new pairs can be added later).
+ * Also seeds admin_cert_fingerprints from IMI_ADMIN_CERT_FINGERPRINTS, likewise
+ * only while that table is empty (a removed admin certificate stays removed).
  * Dependencies: db/connection, lib/adminGrants, lib/certFingerprint, uuid
  */
+import type { Knex } from 'knex';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/connection';
 import { signGrant } from '../lib/adminGrants';
@@ -59,11 +60,18 @@ export async function bootstrapAdminGrants(): Promise<void> {
 
 /**
  * Seed admin_cert_fingerprints from IMI_ADMIN_CERT_FINGERPRINTS (comma-
- * separated `email=fingerprint` pairs). Each pair is validated independently;
- * an invalid entry is skipped with a warning rather than aborting the batch.
- * Idempotent via onConflict('fingerprint').ignore() — safe to run every boot.
+ * separated `email=fingerprint` pairs), only while the table is empty: like
+ * IMI_ADMIN_EMAILS it bootstraps the first admins and is ignored afterwards,
+ * so removing a (compromised) admin certificate in the portal or with the
+ * server CLI is not undone by the next restart. The seeded e-mails are
+ * whitelisted in the same run (a certificate login no longer whitelists).
+ * Each pair is validated independently; an invalid entry is skipped with a
+ * warning rather than aborting the batch.
+ * @param conn connection to use (a transaction in tests)
  */
-export async function bootstrapAdminCertFingerprints(): Promise<void> {
+export async function bootstrapAdminCertFingerprints(
+  conn: Knex | Knex.Transaction = db,
+): Promise<void> {
   try {
     const raw = process.env.IMI_ADMIN_CERT_FINGERPRINTS || '';
     const pairs = raw
@@ -71,6 +79,12 @@ export async function bootstrapAdminCertFingerprints(): Promise<void> {
       .map((p) => p.trim())
       .filter(Boolean);
     if (pairs.length === 0) return;
+    if (await conn('admin_cert_fingerprints').first('id')) {
+      logger.info(
+        '[admin-bootstrap] admin certificates exist; IMI_ADMIN_CERT_FINGERPRINTS is ignored',
+      );
+      return;
+    }
 
     for (const pair of pairs) {
       const eqIdx = pair.indexOf('=');
@@ -82,7 +96,7 @@ export async function bootstrapAdminCertFingerprints(): Promise<void> {
         );
         continue;
       }
-      await db('admin_cert_fingerprints')
+      await conn('admin_cert_fingerprints')
         .insert({
           id: uuidv4(),
           email,
@@ -91,6 +105,10 @@ export async function bootstrapAdminCertFingerprints(): Promise<void> {
           created_at: new Date(),
         })
         .onConflict('fingerprint')
+        .ignore();
+      await conn('email_whitelist')
+        .insert({ id: uuidv4(), email, created_by: 'bootstrap', created_at: new Date() })
+        .onConflict('email')
         .ignore();
     }
   } catch (err) {
