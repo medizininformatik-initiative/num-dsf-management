@@ -5,7 +5,8 @@
  * removes its logins, publishes it as withdrawn in a new allow-list version
  * and refuses the certificate everywhere; lifting needs the checklist and
  * keeps the thumbprints blocked; closing needs the lift first. Every step is
- * a hash-chained event.
+ * a hash-chained event; the chain covers the incident fields and its head is
+ * anchored in each audit entry.
  * Dependencies: db, helpers/allowListSites, incidents.service,
  *               incident-suspension.service, incident-events.service,
  *               fhir.service, certificate.service, auth.service, lib/adminGrants
@@ -197,7 +198,11 @@ describe('incident register', () => {
       'CLOSED',
     ]);
     expect(events.at(-1)?.details).toEqual({ reviewNote: 'Review: rotate keys yearly' });
-    expect(verifyEvents(incident.id, events)).toEqual({ valid: true, brokenAt: null });
+    expect(verifyEvents(incident.id, events)).toEqual({
+      valid: true,
+      brokenAt: null,
+      tamperedFields: [],
+    });
   });
 
   it('records BSI stages and DPO informed once, for the affected site or admins', async () => {
@@ -249,7 +254,47 @@ describe('incident register', () => {
     expect(verifyEvents(incident.id, await listEvents(incident.id))).toEqual({
       valid: false,
       brokenAt: 2,
+      tamperedFields: [],
     });
+  });
+
+  it('detects incident fields changed outside the timeline', async () => {
+    const incident = await report(admin(), 1);
+    const detectedAt = new Date(Date.now() - 7_200_000).toISOString();
+    await svc.updateIncident(incident.id, { detectedAt }, admin());
+    const fields = async () => svc.hashedFieldsOf((await svc.loadIncidentRow(incident.id))!);
+    expect(verifyEvents(incident.id, await listEvents(incident.id), await fields())).toEqual({
+      valid: true,
+      brokenAt: null,
+      tamperedFields: [],
+    });
+    await db('incidents').where({ id: incident.id }).update({ description: 'rewritten' });
+    expect(verifyEvents(incident.id, await listEvents(incident.id), await fields())).toEqual({
+      valid: false,
+      brokenAt: null,
+      tamperedFields: ['description'],
+    });
+  });
+
+  it('anchors the chain head in the audit entry of each action', async () => {
+    const incident = await report(admin(), 1);
+    await svc.commentIncident(incident.id, 'anchored', admin());
+    const events = await listEvents(incident.id);
+    const audits = await db('audit_logs')
+      .where({ resource_type: 'INCIDENT', resource_id: incident.id })
+      .orderBy('timestamp', 'asc')
+      .select('diff_json');
+    const heads = audits.map((a) => {
+      const diff = typeof a.diff_json === 'string' ? JSON.parse(a.diff_json) : a.diff_json;
+      return diff.chainHead;
+    });
+    expect(heads).toHaveLength(2);
+    expect(heads).toEqual(
+      expect.arrayContaining([
+        { seq: 1, hash: events[0].hash },
+        { seq: 2, hash: events[1].hash },
+      ]),
+    );
   });
 
   it('chains concurrent events without forking', async () => {

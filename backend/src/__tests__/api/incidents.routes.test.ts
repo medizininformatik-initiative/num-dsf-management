@@ -102,7 +102,7 @@ describe('incident routes', () => {
 
     const own = await request(app).get(`/api/v1/incidents/${id}`).set(siteAuth(site));
     expect(own.status).toBe(200);
-    expect(own.body.data.chain).toEqual({ valid: true, brokenAt: null });
+    expect(own.body.data.chain).toEqual({ valid: true, brokenAt: null, tamperedFields: [] });
     expect(
       (await request(app).get(`/api/v1/incidents/${id}`).set(siteAuth(bystander))).status,
     ).toBe(404);
