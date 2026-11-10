@@ -8,7 +8,14 @@
  */
 import { escapeHtml as esc } from '../../lib/escapeHtml';
 
-export type IncidentMailEvent = 'reported' | 'confirmed' | 'suspended' | 'lifted' | 'closed';
+/** `measures`: the sites are told about measures that did not withdraw the site. */
+export type IncidentMailEvent =
+  | 'reported'
+  | 'confirmed'
+  | 'suspended'
+  | 'measures'
+  | 'lifted'
+  | 'closed';
 
 export interface IncidentMailContext {
   event: IncidentMailEvent;
@@ -27,6 +34,7 @@ const SUBJECT: Record<IncidentMailEvent, { de: string; en: string }> = {
   reported: { de: 'Sicherheitsvorfall gemeldet', en: 'Security incident reported' },
   confirmed: { de: 'Sicherheitsvorfall bestätigt', en: 'Security incident confirmed' },
   suspended: { de: 'Standort gesperrt', en: 'Site suspended' },
+  measures: { de: 'Maßnahmen gegen einen Standort', en: 'Measures taken against a site' },
   lifted: { de: 'Sperre aufgehoben', en: 'Suspension lifted' },
   closed: { de: 'Sicherheitsvorfall abgeschlossen', en: 'Security incident closed' },
 };
@@ -43,6 +51,10 @@ const INTRO: Record<IncidentMailEvent, { de: string; en: string }> = {
   suspended: {
     de: 'Der betroffene Standort wurde gesperrt und aus der Allow List genommen.',
     en: 'The affected site was suspended and taken out of the allow list.',
+  },
+  measures: {
+    de: 'Gegen den betroffenen Standort wurden Maßnahmen ergriffen (zum Beispiel gesperrte Zertifikate oder entfernte Logins). Details stehen im Portal.',
+    en: 'Measures were taken against the affected site (for example blocked certificates or removed logins). The details are in the portal.',
   },
   lifted: {
     de: 'Die Sperre des Standorts wurde aufgehoben. Gesperrte Zertifikate bleiben gesperrt.',
