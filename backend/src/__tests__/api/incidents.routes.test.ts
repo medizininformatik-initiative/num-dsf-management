@@ -210,11 +210,29 @@ describe('incident routes', () => {
     ).toBe(400);
   });
 
-  it('lists all sites for the report form', async () => {
-    const res = await request(app).get('/api/v1/incidents/organizations').set(siteAuth(site));
-    expect(res.status).toBe(200);
-    expect(res.body.data.some((o: { identifier: string }) => o.identifier === site.orgId)).toBe(
-      true,
-    );
+  it("lists the approved sites and the caller's own for the report form", async () => {
+    const unapproved = await seedSite({ label: 'incr-unapproved', approval: null });
+    try {
+      const ids = async (s: Site) =>
+        (await request(app).get('/api/v1/incidents/organizations').set(siteAuth(s))).body.data.map(
+          (o: { identifier: string }) => o.identifier,
+        );
+      const forSite = await ids(site);
+      expect(forSite).toContain(site.orgId);
+      expect(forSite).toContain(bystander.orgId);
+      expect(forSite).not.toContain(unapproved.orgId);
+      expect(await ids(unapproved)).toContain(unapproved.orgId);
+    } finally {
+      await removeSites([unapproved]);
+    }
+  });
+
+  it('refuses control characters in the title and implausible detection times', async () => {
+    expect((await reportAsSite({ title: 'Bad\u0007title' })).status).toBe(400);
+    expect((await reportAsSite({ title: 'Two\nlines' })).status).toBe(400);
+    const twoYearsAgo = new Date(Date.now() - 2 * 365 * 86_400_000).toISOString();
+    expect((await reportAsSite({ detectedAt: twoYearsAgo })).status).toBe(400);
+    const lastMonth = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    expect((await reportAsSite({ detectedAt: lastMonth })).status).toBe(201);
   });
 });
