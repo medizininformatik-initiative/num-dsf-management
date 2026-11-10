@@ -276,4 +276,57 @@ async function changeWithEvent(
   });
 }
 
+// ---- actions ---------------------------------------------------------------
+
+export interface ReportInput {
+  organizationId?: string | null;
+  title: string;
+  description: string;
+  escalationLevel: 1 | 2 | 3;
+  detectedAt?: string;
+  dpoInformed?: boolean;
+  zulipUrl?: string;
+}
+
+/** Report an incident (any signed-in user; also an admin's direct entry). @throws ORGANIZATION_NOT_FOUND */
+export async function reportIncident(
+  input: ReportInput,
+  caller: IncidentCaller,
+): Promise<ApiIncident> {
+  if (input.organizationId) {
+    const org = await db('organizations').where({ identifier: input.organizationId }).first();
+    if (!org) throw new Error('ORGANIZATION_NOT_FOUND');
+  }
+  const id = uuidv4();
+  const now = new Date();
+  await db.transaction(async (trx) => {
+    await trx('incidents').insert({
+      id,
+      organization_id: input.organizationId ?? null,
+      title: input.title,
+      description: input.description,
+      status: 'REPORTED',
+      reported_by: caller.email,
+      reported_at: now,
+      detected_at: input.detectedAt ? new Date(input.detectedAt) : now,
+      escalation_level: input.escalationLevel,
+      zulip_url: input.zulipUrl ?? null,
+      dpo_informed_at: input.dpoInformed ? now : null,
+      dpo_informed_by: input.dpoInformed ? caller.email : null,
+    });
+    await appendEvent(trx, id, caller.email, 'REPORTED', {
+      escalationLevel: input.escalationLevel,
+      ...(input.dpoInformed ? { dpoInformed: true } : {}),
+    });
+  });
+  const row = (await loadRow(id))!;
+  await auditIncident(row, caller, 'CREATE', {
+    action: 'incident_report',
+    escalationLevel: input.escalationLevel,
+    organization: row.organization_id,
+  });
+  await notifyIncident(row, 'reported', caller.email);
+  return toApi(row, caller);
+}
+
 export { loadRow as loadIncidentRow, changeWithEvent };
