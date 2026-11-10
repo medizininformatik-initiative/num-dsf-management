@@ -33,6 +33,7 @@ writes):
 | Promotions | `/app/admin/promotions` | Approve/reject admin-promotion requests |
 | CA Blacklist | `/app/admin/ca-blacklist` | Distrusted CA issuer DNs/fingerprints |
 | Bundle Versions | `/app/admin/bundle-versions` | Federation bundle history, diff, download |
+| Incidents | `/app/admin/incidents` | Security incidents: confirm, suspend a site, close |
 | Audit Log | `/app/audit` | Append-only operations history |
 
 ## Approval Workflow
@@ -61,6 +62,53 @@ POST   /api/v1/admin/users/:email/unlock  { totpCode }
 POST   /api/v1/admin/users/:email/demote  { totpCode }
 DELETE /api/v1/admin/users/:email         { totpCode }       # remove from whitelist
 ```
+
+## Security Incidents
+
+The incident register (`/app/admin/incidents`) is the one place where a
+compromised site is reported, acted on and recorded. One admin can act alone.
+Sensitive actions only need the usual step-up (authenticator code, or the
+client certificate in a certificate session). There is no four-eyes step and
+no waiting period.
+
+1. **Report.** Any signed-in user reports an incident with the affected site
+   (it can be unknown), a short title, the description and the escalation
+   level (1 operation continues, 2 pause, 3 shutdown). An admin can enter one
+   directly, for example after a phone call. Every admin gets a mail at once.
+   Until it is confirmed, only admins and the reporter see the incident.
+2. **Confirm.** The incident becomes visible to every signed-in user, and all
+   sites are mailed. Site mails go to the SECURITY contacts, falling back to
+   the DSF_ADMIN contacts and then the organization e-mail.
+3. **Suspend the site** ("Standort sperren"). This can be done together with
+   confirming. The measures are on by default:
+   - block every current certificate and login thumbprint of the site for good,
+   - remove its login certificates and end its users' sessions,
+   - publish the site as withdrawn in a new allow-list version, whatever its
+     approved snapshot says,
+   - mail all sites.
+
+   Each measure and its result goes into the timeline.
+4. **Comment.** Use comments for measures taken outside the portal. Every
+   user who can see the incident can read them.
+5. **Lift the suspension.** You must confirm the restart checklist (cause
+   fixed, fix proven by tests, release by the DSF Technikgremium) and add a
+   note. The old thumbprints stay blocked. The site comes back only with a new
+   certificate, which goes through the normal four-eyes approval.
+6. **Close.** Close as CLOSED with the post-incident review and the measures
+   derived from it, or as FALSE_ALARM with the reason. Lift any suspension
+   first. Incidents are never deleted.
+
+NIS2 deadlines (early warning after 24 h, notification after 72 h, final
+report after one month) count from the detection time, which an admin can
+correct. Users of the affected site and admins tick "reported to BSI" per
+stage and "data protection officer informed". The portal never reports to the
+BSI itself; that duty stays with the site.
+
+Every change is an event in an append-only timeline, chained with SHA-256.
+The detail view shows whether the chain verifies. For authority requests,
+download one incident as JSON or CSV (`GET /api/v1/admin/incidents/:id/export`).
+The download includes the full timeline and the hash values. Mails never
+contain the description.
 
 ## Certificate Renewal
 
