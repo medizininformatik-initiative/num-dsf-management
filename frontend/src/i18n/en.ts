@@ -2253,7 +2253,7 @@ export const en = {
   incidentActionConfirm: 'Confirm',
   incidentActionSuspend: 'Suspend site',
   incidentActionLift: 'Lift suspension',
-  incidentActionClose: 'Close',
+  incidentActionClose: 'Close incident',
   incidentActionFalseAlarm: 'False alarm',
   incidentExportJson: 'Export JSON',
   incidentExportCsv: 'Export CSV',
