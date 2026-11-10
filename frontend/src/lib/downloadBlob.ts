@@ -1,7 +1,8 @@
 /**
  * downloadBlob.ts – helpers of the download dialog: save a blob as a file, wrap
  * response data in a blob, read a response header and compute the SHA-256 of
- * received bytes. No dependencies.
+ * received bytes, and take the file name from a Content-Disposition header.
+ * No dependencies.
  */
 
 export function saveBlob(blob: Blob, filename: string) {
@@ -23,6 +24,21 @@ export function headerValue(headers: unknown, name: string): string | null {
   const h = headers as { get?: (n: string) => unknown } & Record<string, unknown>;
   const value = typeof h.get === 'function' ? h.get(name) : h[name];
   return typeof value === 'string' && value ? value : null;
+}
+
+/** filename="…" (or filename*=UTF-8''…) from a Content-Disposition header. */
+export function dispositionFilename(header: string | null): string | null {
+  if (!header) return null;
+  const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (star) {
+    try {
+      return decodeURIComponent(star[1].trim());
+    } catch {
+      /* fall through to the plain form */
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(header);
+  return plain ? plain[1].trim() : null;
 }
 
 /** Hex SHA-256 of a blob, or null without WebCrypto (e.g. outside a secure context). */

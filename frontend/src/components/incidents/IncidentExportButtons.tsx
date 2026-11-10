@@ -9,28 +9,13 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { incidentsApi, type ExportFormat } from '../../api/incidents.api';
-import { headerValue, saveBlob, toBlob } from '../../lib/downloadBlob';
+import { dispositionFilename, headerValue, saveBlob, toBlob } from '../../lib/downloadBlob';
 import { getErrorMessage } from '../../lib/getErrorMessage';
 import { useI18n } from '../../stores/i18n.store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 
 const MIME: Record<ExportFormat, string> = { json: 'application/json', csv: 'text/csv' };
-
-/** filename="…" (or filename*=UTF-8''…) from a Content-Disposition header. */
-export function dispositionFilename(header: string | null): string | null {
-  if (!header) return null;
-  const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
-  if (star) {
-    try {
-      return decodeURIComponent(star[1].trim());
-    } catch {
-      /* fall through to the plain form */
-    }
-  }
-  const plain = /filename="?([^";]+)"?/i.exec(header);
-  return plain ? plain[1].trim() : null;
-}
 
 export function IncidentExportButtons({ incidentId }: { incidentId: string }) {
   const { t } = useI18n();

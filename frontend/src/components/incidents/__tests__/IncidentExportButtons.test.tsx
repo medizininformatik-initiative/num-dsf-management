@@ -17,7 +17,8 @@ vi.mock('../../../lib/downloadBlob', async (orig) => ({
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-import { IncidentExportButtons, dispositionFilename } from '../IncidentExportButtons';
+import { IncidentExportButtons } from '../IncidentExportButtons';
+import { dispositionFilename } from '../../../lib/downloadBlob';
 
 beforeEach(() => {
   vi.clearAllMocks();
