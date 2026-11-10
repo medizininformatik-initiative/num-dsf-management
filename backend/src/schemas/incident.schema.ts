@@ -6,6 +6,7 @@
  * NIS2 deadlines, so an older or future value is a typo, not an incident).
  */
 import { z } from 'zod';
+import { stepUpCode } from './stepUpCode';
 
 const escalationLevel = z.union([z.literal(1), z.literal(2), z.literal(3)]);
 
@@ -36,7 +37,7 @@ const httpsUrl = z
   .url()
   .refine((v) => v.startsWith('https://'), 'Only https links are allowed');
 
-const totpCode = z.string().length(6).optional();
+const totpCode = stepUpCode;
 
 export const reportIncidentSchema = z.object({
   organizationId: singleLine(1, 255).nullable().optional(),

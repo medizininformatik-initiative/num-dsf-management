@@ -2,6 +2,7 @@
  * organization.schema.ts – Zod validation for organization input
  */
 import { z } from 'zod';
+import { stepUpCode } from './stepUpCode';
 
 export const upsertOrganizationSchema = z.object({
   identifier: z
@@ -27,5 +28,5 @@ export const upsertOrganizationSchema = z.object({
     .regex(/^([0-9a-fA-F]{64})?$/, 'Must be a SHA-256 thumbprint (64 hex characters)')
     .optional()
     .nullable(),
-  totpCode: z.string().length(6).optional(),
+  totpCode: stepUpCode,
 });

@@ -2,6 +2,7 @@
  * marketplace.schema.ts – Zod validation for marketplace endpoints
  */
 import { z } from 'zod';
+import { stepUpCode } from './stepUpCode';
 import { dsfManifestSchema } from './marketplace-manifest.schema';
 
 const STATUS = z.enum(['APPROVED', 'EXPERIMENTAL', 'DEPRECATED']);
@@ -15,20 +16,20 @@ export const createMarketplaceSchema = z.object({
   status: STATUS.optional().default('APPROVED'),
   // Optional — checkStepUp enforces it, and also accepts a re-presented
   // client cert in place of a code for cert-authenticated sessions.
-  totpCode: z.string().length(6).optional(),
+  totpCode: stepUpCode,
 });
 
 export const patchMarketplaceSchema = z.object({
   status: STATUS,
   // Optional — checkStepUp enforces it, and also accepts a re-presented
   // client cert in place of a code for cert-authenticated sessions.
-  totpCode: z.string().length(6).optional(),
+  totpCode: stepUpCode,
 });
 
 export const deleteMarketplaceSchema = z.object({
   // Optional — checkStepUp enforces it, and also accepts a re-presented
   // client cert in place of a code for cert-authenticated sessions.
-  totpCode: z.string().length(6).optional(),
+  totpCode: stepUpCode,
 });
 
 /**
@@ -71,5 +72,5 @@ export const patchMarketplaceMetaSchema = z.object({
   supersededBy: z.string().nullable().optional(),
   // Optional — checkStepUp enforces it, and also accepts a re-presented
   // client cert in place of a code for cert-authenticated sessions.
-  totpCode: z.string().length(6).optional(),
+  totpCode: stepUpCode,
 });

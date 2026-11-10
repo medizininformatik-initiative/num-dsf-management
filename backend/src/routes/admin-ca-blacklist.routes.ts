@@ -7,6 +7,7 @@
  *               rateLimit.middleware, asyncHandler, ca-blacklist.service, Zod
  */
 import { Router } from 'express';
+import { stepUpCode } from '../schemas/stepUpCode';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireImiAdmin } from '../middleware/admin.middleware';
@@ -24,7 +25,7 @@ const addSchema = z.object({
   reason: z.string().max(2000).optional(),
   // Optional — requireFreshTotp (requireStepUp) enforces it, and also accepts
   // a re-presented client cert in place of a code for cert-authenticated sessions.
-  totpCode: z.string().length(6).optional(),
+  totpCode: stepUpCode,
 });
 
 export const adminCaBlacklistRouter = Router();

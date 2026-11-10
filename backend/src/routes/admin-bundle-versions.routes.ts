@@ -11,6 +11,7 @@
  *   GET    /admin/bundle-versions/:idA/diff/:idB
  */
 import { Router } from 'express';
+import { stepUpCode } from '../schemas/stepUpCode';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireImiAdmin } from '../middleware/admin.middleware';
@@ -28,7 +29,7 @@ const listSchema = z.object({
 
 const restoreSchema = z.object({
   reason: z.string().trim().min(3).max(500),
-  totpCode: z.string().length(6).optional(),
+  totpCode: stepUpCode,
 });
 
 export const adminBundleVersionsRouter = Router();

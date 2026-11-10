@@ -7,6 +7,7 @@
  *               rateLimit.middleware, asyncHandler, ca-whitelist.service, Zod
  */
 import { Router } from 'express';
+import { stepUpCode } from '../schemas/stepUpCode';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireImiAdmin } from '../middleware/admin.middleware';
@@ -23,7 +24,7 @@ const addSchema = z.object({
     .regex(/^[A-Fa-f0-9]{64}$/)
     .optional(),
   reason: z.string().max(2000).optional(),
-  totpCode: z.string().length(6).optional(),
+  totpCode: stepUpCode,
 });
 
 export const adminCaWhitelistRouter = Router();

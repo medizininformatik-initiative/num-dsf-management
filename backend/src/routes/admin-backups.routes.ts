@@ -8,6 +8,7 @@
  *               rateLimit.middleware, asyncHandler, backup.service, audit.service, Zod
  */
 import { Router } from 'express';
+import { stepUpCode } from '../schemas/stepUpCode';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireImiAdmin } from '../middleware/admin.middleware';
@@ -25,7 +26,7 @@ const settingsSchema = z.object({
   mode: z.enum(['EVERY_6H', 'EVERY_12H', 'DAILY']),
   dailyTime: z.string().refine(isValidDailyTime, 'dailyTime must be HH:MM'),
   retentionCount: z.number().int().min(MIN_RETENTION).max(MAX_RETENTION),
-  totpCode: z.string().length(6).optional(),
+  totpCode: stepUpCode,
 });
 
 export const adminBackupsRouter = Router();

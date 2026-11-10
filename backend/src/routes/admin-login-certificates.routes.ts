@@ -12,6 +12,7 @@
  * Dependencies: auth/admin/totp/rateLimit middleware, org-login-certificates.service, Zod
  */
 import { Router, type Response } from 'express';
+import { stepUpCode } from '../schemas/stepUpCode';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireImiAdmin } from '../middleware/admin.middleware';
@@ -22,7 +23,7 @@ import * as svc from '../services/org-login-certificates.service';
 
 const enableSchema = z.object({
   certificateId: z.string().uuid(),
-  totpCode: z.string().length(6).optional(),
+  totpCode: stepUpCode,
 });
 
 const STATUS: Record<string, number> = {
