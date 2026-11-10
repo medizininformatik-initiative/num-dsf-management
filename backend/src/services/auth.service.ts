@@ -406,7 +406,8 @@ export async function resolveCertLogin(fingerprint: string): Promise<{
   user: { id: string; email: string };
   instanceId?: string;
 } | null> {
-  const adminCert = await db('admin_cert_fingerprints').where({ fingerprint }).first();
+  const adminCert = await findAdminCert(fingerprint);
+  if (adminCert === 'expired') return null;
   if (adminCert) {
     const email = String(adminCert.email).toLowerCase().trim();
     // Never (re-)create the whitelist row here: a removed or locked admin
@@ -420,6 +421,19 @@ export async function resolveCertLogin(fingerprint: string): Promise<{
     return { kind: 'admin', user: { id: user.id, email: user.email } };
   }
   return resolveOrgLogin(fingerprint);
+}
+
+/**
+ * The admin certificate row of a fingerprint; 'expired' when its recorded
+ * valid_until has passed (NULL = not recorded yet, filled at first login).
+ */
+async function findAdminCert(
+  fingerprint: string,
+): Promise<{ email: string } | 'expired' | undefined> {
+  const row = await db('admin_cert_fingerprints').where({ fingerprint }).first();
+  if (!row) return undefined;
+  if (row.valid_until && new Date(row.valid_until).getTime() < Date.now()) return 'expired';
+  return row;
 }
 
 async function resolveOrgLogin(fingerprint: string): Promise<{
@@ -451,7 +465,8 @@ async function resolveOrgLogin(fingerprint: string): Promise<{
 export async function findCertBinding(
   fingerprint: string,
 ): Promise<{ userId: string; kind: 'admin' | 'org'; instanceId?: string } | null> {
-  const adminCert = await db('admin_cert_fingerprints').where({ fingerprint }).first();
+  const adminCert = await findAdminCert(fingerprint);
+  if (adminCert === 'expired') return null;
   if (adminCert) {
     const user = await db('users')
       .where({ email: String(adminCert.email).toLowerCase().trim() })
