@@ -150,6 +150,21 @@ Mounted at `/api/v1/instances/:instanceId/approval`. All endpoints `requireOwner
 
 ---
 
+## Incidents
+
+Mounted at `/api/v1/incidents`. All `requireAuth`. Admins see every incident;
+other users see the ones that were confirmed and their own reports. The
+description and the reporter are returned only to admins and the reporter.
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/incidents/organizations | requireAuth | All sites (identifier, name) for the report form. |
+| GET | /api/v1/incidents | requireAuth | Visible incidents, open ones first. |
+| GET | /api/v1/incidents/:id | requireAuth | Incident, timeline events and hash-chain check `{ valid, brokenAt }`. |
+| POST | /api/v1/incidents | requireAuth, rate-limited | Report. Body `{ organizationId?, title, description, escalationLevel (1-3), detectedAt?, dpoInformed?, zulipUrl? }` (201). Mails all admins. |
+| POST | /api/v1/incidents/:id/nis2/:stage | requireAuth | Tick "reported to BSI" for `EARLY_WARNING`, `NOTIFICATION` or `FINAL_REPORT` (admins, the reporter, users of the affected site). |
+| POST | /api/v1/incidents/:id/dpo-informed | requireAuth | Tick "data protection officer informed" (same callers). |
+
 ## Admin
 
 ### Approval
