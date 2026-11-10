@@ -23,7 +23,7 @@ describe('layoutSpokes', () => {
       noCluster,
     );
     expect(hubs).toEqual([
-      { verbund: 'mii-testverband.example.de', label: 'MII', color: '#b01e66', x: 200, y: 200 },
+      { verbund: 'mii-testverband.example.de', label: 'MII', color: '#7c3fb8', x: 200, y: 200 },
     ]);
     expect(spokes).toHaveLength(3);
     // Each spoke starts at its member and ends at the hub.
