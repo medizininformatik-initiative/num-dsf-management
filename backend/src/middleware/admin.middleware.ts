@@ -14,7 +14,15 @@ export async function requireImiAdmin(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  if (!(await isAdminCaller(req.user))) {
+  let admin: boolean;
+  try {
+    admin = await isAdminCaller(req.user);
+  } catch (err) {
+    // Express 4 does not catch a rejected promise from async middleware.
+    next(err);
+    return;
+  }
+  if (!admin) {
     res.status(403).json({ error: { code: 'FORBIDDEN', message: 'IMI admin access required' } });
     return;
   }

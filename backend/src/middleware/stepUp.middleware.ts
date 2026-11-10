@@ -139,7 +139,14 @@ async function enforceStepUp(
   next: NextFunction,
   totpCode: unknown,
 ): Promise<void> {
-  const result = await checkStepUp(req, totpCode);
+  let result: StepUpResult;
+  try {
+    result = await checkStepUp(req, totpCode);
+  } catch (err) {
+    // Express 4 does not catch a rejected promise from async middleware.
+    next(err);
+    return;
+  }
   if (!result.ok) {
     // A missing code is a client mistake, not a verification attempt.
     if (result.code !== 'TOTP_REQUIRED') {

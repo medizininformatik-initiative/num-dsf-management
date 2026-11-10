@@ -20,7 +20,23 @@ declare global {
   }
 }
 
+/**
+ * Express 4 does not catch a rejected promise from async middleware; the
+ * guard hands any error to next(err) so the global error handler answers.
+ */
 export async function requireInstanceOwnership(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    await checkInstanceOwnership(req, res, next);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function checkInstanceOwnership(
   req: Request,
   res: Response,
   next: NextFunction,

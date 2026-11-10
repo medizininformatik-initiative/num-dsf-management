@@ -64,7 +64,19 @@ async function certSessionValid(
   return !!wl && !wl.locked_at;
 }
 
+/**
+ * Express 4 does not catch a rejected promise from async middleware; any error
+ * goes to next(err) so the global error handler answers.
+ */
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await authenticate(req, res, next);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Missing token' } });
