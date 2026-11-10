@@ -96,3 +96,11 @@ SET @sql := IF(@t = 0,
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+-- audit_logs.resource_type += 'INCIDENT'
+SET @ct := (SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'audit_logs' AND COLUMN_NAME = 'resource_type');
+SET @sql := IF(@ct IS NOT NULL AND @ct NOT LIKE '%''INCIDENT''%',
+  CONCAT('ALTER TABLE audit_logs MODIFY COLUMN resource_type ',
+         SUBSTRING(@ct, 1, CHAR_LENGTH(@ct) - 1), ',''INCIDENT'') NOT NULL'),
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
