@@ -34,32 +34,51 @@ export async function deleteOtp(email: string): Promise<void> {
 }
 
 // Refresh Token helpers
+//
+// Value of refresh:{tokenHash}: the userId, or `<userId>|org:<instanceId>` for
+// an org-scoped session (organization login certificate). The scope lives in
+// the same value, so it can never be lost on its own and a refresh can never
+// widen it. Records written before that kept the scope in a separate
+// refreshscope:{tokenHash} key; it is still read for them until they expire.
+const SCOPE_SEPARATOR = '|org:';
+
+export function parseRefreshValue(
+  value: string | null,
+): { userId: string; scopeInstanceId: string | null } | null {
+  if (!value) return null;
+  const at = value.indexOf(SCOPE_SEPARATOR);
+  if (at === -1) return { userId: value, scopeInstanceId: null };
+  return {
+    userId: value.slice(0, at),
+    scopeInstanceId: value.slice(at + SCOPE_SEPARATOR.length) || null,
+  };
+}
+
 export async function setRefreshToken(
   tokenHash: string,
   userId: string,
   ttlSeconds: number,
+  scopeInstanceId?: string,
 ): Promise<void> {
-  await redis.setex(`refresh:${tokenHash}`, ttlSeconds, userId);
+  const value = scopeInstanceId ? `${userId}${SCOPE_SEPARATOR}${scopeInstanceId}` : userId;
+  await redis.setex(`refresh:${tokenHash}`, ttlSeconds, value);
 }
 
+/** The user id of a refresh record, or null. */
 export async function getRefreshToken(tokenHash: string): Promise<string | null> {
-  return redis.get(`refresh:${tokenHash}`);
+  return parseRefreshValue(await redis.get(`refresh:${tokenHash}`))?.userId ?? null;
+}
+
+/** User id and scope of a refresh record (legacy separate scope key as fallback). */
+export async function getRefreshRecord(
+  tokenHash: string,
+): Promise<{ userId: string; scopeInstanceId: string | null } | null> {
+  const record = parseRefreshValue(await redis.get(`refresh:${tokenHash}`));
+  if (!record) return null;
+  if (record.scopeInstanceId) return record;
+  return { ...record, scopeInstanceId: await redis.get(`refreshscope:${tokenHash}`) };
 }
 
 export async function deleteRefreshToken(tokenHash: string): Promise<void> {
   await redis.del(`refresh:${tokenHash}`, `refreshscope:${tokenHash}`);
-}
-
-// Org-scoped sessions (organization login certificate) remember their instance
-// next to the refresh record, so a refresh can never widen the scope.
-export async function setRefreshScope(
-  tokenHash: string,
-  instanceId: string,
-  ttlSeconds: number,
-): Promise<void> {
-  await redis.setex(`refreshscope:${tokenHash}`, ttlSeconds, instanceId);
-}
-
-export async function getRefreshScope(tokenHash: string): Promise<string | null> {
-  return redis.get(`refreshscope:${tokenHash}`);
 }

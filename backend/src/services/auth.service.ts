@@ -16,8 +16,8 @@ import {
   setRefreshToken,
   deleteRefreshToken,
   getRefreshToken,
-  setRefreshScope,
-  getRefreshScope,
+  getRefreshRecord,
+  parseRefreshValue,
   redis,
 } from './redis.service';
 import { writeAuditLog } from './audit.service';
@@ -264,10 +264,8 @@ export async function createTokenPair(
   const refreshToken = crypto.randomBytes(48).toString('hex');
   const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
 
-  await setRefreshToken(refreshTokenHash, user.id, REFRESH_TTL_SEC);
-  if (user.scopeInstanceId) {
-    await setRefreshScope(refreshTokenHash, user.scopeInstanceId, REFRESH_TTL_SEC);
-  }
+  // An org scope is stored in the same record (redis.service), never apart.
+  await setRefreshToken(refreshTokenHash, user.id, REFRESH_TTL_SEC, user.scopeInstanceId);
   return { accessToken, refreshToken };
 }
 
@@ -294,8 +292,9 @@ export async function refreshAccessToken(
   opts?: { certFingerprint?: string | null },
 ): Promise<{ accessToken: string; refreshToken: string }> {
   const hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-  const userId = await getRefreshToken(hash);
-  if (!userId) throw new Error('INVALID_REFRESH_TOKEN');
+  const record = await getRefreshRecord(hash);
+  if (!record) throw new Error('INVALID_REFRESH_TOKEN');
+  const { userId, scopeInstanceId } = record;
 
   const user = await db('users').where({ id: userId }).first();
   if (!user) throw new Error('USER_NOT_FOUND');
@@ -344,7 +343,6 @@ export async function refreshAccessToken(
   // exactly that instance. It never degrades to an unscoped owner session,
   // and the token is NOT deleted on failure (a stolen cookie cannot burn the
   // real session).
-  const scopeInstanceId = await getRefreshScope(hash);
   let authMethod: 'otp' | 'cert' = 'otp';
   const fp = opts?.certFingerprint;
   const resolved = fp && isValidSha512Fingerprint(fp) ? await resolveCertLogin(fp) : null;
@@ -506,7 +504,8 @@ export async function logout(refreshToken: string, ipAddress: string): Promise<v
  * Invalidate ALL refresh tokens for a user. Forces re-login on next API call.
  * Called when an admin locks / demotes / removes the user.
  *
- * Storage scheme: keys are `refresh:<tokenHash>`, values are userId strings.
+ * Storage scheme: keys are `refresh:<tokenHash>`, values are the userId
+ * (`<userId>|org:<instanceId>` for org-scoped sessions, see redis.service).
  * There is no per-user index, so we scan `refresh:*` and delete matching keys.
  * Returns the number of tokens revoked (0 if user has no active sessions).
  */
@@ -554,7 +553,7 @@ export async function revokeAllSessions(
   const toDelete: string[] = [];
   for (let i = 0; i < keyList.length; i++) {
     const val = values[i]?.[1];
-    if (val === userId) {
+    if (typeof val === 'string' && parseRefreshValue(val)?.userId === userId) {
       toDelete.push(keyList[i]);
     }
   }
