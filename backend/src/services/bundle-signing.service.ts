@@ -6,6 +6,13 @@
  * fingerprint, so consumers can map signature → key and we can rotate
  * keys without breaking previously issued bundles (consumer keeps the
  * old kid pinned until they pull a fresh /.well-known/jwks.json).
+ *
+ * The claims are { purpose: 'bundle_signature', contentHash, timestamp }. The
+ * key is the one access tokens are signed with, so the purpose claim (and the
+ * missing sub/email) keeps a signature from ever passing as an access token
+ * (auth.service.verifyAccessToken). Consumers that verify the JWT and compare
+ * contentHash are unaffected by the extra claim; signatures published before
+ * it existed still verify the same way.
  */
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -23,6 +30,8 @@ export const KEY_ID = JWT_PUBLIC_KEY
   ? crypto.createHash('sha256').update(JWT_PUBLIC_KEY).digest('hex').slice(0, 16)
   : 'unknown';
 
+export const BUNDLE_SIGNATURE_PURPOSE = 'bundle_signature';
+
 /**
  * Sign a bundle JSON and return { bundle, json, signature, contentHash }.
  * `json` is the exact serialization that was hashed and signed; callers must
@@ -38,7 +47,7 @@ export function signBundle(bundle: object): {
   const contentHash = crypto.createHash('sha256').update(json).digest('hex');
 
   const signature = jwt.sign(
-    { contentHash, timestamp: new Date().toISOString() },
+    { purpose: BUNDLE_SIGNATURE_PURPOSE, contentHash, timestamp: new Date().toISOString() },
     JWT_PRIVATE_KEY,
     { algorithm: 'RS256', expiresIn: '365d', keyid: KEY_ID } as any,
   );
