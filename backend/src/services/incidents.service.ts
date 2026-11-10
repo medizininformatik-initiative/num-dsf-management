@@ -470,4 +470,31 @@ export async function commentIncident(
   return event;
 }
 
+/**
+ * CLOSED (with the post-incident review and derived measures) or FALSE_ALARM
+ * (with the reason). Lift a suspension first. Never deleted.
+ * @throws INVALID_STATUS / STILL_SUSPENDED
+ */
+export async function closeIncident(
+  id: string,
+  outcome: 'CLOSED' | 'FALSE_ALARM',
+  note: string,
+  caller: IncidentCaller,
+): Promise<ApiIncident> {
+  const row = await requireAdminRow(id);
+  if (isClosed(row)) throw new Error('INVALID_STATUS');
+  if (row.suspended) throw new Error('STILL_SUSPENDED');
+  await changeWithEvent(
+    id,
+    { status: outcome, closed_by: caller.email, closed_at: new Date() },
+    caller.email,
+    outcome,
+    outcome === 'CLOSED' ? { reviewNote: note } : { reason: note },
+  );
+  const updated = (await loadRow(id))!;
+  await auditIncident(updated, caller, 'UPDATE', { action: 'incident_close', outcome });
+  await notifyIncident(updated, 'closed', caller.email);
+  return toApi(updated, caller);
+}
+
 export { loadRow as loadIncidentRow, changeWithEvent };
