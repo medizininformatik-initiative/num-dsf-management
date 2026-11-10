@@ -17,8 +17,10 @@
  * organization by, in order: the SHA-512 login certificate (org_login_certificates), the legacy
  * SHA-256 login thumbprint, or a certificate registered in the
  * organization's certificate list (the DSF client certificate whose
- * thumbprint the allow list publishes).
- * Dependencies: express, fhir.service, audit.service, db/connection, clientCert lib
+ * thumbprint the allow list publishes). A certificate blocked by an incident
+ * (or one whose SHA-512 cannot be computed) is refused before any lookup.
+ * Dependencies: express, fhir.service, audit.service, incident-blocks.service,
+ *               db/connection, clientCert lib
  */
 import { Router, Request, Response } from 'express';
 import { db } from '../db/connection';
@@ -31,6 +33,7 @@ import {
 import { writeAuditLog } from '../services/audit.service';
 import { recordAllowListFetchSafe } from '../services/allowlist-freshness.service';
 import { extractClientCert, type ClientCertInfo } from '../lib/clientCert';
+import { isFingerprintBlocked } from '../services/incident-blocks.service';
 
 export const fhirRouter = Router();
 
@@ -60,14 +63,15 @@ function sendOutcome(res: Response, status: number, code: string, diagnostics: s
 }
 
 async function findOrgByClientCert(cert: ClientCertInfo): Promise<ResolvedOrg | null> {
-  if (cert.fingerprint) {
-    const byFingerprint = await db('organizations as o')
-      .join('org_login_certificates as l', 'l.organization_id', 'o.identifier')
-      .where('l.fingerprint', cert.fingerprint)
-      .select('o.*')
-      .first();
-    if (byFingerprint) return { org: byFingerprint, match: 'sha512' };
-  }
+  // Blocks are kept by SHA-512; without it a block could not be checked, and
+  // the SHA-256 lookups below must not let a blocked certificate through.
+  if (!cert.fingerprint || (await isFingerprintBlocked(cert.fingerprint))) return null;
+  const byFingerprint = await db('organizations as o')
+    .join('org_login_certificates as l', 'l.organization_id', 'o.identifier')
+    .where('l.fingerprint', cert.fingerprint)
+    .select('o.*')
+    .first();
+  if (byFingerprint) return { org: byFingerprint, match: 'sha512' };
   // parseCertificate stores the SHA-256 in upper case, extractClientCert
   // computes it in lower case; match both instead of relying on collation.
   const thumbprints = [cert.thumbprint, cert.thumbprint.toUpperCase()];
