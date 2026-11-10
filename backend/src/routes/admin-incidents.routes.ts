@@ -88,3 +88,14 @@ adminIncidentsRouter.post(
     await act(res, 200, async () => liftSuspension(req.params.id, checklist, await caller(req)));
   }),
 );
+
+adminIncidentsRouter.post(
+  '/:id/close',
+  ...stepUp,
+  validate(closeIncidentSchema),
+  asyncHandler(async (req, res) => {
+    await act(res, 200, async () =>
+      svc.closeIncident(req.params.id, req.body.outcome, req.body.note, await caller(req)),
+    );
+  }),
+);
