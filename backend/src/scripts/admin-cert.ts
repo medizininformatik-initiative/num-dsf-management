@@ -6,6 +6,7 @@
  *   admin-cert add <email> <cert.pem> [--label X]
  *   admin-cert list [email]
  *   admin-cert remove <fingerprint-prefix> --yes
+ *   admin-cert totp-reset <email> --yes   (lost phone and TAN list)
  * `add` only works for an e-mail that already has a verified admin grant:
  * granting admin rights stays a four-eyes process, this only restores access.
  * Dev:  docker compose exec backend npx ts-node src/scripts/admin-cert.ts ...
@@ -22,6 +23,9 @@ import {
   AdminCertError,
   type AdminCertificate,
 } from '../services/admin-certificates.service';
+import { isVerifiedAdminEmail } from '../lib/adminGrants';
+import { resetTotp } from '../services/totp.service';
+import { writeAuditLog } from '../services/audit.service';
 
 export const CLI_ACTOR = 'server-cli';
 
@@ -130,6 +134,38 @@ export async function runRemove(prefix: string, yes: boolean): Promise<number> {
   return 0;
 }
 
+/**
+ * Lost phone and TAN list: clear the admin's TOTP (secret, TANs, enabled flag).
+ * At the next certificate login the admin has to set TOTP up again.
+ */
+export async function runTotpReset(emailArg: string, yes: boolean): Promise<number> {
+  const email = emailArg.toLowerCase().trim();
+  if (!(await isVerifiedAdminEmail(email))) {
+    console.error('This e-mail has no verified admin grant.');
+    return 1;
+  }
+  const user = await db('users').where({ email }).first();
+  if (!user) {
+    console.error('No user with this e-mail has signed in yet.');
+    return 1;
+  }
+  if (!yes) {
+    console.error(`Refusing to reset TOTP of ${email} without --yes. Nothing changed.`);
+    return 2;
+  }
+  await resetTotp(user.id);
+  await writeAuditLog({
+    userEmail: CLI_ACTOR,
+    resourceType: 'AUTH',
+    resourceId: email,
+    operation: 'TOTP_SETUP',
+    diffJson: { action: 'reset_by_server_cli' },
+    ipAddress: 'server-cli',
+  });
+  console.log(`TOTP of ${email} reset. They set it up again at the next certificate login.`);
+  return 0;
+}
+
 async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
   const { positional, label, yes } = parseArgs(rest);
@@ -137,8 +173,9 @@ async function main(): Promise<number> {
     return runAdd(positional[0], positional[1], label);
   if (command === 'list' && positional.length <= 1) return runList(positional[0]);
   if (command === 'remove' && positional.length === 1) return runRemove(positional[0], yes);
+  if (command === 'totp-reset' && positional.length === 1) return runTotpReset(positional[0], yes);
   console.error(
-    'Usage: admin-cert add <email> <cert.pem> [--label X] | list [email] | remove <fingerprint-prefix> --yes',
+    'Usage: admin-cert add <email> <cert.pem> [--label X] | list [email] | remove <fingerprint-prefix> --yes | totp-reset <email> --yes',
   );
   return 1;
 }

@@ -6,12 +6,15 @@
 #   scripts/admin-cert.sh add <email> <cert.pem> [--label X]
 #   scripts/admin-cert.sh list [email]
 #   scripts/admin-cert.sh remove <fingerprint-prefix> --yes
+#   scripts/admin-cert.sh totp-reset <email> --yes
 #
 #   add     registers a PUBLIC certificate (PEM) for an e-mail that already has a
 #           verified admin grant; <cert.pem> is a path on this host (copied into
 #           the container first). Granting admin rights stays a four-eyes process.
 #   list    shows admin certificates with their expiry
 #   remove  deletes one admin certificate by (a prefix of) its SHA-512 fingerprint
+#   totp-reset  clears the TOTP of an admin who lost phone and TAN list; they set it up
+#           again at the next certificate login
 #
 # Environment:
 #   DSF_ROOT     deployed tree, default /opt/dsf-allowlist
@@ -23,7 +26,7 @@ set -euo pipefail
 
 CMD="${1:-}"
 if [ -z "$CMD" ] || [ "${CMD#--}" != "$CMD" ]; then
-  sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'
   exit 1
 fi
 shift
