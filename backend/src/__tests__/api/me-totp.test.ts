@@ -143,16 +143,18 @@ describe('forced TOTP enrolment for certificate admins', () => {
     await db('email_whitelist').whereIn('email', [adminEmail, siteEmail]).del();
   });
 
-  const asAdmin = (method: 'get' | 'post', url: string) =>
-    request(app)
-      [method](url)
+  const asAdmin = (method: 'get' | 'post', url: string) => {
+    const agent = request(app);
+    return agent[method](url)
       .set('Authorization', `Bearer ${adminToken}`)
       .set(certHeaders(ADMIN_PEM));
-  const asSite = (method: 'get' | 'post', url: string) =>
-    request(app)
-      [method](url)
+  };
+  const asSite = (method: 'get' | 'post', url: string) => {
+    const agent = request(app);
+    return agent[method](url)
       .set('Authorization', `Bearer ${siteToken}`)
       .set(certHeaders(SITE_PEM));
+  };
 
   it('/auth/me tells the unenrolled admin that enrolment is required', async () => {
     const res = await asAdmin('get', '/auth/me');
