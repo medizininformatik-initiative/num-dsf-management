@@ -39,6 +39,7 @@ import { networkRouter } from './routes/network.routes';
 import { parentOrganizationsRouter } from './routes/parent-organizations.routes';
 import { marketplaceRouter } from './routes/marketplace.routes';
 import { adminMarketplaceRouter } from './routes/admin-marketplace.routes';
+import { incidentsRouter } from './routes/incidents.routes';
 import { apiRateLimit } from './middleware/rateLimit.middleware';
 import { randomUUID } from 'crypto';
 import { logger } from './lib/logger';
@@ -160,6 +161,9 @@ app.use('/api/v1/admin', adminRouter);
 
 // Marketplace (read, auth required)
 app.use('/api/v1/marketplace', marketplaceRouter);
+
+// Incident register: every signed-in user reports and reads.
+app.use('/api/v1/incidents', incidentsRouter);
 
 // Health Check — liveness (always ok) and readiness (checks DB + Redis)
 app.get('/health', (_req, res) => {
