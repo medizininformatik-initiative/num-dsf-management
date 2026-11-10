@@ -78,3 +78,13 @@ adminIncidentsRouter.post(
     );
   }),
 );
+
+adminIncidentsRouter.post(
+  '/:id/lift-suspension',
+  ...stepUp,
+  validate(liftSuspensionSchema),
+  asyncHandler(async (req, res) => {
+    const { totpCode: _totp, ...checklist } = req.body;
+    await act(res, 200, async () => liftSuspension(req.params.id, checklist, await caller(req)));
+  }),
+);
