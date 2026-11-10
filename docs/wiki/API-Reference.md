@@ -158,10 +158,10 @@ description and the reporter are returned only to admins and the reporter.
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /api/v1/incidents/organizations | requireAuth | All sites (identifier, name) for the report form. |
+| GET | /api/v1/incidents/organizations | requireAuth | Sites (identifier, name) for the report form: all for admins, otherwise the approved active sites plus the caller's own. |
 | GET | /api/v1/incidents | requireAuth | Visible incidents, open ones first. |
-| GET | /api/v1/incidents/:id | requireAuth | Incident, timeline events and hash-chain check `{ valid, brokenAt }`. |
-| POST | /api/v1/incidents | requireAuth, rate-limited | Report. Body `{ organizationId?, title, description, escalationLevel (1-3), detectedAt?, dpoInformed?, zulipUrl? }` (201). Mails all admins. |
+| GET | /api/v1/incidents/:id | requireAuth | Incident, timeline events and hash-chain check `{ valid, brokenAt, tamperedFields }`. |
+| POST | /api/v1/incidents | requireAuth, rate-limited | Report. Body `{ organizationId?, title, description, escalationLevel (1-3), detectedAt?, dpoInformed?, zulipUrl? }` (201); title without control characters, `detectedAt` not in the future and at most one year back. Mails all admins. |
 | POST | /api/v1/incidents/:id/nis2/:stage | requireAuth | Tick "reported to BSI" for `EARLY_WARNING`, `NOTIFICATION` or `FINAL_REPORT` (admins, the reporter, users of the affected site). |
 | POST | /api/v1/incidents/:id/dpo-informed | requireAuth | Tick "data protection officer informed" (same callers). |
 
@@ -309,11 +309,11 @@ certificate in a certificate session).
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | POST | /api/v1/admin/incidents/:id/confirm | requireAdmin + requireTotp | REPORTED → CONFIRMED; mails all sites and admins. |
-| POST | /api/v1/admin/incidents/:id/suspend | requireAdmin + requireTotp | Body `{ measures: [BLOCK_CERTIFICATES, REMOVE_LOGINS, WITHDRAW, MAIL_SITES], confirm?, totpCode }`. WITHDRAW publishes a new allow-list version with the site withdrawn. |
+| POST | /api/v1/admin/incidents/:id/suspend | requireAdmin + requireTotp | Body `{ measures: [BLOCK_CERTIFICATES, REMOVE_LOGINS, WITHDRAW, MAIL_SITES], confirm?, totpCode }`. BLOCK_CERTIFICATES and/or WITHDRAW publish one new allow-list version; WITHDRAW on a suspended site publishes again (retry). |
 | POST | /api/v1/admin/incidents/:id/lift-suspension | requireAdmin + requireTotp | Restart checklist `{ causeFixed: true, fixTested: true, releasedByTechBoard: true, note, totpCode }`; publishes a new version, blocked thumbprints stay blocked. |
 | POST | /api/v1/admin/incidents/:id/close | requireAdmin + requireTotp | `{ outcome: CLOSED or FALSE_ALARM, note, totpCode }`; refused while suspended. |
 | POST | /api/v1/admin/incidents/:id/comment | requireAdmin | `{ text }` (201), e.g. a measure taken outside the portal. |
-| PATCH | /api/v1/admin/incidents/:id | requireAdmin | `{ escalationLevel?, detectedAt?, zulipUrl? }`; each change is a timeline event. |
+| PATCH | /api/v1/admin/incidents/:id | requireAdmin (+ requireTotp when `detectedAt` or `zulipUrl` is sent) | `{ escalationLevel?, detectedAt?, zulipUrl?, totpCode? }`; each change is a timeline event. |
 | GET | /api/v1/admin/incidents/:id/export?format=json\|csv | requireAdmin | Download one incident with its full timeline and hash chain. |
 
 ## Marketplace (read)
