@@ -467,15 +467,24 @@ export async function findCertUserId(fingerprint: string): Promise<string | null
   return (await findCertBinding(fingerprint))?.userId ?? null;
 }
 
-// Logout: revoke refresh token
-export async function logout(
-  refreshToken: string,
-  userEmail: string,
-  ipAddress: string,
-): Promise<void> {
+/**
+ * Logout: revoke the refresh token. The LOGOUT audit entry names the token's
+ * owner from its Redis record; an unknown or already revoked token writes none
+ * (the caller's own claims about who it is are never trusted).
+ */
+export async function logout(refreshToken: string, ipAddress: string): Promise<void> {
   const hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+  const userId = await getRefreshToken(hash);
   await deleteRefreshToken(hash);
-  await writeAuditLog({ userEmail, resourceType: 'AUTH', operation: 'LOGOUT', ipAddress });
+  if (!userId) return;
+  const user = await db('users').where({ id: userId }).first('email');
+  if (!user) return;
+  await writeAuditLog({
+    userEmail: user.email,
+    resourceType: 'AUTH',
+    operation: 'LOGOUT',
+    ipAddress,
+  });
 }
 
 /**

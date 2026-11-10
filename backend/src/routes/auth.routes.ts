@@ -380,9 +380,8 @@ authRouter.post(
   '/logout',
   asyncHandler(async (req: Request, res: Response) => {
     const refreshToken = req.cookies?.refreshToken;
-    const userEmail = req.body?.email || 'unknown';
-    if (refreshToken) {
-      await logout(refreshToken, userEmail, req.ip || 'unknown');
+    if (typeof refreshToken === 'string' && refreshToken) {
+      await logout(refreshToken, req.ip || 'unknown');
     }
     res.clearCookie('refreshToken', { path: '/auth' });
     res.json({ data: { message: 'Logged out' } });

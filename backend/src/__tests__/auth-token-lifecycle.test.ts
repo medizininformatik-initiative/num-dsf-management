@@ -168,7 +168,7 @@ describe('auth.service – token lifecycle', () => {
   describe('logout', () => {
     it('revokes the refresh token so a subsequent refresh fails', async () => {
       const { refreshToken } = await mint();
-      await logout(refreshToken, email, '127.0.0.1');
+      await logout(refreshToken, '127.0.0.1');
       expect(await redis.get(refreshKey(refreshToken))).toBeNull();
       await expect(refreshAccessToken(refreshToken)).rejects.toThrow('INVALID_REFRESH_TOKEN');
     });
