@@ -4,8 +4,9 @@
  * - Admin-grants: list, demote (signature-verified, audit-logged).
  * - Demote, remove and locking an admin enforce the "≥2 unlocked admins from
  *   ≥2 distinct sites" invariant.
- * - Removal of a whitelist row also revokes any matching admin grant and
- *   deletes the e-mail's admin certificates (admin_cert_fingerprints).
+ * - Demotion and removal of a whitelist row also delete the e-mail's admin
+ *   certificates (admin_cert_fingerprints), under the certificate floor guard
+ *   (admin-certificates.service: another admin must keep a valid certificate).
  * Dependencies: db/connection, audit.service, lib/approvalState, lib/adminGrants
  */
 import type { Knex } from 'knex';
@@ -15,6 +16,11 @@ import { writeAuditLog } from './audit.service';
 import { revokeAllSessions } from './auth.service';
 import { siteOfEmail } from '../lib/approvalState';
 import { verifyGrant, isVerifiedAdminEmail, listVerifiedAdminEmails } from '../lib/adminGrants';
+import {
+  AdminCertError,
+  deleteAdminCertificates,
+  notifyAdminCertRemoved,
+} from './admin-certificates.service';
 
 export interface WhitelistEntry {
   email: string;
@@ -67,15 +73,50 @@ async function assertQuorumWithout(
   }
 }
 
-/** Deletes an admin grant only if the quorum floor holds afterwards. */
+/**
+ * Deletes an admin grant only if the quorum floor holds afterwards, together
+ * with the e-mail's admin certificates (same transaction, under the
+ * certificate floor guard: some admin other than `actor` must keep a valid
+ * certificate). Mails the certificate removal after commit.
+ * @returns the number of admin certificates removed
+ * @throws AdminUsersError MIN_ADMINS_REACHED / LAST_OTHER_ADMIN_CERT
+ */
 async function deleteGrantWithQuorumGuard(
   email: string,
   action: 'demote' | 'remove',
-): Promise<void> {
-  await db.transaction(async (trx) => {
+  actor: string,
+): Promise<number> {
+  const removed = await db.transaction(async (trx) => {
     await assertQuorumWithout(trx, email, action);
+    const certs = await deleteCertsGuarded(trx, email, actor);
     await trx('admin_grants').where({ email }).del();
+    return certs;
   });
+  await notifyAdminCertRemoved(
+    email,
+    actor,
+    removed.map((c) => c.fingerprint),
+  );
+  return removed.length;
+}
+
+/** deleteAdminCertificates with its error mapped to an AdminUsersError. */
+async function deleteCertsGuarded(
+  trx: Knex.Transaction,
+  email: string,
+  actor: string,
+): Promise<Array<{ fingerprint: string }>> {
+  try {
+    return await deleteAdminCertificates(trx, email, actor);
+  } catch (err) {
+    if (err instanceof AdminCertError && err.code === 'LAST_OTHER_ADMIN_CERT') {
+      throw new AdminUsersError(
+        'LAST_OTHER_ADMIN_CERT',
+        'No other admin would keep a valid admin certificate',
+      );
+    }
+    throw err;
+  }
 }
 
 export async function listWhitelist(): Promise<WhitelistEntry[]> {
@@ -185,14 +226,16 @@ export async function demoteAdmin(
   if (!(await isVerifiedAdminEmail(email))) {
     throw new AdminUsersError('NOT_AN_ADMIN', 'Email is not a verified admin');
   }
-  await deleteGrantWithQuorumGuard(email, 'demote');
+  // The admin certificates go with the grant: without them the e-mail can no
+  // longer present an admin certificate at all.
+  const removedCerts = await deleteGrantWithQuorumGuard(email, 'demote', demotedBy);
   await revokeAllSessions(email).catch(() => {});
   await writeAuditLog({
     userEmail: demotedBy,
     resourceType: 'AUTH',
     resourceId: email,
     operation: 'DELETE',
-    diffJson: { admin_action: 'DEMOTE', email },
+    diffJson: { admin_action: 'DEMOTE', email, admin_certificates_removed: removedCerts },
     ipAddress,
   }).catch(() => {});
 }
@@ -210,15 +253,16 @@ export async function removeFromWhitelist(
   if (!existing) throw new AdminUsersError('NOT_FOUND', 'Email not in whitelist');
 
   const adminFlag = await isVerifiedAdminEmail(email);
+  let removedCerts: number;
   if (adminFlag) {
-    // Removing an admin counts as demotion + removal — apply min-admins guard.
-    await deleteGrantWithQuorumGuard(email, 'remove');
+    // Removing an admin counts as demotion + removal — apply min-admins guard;
+    // its admin certificates go in the same step (certificate floor guard).
+    removedCerts = await deleteGrantWithQuorumGuard(email, 'remove', removedBy);
+  } else {
+    // Leftover certificates of a non-admin go too (never restricted).
+    const certs = await db.transaction((trx) => deleteCertsGuarded(trx, email, removedBy));
+    removedCerts = certs.length;
   }
-  // The admin certificates go too: resolveCertLogin would otherwise re-create
-  // the whitelist row at the next certificate login.
-  const removedCerts = await db('admin_cert_fingerprints')
-    .whereRaw('LOWER(email) = ?', [email])
-    .del();
   await db('email_whitelist').where({ email }).del();
   await revokeAllSessions(email).catch(() => {});
   await writeAuditLog({

@@ -26,7 +26,7 @@ function handleError(err: unknown, res: Response): Response {
         ? 404
         : err.code === 'ALREADY_EXISTS'
           ? 409
-          : err.code === 'MIN_ADMINS_REACHED'
+          : err.code === 'MIN_ADMINS_REACHED' || err.code === 'LAST_OTHER_ADMIN_CERT'
             ? 409
             : 400;
     return res.status(status).json({ error: { code: err.code, message: err.message } });

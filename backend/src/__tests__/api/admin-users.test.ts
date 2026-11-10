@@ -325,13 +325,25 @@ describe('DELETE /api/v1/admin/users/:email', () => {
 
   it("deletes the removed admin's certificates so a certificate login cannot restore access", async () => {
     const fingerprint = uuidv4().replace(/-/g, '').repeat(4);
-    await db('admin_cert_fingerprints').insert({
-      id: uuidv4(),
-      email: ADMIN_B_EMAIL,
-      fingerprint,
-      created_at: new Date(),
-      created_by: 'test',
-    });
+    // Another admin keeps a valid certificate (certificate floor guard).
+    const fingerprintC = uuidv4().replace(/-/g, '').repeat(4);
+    await db('admin_cert_fingerprints').insert([
+      {
+        id: uuidv4(),
+        email: ADMIN_B_EMAIL,
+        fingerprint,
+        created_at: new Date(),
+        created_by: 'test',
+      },
+      {
+        id: uuidv4(),
+        email: ADMIN_C_EMAIL,
+        fingerprint: fingerprintC,
+        valid_until: new Date(Date.now() + 30 * 24 * 3600 * 1000),
+        created_at: new Date(),
+        created_by: 'test',
+      },
+    ]);
     const tokenA = getTestToken(ADMIN_A_EMAIL, ADMIN_A_ID);
     try {
       const res = await request(app)
@@ -344,7 +356,7 @@ describe('DELETE /api/v1/admin/users/:email', () => {
       expect(await resolveCertLogin(fingerprint)).toBeNull();
       expect(await db('email_whitelist').where({ email: ADMIN_B_EMAIL }).first()).toBeUndefined();
     } finally {
-      await db('admin_cert_fingerprints').where({ fingerprint }).del();
+      await db('admin_cert_fingerprints').whereIn('fingerprint', [fingerprint, fingerprintC]).del();
     }
   });
 });
