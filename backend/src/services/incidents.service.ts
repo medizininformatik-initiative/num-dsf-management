@@ -93,7 +93,7 @@ export interface ApiIncident {
     reportedAt: Date | null;
     reportedBy: string | null;
   }>;
-  dpoInformed: { at: Date; by: string } | null;
+  dpoInformed: { at: Date; by: string | null } | null;
   canAcknowledge: boolean;
   isMine: boolean;
 }
@@ -150,8 +150,21 @@ function canAcknowledge(row: IncidentRow, caller: IncidentCaller): boolean {
   return !!row.org_instance_id && caller.instanceIds.includes(row.org_instance_id);
 }
 
+/**
+ * For callers who may not know the reporter: an actor e-mail that is the
+ * reporter's becomes null (ticks, confirmations and events would otherwise
+ * name the reporter of an incident whose reporter is hidden).
+ */
+function actorFor(row: IncidentRow, caller: IncidentCaller) {
+  const privileged = caller.isAdmin || isReporter(row, caller);
+  const reporter = row.reported_by.toLowerCase();
+  return (email: string | null): string | null =>
+    !privileged && email && email.toLowerCase() === reporter ? null : email;
+}
+
 export function toApi(row: IncidentRow, caller: IncidentCaller): ApiIncident {
   const privileged = caller.isAdmin || isReporter(row, caller);
+  const actor = actorFor(row, caller);
   const detectedAt = new Date(row.detected_at);
   return {
     id: row.id,
@@ -166,9 +179,9 @@ export function toApi(row: IncidentRow, caller: IncidentCaller): ApiIncident {
     reportedByOrganization: privileged ? (row.reporter_org ?? null) : null,
     reportedAt: row.reported_at,
     detectedAt,
-    confirmedBy: row.confirmed_by,
+    confirmedBy: actor(row.confirmed_by),
     confirmedAt: row.confirmed_at,
-    closedBy: row.closed_by,
+    closedBy: actor(row.closed_by),
     closedAt: row.closed_at,
     suspended: Boolean(row.suspended),
     zulipUrl: row.zulip_url,
@@ -179,12 +192,12 @@ export function toApi(row: IncidentRow, caller: IncidentCaller): ApiIncident {
         stage,
         dueAt: nis2DueAt(stage, detectedAt),
         reportedAt: (record[cols.at] as Date | null) ?? null,
-        reportedBy: (record[cols.by] as string | null) ?? null,
+        reportedBy: actor((record[cols.by] as string | null) ?? null),
       };
     }),
     dpoInformed:
       row.dpo_informed_at && row.dpo_informed_by
-        ? { at: row.dpo_informed_at, by: row.dpo_informed_by }
+        ? { at: row.dpo_informed_at, by: actor(row.dpo_informed_by) }
         : null,
     canAcknowledge: canAcknowledge(row, caller),
     isMine: isReporter(row, caller),
@@ -223,7 +236,7 @@ export function eventForCaller(
   caller: IncidentCaller,
 ): Omit<IncidentEvent, 'actorEmail'> & { actorEmail: string | null } {
   const hideActor = event.type === 'REPORTED' && !caller.isAdmin && !isReporter(row, caller);
-  return { ...event, actorEmail: hideActor ? null : event.actorEmail };
+  return { ...event, actorEmail: hideActor ? null : actorFor(row, caller)(event.actorEmail) };
 }
 
 export async function listOrganizations(): Promise<Array<{ identifier: string; name: string }>> {
