@@ -53,8 +53,12 @@ export const updateIncidentSchema = z
     escalationLevel: escalationLevel.optional(),
     detectedAt: detectionTime.optional(),
     zulipUrl: httpsUrl.nullable().optional(),
+    totpCode,
   })
-  .refine((v) => Object.values(v).some((x) => x !== undefined), 'Nothing to update');
+  .refine(
+    ({ totpCode: _code, ...v }) => Object.values(v).some((x) => x !== undefined),
+    'Nothing to update',
+  );
 
 export const incidentStepUpSchema = z.object({ totpCode });
 

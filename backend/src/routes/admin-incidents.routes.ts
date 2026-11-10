@@ -2,14 +2,22 @@
  * admin-incidents.routes.ts – Admin actions on incidents
  * (/api/v1/admin/incidents). One admin acts alone; confirm, suspend, lift and
  * close need the fresh step-up (TOTP code or re-presented client
- * certificate), comments and field updates do not. Export downloads one
+ * certificate), and so does a field update that changes the detection time
+ * (it moves the NIS2 deadlines) or the Zulip link (shown to every site);
+ * the escalation level and comments do not. Export downloads one
  * incident with its timeline and hash chain.
  * Dependencies: auth.middleware, admin.middleware, totp.middleware,
  *               rateLimit.middleware, validate.middleware, incidents.service,
  *               incident-suspension.service, incident-export.service,
  *               schemas/incident.schema, lib/incidentErrors, asyncHandler
  */
-import { Router, type Request, type Response } from 'express';
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type RequestHandler,
+  type Response,
+} from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireImiAdmin } from '../middleware/admin.middleware';
 import { requireFreshTotp } from '../middleware/totp.middleware';
@@ -44,6 +52,20 @@ const stepUp = [
 ];
 
 const caller = (req: Request) => svc.callerOf(req.user!, req.ip || 'unknown');
+
+/** Run the step-up chain only when `needed` says so for this request. */
+function stepUpWhen(needed: (req: Request) => boolean): RequestHandler {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!needed(req)) return next();
+    const run = (i: number): void => {
+      if (i === stepUp.length) return next();
+      Promise.resolve(stepUp[i](req, res, (err?: unknown) => (err ? next(err) : run(i + 1)))).catch(
+        next,
+      );
+    };
+    run(0);
+  };
+}
 
 /** Run an action and answer its known errors; anything else goes to the error handler. */
 async function act(res: Response, status: number, run: () => Promise<unknown>): Promise<void> {
@@ -112,9 +134,11 @@ adminIncidentsRouter.post(
 
 adminIncidentsRouter.patch(
   '/:id',
+  stepUpWhen((req) => req.body?.detectedAt !== undefined || req.body?.zulipUrl !== undefined),
   validate(updateIncidentSchema),
   asyncHandler(async (req, res) => {
-    await act(res, 200, async () => svc.updateIncident(req.params.id, req.body, await caller(req)));
+    const { totpCode: _totp, ...changes } = req.body;
+    await act(res, 200, async () => svc.updateIncident(req.params.id, changes, await caller(req)));
   }),
 );
 
