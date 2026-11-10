@@ -82,3 +82,17 @@ SET @sql := IF(@t = 0,
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+SET @t := (SELECT COUNT(*) FROM information_schema.TABLES
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'blocked_certificate_thumbprints');
+SET @sql := IF(@t = 0,
+  'CREATE TABLE blocked_certificate_thumbprints (
+     fingerprint  CHAR(128)     NOT NULL PRIMARY KEY,
+     incident_id  CHAR(36)      NOT NULL,
+     created_by   VARCHAR(255)  NOT NULL,
+     created_at   DATETIME(3)   NOT NULL,
+     KEY idx_bct_incident (incident_id),
+     CONSTRAINT fk_bct_incident FOREIGN KEY (incident_id) REFERENCES incidents (id)
+   ) ENGINE=InnoDB',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
