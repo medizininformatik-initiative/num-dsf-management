@@ -27,6 +27,7 @@ const ROUTES = {
   map: { label: 'networkMap' },
   marketplace: { label: 'sidebarMarketplace' },
   resources: { label: 'dsfResourcesNavLabel' },
+  incidents: { label: 'incidentsNavLabel' },
   help: { label: 'helpTitle' },
   legal: { label: 'legalPageTitle' },
 } as const;
