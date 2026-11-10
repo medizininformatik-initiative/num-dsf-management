@@ -29,12 +29,19 @@
 --
 -- Idempotent: information_schema + PREPARE/EXECUTE; safe to re-run.
 
+-- incidents.organization_id references organizations.identifier, so it takes
+-- that column's character set and collation (a foreign key needs both equal,
+-- and older databases created organizations with utf8mb4_unicode_ci while the
+-- server default is utf8mb4_0900_ai_ci; see migration 031).
+SET @org_cs := (SELECT CONCAT('CHARACTER SET ', CHARACTER_SET_NAME, ' COLLATE ', COLLATION_NAME)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'organizations' AND COLUMN_NAME = 'identifier');
 SET @t := (SELECT COUNT(*) FROM information_schema.TABLES
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'incidents');
-SET @sql := IF(@t = 0,
+SET @sql := IF(@t = 0, CONCAT(
   'CREATE TABLE incidents (
      id               CHAR(36)      NOT NULL PRIMARY KEY,
-     organization_id  VARCHAR(255)  NULL,
+     organization_id  VARCHAR(255)  ', @org_cs, ' NULL,
      title            VARCHAR(200)  NOT NULL,
      description      TEXT          NOT NULL,
      status           ENUM("REPORTED","CONFIRMED","CLOSED","FALSE_ALARM") NOT NULL DEFAULT "REPORTED",
@@ -59,7 +66,7 @@ SET @sql := IF(@t = 0,
      KEY idx_incidents_status (status, reported_at),
      KEY idx_incidents_org (organization_id, suspended),
      CONSTRAINT fk_incidents_org FOREIGN KEY (organization_id) REFERENCES organizations (identifier) ON DELETE SET NULL
-   ) ENGINE=InnoDB',
+   ) ENGINE=InnoDB'),
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
