@@ -9,13 +9,19 @@
  */
 import { Router, type Request } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
+import { validate } from '../middleware/validate.middleware';
+import { incidentReportRateLimit } from '../middleware/rateLimit.middleware';
 import { asyncHandler } from '../lib/asyncHandler';
 import { sendIncidentError } from '../lib/incidentErrors';
+import { reportIncidentSchema } from '../schemas/incident.schema';
 import * as svc from '../services/incidents.service';
 import { listEvents, verifyEvents } from '../services/incident-events.service';
 
 export const incidentsRouter = Router();
 incidentsRouter.use(requireAuth);
+
+// Rate limit skipped under jest, like the other per-user limiters.
+const reportLimit = process.env.NODE_ENV === 'test' ? [] : [incidentReportRateLimit];
 
 const caller = (req: Request) => svc.callerOf(req.user!, req.ip || 'unknown');
 
@@ -47,6 +53,19 @@ incidentsRouter.get(
           chain: verifyEvents(row.id, events),
         },
       });
+    } catch (err) {
+      if (!sendIncidentError(res, err)) throw err;
+    }
+  }),
+);
+
+incidentsRouter.post(
+  '/',
+  ...reportLimit,
+  validate(reportIncidentSchema),
+  asyncHandler(async (req, res) => {
+    try {
+      res.status(201).json({ data: await svc.reportIncident(req.body, await caller(req)) });
     } catch (err) {
       if (!sendIncidentError(res, err)) throw err;
     }
