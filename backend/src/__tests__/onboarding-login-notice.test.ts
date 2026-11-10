@@ -14,6 +14,25 @@ import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/connection';
 import { importSites, onboardingRowSchema } from '../services/onboarding.service';
 import { sendOrgLoginCertificateChangedEmail } from '../services/notification.service';
+import { sha512FingerprintFromPem } from '../lib/certFingerprint';
+import { makeCertPem } from './helpers/allowListSites';
+
+/** A certificate the clinic uploaded itself; returns its SHA-512 fingerprint. */
+async function clinicCertificate(identifier: string): Promise<string> {
+  const pem = makeCertPem(`login-${uuidv4().slice(0, 8)}.${identifier}`);
+  await db('certificates').insert({
+    id: uuidv4(),
+    organization_id: identifier,
+    pem,
+    subject: 'test',
+    thumbprint: uuidv4().replace(/-/g, '').padEnd(64, '0'),
+    valid_until: new Date('2035-01-01'),
+    created_at: new Date(),
+    uploaded_by: 'test',
+    uploaded_by_admin: 0,
+  });
+  return sha512FingerprintFromPem(pem);
+}
 
 const sfx = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 const ACTOR = `importer-${sfx}@imi-test.example.de`;
@@ -59,8 +78,9 @@ describe('onboarding re-import of a login certificate', () => {
     const email = `notice-old-${sfx}@example.de`;
     emails.push(email);
     const oldFp = fp();
-    const newFp = fp();
     await importSites([row(id, email, oldFp)], ACTOR, IP);
+    // A new login of an existing site must be a certificate the clinic uploaded.
+    const newFp = await clinicCertificate(id);
 
     mail.mockClear();
     await importSites([row(id, email, oldFp)], ACTOR, IP);
@@ -98,7 +118,7 @@ describe('onboarding re-import of a login certificate', () => {
     emails.push(email);
     await importSites([row(id, email, fp())], ACTOR, IP);
     await db('org_login_certificates').where({ organization_id: id }).del();
-    const newFp = fp();
+    const newFp = await clinicCertificate(id);
 
     mail.mockClear();
     await importSites([row(id, email, newFp)], ACTOR, IP);

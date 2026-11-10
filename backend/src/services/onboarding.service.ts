@@ -17,7 +17,12 @@ import { z } from 'zod';
 import ExcelJS from 'exceljs';
 import { v4 as uuidv4 } from 'uuid';
 import { parseCsv } from '../lib/csv';
-import { normalizeFingerprint, isValidSha512Fingerprint } from '../lib/certFingerprint';
+import type { Knex } from 'knex';
+import {
+  normalizeFingerprint,
+  isValidSha512Fingerprint,
+  sha512FingerprintFromPem,
+} from '../lib/certFingerprint';
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
 import { errCode, errMessage } from '../lib/errMessage';
@@ -257,6 +262,14 @@ export async function previewSites(rows: OnboardingRow[]): Promise<ImportResult>
     fileFingerprintOwner.set(fp, identifier);
     const exists = !!(await db('organizations').where({ identifier }).first());
     seenIds.add(identifier);
+    if (exists) {
+      try {
+        await assertLoginChangeAllowed(db, identifier, fp);
+      } catch {
+        results.push({ identifier, action: 'failed', ok: false, issue: 'NOT_CLINIC_UPLOADED' });
+        continue;
+      }
+    }
     results.push({ identifier, action: exists ? 'updated' : 'created', ok: true });
   }
 
@@ -285,6 +298,44 @@ export interface ImportRowResult {
 export interface ImportResult {
   summary: { created: number; updated: number; failed: number };
   rows: ImportRowResult[];
+}
+
+/**
+ * A new login fingerprint for an EXISTING organization is accepted only when
+ * the organization already logs in with it, or it is the SHA-512 thumbprint of
+ * a certificate the clinic uploaded itself (uploaded_by_admin = 0), or the
+ * site is still admin-managed: no login certificate yet and an admin owns its
+ * instance (created in the GUI, the clinic has no access it could lose).
+ * @throws NOT_CLINIC_UPLOADED
+ */
+async function assertLoginChangeAllowed(
+  conn: Knex | Knex.Transaction,
+  identifier: string,
+  fingerprint: string,
+): Promise<void> {
+  const logins: string[] = await conn('org_login_certificates')
+    .where({ organization_id: identifier })
+    .pluck('fingerprint');
+  if (logins.includes(fingerprint)) return;
+  if (logins.length === 0) {
+    const owner = await conn('organizations as o')
+      .join('instances as i', 'i.id', 'o.instance_id')
+      .join('users as u', 'u.id', 'i.user_id')
+      .where('o.identifier', identifier)
+      .first('u.email');
+    if (await isAdminEmail(owner?.email)) return;
+  }
+  const pems: string[] = await conn('certificates')
+    .where({ organization_id: identifier, uploaded_by_admin: 0 })
+    .pluck('pem');
+  const clinicUploaded = pems.some((pem) => {
+    try {
+      return sha512FingerprintFromPem(pem) === fingerprint;
+    } catch {
+      return false;
+    }
+  });
+  if (!clinicUploaded) throw new Error('NOT_CLINIC_UPLOADED');
 }
 
 /**
@@ -359,7 +410,14 @@ export async function importSites(
         const user = await trx('users').where({ email: row.contactEmail }).first();
 
         // 3. A known identifier reuses its instance; a new one gets a fresh instance.
-        const existingOrg = await trx('organizations').where({ identifier }).first();
+        const existingOrg = await trx('organizations').where({ identifier }).forUpdate().first();
+        // An existing site keeps its logins unless the new fingerprint is
+        // already one of them or a certificate the clinic itself uploaded
+        // (as enable() requires): one admin must not be able to swap in a
+        // certificate whose key he holds.
+        if (existingOrg) {
+          await assertLoginChangeAllowed(trx, identifier, row.clientCertFingerprint);
+        }
         let instanceId: string;
         let rowAction: 'created' | 'updated';
         if (existingOrg) {

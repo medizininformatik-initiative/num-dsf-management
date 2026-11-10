@@ -383,12 +383,26 @@ describe('onboarding import writes the login certificate', () => {
     const id1 = `ob-1-${sfx}.example.de`;
     const id2 = `ob-2-${sfx}.example.de`;
     const fp1 = 'd'.repeat(128);
-    const fp1b = 'e'.repeat(128);
     const mail = `ob-${sfx}@example.de`;
     const res = await importSites([row(id1, fp1, mail)], 'actor@example.de', '127.0.0.1');
     expect(res.summary.created).toBe(1);
     let entries = await db('org_login_certificates').where({ organization_id: id1 });
     expect(entries).toMatchObject([{ fingerprint: fp1, source: 'ONBOARDING' }]);
+
+    // The replacement must be a certificate the clinic uploaded itself.
+    const pem1b = makeCertPem(`login-b.${id1}`);
+    await db('certificates').insert({
+      id: uuidv4(),
+      organization_id: id1,
+      pem: pem1b,
+      subject: id1,
+      thumbprint: 'b'.repeat(64),
+      valid_until: '2099-01-01',
+      uploaded_by: mail,
+      uploaded_by_admin: 0,
+      created_at: new Date(),
+    });
+    const fp1b = sha512FingerprintFromPem(pem1b);
 
     await importSites([row(id1, fp1b, mail)], 'actor@example.de', '127.0.0.1');
     entries = await db('org_login_certificates').where({ organization_id: id1 });
