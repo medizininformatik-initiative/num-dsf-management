@@ -81,6 +81,9 @@
 .map-svg {
   touch-action: none;
   cursor: grab;
+  /* Panning must never select text (labels, tooltips) under the pointer. */
+  -webkit-user-select: none;
+  user-select: none;
 }
 .map-svg[data-dragging='true'] {
   cursor: grabbing;
