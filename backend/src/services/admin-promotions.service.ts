@@ -117,6 +117,14 @@ export async function approvePromotion(
       'Approver must be from a different site than the requester',
     );
   }
+  // The request may have waited: re-check at decision time what creating it
+  // required (requester still admin, target still whitelisted and unlocked).
+  if (!(await isVerifiedAdminEmail(req.requested_by))) {
+    throw new PromotionError('REQUESTER_NOT_ADMIN', 'The requester is no longer an admin');
+  }
+  const wl = await db('email_whitelist').where({ email: req.target_email }).first();
+  if (!wl) throw new PromotionError('NOT_WHITELISTED', 'Target email is not whitelisted');
+  if (wl.locked_at) throw new PromotionError('TARGET_LOCKED', 'Target email is locked');
 
   const now = new Date();
   // Round to whole seconds (MySQL TIMESTAMP precision; matches signGrant pattern).
