@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6](https://github.com/Mukeyii/num-dsf-allowlist/compare/v0.1.5...v0.1.6) (2026-11-10)
+
+
+### Features
+
+* **auth:** forced TOTP enrolment page, TAN list with download and print, security page ([d5d2f08](https://github.com/Mukeyii/num-dsf-allowlist/commit/d5d2f084009bd12966bd5720746bda703cf5f2f0))
+* **auth:** keep the session and flag enrolment on 403 TOTP_ENROLMENT_REQUIRED ([0dcd4b3](https://github.com/Mukeyii/num-dsf-allowlist/commit/0dcd4b3f87ffc5277ede51b651025788671cc7e0))
+* **auth:** require TOTP enrolment before a certificate admin session works ([dd63140](https://github.com/Mukeyii/num-dsf-allowlist/commit/dd63140549f387b0954c2bfc713a8ea58a57a7da))
+* **auth:** route certificate admins to the enrolment page, link the security page ([f236ba0](https://github.com/Mukeyii/num-dsf-allowlist/commit/f236ba0378f29863b6a09a757c382a0343f9056d))
+* **cli:** admin-cert totp-reset clears an admin's TOTP on the server ([f8f9e9a](https://github.com/Mukeyii/num-dsf-allowlist/commit/f8f9e9a9ac6a26d6475a712336506290f31bf667))
+* **dashboard:** instance overview strip with archive and delete ([a21329c](https://github.com/Mukeyii/num-dsf-allowlist/commit/a21329cd202c7040cd18fbc235ad5e9d351051a3))
+* **db:** add archived_at and archived_by to instances (migration 036) ([9cbcd3f](https://github.com/Mukeyii/num-dsf-allowlist/commit/9cbcd3f24d8510896c047b2aede6df6a498e61c2))
+* **frontend:** instance archive, unarchive and delete API calls ([8c9571f](https://github.com/Mukeyii/num-dsf-allowlist/commit/8c9571f4751d164adbb05560e53ff5c52e77923e))
+* **frontend:** instance overview query with approval summary ([29124c1](https://github.com/Mukeyii/num-dsf-allowlist/commit/29124c15bf9e6d3e592630edfd81ede726f912d7))
+* **help:** scroll-spy helper that handles the end of the page ([aa4339e](https://github.com/Mukeyii/num-dsf-allowlist/commit/aa4339eba7ae745e50a00a07b947a1e25fac21a9))
+* **i18n:** instance overview and lifecycle texts ([f3463b8](https://github.com/Mukeyii/num-dsf-allowlist/commit/f3463b881510f9549e6097148123e84a3274c849))
+* **instances:** archive, unarchive and delete in the instance service ([1d18b23](https://github.com/Mukeyii/num-dsf-allowlist/commit/1d18b23cffcc55ee71c4c25b4b09d95754d844bd))
+* **instances:** archive, unarchive and step-up delete routes ([e241108](https://github.com/Mukeyii/num-dsf-allowlist/commit/e241108b5f4fdd0cf8db1c5fcf4b76ac11d9cfff))
+* **instances:** flag the caller's own instances in the list ([248fa89](https://github.com/Mukeyii/num-dsf-allowlist/commit/248fa899e2a4c859292e80b8b4fb0fa71aa60f05))
+* **step-up:** admin certificate sessions also need a TOTP code or TAN ([c483eec](https://github.com/Mukeyii/num-dsf-allowlist/commit/c483eec6f28f74e2ea975d2542e0b5cba5447f3f))
+* **step-up:** certificate admin sessions confirm with a code in the UI too ([3dc94a8](https://github.com/Mukeyii/num-dsf-allowlist/commit/3dc94a8df00b6bca892ce3383e359b95b4e03478))
+* **step-up:** helpers for a 6-digit code or TAN ([073f0d8](https://github.com/Mukeyii/num-dsf-allowlist/commit/073f0d84d51c7b10243dab785103e3142dc330eb))
+* **step-up:** let step-up request bodies carry a TAN as well as a 6-digit code ([c572457](https://github.com/Mukeyii/num-dsf-allowlist/commit/c572457380f55b0e67a892db3c141608cd0eed68))
+* **step-up:** let the code field switch to a TAN, add enrolment and security texts ([5856994](https://github.com/Mukeyii/num-dsf-allowlist/commit/5856994fc672788d78b1994bd602b4ba42307e3b))
+* **totp:** enrol a signed-in user and accept a TAN as second factor ([d10cec2](https://github.com/Mukeyii/num-dsf-allowlist/commit/d10cec2e911c75c354eab2fed591ef33c4d14dae))
+
+
+### Bug Fixes
+
+* **auth:** keep the session check synchronous for OTP sessions and the step-up mock-friendly ([fcb11bc](https://github.com/Mukeyii/num-dsf-allowlist/commit/fcb11bc0b5e59d490344756ee39e4f1c0482ce8c))
+* **auth:** keep the session when a step-up code is wrong ([37b7240](https://github.com/Mukeyii/num-dsf-allowlist/commit/37b724018dac56b27cefe6894b80530b2516cd46))
+* **help:** call the closing section Support so it differs from Contacts ([31c5903](https://github.com/Mukeyii/num-dsf-allowlist/commit/31c59036a82f42bc28a1886e2fa371acc3cdebc5))
+* **help:** keep the current TOC entry in sync and the heading below the sticky header ([584576c](https://github.com/Mukeyii/num-dsf-allowlist/commit/584576cf9b715e869d5071ad47e45d6562657174))
+* **i18n:** label the dashboard detail view Details in English ([97834f8](https://github.com/Mukeyii/num-dsf-allowlist/commit/97834f83762879ac7fe49367a37b804722d84dd6))
+* **map:** disable text selection while panning the map ([7cb53e7](https://github.com/Mukeyii/num-dsf-allowlist/commit/7cb53e728a703d91964705ef57c47a97dc503989))
+* **map:** follow the mouse wheel without the zoom spring lagging behind ([1b9f166](https://github.com/Mukeyii/num-dsf-allowlist/commit/1b9f1660bcc2af147a5e35d2703796deeb5ccd1e))
+* **map:** give the MII Verbund a violet instead of a red-looking pink ([00ef53a](https://github.com/Mukeyii/num-dsf-allowlist/commit/00ef53a749b3690321ab24c79dfc05097db25abd))
+* **map:** restore the previous view when the selection is cleared ([3871180](https://github.com/Mukeyii/num-dsf-allowlist/commit/387118032b95a55ba6b5f88ba690ccb5376f4acf))
+* **sidebar:** do not mark an instance as selected on pages that ignore it ([70a70cd](https://github.com/Mukeyii/num-dsf-allowlist/commit/70a70cd298766336d4fd843608b665559ec278f3))
+* **step-up:** show why a step-up confirmation failed in the dialog ([7c5ecd5](https://github.com/Mukeyii/num-dsf-allowlist/commit/7c5ecd5b9830ec44771f17405c8f0b2b0d92c907))
+
 ## [0.1.5](https://github.com/Mukeyii/num-dsf-allowlist/compare/v0.1.4...v0.1.5) (2026-11-10)
 
 
