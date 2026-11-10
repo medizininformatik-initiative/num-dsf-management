@@ -37,10 +37,10 @@ export interface ClientCertInfo {
 export function extractClientCert(req: Request): ClientCertInfo | null {
   const verify = req.headers['x-client-verify'];
   if (verify !== 'SUCCESS') return null;
-  const raw = (req.headers['x-client-cert'] ?? req.headers['x-ssl-client-cert']) as
-    | string
-    | undefined;
-  if (!raw) return null;
+  // Only X-Client-Cert: every supported proxy config (nginx, Apache) sets it
+  // and clears the legacy X-Ssl-Client-Cert, which is no longer read at all.
+  const raw = req.headers['x-client-cert'];
+  if (typeof raw !== 'string' || !raw) return null;
   let pem: string;
   try {
     pem = decodeURIComponent(raw);
