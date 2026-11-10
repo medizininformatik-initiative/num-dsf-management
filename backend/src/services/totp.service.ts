@@ -77,7 +77,15 @@ export async function verifyTotpCode(userId: string, code: string): Promise<bool
   const user = await db('users').where({ id: userId }).first();
   if (!user?.totp_secret) return false;
 
-  const secret = decryptSecret(user.totp_secret);
+  return checkTotpAgainstSecret(userId, decryptSecret(user.totp_secret), code);
+}
+
+// Verifies a code against one base32 secret and claims it against replay.
+async function checkTotpAgainstSecret(
+  userId: string,
+  secret: string,
+  code: string,
+): Promise<boolean> {
   // Normalize once: speakeasy verifies the whitespace-stripped token, so the
   // anti-replay claim below MUST hash the same normalized value. Hashing the
   // raw input instead would let a captured code replay under different
@@ -103,6 +111,72 @@ export async function verifyTotpCode(userId: string, code: string): Promise<bool
   if (claimed === null) return false;
 
   return true;
+}
+
+/**
+ * Second factor for an admin step-up: a 6-digit authenticator code or a TAN
+ * (one of the 8-character single-use backup codes, any case, optional
+ * spaces/dashes). A TAN is consumed on success.
+ */
+export async function verifySecondFactor(userId: string, code: string): Promise<boolean> {
+  const normalized = code.replace(/[\s-]/g, '');
+  if (/^\d{6}$/.test(normalized)) return verifyTotpCode(userId, normalized);
+  if (/^[0-9a-fA-F]{8}$/.test(normalized)) return verifyBackupCode(userId, normalized);
+  return false;
+}
+
+const PENDING_TTL_SECONDS = 600;
+const pendingKey = (userId: string): string => `totp_pending:${userId}`;
+
+/**
+ * Starts (or restarts) the enrolment of a signed-in user. The new secret waits
+ * encrypted in Redis until it is confirmed, so an enrolled account keeps its
+ * working secret if the user abandons a re-setup half way.
+ */
+export async function startTotpEnrolment(
+  userId: string,
+  email: string,
+): Promise<{ qrCodeUrl: string; secret: string }> {
+  const setup = await generateTotpSetup(email);
+  await redis.set(pendingKey(userId), encryptSecret(setup.secret), 'EX', PENDING_TTL_SECONDS);
+  return setup;
+}
+
+/**
+ * Confirms the pending secret with a code from the authenticator app. On
+ * success the secret becomes the account's, TOTP is enabled and a fresh TAN
+ * list replaces any old one (returned once, in plaintext). Returns null when
+ * nothing is pending or the code is wrong.
+ */
+export async function confirmTotpEnrolment(userId: string, code: string): Promise<string[] | null> {
+  const pending = await redis.get(pendingKey(userId));
+  if (!pending) return null;
+  if (!(await checkTotpAgainstSecret(userId, decryptSecret(pending), code))) return null;
+
+  await redis.del(pendingKey(userId));
+  await db('users').where({ id: userId }).update({ totp_secret: pending, totp_enabled: true });
+  return generateBackupCodes(userId);
+}
+
+/** Number of unused TANs left. */
+export async function countBackupCodes(userId: string): Promise<number> {
+  const user = await db('users').where({ id: userId }).first();
+  const raw = user?.backup_codes;
+  if (!raw) return 0;
+  try {
+    const list = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(list) ? list.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Removes secret, TANs and the enabled flag; the user enrols again at the next login. */
+export async function resetTotp(userId: string): Promise<void> {
+  await redis.del(pendingKey(userId));
+  await db('users')
+    .where({ id: userId })
+    .update({ totp_secret: null, totp_enabled: false, backup_codes: null });
 }
 
 // Generate 10 backup codes
