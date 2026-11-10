@@ -109,3 +109,11 @@ adminIncidentsRouter.post(
     );
   }),
 );
+
+adminIncidentsRouter.patch(
+  '/:id',
+  validate(updateIncidentSchema),
+  asyncHandler(async (req, res) => {
+    await act(res, 200, async () => svc.updateIncident(req.params.id, req.body, await caller(req)));
+  }),
+);
