@@ -95,6 +95,7 @@ export function useMapViewport() {
       clearTimeout(wheelTimerRef.current);
       wheelTimerRef.current = null;
     }
+    if (layerRef.current) layerRef.current.style.transition = '';
     liveRef.current = next;
     setViewState(next);
   }, []);
@@ -178,8 +179,13 @@ export function useMapViewport() {
       const [px, py] = clientToSvg(event.clientX, event.clientY);
       setLive(zoomAround(liveRef.current, factor, px, py));
       if (wheelTimerRef.current) clearTimeout(wheelTimerRef.current);
+      // The layer's spring transition would be retargeted by every wheel
+      // frame and lag behind the gesture: follow the wheel 1:1, ease again
+      // once it stops.
+      if (layerRef.current) layerRef.current.style.transition = 'none';
       wheelTimerRef.current = setTimeout(() => {
         wheelTimerRef.current = null;
+        if (layerRef.current) layerRef.current.style.transition = '';
         setViewState(liveRef.current);
       }, WHEEL_COMMIT_MS);
     }
