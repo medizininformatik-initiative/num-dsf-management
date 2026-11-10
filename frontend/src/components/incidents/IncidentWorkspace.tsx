@@ -40,7 +40,7 @@ export function IncidentWorkspace({
   const { data, isLoading, isError } = useIncidents();
 
   return (
-    <div className="flex-1 overflow-y-auto" data-testid={testId}>
+    <div className="flex-1 scroll-pt-24 overflow-y-auto" data-testid={testId}>
       <AdminPageHeader title={title} subtitle={subtitle} actions={actions} />
       <div className="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-[minmax(16rem,22rem)_1fr]">
         <div className={selectedId ? 'hidden lg:block' : ''}>
