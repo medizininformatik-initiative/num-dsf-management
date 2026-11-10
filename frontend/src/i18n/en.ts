@@ -56,6 +56,8 @@ export const en = {
   totpCodeLabel: 'TOTP Code',
   totpDigitsRequired: '6 digits required',
   genericActionFailed: 'Action failed',
+  totpNotConfigured:
+    'Two-factor authentication is not set up for your account yet. Set up an authenticator app before confirming this action.',
   certStepUpFailedToast: 'Certificate re-verification failed. Reload the page and try again.',
   instances: 'Instances',
   newInstance: 'New instance',

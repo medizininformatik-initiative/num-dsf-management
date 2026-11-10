@@ -2,18 +2,14 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
 import { router } from './router';
-import { authApi } from './api/auth.api';
+import { installAuthInterceptor } from './api/authInterceptor';
 import { useAuthStore } from './stores/auth.store';
 import { ToastProvider } from './components/ToastProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthBootstrap } from './components/AuthBootstrap';
 import { ConfirmProvider } from './components/ui/ConfirmDialog';
-import { getErrorMessage, getRetryAfterSeconds } from './lib/getErrorMessage';
-import { reauthRedirect } from './lib/authMode';
-import { useI18n } from './stores/i18n.store';
+import { getErrorMessage } from './lib/getErrorMessage';
 import './index.css';
 import './stores/theme.store';
 
@@ -27,88 +23,7 @@ if (import.meta.env.VITE_DEMO === 'true') {
   });
 }
 
-// Single-flight token refresh: when several requests 401 at once, only the
-// first triggers POST /auth/refresh; the rest await the same promise. The
-// backend rotates the refresh cookie on every call, so concurrent refreshes
-// would invalidate each other and log the user out mid-session.
-let refreshPromise: Promise<string> | null = null;
-
-function refreshAccessToken(): Promise<string> {
-  if (!refreshPromise) {
-    refreshPromise = authApi
-      .refresh()
-      .then((res) => {
-        const accessToken = res.data.data.accessToken;
-        const decoded = jwtDecode<{ sub: string; email: string }>(accessToken);
-        useAuthStore.getState().setTokens(accessToken, { id: decoded.sub, email: decoded.email });
-        return accessToken;
-      })
-      .finally(() => {
-        refreshPromise = null;
-      });
-  }
-  return refreshPromise;
-}
-
-// Login-flow routes under /auth/ must not trigger a refresh; /auth/me may.
-function refreshable(url: string | undefined): boolean {
-  if (!url) return true;
-  return !url.includes('/auth/') || /\/auth\/me(\?|$)/.test(url);
-}
-
-// Axios interceptors – token refresh + global error handling
-axios.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    const status = error.response?.status;
-
-    // 401 – silent token refresh. /auth/* is excluded so the refresh call
-    // itself, and login-flow 401s (bad OTP/TOTP), never re-enter the refresh
-    // path; /auth/me is session data and refreshes like any API call.
-    // _retried bails a request that 401s again after one retry.
-    if (status === 401 && !originalRequest._retried && refreshable(originalRequest.url)) {
-      originalRequest._retried = true;
-      try {
-        const accessToken = await refreshAccessToken();
-        originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
-        return axios(originalRequest);
-      } catch {
-        useAuthStore.getState().clearAuth();
-        reauthRedirect();
-      }
-    } else if (status === 401 && originalRequest._retried && refreshable(originalRequest.url)) {
-      // Refresh succeeded but the fresh token is still rejected (revoked or a
-      // permission 401). Without _retried we'd loop on refresh forever; instead
-      // end the session so the user isn't stuck authenticated-but-broken.
-      useAuthStore.getState().clearAuth();
-      reauthRedirect();
-    }
-
-    // Global error toasts (avoid duplicates with _handled flag)
-    if (!error._handled) {
-      const { toast } = await import('sonner');
-      const t = useI18n.getState().t;
-      if (status === 429) {
-        // One deduplicated toast (fixed id) however many requests 429 at once.
-        // A 429 never touches the session: it is not an auth failure.
-        const seconds = getRetryAfterSeconds(error);
-        toast.error(seconds ? t('rateLimitedRetry', { seconds }) : t('rateLimited'), {
-          id: 'rate-limited',
-        });
-        error._handled = true;
-      } else if (status >= 500) {
-        toast.error(t('serverError'));
-        error._handled = true;
-      } else if (!error.response) {
-        toast.error(t('networkError'));
-        error._handled = true;
-      }
-    }
-
-    return Promise.reject(error);
-  },
-);
+installAuthInterceptor();
 
 const queryClient = new QueryClient({
   defaultOptions: {

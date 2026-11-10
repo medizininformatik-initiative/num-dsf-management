@@ -57,6 +57,8 @@ export const de: Record<TranslationKey, string> = {
   totpCodeLabel: 'TOTP-Code',
   totpDigitsRequired: '6 Ziffern erforderlich',
   genericActionFailed: 'Aktion fehlgeschlagen',
+  totpNotConfigured:
+    'Die Zwei-Faktor-Authentifizierung ist für Ihr Konto noch nicht eingerichtet. Richten Sie eine Authenticator-App ein, bevor Sie diese Aktion bestätigen.',
   certStepUpFailedToast:
     'Die erneute Zertifikatsprüfung ist fehlgeschlagen. Seite neu laden und erneut versuchen.',
   instances: 'Instanzen',
