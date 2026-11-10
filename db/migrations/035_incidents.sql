@@ -43,6 +43,10 @@
 SET @org_cs := (SELECT CONCAT('CHARACTER SET ', CHARACTER_SET_NAME, ' COLLATE ', COLLATION_NAME)
   FROM information_schema.COLUMNS
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'organizations' AND COLUMN_NAME = 'identifier');
+-- reported_by_instance_id is joined with organizations.instance_id: same rule.
+SET @inst_cs := (SELECT CONCAT('CHARACTER SET ', CHARACTER_SET_NAME, ' COLLATE ', COLLATION_NAME)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'organizations' AND COLUMN_NAME = 'instance_id');
 SET @t := (SELECT COUNT(*) FROM information_schema.TABLES
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'incidents');
 SET @sql := IF(@t = 0, CONCAT(
@@ -53,7 +57,7 @@ SET @sql := IF(@t = 0, CONCAT(
      description      TEXT          NOT NULL,
      status           ENUM("REPORTED","CONFIRMED","CLOSED","FALSE_ALARM") NOT NULL DEFAULT "REPORTED",
      reported_by      VARCHAR(255)  NOT NULL,
-     reported_by_instance_id CHAR(36) NULL,
+     reported_by_instance_id CHAR(36) ', @inst_cs, ' NULL,
      reported_at      DATETIME(3)   NOT NULL,
      detected_at      DATETIME(3)   NOT NULL,
      escalation_level TINYINT       NOT NULL DEFAULT 1,
@@ -82,7 +86,8 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'incidents' AND COLUMN_NAME = 'reported_by_instance_id');
 SET @sql := IF(@c = 0,
-  'ALTER TABLE incidents ADD COLUMN reported_by_instance_id CHAR(36) NULL AFTER reported_by',
+  CONCAT('ALTER TABLE incidents ADD COLUMN reported_by_instance_id CHAR(36) ', @inst_cs,
+         ' NULL AFTER reported_by'),
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
