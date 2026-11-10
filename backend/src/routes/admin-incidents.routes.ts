@@ -99,3 +99,13 @@ adminIncidentsRouter.post(
     );
   }),
 );
+
+adminIncidentsRouter.post(
+  '/:id/comment',
+  validate(commentIncidentSchema),
+  asyncHandler(async (req, res) => {
+    await act(res, 201, async () =>
+      svc.commentIncident(req.params.id, req.body.text, await caller(req)),
+    );
+  }),
+);
