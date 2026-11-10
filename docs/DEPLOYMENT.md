@@ -245,7 +245,9 @@ IMI admins also sign in on this box by their own client certificate, seeded via 
 
 What the code cannot do and the proxy must: with `SSLVerifyClient optional_no_ca` a TLS client without a certificate completes the handshake and can load the static frontend shell and `/health`; that exposes no data, because every API route and `/fhir/**` then answers 401. (Refusing even the shell would need `SSLVerifyClient require`, which the shared vhost cannot use because of the status page for unregistered certificates.) The proxy must also reset `X-Client-Cert`, `X-Client-Verify` and `X-Ssl-Client-Cert` on every request (see the Apache rules below), because the backend trusts them, and be the only network path to the backend.
 
-**Accepted residual risk:** sensitive admin writes (approving a request, editing another org's data) still require step-up re-verification, but on this stack that step-up is a re-presented client certificate instead of a typed TOTP code. Certificate step-up is non-interactive: the browser attaches the certificate to every request on its own, so it does not prove the admin intended this particular action the way entering a fresh TOTP code does. Script running inside the page, for example from an XSS bug or a malicious browser extension, could perform an admin write under this guard the same way a genuine click would. The Content-Security-Policy and the same-origin session cookie are the controls for this path, so admins using the cert profile should keep browser extensions to a minimum.
+**Admins also need TOTP.** An admin who signs in by certificate must additionally have an authenticator app (TOTP). At the first certificate login the session may only reach `/auth/me` and `/api/v1/me/totp/*`; every other API route answers `403 TOTP_ENROLMENT_REQUIRED` and the portal opens a setup page (QR code, first code, then a printable TAN list of 10 single-use codes). Existing admins go through this at their next login. A sensitive admin write then needs the re-presented certificate AND a 6-digit TOTP code or a TAN; the daily sign-in stays certificate-only. Org-scoped site sessions are not affected: they never use TOTP and confirm with the certificate alone. See "Authenticator-App und TAN-Liste (Admins)" below. With `DEV_AUTO_LOGIN=true` and `DEV_TOTP_BYPASS=true` (development and CI only) the enrolment gate and the code check are off.
+
+**Residual risk (reduced by the TOTP step):** sensitive admin writes (approving a request, editing another org's data) require step-up re-verification. The certificate part is a re-presented client certificate, and for admins the typed TOTP code or TAN is added on top, so a script running in the page cannot confirm a write on its own any more. Certificate step-up is non-interactive: the browser attaches the certificate to every request on its own, so it does not prove the admin intended this particular action the way entering a fresh TOTP code does. Script running inside the page, for example from an XSS bug or a malicious browser extension, could perform an admin write under this guard the same way a genuine click would. The Content-Security-Policy and the same-origin session cookie are the controls for this path, so admins using the cert profile should keep browser extensions to a minimum.
 
 ### Admin-Zertifikat abgelaufen oder verloren
 
@@ -274,6 +276,23 @@ Apache weist abgelaufene Client-Zertifikate ab; mit einem abgelaufenen Admin-Zer
 
    Das Skript nutzt dieselben Umgebungsvariablen wie `restore-backup.sh` (`DSF_ROOT`, `DSF_COMPOSE`), kopiert die Datei in den Backend-Container und prüft wie das Portal: kein privater Schlüssel, gültig, CA-Regeln, nicht bereits als Admin- oder Organisations-Login-Zertifikat vergeben. Der Eintrag erhält `created_by = server-cli` und einen Audit-Eintrag. Die CLI umgeht bewusst das Vier-Augen-Verfahren aus Schritt 1: Root auf dem Server ist der Vertrauensanker.
 3. **Erstinstallation.** `IMI_ADMIN_CERT_FINGERPRINTS` in `.env.prod` wird nur eingelesen, solange noch gar kein Admin-Zertifikat existiert (danach ignoriert, damit ein entferntes Zertifikat nach einem Neustart nicht wiederkommt). Für eine Wiederherstellung im laufenden Betrieb also Schritt 1 oder 2 nutzen. Ablaufdatum und Name werden bei der ersten Anmeldung ergänzt.
+
+### Authenticator-App und TAN-Liste (Admins)
+
+Nur Administratoren brauchen eine Authenticator-App, und nur für heikle Aktionen (Vorfälle bestätigen und Standorte sperren, Admin-Zertifikate und Rollen ändern, Wiederherstellungen u. a.). Die tägliche Anmeldung läuft weiter über das Zertifikat; Standorte brauchen kein TOTP.
+
+- **Erste Anmeldung.** Ein Admin ohne TOTP kommt nach der Zertifikats-Anmeldung nur auf die Einrichtungsseite (alle anderen API-Routen antworten `403 TOTP_ENROLMENT_REQUIRED`): QR-Code scannen, ersten Code eingeben, danach erscheint die **TAN-Liste** (10 Einmal-Codes). Sie lässt sich als .txt speichern und drucken; weiter geht es erst nach der Bestätigung „TAN-Liste sicher aufbewahrt“. Jeder Schritt steht im Audit-Log (`TOTP_SETUP`).
+- **Bestätigen heikler Aktionen.** Zertifikat plus 6-stelliger Code **oder** eine TAN (Umschalter „Stattdessen TAN verwenden“). Eine TAN gilt genau einmal.
+- **TAN-Liste erneuern.** **Sicherheit** in der Admin-Navigation: zeigt die Zahl der verbleibenden TANs (Warnung ab 3), „Neue TAN-Liste erzeugen“ (Step-up; die alte Liste ist sofort ungültig).
+- **Telefon verloren, TAN-Liste noch da.** Mit dem Zertifikat anmelden, unter **Sicherheit** „Neue Authenticator-App einrichten“ wählen, mit einer TAN bestätigen, QR-Code mit dem neuen Gerät scannen. Das erneuert zugleich die TAN-Liste. Auch heikle Aktionen lassen sich bis dahin mit einer TAN bestätigen.
+- **Telefon und TAN-Liste verloren.** Das Vier-Augen-Verfahren aus „Admin-Zertifikat abgelaufen oder verloren“ ersetzt nur Zertifikate; TOTP hängt am Konto und wird dadurch nicht zurückgesetzt. Ein Zurücksetzen im Portal gibt es bewusst nicht (ein einzelner kompromittierter Admin-Zugang soll TOTP nicht umgehen können). Der Serverbetreiber setzt TOTP auf dem Server zurück, danach richtet der Admin bei der nächsten Anmeldung alles neu ein:
+
+  ```bash
+  scripts/admin-cert.sh totp-reset admin@imi.uni-muenster.de --yes
+  ```
+
+  Das funktioniert nur für eine E-Mail mit gültiger Admin-Berechtigung, löscht Geheimnis, TANs und das Aktiv-Kennzeichen und schreibt einen Audit-Eintrag (`server-cli`). Eine laufende Sitzung des Admins landet bei der nächsten Anfrage auf der Einrichtungsseite (der Zugriff wird bei jeder Anfrage geprüft).
+- **Einrichtung vor dem Rollout.** Bestehende Admins werden bei ihrer nächsten Anmeldung durch die Einrichtung geführt; vorher bitte ankündigen.
 
 ### Debian install, step by step (cert-auth variant)
 
