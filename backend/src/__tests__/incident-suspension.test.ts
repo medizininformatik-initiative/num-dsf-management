@@ -17,11 +17,13 @@ import * as svc from '../services/incidents.service';
 import { liftSuspension, suspendIncident } from '../services/incident-suspension.service';
 import { loadAllowListInput } from '../services/fhir.service';
 import { createCertificate } from '../services/certificate.service';
+import { AdminCertError, assertAcceptable } from '../services/admin-certificates.service';
 
 const sfx = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 const adminEmail = `inc-susp-admin-${sfx}@imi-test.example.de`;
 const sites: Site[] = [];
 const incidentIds: string[] = [];
+const adminCertIds: string[] = [];
 
 const admin = (): svc.IncidentCaller => ({
   email: adminEmail,
@@ -57,6 +59,7 @@ afterAll(async () => {
   await db('bundle_versions').where({ triggered_by_email: adminEmail }).del();
   await db('audit_logs').where({ user_email: adminEmail }).del();
   await db('admin_grants').where({ email: adminEmail }).del();
+  if (adminCertIds.length) await db('admin_cert_fingerprints').whereIn('id', adminCertIds).del();
   await removeSites(sites);
 });
 
@@ -128,5 +131,48 @@ describe('blocking certificates that only snapshots still hold', () => {
     await expect(
       createCertificate(site.instanceId, pendingPem, site.email, '127.0.0.1', false),
     ).rejects.toThrow('CERT_BLOCKED');
+  });
+});
+
+describe('admin certificates and incident blocks', () => {
+  it('does not block an admin certificate the suspended site also holds', async () => {
+    const site = await seed('inc-admin-cert');
+    const fp = sha512FingerprintFromPem(site.certPem!);
+    const certId = uuidv4();
+    adminCertIds.push(certId);
+    await db('admin_cert_fingerprints').insert({
+      id: certId,
+      email: adminEmail,
+      fingerprint: fp,
+      created_by: 'test',
+      created_at: new Date(),
+    });
+    const id = await reportFor(site);
+
+    const { results } = await suspendIncident(id, ['BLOCK_CERTIFICATES'], true, admin());
+
+    expect(results[0].blocked).toBe(0);
+    expect(await db('blocked_certificate_thumbprints').where({ fingerprint: fp }).first()).toBe(
+      undefined,
+    );
+  });
+
+  it('refuses a blocked thumbprint as a new admin certificate', async () => {
+    const site = await seed('inc-admin-blocked');
+    const id = await reportFor(site);
+    await suspendIncident(id, ['BLOCK_CERTIFICATES'], true, admin());
+    const now = new Date();
+    const err = await assertAcceptable(
+      {
+        fingerprint: sha512FingerprintFromPem(site.certPem!),
+        subject: 'CN=x',
+        validFrom: new Date(now.getTime() - 60_000),
+        validUntil: new Date(now.getTime() + 86_400_000),
+        issuerDn: 'CN=x',
+      },
+      now,
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AdminCertError);
+    expect((err as AdminCertError).code).toBe('CERT_BLOCKED');
   });
 });
