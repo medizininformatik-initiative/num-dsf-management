@@ -1,7 +1,8 @@
 FROM node:20-alpine AS dev
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# npm 10 sometimes fails a fresh install with EEXIST/ENOENT in its cache; retry once with a clean cache.
+RUN npm ci || (npm cache clean --force && npm ci)
 COPY . .
 EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
@@ -15,7 +16,8 @@ ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_DSF_ENVIRONMENT=$VITE_DSF_ENVIRONMENT
 ENV VITE_AUTH_MODE=$VITE_AUTH_MODE
 COPY package*.json ./
-RUN npm ci
+# npm 10 sometimes fails a fresh install with EEXIST/ENOENT in its cache; retry once with a clean cache.
+RUN npm ci || (npm cache clean --force && npm ci)
 COPY . .
 RUN npm run build
 
