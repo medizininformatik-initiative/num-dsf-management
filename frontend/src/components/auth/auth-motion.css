@@ -8,7 +8,10 @@
  * their crossfade timing instead of collapsing them to 1 ms.
  */
 
-/* ─── Ambient background: drifting IMI-gradient aurora ─────────────────── */
+/* ─── Ambient background: static IMI-gradient glow ─────────────────────────
+   The blobs are radial fills that already fade to transparent, so they need
+   no CSS blur filter and no animation: a static layer is composited once
+   instead of being re-blurred every frame under the backdrop-blurred card. */
 .auth-ambient {
   position: fixed;
   inset: 0;
@@ -28,10 +31,6 @@
   height: 62vmax;
   border-radius: 50%;
   opacity: var(--auth-blob-opacity);
-  filter: blur(48px);
-  will-change: transform;
-  /* Negative delay from AuthAmbient keeps the drift continuous across routes. */
-  animation-delay: var(--auth-ambient-t, 0s);
 }
 .auth-ambient__blob--magenta {
   top: -26vmax;
@@ -60,9 +59,6 @@
   inset: 0;
   background: radial-gradient(ellipse 60% 55% at 50% 48%, var(--bg-page) 0%, transparent 100%);
   opacity: 0.55;
-}
-.auth-ambient[data-paused] .auth-ambient__blob {
-  animation-play-state: paused;
 }
 
 /* ─── Card ──────────────────────────────────────────────────────────────── */
@@ -122,23 +118,6 @@
 
 /* ─── Motion (only without Reduce Motion) ──────────────────────────────── */
 @media (prefers-reduced-motion: no-preference) {
-  .auth-ambient__blob--magenta {
-    animation: auth-drift-a 38s ease-in-out infinite alternate;
-    animation-delay: var(--auth-ambient-t, 0s);
-  }
-  .auth-ambient__blob--violet {
-    animation: auth-drift-b 46s ease-in-out infinite alternate;
-    animation-delay: var(--auth-ambient-t, 0s);
-  }
-  .auth-ambient__blob--blue {
-    animation: auth-drift-c 52s ease-in-out infinite alternate;
-    animation-delay: var(--auth-ambient-t, 0s);
-  }
-  .auth-ambient__blob--green {
-    animation: auth-drift-d 42s ease-in-out infinite alternate;
-    animation-delay: var(--auth-ambient-t, 0s);
-  }
-
   .auth-cert-ring {
     animation: auth-ring 2.4s var(--ease-standard) infinite;
   }
@@ -187,26 +166,6 @@
   animation: auth-draw 360ms var(--ease-spring) 420ms both;
 }
 
-@keyframes auth-drift-a {
-  to {
-    transform: translate3d(14vw, 10vh, 0) scale(1.12);
-  }
-}
-@keyframes auth-drift-b {
-  to {
-    transform: translate3d(-12vw, 14vh, 0) scale(0.92);
-  }
-}
-@keyframes auth-drift-c {
-  to {
-    transform: translate3d(16vw, -10vh, 0) scale(1.08);
-  }
-}
-@keyframes auth-drift-d {
-  to {
-    transform: translate3d(-14vw, -12vh, 0) scale(1.15);
-  }
-}
 @keyframes auth-rise {
   from {
     opacity: 0;
@@ -279,7 +238,6 @@
 
 /* ─── Reduce Motion: static crossfades, no loops ───────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .auth-ambient__blob,
   .auth-cert-ring,
   .auth-cert-scan,
   .auth-progress > span {
