@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9](https://github.com/Mukeyii/num-dsf-allowlist/compare/v0.1.8...v0.1.9) (2026-11-11)
+
+
+### Bug Fixes
+
+* **api:** send no-store on api, auth and fhir responses and drop automatic etags ([a6af0e6](https://github.com/Mukeyii/num-dsf-allowlist/commit/a6af0e6e8d1811e4211d9088a56e163b820bcc8d))
+* **auth:** clear cached enrolment flag before leaving the TOTP enrolment page ([49a289e](https://github.com/Mukeyii/num-dsf-allowlist/commit/49a289ec0c4d6b581bb85e5a723cf891d9a0d61c))
+* **auth:** explain an already enrolled TOTP instead of a generic start failure ([37b18dc](https://github.com/Mukeyii/num-dsf-allowlist/commit/37b18dc8df0f6b695e70481efebda940adad3a63))
+* **ci:** install the playwright browser without apt and make system deps best effort ([3ffa4b8](https://github.com/Mukeyii/num-dsf-allowlist/commit/3ffa4b8041ac92d98f2125fafc9d9562892c40f9))
+* **ci:** retry the playwright browser install when apt mirrors fail ([517770d](https://github.com/Mukeyii/num-dsf-allowlist/commit/517770dfd65792970fb60dd77361f118c5fbb1db))
+* **incidents:** refetch the incident list on focus and mount so the banner appears without a reload ([a9d7698](https://github.com/Mukeyii/num-dsf-allowlist/commit/a9d76989f02596b7ce01a695f51cafaacb718a4a))
+* **scripts:** mark the server scripts as executable ([50fc602](https://github.com/Mukeyii/num-dsf-allowlist/commit/50fc602221faa94339c57f4d09108cc9d6f026f4))
+
 ## [0.1.8](https://github.com/Mukeyii/num-dsf-allowlist/compare/v0.1.7...v0.1.8) (2026-11-11)
 
 
