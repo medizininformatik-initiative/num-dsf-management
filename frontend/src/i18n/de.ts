@@ -2488,6 +2488,9 @@ export const de: Record<TranslationKey, string> = {
   totpEnrolSecretLabel: 'Scannen nicht möglich? Geben Sie diesen Schlüssel in der App ein:',
   totpEnrolStartFailed:
     'Die Einrichtung konnte nicht gestartet werden. Laden Sie die Seite neu und versuchen Sie es erneut.',
+  totpEnrolAlreadyDone:
+    'TOTP ist bereits eingerichtet. Sie müssen die Einrichtung nicht wiederholen.',
+  totpEnrolToApp: 'Weiter zur Anwendung',
   totpEnrolOldEntryHint:
     "Löschen Sie zuerst ältere 'DSF'-Einträge in Ihrer Authenticator-App. Nur der neueste Eintrag funktioniert.",
   totpConfirmInvalidHint:

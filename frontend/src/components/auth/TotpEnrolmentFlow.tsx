@@ -12,6 +12,7 @@
  * Dependencies: meTotp.api, TanListPanel, Button, i18n store, lib/getErrorMessage.
  */
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { meTotpApi } from '../../api/meTotp.api';
 import { getErrorCode } from '../../lib/getErrorMessage';
 import { confirmErrorKind, statusOf } from '../../lib/totpConfirmError';
@@ -51,12 +52,14 @@ export function TotpEnrolmentFlow({
   const [canRestart, setCanRestart] = useState(false);
   const [showCauses, setShowCauses] = useState(false);
   const [restarted, setRestarted] = useState(false);
+  const [alreadyEnrolled, setAlreadyEnrolled] = useState(false);
 
   function clearError() {
     setError('');
     setSupportCode('');
     setCanRestart(false);
     setShowCauses(false);
+    setAlreadyEnrolled(false);
   }
 
   async function start(restart = false) {
@@ -72,11 +75,16 @@ export function TotpEnrolmentFlow({
       setRestarted(restart);
       setStep('scan');
     } catch (err) {
-      setError(
-        getErrorCode(err) === 'TOTP_INVALID'
-          ? t('totpInvalidCodeOrTan')
-          : t('totpEnrolStartFailed'),
-      );
+      const errCode = getErrorCode(err);
+      if (errCode === 'TOTP_REQUIRED' && !currentCode) {
+        // Already enrolled and no code to authorise a re-setup (forced page).
+        setError(t('totpEnrolAlreadyDone'));
+        setAlreadyEnrolled(true);
+      } else {
+        setError(
+          errCode === 'TOTP_INVALID' ? t('totpInvalidCodeOrTan') : t('totpEnrolStartFailed'),
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -138,6 +146,11 @@ export function TotpEnrolmentFlow({
         <p className="text-sm text-[color:var(--text-secondary)]">{t('totpEnrolWhoWhat')}</p>
         <p className="text-sm text-[color:var(--text-secondary)]">{t('totpEnrolTanIntro')}</p>
         {error && <ErrorText>{error}</ErrorText>}
+        {alreadyEnrolled && (
+          <Link to="/app" className="block text-sm font-medium underline">
+            {t('totpEnrolToApp')}
+          </Link>
+        )}
         <Button className="w-full" disabled={loading} onClick={() => void start()}>
           {t('totpEnrolStartBtn')}
         </Button>

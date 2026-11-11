@@ -2435,6 +2435,8 @@ export const en = {
   totpEnrolStartBtn: 'Start setup',
   totpEnrolSecretLabel: 'Cannot scan the code? Enter this key in your app:',
   totpEnrolStartFailed: 'The setup could not be started. Reload the page and try again.',
+  totpEnrolAlreadyDone: 'TOTP is already set up. You do not need to repeat the setup.',
+  totpEnrolToApp: 'Continue to the app',
   totpEnrolOldEntryHint:
     "Delete older 'DSF' entries in your authenticator app first. Only the newest entry works.",
   totpConfirmInvalidHint:
