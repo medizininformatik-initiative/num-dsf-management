@@ -22,6 +22,7 @@ import {
 import { useI18n } from '../stores/i18n.store';
 import { Button } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
+import { NO_AUTOFILL } from '../lib/noAutofill';
 
 export function TotpPage() {
   const { t } = useI18n();
@@ -93,6 +94,7 @@ export function TotpPage() {
             type="text"
             inputMode={useBackup ? 'text' : 'numeric'}
             autoComplete="one-time-code"
+            {...NO_AUTOFILL}
             maxLength={required}
             autoFocus
             value={code}

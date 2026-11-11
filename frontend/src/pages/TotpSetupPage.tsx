@@ -24,6 +24,7 @@ import { DSF_ENVIRONMENT } from '../lib/environment';
 import { formatDateTime } from '../lib/dateUtils';
 import { Button } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
+import { NO_AUTOFILL } from '../lib/noAutofill';
 
 export const BACKUP_CODES_FILENAME = 'dsf-backup-codes.txt';
 
@@ -175,6 +176,7 @@ export function TotpSetupPage() {
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
+              {...NO_AUTOFILL}
               maxLength={6}
               autoFocus
               value={code}

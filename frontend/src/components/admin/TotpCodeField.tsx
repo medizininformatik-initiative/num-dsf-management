@@ -12,6 +12,7 @@ import { forwardRef, useId, useState } from 'react';
 import { sanitizeTan } from '../../lib/stepUpCode';
 import { useI18n } from '../../stores/i18n.store';
 import { FIELD_CLASS, HINT_CLASS, LABEL_CLASS } from './fieldClasses';
+import { NO_AUTOFILL } from '../../lib/noAutofill';
 
 export interface TotpCodeFieldProps {
   value: string;
@@ -60,6 +61,7 @@ export const TotpCodeField = forwardRef<HTMLInputElement, TotpCodeFieldProps>(
           type="text"
           inputMode={tan ? 'text' : 'numeric'}
           autoComplete={tan ? 'off' : 'one-time-code'}
+          {...NO_AUTOFILL}
           autoCapitalize={tan ? 'characters' : undefined}
           spellCheck={tan ? false : undefined}
           maxLength={tan ? 8 : 6}
