@@ -1,10 +1,10 @@
 /**
  * AuthAmbient.tsx – The sign-in screens' ambient background: four large,
- * soft IMI-gradient blobs (magenta, violet, blue, green) drifting slowly
- * behind a calm centre veil. Transform-only animation (GPU-composited), paused
- * while the tab is hidden, static under Reduce Motion. A negative animation
- * delay from the shared time base keeps the drift continuous when the next
- * auth route mounts a fresh copy. Decorative (aria-hidden).
+ * soft IMI-gradient blobs (magenta, violet, blue, green) behind a calm centre
+ * veil. Static radial fills: no blur filter and no animation, so the
+ * backdrop-blurred card above it does not re-blur every frame. The data-paused
+ * flag while the tab is hidden is kept for styling hooks. Decorative
+ * (aria-hidden).
  * Dependencies: authMotion, auth-motion.css.
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
