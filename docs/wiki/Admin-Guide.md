@@ -111,15 +111,37 @@ no waiting period.
    derived from it, or as FALSE_ALARM with the reason. Lift any suspension
    first. Incidents are never deleted.
 
-NIS2 deadlines (early warning after 24 h, notification after 72 h, final
-report after one month) count from the detection time, which an admin can
-correct (with the step-up, like the Zulip link; it may lie at most one year
-back). Users of the affected site and admins tick "reported to BSI" per
-stage and "data protection officer informed". The portal never reports to the
-BSI itself; that duty stays with the site.
+NIS2 deadlines follow § 32 BSIG. The time the site **became aware** of the
+incident ("Kenntnis erlangt am") starts them: early warning after 24 h,
+notification after 72 h. The final report is due **one calendar month after
+the notification**, counted from the moment the notification was ticked as
+reported; until then the date is a forecast from the 72 h deadline and shown
+as "provisional". The awareness time can be corrected by an admin (with the
+step-up, like the Zulip link; it may lie at most one year back). Two more
+stages exist: the **interim report** (Zwischenmeldung) is due only when the
+BSI asks for it, so an admin or the site records the date of the request
+first and can then tick it; the **progress report** (Fortschrittsmeldung)
+appears when the final report falls due while the incident is still open. It
+is ticked instead, and the final report is then due one month after the
+incident is closed. A closed incident still takes its final report.
+
+For every stage the portal keeps the details as a **filling aid for the BSI
+form**: early warning (suspected unlawful or malicious acts, possible
+cross-border impact, affected services), notification (severity, impact,
+optional indicators of compromise) and final or progress report (type of
+threat or root cause, applied and ongoing mitigation, cross-border impact;
+one set for both). Admins, the reporter and users of the affected site see and
+edit them; other sites never do. A stage can be ticked as "reported to BSI"
+only when its required details are saved, and the details of a ticked stage
+are locked as a record. Saving details and ticks are events in the timeline
+(field names only, never the texts) and audit entries; the details are part of
+the hash chain. Users of the affected site and admins also tick "data
+protection officer informed". The portal never reports to the BSI itself;
+that duty stays with the site. The incident export (JSON or CSV) lists the
+stages in the order of § 32 with due date and details.
 
 Every change is an event in an append-only timeline, chained with SHA-256.
-The chain also covers title, description, site and detection time, and the
+The chain also covers title, description, site, awareness time and the NIS2 report details, and the
 chain head is stored with each audit entry. The detail view shows whether the
 chain verifies. Incident audit entries are not attached to the affected
 site's instance, so the site's own audit log does not show them. For authority requests,

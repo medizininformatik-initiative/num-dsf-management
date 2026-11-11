@@ -161,8 +161,10 @@ description and the reporter are returned only to admins and the reporter.
 | GET | /api/v1/incidents/organizations | requireAuth | Sites (identifier, name) for the report form: all for admins, otherwise the approved active sites plus the caller's own. |
 | GET | /api/v1/incidents | requireAuth | Visible incidents, open ones first. |
 | GET | /api/v1/incidents/:id | requireAuth | Incident, timeline events and hash-chain check `{ valid, brokenAt, tamperedFields }`. |
-| POST | /api/v1/incidents | requireAuth, rate-limited | Report. Body `{ organizationId?, title, description, escalationLevel (1-3), detectedAt?, dpoInformed?, zulipUrl? }` (201); title without control characters, `detectedAt` not in the future and at most one year back. Mails all admins. |
-| POST | /api/v1/incidents/:id/nis2/:stage | requireAuth | Tick "reported to BSI" for `EARLY_WARNING`, `NOTIFICATION` or `FINAL_REPORT` (admins, the reporter, users of the affected site). |
+| POST | /api/v1/incidents | requireAuth, rate-limited | Report. Body `{ organizationId?, title, description, escalationLevel (1-3), detectedAt?, dpoInformed?, zulipUrl? }` (201); title without control characters, `detectedAt` (the time the site became aware, "Kenntnis erlangt am") not in the future and at most one year back. Mails all admins. |
+| PUT | /api/v1/incidents/:id/nis2/:stage/fields | requireAuth | Save the report fields of `EARLY_WARNING` (`suspectedMalicious`, `crossBorder` as `yes`/`no`/`unknown`, `affectedServices`), `NOTIFICATION` (`severity` low/medium/high/critical, `impact`, optional `iocs`) or `FINAL_REPORT` / `PROGRESS_REPORT` (`rootCause`, `mitigation`, `crossBorderFinal`; one set shared by both). A draft: any subset, an empty text clears a field, unknown keys give 400. Only for admins, the reporter and users of the affected site; refused (409) once the stage is ticked and on a false alarm. The event and audit entry carry field names only. `INTERIM_REPORT` has no fields (400 `NIS2_STAGE_WITHOUT_FIELDS`). |
+| POST | /api/v1/incidents/:id/nis2/interim-request | requireAuth | `{ requestedAt }` (ISO date-time, not in the future): the BSI asked for an interim report (Zwischenmeldung); admins, the reporter, users of the affected site. A new request before the tick replaces the date. |
+| POST | /api/v1/incidents/:id/nis2/:stage | requireAuth | Tick "reported to BSI" for `EARLY_WARNING`, `NOTIFICATION`, `INTERIM_REPORT`, `PROGRESS_REPORT` or `FINAL_REPORT` (same callers). 422 `NIS2_FIELDS_INCOMPLETE` (`error.details.missing`) while required fields of the stage are empty; 409 `INTERIM_NOT_REQUESTED` before the BSI request is recorded; 409 `STAGE_NOT_DUE` for a progress report that is not due; 409 on a false alarm. The responses list the stages in the order of BSIG 32 with `dueAt` (null for the interim report and for a final report waiting for the closure), `provisional` (final report counted from the 72 h deadline) and, for callers who may see them, `fields`. A closed incident still takes its final report. |
 | POST | /api/v1/incidents/:id/dpo-informed | requireAuth | Tick "data protection officer informed" (same callers). |
 
 ## Admin
@@ -314,7 +316,7 @@ certificate in a certificate session).
 | POST | /api/v1/admin/incidents/:id/close | requireAdmin + requireTotp | `{ outcome: CLOSED or FALSE_ALARM, note, totpCode }`; refused while suspended. |
 | POST | /api/v1/admin/incidents/:id/comment | requireAdmin | `{ text }` (201), e.g. a measure taken outside the portal. |
 | PATCH | /api/v1/admin/incidents/:id | requireAdmin (+ requireTotp when `detectedAt` or `zulipUrl` is sent) | `{ escalationLevel?, detectedAt?, zulipUrl?, totpCode? }`; each change is a timeline event. |
-| GET | /api/v1/admin/incidents/:id/export?format=json\|csv | requireAdmin | Download one incident with its full timeline and hash chain. |
+| GET | /api/v1/admin/incidents/:id/export?format=json|csv | requireAdmin | Download one incident with its full timeline and hash chain, plus the NIS2 stages in the order of BSIG 32 with due date, `provisional` marker and report fields as a filling aid for the BSI form (JSON `bsiFormAid`; CSV `nis2_<stage>_*` lines; the awareness time is `became_aware_at`). |\|csv | requireAdmin | Download one incident with its full timeline and hash chain. |
 
 ## Marketplace (read)
 
