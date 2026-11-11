@@ -138,6 +138,9 @@ describe('TotpEnrolmentFlow confirm errors', () => {
 describe('TotpEnrolmentPage under RequireAuth', () => {
   it('survives an /auth/me refetch: same QR, typed code kept, setup called once', async () => {
     useI18n.getState().setLang('en');
+    getMe.mockResolvedValue({
+      data: { data: { email: 'a@b.de', isAdmin: true, totpEnrolmentRequired: true } },
+    });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={queryClient}>
@@ -166,5 +169,107 @@ describe('TotpEnrolmentPage under RequireAuth', () => {
     expect((screen.getByLabelText('Authenticator code') as HTMLInputElement).value).toBe('12');
     expect(screen.getByText('SECRETAAA')).toBeInTheDocument();
     expect(setup).toHaveBeenCalledTimes(1);
+  });
+
+  function renderRouted(route: string, queryClient: QueryClient) {
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[route]}>
+          <Routes>
+            <Route
+              path="/totp-enrolment"
+              element={
+                <RequireAuth allowUnenrolled>
+                  <TotpEnrolmentPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/app"
+              element={
+                <RequireAuth>
+                  <p>app page</p>
+                </RequireAuth>
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it('finishing the enrolment lands on /app even while /auth/me is still cached as required', async () => {
+    useI18n.getState().setLang('en');
+    useAuthStore.setState({ totpEnrolmentRequired: true });
+    // The refetch after finishing never resolves in time: only the cache decides.
+    const required = { email: 'a@b.de', isAdmin: true, totpEnrolmentRequired: true };
+    getMe.mockResolvedValueOnce({ data: { data: required } });
+    confirm.mockResolvedValue(['AAAA1111', 'BBBB2222']);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderRouted('/totp-enrolment', queryClient);
+    fireEvent.click(await screen.findByRole('button', { name: 'Start setup' }));
+    fireEvent.change(await screen.findByLabelText('Authenticator code'), {
+      target: { value: '654321' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Complete setup' }));
+    await screen.findByRole('list', { name: 'Your TAN list' });
+    getMe.mockReturnValue(new Promise(() => {}));
+    fireEvent.click(screen.getByLabelText('I have stored the TAN list in a safe place.'));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('app page')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Start setup' })).not.toBeInTheDocument();
+  });
+
+  it('sends an already enrolled user from /totp-enrolment to /app', async () => {
+    useI18n.getState().setLang('en');
+    useAuthStore.setState({ totpEnrolmentRequired: false });
+    getMe.mockResolvedValue({
+      data: { data: { email: 'a@b.de', isAdmin: true, totpEnrolmentRequired: false } },
+    });
+    renderRouted(
+      '/totp-enrolment',
+      new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+    );
+    expect(await screen.findByText('app page')).toBeInTheDocument();
+    expect(setup).not.toHaveBeenCalled();
+  });
+
+  it('keeps the TAN list open when /auth/me turns not-required during the enrolment', async () => {
+    useI18n.getState().setLang('en');
+    useAuthStore.setState({ totpEnrolmentRequired: false });
+    getMe.mockResolvedValueOnce({
+      data: { data: { email: 'a@b.de', isAdmin: true, totpEnrolmentRequired: true } },
+    });
+    confirm.mockResolvedValue(['AAAA1111']);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderRouted('/totp-enrolment', queryClient);
+    fireEvent.click(await screen.findByRole('button', { name: 'Start setup' }));
+    fireEvent.change(await screen.findByLabelText('Authenticator code'), {
+      target: { value: '654321' },
+    });
+    getMe.mockResolvedValue({
+      data: { data: { email: 'a@b.de', isAdmin: true, totpEnrolmentRequired: false } },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Complete setup' }));
+    await screen.findByRole('list', { name: 'Your TAN list' });
+    await queryClient.invalidateQueries({ queryKey: ['me'] });
+    expect(screen.getByRole('list', { name: 'Your TAN list' })).toBeInTheDocument();
+  });
+});
+
+describe('TotpEnrolmentFlow start on an enrolled account', () => {
+  it.each([
+    ['en', 'TOTP is already set up', 'Continue to the app'],
+    ['de', 'TOTP ist bereits eingerichtet', 'Weiter zur Anwendung'],
+  ] as const)('explains TOTP_REQUIRED (%s) and links to the app', async (lang, msg, link) => {
+    setup.mockRejectedValueOnce(apiError(400, 'TOTP_REQUIRED'));
+    renderWithProviders(<TotpEnrolmentFlow showIntro continueLabel="Go" onFinished={() => {}} />, {
+      lang,
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: lang === 'en' ? 'Start setup' : 'Einrichtung starten' }),
+    );
+    expect(await screen.findByText(new RegExp(msg))).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: link })).toHaveAttribute('href', '/app');
   });
 });
