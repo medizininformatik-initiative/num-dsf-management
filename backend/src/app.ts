@@ -42,6 +42,7 @@ import { marketplaceRouter } from './routes/marketplace.routes';
 import { adminMarketplaceRouter } from './routes/admin-marketplace.routes';
 import { incidentsRouter } from './routes/incidents.routes';
 import { adminIncidentsRouter } from './routes/admin-incidents.routes';
+import { noStore } from './middleware/noStore.middleware';
 import { apiRateLimit } from './middleware/rateLimit.middleware';
 import { randomUUID } from 'crypto';
 import { logger } from './lib/logger';
@@ -103,6 +104,14 @@ app.use(cookieParser());
 
 // Trust nginx proxy
 app.set('trust proxy', 1);
+
+// No automatic ETags: responses are never cacheable (noStore below), so a
+// validator would only invite conditional reuse by proxies. The FHIR routes
+// set their own ETag explicitly for the DSF conditional GET; that is unaffected.
+app.set('etag', false);
+
+// Nothing under /api, /auth or /fhir may be cached by browsers or proxies.
+app.use(['/api', '/auth', '/fhir'], noStore);
 
 // Request ID + structured logging
 app.use((req: any, _res, next) => {
