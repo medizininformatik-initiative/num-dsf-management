@@ -2409,6 +2409,68 @@ export const en = {
   securityResetupContinue: 'Continue',
   securityLowBannerLink: 'Open security settings',
   navSecurity: 'Security',
+  incidentFlowTitle: 'How an incident is handled',
+  incidentFlowIntro:
+    'Select a step to see who does it, what happens automatically and what is logged.',
+  incidentFlowCanvasLabel:
+    'Incident process: report, assessment, confirmation or false alarm, escalation level, suspension or monitoring, NIS2 deadlines, restart and closure.',
+  incidentFlowCurrent: 'current step',
+  incidentFlowThen: 'Next',
+  incidentFlowYes: 'yes',
+  incidentFlowNo: 'no',
+  incidentFlowClose: 'Close explanation',
+  incidentFlowNote:
+    'Every step ends up in the hash chain and the audit log – nothing can be changed or deleted.',
+  incidentFlowLegendLabel: 'Legend',
+  incidentFlowCat_human: 'Human step',
+  incidentFlowCat_auto: 'Automatic action',
+  incidentFlowCat_suspend: 'Suspension',
+  incidentFlowCat_wait: 'Wait / deadline',
+  incidentFlowCat_branch: 'Branch / outside',
+  incidentFlow_report_label: 'Report',
+  incidentFlow_report_sub: 'Mail to all admins',
+  incidentFlow_report_text:
+    'Any signed-in user can report a suspicion, a site also through its certificate login. The incident starts as "reported" and is visible to the reporter and the admins only. Right away the verified admins get an e-mail (never with the description), and the report is the first event of the hash chain and an audit-log entry.',
+  incidentFlow_assess_label: 'Assess',
+  incidentFlow_assess_sub: '1 admin + 2FA',
+  incidentFlow_assess_text:
+    'One admin examines the report and decides; no second admin is needed, but sensitive actions need the second factor. Confirming, closing as a false alarm and every change of level, detection time or Zulip link is an event of the timeline.',
+  incidentFlow_decision_label: 'confirmed?',
+  incidentFlow_decision_sub: 'yes / no',
+  incidentFlow_decision_text:
+    'Yes: the incident is confirmed and becomes visible to everyone. No: it is closed as a false alarm. A report that is not confirmed stays hidden from the other sites.',
+  incidentFlow_falseAlarm_label: 'False alarm',
+  incidentFlow_falseAlarm_sub: 'close with reason',
+  incidentFlow_falseAlarm_text:
+    'The admin closes the report as a false alarm and has to give a reason. The incident stays in the register with that reason and in the hash chain; nothing is deleted. A suspension must be lifted before closing.',
+  incidentFlow_confirmed_label: 'Confirmed',
+  incidentFlow_confirmed_sub: 'Banner + mail to sites',
+  incidentFlow_confirmed_text:
+    'Confirming is done by one admin. Automatically a red banner appears for every signed-in user until the incident is closed, and a mail goes to all sites: their SECURITY contacts, else their DSF_ADMIN contacts, else the organization e-mail. The confirmation is logged as an event and in the audit log.',
+  incidentFlow_escalation_label: 'Escalation level',
+  incidentFlow_escalation_sub: '1 · 2 · 3',
+  incidentFlow_escalation_text:
+    'The level (1 to 3) is set when reporting and can be changed by an admin; every change is an event. By the process, level 1 means monitoring and levels 2 and 3 mean suspending the site. The portal does not enforce this: the admin decides.',
+  incidentFlow_monitoring_label: 'Monitoring',
+  incidentFlow_monitoring_sub: 'operation continues',
+  incidentFlow_monitoring_text:
+    'The site stays in the allow list. Admins can note observations and measures taken outside the portal as a comment; comments are allowed in every status and appear in the hash chain like every other entry.',
+  incidentFlow_suspend_label: 'Suspend site',
+  incidentFlow_suspend_sub: 'Certificates · logins · allow list · mail',
+  incidentFlow_suspend_text:
+    'One admin picks the measures and confirms with the second factor; an unconfirmed report is confirmed in the same step. Automatically, in this order: certificate and login thumbprints go on the permanent block list, certificate logins are removed and sessions ended, one new allow-list version is published with the site withdrawn, and sites and admins are mailed. Each measure and its result is an event.',
+  incidentFlow_deadlines_label: 'NIS2 deadlines',
+  incidentFlow_deadlines_sub: '24 h · 72 h · 1 month',
+  incidentFlow_deadlines_text:
+    'Counted from the detection time the portal shows three deadlines: early warning after 24 h, notification after 72 h, final report after one month. The duty to report to the BSI stays with the site; the portal only records who ticked "reported to BSI" for each stage, and likewise "data protection officer informed".',
+  incidentFlow_restart_label: 'Restart & closure',
+  incidentFlow_restart_sub: 'Checklist, review, export',
+  incidentFlow_restart_text:
+    'To lift a suspension an admin confirms the restart checklist (cause fixed, fix tested, released by the tech board) with a note and the second factor; a new allow-list version without the suspension is published. Blocked certificates stay blocked: the site returns only with a new, approved one. Then the incident is closed with a review note and can be exported as JSON or CSV with the hash chain. It stays in the register for good.',
+  helpS_incidentFlow_title: 'How an incident is handled',
+  helpS_incidentFlow_toc: 'Incidents',
+  helpS_incidentFlow_0:
+    'A security incident goes through fixed steps, all visible to every signed-in user once it is confirmed. The diagram shows them; select a step for details. The incidents themselves are on the page "Incidents".',
 } as const;
 
 export type TranslationKey = keyof typeof en;
