@@ -146,4 +146,20 @@ describe('HelpPage', () => {
       '/app/admin/help',
     );
   });
+
+  it('has the incident diagram as its own section with a TOC entry, in both languages', () => {
+    const { unmount } = renderWithProviders(<HelpPage />, { route: '/app/help' });
+    const section = document.getElementById('incidents') as HTMLElement;
+    expect(within(section).getByTestId('incident-flow')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('navigation', { name: 'On this page' })).getByRole('link', {
+        name: 'Incidents',
+      }),
+    ).toHaveAttribute('href', '#incidents');
+    unmount();
+    renderWithProviders(<HelpPage />, { route: '/app/help', lang: 'de' });
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'So läuft ein Vorfall ab' }),
+    ).toBeInTheDocument();
+  });
 });
