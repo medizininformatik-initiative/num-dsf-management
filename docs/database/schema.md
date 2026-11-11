@@ -456,7 +456,7 @@ One row per backup attempt, scheduled or manual (028). Pruned files keep their r
 
 ## incidents
 
-The incident register (035). One row per reported security incident; rows are never deleted. Anyone signed in reports, one admin confirms, suspends, lifts and closes (step-up, no four-eyes). The description is shown to admins and the reporter only and never mailed. `detected_at` starts the NIS2 deadlines shown in the portal (early warning 24 h, notification 72 h, final report one calendar month); the `bsi_*` columns record who ticked "reported to BSI" per stage. The portal never reports to the BSI itself. Personal data: reporter, admin and acknowledging user e-mails.
+The incident register (035). One row per reported security incident; rows are never deleted. Anyone signed in reports, one admin confirms, suspends, lifts and closes (step-up, no four-eyes). The description is shown to admins and the reporter only and never mailed. `detected_at` is the time the site became aware of the incident ("Kenntnis erlangt am", BSIG 32) and starts the NIS2 deadlines shown in the portal (early warning 24 h, notification 72 h); the final report is due one calendar month after the notification tick (provisionally after the 72 h deadline), or one month after the closure once a progress report is due. The `bsi_*` columns record who ticked "reported to BSI" per stage; `nis2_data` holds the structured report fields per stage (037). The portal never reports to the BSI itself; it is a filling aid and a record. Personal data: reporter, admin and acknowledging user e-mails.
 
 | Column | Type | Null | Default | Notes |
 |--------|------|------|---------|-------|
@@ -467,7 +467,7 @@ The incident register (035). One row per reported security incident; rows are ne
 | status | ENUM | no | 'REPORTED' | REPORTED, CONFIRMED, CLOSED, FALSE_ALARM |
 | reported_by / reported_at | VARCHAR(255) / DATETIME(3) | no | — | |
 | reported_by_instance_id | CHAR(36) | yes | NULL | Instance of the organization certificate session the report came through; NULL for a personal login. The reporter is e-mail plus this scope. |
-| detected_at | DATETIME(3) | no | — | Defaults to the report time; admins may correct it |
+| detected_at | DATETIME(3) | no | — | Time of becoming aware; defaults to the report time; admins may correct it (column name kept, labelled "became aware at" in the UI) |
 | escalation_level | TINYINT | no | 1 | 1 operation continues, 2 pause, 3 shutdown |
 | zulip_url | VARCHAR(500) | yes | NULL | https link to the coordination thread |
 | confirmed_by / confirmed_at | VARCHAR(255) / DATETIME(3) | yes | NULL | Confirmed incidents are visible to every signed-in user |
@@ -475,7 +475,11 @@ The incident register (035). One row per reported security incident; rows are ne
 | suspended | TINYINT(1) | no | 0 | 1 while the incident suspends the site: published as withdrawn whatever its approved snapshot says |
 | bsi_early_warning_at / _by | DATETIME(3) / VARCHAR(255) | yes | NULL | "Reported to BSI", stage 24 h |
 | bsi_notification_at / _by | DATETIME(3) / VARCHAR(255) | yes | NULL | Stage 72 h |
-| bsi_final_report_at / _by | DATETIME(3) / VARCHAR(255) | yes | NULL | Stage one month |
+| bsi_final_report_at / _by | DATETIME(3) / VARCHAR(255) | yes | NULL | Final report stage |
+| bsi_interim_requested_at / _by | DATETIME(3) / VARCHAR(255) | yes | NULL | The BSI asked for an interim report on this date (037) |
+| bsi_interim_at / _by | DATETIME(3) / VARCHAR(255) | yes | NULL | Interim report ticked as reported (037) |
+| bsi_progress_at / _by | DATETIME(3) / VARCHAR(255) | yes | NULL | Progress report ticked as reported (037) |
+| nis2_data | JSON | yes | NULL | Report fields per stage, e.g. `{"earlyWarning":{"suspectedMalicious":"yes","crossBorder":"no","affectedServices":"BPE"},"notification":{"severity":"high","impact":"…","iocs":"…"},"finalReport":{"rootCause":"…","mitigation":"…","crossBorderFinal":"no"}}`. Admins, the reporter and users of the affected site see and edit them; a stage cannot be ticked with required fields missing; the fields of a ticked stage are locked. Covered by the hash chain (`fieldSha256`: `nis2EarlyWarning`, `nis2Notification`, `nis2FinalReport`); events and audit entries carry field names only (037) |
 | dpo_informed_at / _by | DATETIME(3) / VARCHAR(255) | yes | NULL | Data protection officer informed |
 
 Indexes: `idx_incidents_status (status, reported_at)`, `idx_incidents_org (organization_id, suspended)`.
