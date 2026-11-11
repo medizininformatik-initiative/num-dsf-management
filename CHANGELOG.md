@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7](https://github.com/Mukeyii/num-dsf-allowlist/compare/v0.1.6...v0.1.7) (2026-11-11)
+
+
+### Features
+
+* **db:** add report fields and interim/progress columns to incidents ([ca1c3c9](https://github.com/Mukeyii/num-dsf-allowlist/commit/ca1c3c907f74f01a5a9da38d6c1dd5cd738a4079))
+* **help:** incident process section in the help content ([cf822e3](https://github.com/Mukeyii/num-dsf-allowlist/commit/cf822e3129ae58edd420ed368f6868c4548c8aa9))
+* **help:** render the incident diagram as its own help section ([33d008f](https://github.com/Mukeyii/num-dsf-allowlist/commit/33d008f510044ff0c98c7358b688807dabe2b629))
+* **i18n:** texts for the NIS2 report fields, interim and progress stages ([1b03494](https://github.com/Mukeyii/num-dsf-allowlist/commit/1b0349466a3830d5f3d5d20fee4c17d375cb0888))
+* **incidents:** api and hooks for NIS2 report fields and the interim request ([4743438](https://github.com/Mukeyii/num-dsf-allowlist/commit/4743438587ca076ed4a69f56cb41f4fbf0532385))
+* **incidents:** collapsible report fields form per NIS2 stage ([c0c1561](https://github.com/Mukeyii/num-dsf-allowlist/commit/c0c1561fb130fdd2995f152be21b83e2586d0198))
+* **incidents:** collapsible section remembering its state ([03ee80e](https://github.com/Mukeyii/num-dsf-allowlist/commit/03ee80e8b1f32bb4850e588cd12c3f58aeec7b86))
+* **incidents:** cover the report fields in the incident hash chain ([2552e9f](https://github.com/Mukeyii/num-dsf-allowlist/commit/2552e9fc8352a221716d2b2ff7052c3432744dee))
+* **incidents:** english texts for the incident process diagram ([143af99](https://github.com/Mukeyii/num-dsf-allowlist/commit/143af9933d80b1fab519259cef02dcacab4c4b42))
+* **incidents:** export the NIS2 stages and report fields as a BSI form filling aid ([a6b0c59](https://github.com/Mukeyii/num-dsf-allowlist/commit/a6b0c59bef20bdb07b0a7ed4e8f7bdfa6b678a98))
+* **incidents:** form to record the BSI interim report request ([1870c16](https://github.com/Mukeyii/num-dsf-allowlist/commit/1870c16e5cf98bf836789a61a0d125fd78e8e69a))
+* **incidents:** german texts for the incident process diagram ([f6d30a3](https://github.com/Mukeyii/num-dsf-allowlist/commit/f6d30a3157275062fa6c9cb1e45a455dba640355))
+* **incidents:** interim and progress report stages with closure-based final date ([ca3b5fb](https://github.com/Mukeyii/num-dsf-allowlist/commit/ca3b5fb3d432e84e337107dd2c4ba2f6b6fb2b24))
+* **incidents:** labels, error messages and timeline wording for the new stages ([ddbbe56](https://github.com/Mukeyii/num-dsf-allowlist/commit/ddbbe56dfcd1bac3fdf76ef94b7acb725a770303))
+* **incidents:** model and layout of the incident process diagram ([5394d07](https://github.com/Mukeyii/num-dsf-allowlist/commit/5394d07dd7ee758958a2c31301bf140d22d604a5))
+* **incidents:** pending state for stages without a deadline ([25446de](https://github.com/Mukeyii/num-dsf-allowlist/commit/25446de163a83951cf5932c865f2caade7ff0dad))
+* **incidents:** per-stage details, interim and progress stages in the nis2 panel ([f21fe41](https://github.com/Mukeyii/num-dsf-allowlist/commit/f21fe41458413110a9f78b284123a340114f2f62))
+* **incidents:** report field definitions and form schema per NIS2 stage ([9b0eee3](https://github.com/Mukeyii/num-dsf-allowlist/commit/9b0eee3fb2f9c9e3f4e0824d52940a434465d7f7))
+* **incidents:** routes for the NIS2 report fields and the interim report request ([e78eedb](https://github.com/Mukeyii/num-dsf-allowlist/commit/e78eedb9ad42c0d400267546c34513c56f612fda))
+* **incidents:** save report fields per stage and require them before a stage is ticked ([d6a7fa6](https://github.com/Mukeyii/num-dsf-allowlist/commit/d6a7fa6ff255e74b9caece0aea7e8c9b92a4be05))
+* **incidents:** show the process diagram on both incident pages ([672ede2](https://github.com/Mukeyii/num-dsf-allowlist/commit/672ede2d66c8b71dafce5865181963fc7d254574))
+* **incidents:** workflow diagram component with step explanations ([5006061](https://github.com/Mukeyii/num-dsf-allowlist/commit/50060611886539b0892097163bfa360db427cc63))
+* **incidents:** zod schemas for the report fields of each stage ([5a6f8e7](https://github.com/Mukeyii/num-dsf-allowlist/commit/5a6f8e765222afe329eee7f081b0806f05ca1232))
+
+
+### Bug Fixes
+
+* **incidents:** count the final report one month after the notification ([a72f90d](https://github.com/Mukeyii/num-dsf-allowlist/commit/a72f90d35bdf833660c1786079b7ffea7e4280b2))
+* **incidents:** give the diagram's branch labels room ([970afb5](https://github.com/Mukeyii/num-dsf-allowlist/commit/970afb5747f9a2afa9e5ea58fc638aeb3bfaff66))
+* **incidents:** keep scrolled-to sections clear of the sticky page header ([d584a1e](https://github.com/Mukeyii/num-dsf-allowlist/commit/d584a1e329cc797d0fe6e2ca062b5694cea78e10))
+* **incidents:** label the detection time as the time of becoming aware ([71d0e6d](https://github.com/Mukeyii/num-dsf-allowlist/commit/71d0e6d2c472781c627f399cf87993f6a238bb26))
+* **ui:** compact instance overview as a collapsible chip grid ([55dd197](https://github.com/Mukeyii/num-dsf-allowlist/commit/55dd197dcefe01d98c90ecfa5b57d5d4b9cdcd09))
+
 ## [0.1.6](https://github.com/Mukeyii/num-dsf-allowlist/compare/v0.1.5...v0.1.6) (2026-11-10)
 
 
