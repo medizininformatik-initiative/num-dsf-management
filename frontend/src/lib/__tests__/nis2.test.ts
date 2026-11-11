@@ -10,6 +10,8 @@ const NOW = Date.parse('2026-11-10T12:00:00Z');
 const entry = (dueAt: string, reportedAt: string | null = null): Nis2Entry => ({
   stage: 'EARLY_WARNING',
   dueAt,
+  provisional: false,
+  fields: null,
   reportedAt,
   reportedBy: reportedAt ? 'site@example.org' : null,
 });
@@ -38,6 +40,15 @@ describe('nis2State', () => {
   it('is open with more than six hours left', () => {
     const state = nis2State(entry('2026-11-12T12:00:00Z'), NOW);
     expect(state).toEqual({ kind: 'open', ms: 2 * 86_400_000 });
+  });
+
+  it('has no countdown without a deadline (interim report, final report awaiting the closure)', () => {
+    expect(nis2State({ ...entry('x'), dueAt: null }, NOW)).toEqual({ kind: 'pending' });
+  });
+
+  it('keeps a reported stage reported when it has no deadline', () => {
+    const done = { ...entry('x', '2026-11-10T08:00:00Z'), dueAt: null };
+    expect(nis2State(done, NOW).kind).toBe('reported');
   });
 });
 
