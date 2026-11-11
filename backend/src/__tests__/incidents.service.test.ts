@@ -22,6 +22,7 @@ import { listEvents, verifyEvents } from '../services/incident-events.service';
 import { loadAllowListInput } from '../services/fhir.service';
 import { createCertificate } from '../services/certificate.service';
 import { resolveCertLogin } from '../services/auth.service';
+import { addCalendarMonth } from '../lib/nis2Deadlines';
 
 const sfx = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 const adminEmail = `inc-admin-${sfx}@imi-test.example.de`;
@@ -219,6 +220,24 @@ describe('incident register', () => {
     );
     const dpo = await svc.acknowledgeDpo(incident.id, admin());
     expect(dpo.dpoInformed?.by).toBe(adminEmail);
+  });
+
+  it('counts the final report one month after the notification tick, provisional before it', async () => {
+    const incident = await report(admin(), 2);
+    const final = (i: svc.ApiIncident) => i.nis2.find((n) => n.stage === 'FINAL_REPORT')!;
+    const before = final(incident);
+    const notificationDue = incident.nis2.find((n) => n.stage === 'NOTIFICATION')!.dueAt;
+    expect(before.provisional).toBe(true);
+    expect(new Date(before.dueAt).toISOString()).toBe(
+      addCalendarMonth(new Date(notificationDue)).toISOString(),
+    );
+    await svc.confirmIncident(incident.id, admin());
+    const ticked = await svc.acknowledgeNis2(incident.id, 'NOTIFICATION', admin());
+    const notifiedAt = ticked.nis2.find((n) => n.stage === 'NOTIFICATION')!.reportedAt!;
+    expect(final(ticked).provisional).toBe(false);
+    expect(new Date(final(ticked).dueAt).toISOString()).toBe(
+      addCalendarMonth(new Date(notifiedAt)).toISOString(),
+    );
   });
 
   it('logs every admin field change and comment as a chained event', async () => {

@@ -28,7 +28,13 @@ import { sendIncidentEmail } from './notification.service';
 import { writeAuditLog } from './audit.service';
 import { isAdminCaller } from '../lib/isAdmin';
 import { approvedActive, loadLatestApprovedSites } from './approved-snapshot.service';
-import { NIS2_COLUMNS, NIS2_STAGES, nis2DueAt, type Nis2Stage } from '../lib/nis2Deadlines';
+import {
+  NIS2_COLUMNS,
+  NIS2_STAGES,
+  isFinalReportProvisional,
+  nis2DueAt,
+  type Nis2Stage,
+} from '../lib/nis2Deadlines';
 import { logger } from '../lib/logger';
 import type { IncidentMailEvent } from './mail-templates/incident-mail';
 
@@ -97,6 +103,8 @@ export interface ApiIncident {
   nis2: Array<{
     stage: Nis2Stage;
     dueAt: Date;
+    /** Final report only: counted from the 72 h deadline until the notification is ticked. */
+    provisional: boolean;
     reportedAt: Date | null;
     reportedBy: string | null;
   }>;
@@ -197,7 +205,8 @@ export function toApi(row: IncidentRow, caller: IncidentCaller): ApiIncident {
       const record = row as unknown as Record<string, Date | string | null>;
       return {
         stage,
-        dueAt: nis2DueAt(stage, detectedAt),
+        dueAt: nis2DueAt(stage, detectedAt, row.bsi_notification_at),
+        provisional: stage === 'FINAL_REPORT' && isFinalReportProvisional(row.bsi_notification_at),
         reportedAt: (record[cols.at] as Date | null) ?? null,
         reportedBy: actor((record[cols.by] as string | null) ?? null),
       };
