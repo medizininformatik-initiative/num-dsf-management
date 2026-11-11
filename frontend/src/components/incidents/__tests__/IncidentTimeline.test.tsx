@@ -60,6 +60,26 @@ describe('IncidentTimeline', () => {
     expect(screen.getByText('hash3')).toBeInTheDocument();
   });
 
+  it('words report field saves and the interim request without any field text', () => {
+    const more = [
+      ev('UPDATED', {
+        field: 'nis2Fields',
+        stage: 'NOTIFICATION',
+        changed: ['impact', 'severity'],
+      }),
+      ev('UPDATED', {
+        field: 'nis2InterimRequest',
+        from: null,
+        to: '2026-11-10T08:00:00.000Z',
+      }),
+    ];
+    renderWithProviders(<IncidentTimeline events={more} chain={{ valid: true, brokenAt: null }} />);
+    expect(
+      screen.getByText('NIS2 report details: Notification (72 h) recorded'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/BSI interim report request: none →/)).toBeInTheDocument();
+  });
+
   it('flags a broken chain at its entry', () => {
     renderWithProviders(<IncidentTimeline events={events} chain={{ valid: false, brokenAt: 3 }} />);
     expect(screen.getByRole('status')).toHaveTextContent('Hash chain broken at entry 3');

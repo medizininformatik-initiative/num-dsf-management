@@ -41,6 +41,8 @@ export const STATUS_ICON: Record<IncidentStatus, string> = {
 export const STAGE_KEY: Record<Nis2Stage, TranslationKey> = {
   EARLY_WARNING: 'incidentNis2EARLY_WARNING',
   NOTIFICATION: 'incidentNis2NOTIFICATION',
+  INTERIM_REPORT: 'incidentNis2INTERIM_REPORT',
+  PROGRESS_REPORT: 'incidentNis2PROGRESS_REPORT',
   FINAL_REPORT: 'incidentNis2FINAL_REPORT',
 };
 
@@ -80,6 +82,8 @@ export const FIELD_KEY: Record<string, TranslationKey> = {
   detectedAt: 'incidentFielddetectedAt',
   zulipUrl: 'incidentFieldzulipUrl',
   nis2: 'incidentFieldnis2',
+  nis2Fields: 'incidentFieldnis2Fields',
+  nis2InterimRequest: 'incidentFieldnis2InterimRequest',
   dpoInformed: 'incidentFielddpoInformed',
 };
 

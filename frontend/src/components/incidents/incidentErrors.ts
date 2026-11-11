@@ -17,6 +17,10 @@ const CODE_KEY: Record<string, TranslationKey> = {
   NOT_SUSPENDED: 'incidentErrorNOT_SUSPENDED',
   STILL_SUSPENDED: 'incidentErrorSTILL_SUSPENDED',
   ALREADY_ACKNOWLEDGED: 'incidentErrorALREADY_ACKNOWLEDGED',
+  INTERIM_NOT_REQUESTED: 'incidentErrorINTERIM_NOT_REQUESTED',
+  STAGE_NOT_DUE: 'incidentErrorSTAGE_NOT_DUE',
+  NIS2_FIELDS_INCOMPLETE: 'incidentErrorNIS2_FIELDS_INCOMPLETE',
+  NIS2_STAGE_WITHOUT_FIELDS: 'incidentErrorNIS2_STAGE_WITHOUT_FIELDS',
 };
 
 export function incidentErrorMessage(err: unknown, fallback: string, t: T): string {

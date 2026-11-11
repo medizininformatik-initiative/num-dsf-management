@@ -44,7 +44,9 @@ function measureResult(d: Details, t: T): string | null {
 
 function updatedValue(field: string, value: unknown, t: T, lang: 'de' | 'en'): string {
   if (value === null || value === undefined || value === '') return t('incidentValueNone');
-  if (field === 'detectedAt' && typeof value === 'string') return formatDateTime(value, lang);
+  if ((field === 'detectedAt' || field === 'nis2InterimRequest') && typeof value === 'string') {
+    return formatDateTime(value, lang);
+  }
   return String(value);
 }
 
@@ -111,6 +113,18 @@ function EventDetails({ event }: { event: IncidentEvent }): ReactNode {
         const what =
           stage && stage in STAGE_KEY ? t(STAGE_KEY[stage as keyof typeof STAGE_KEY]) : label;
         return <p className={text}>{t('incidentUpdatedRecorded', { field: what })}</p>;
+      }
+      if (field === 'nis2Fields') {
+        // Field names only, the texts themselves are never in the timeline.
+        const stageLabel =
+          stage && stage in STAGE_KEY ? t(STAGE_KEY[stage as keyof typeof STAGE_KEY]) : '';
+        return (
+          <p className={text}>
+            {t('incidentUpdatedRecorded', {
+              field: stageLabel ? `${label}: ${stageLabel}` : label,
+            })}
+          </p>
+        );
       }
       return (
         <p className={`${text} break-all`}>
