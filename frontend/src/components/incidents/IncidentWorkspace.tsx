@@ -5,17 +5,21 @@
  * to the list). The selection lives in the URL as ?id=, the form the incident
  * mails link to, so a mailed link opens the incident directly and survives a
  * reload.
+ * Above both sits the collapsible process diagram, marking the step of the
+ * selected incident.
  * Dependencies: useIncidents, AdminPageHeader, IncidentList, IncidentDetail,
- * Icon, i18n store, react-router.
+ * IncidentFlowSection, lib/incidentFlow, Icon, i18n store, react-router.
  */
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { IncidentDetail as IncidentDetailData } from '../../api/incidents.api';
-import { useIncidents } from '../../hooks/useIncidents';
+import { useIncident, useIncidents } from '../../hooks/useIncidents';
+import { currentFlowStep } from '../../lib/incidentFlow';
 import { useI18n } from '../../stores/i18n.store';
 import { AdminPageHeader } from '../admin/AdminPageHeader';
 import { Icon } from '../ui/Icon';
 import { IncidentDetail } from './IncidentDetail';
+import { IncidentFlowSection } from './IncidentFlowSection';
 import { IncidentList } from './IncidentList';
 
 interface IncidentWorkspaceProps {
@@ -38,10 +42,24 @@ export function IncidentWorkspace({
   const [params, setParams] = useSearchParams();
   const selectedId = params.get('id');
   const { data, isLoading, isError } = useIncidents();
+  const { data: selected } = useIncident(selectedId);
+  const activeStep = selected
+    ? currentFlowStep(
+        selected.incident.status,
+        selected.incident.suspended,
+        selected.events.some((e) => e.type === 'SUSPENSION_LIFTED'),
+      )
+    : null;
 
   return (
     <div className="flex-1 scroll-pt-24 overflow-y-auto" data-testid={testId}>
       <AdminPageHeader title={title} subtitle={subtitle} actions={actions} />
+      <div className="px-6 pt-6 sm:px-8">
+        <IncidentFlowSection
+          defaultOpen={!isLoading && (data ?? []).length === 0}
+          activeStep={activeStep}
+        />
+      </div>
       <div className="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-[minmax(16rem,22rem)_1fr]">
         <div className={selectedId ? 'hidden lg:block' : ''}>
           <IncidentList
