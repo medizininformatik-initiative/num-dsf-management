@@ -28,13 +28,8 @@ import { sendIncidentEmail } from './notification.service';
 import { writeAuditLog } from './audit.service';
 import { isAdminCaller } from '../lib/isAdmin';
 import { approvedActive, loadLatestApprovedSites } from './approved-snapshot.service';
-import {
-  NIS2_COLUMNS,
-  NIS2_STAGES,
-  isFinalReportProvisional,
-  nis2DueAt,
-  type Nis2Stage,
-} from '../lib/nis2Deadlines';
+import { NIS2_COLUMNS, type Nis2Stage } from '../lib/nis2Deadlines';
+import { buildNis2Entries, nis2ScheduleOf, type Nis2Entry } from '../lib/nis2Entries';
 import { logger } from '../lib/logger';
 import type { IncidentMailEvent } from './mail-templates/incident-mail';
 
@@ -69,6 +64,14 @@ export interface IncidentRow {
   bsi_final_report_by: string | null;
   dpo_informed_at: Date | null;
   dpo_informed_by: string | null;
+  bsi_interim_requested_at: Date | null;
+  bsi_interim_requested_by: string | null;
+  bsi_interim_at: Date | null;
+  bsi_interim_by: string | null;
+  bsi_progress_at: Date | null;
+  bsi_progress_by: string | null;
+  /** Structured report fields per NIS2 stage (JSON; parsed or text, see lib/nis2Entries). */
+  nis2_data: unknown;
 }
 
 /** The signed-in user as the incident register needs it. */
@@ -100,14 +103,7 @@ export interface ApiIncident {
   closedAt: Date | null;
   suspended: boolean;
   zulipUrl: string | null;
-  nis2: Array<{
-    stage: Nis2Stage;
-    dueAt: Date;
-    /** Final report only: counted from the 72 h deadline until the notification is ticked. */
-    provisional: boolean;
-    reportedAt: Date | null;
-    reportedBy: string | null;
-  }>;
+  nis2: Nis2Entry[];
   dpoInformed: { at: Date; by: string | null } | null;
   canAcknowledge: boolean;
   isMine: boolean;
@@ -160,7 +156,7 @@ export function canView(row: IncidentRow, caller: IncidentCaller): boolean {
   return caller.isAdmin || isReporter(row, caller) || row.confirmed_at !== null;
 }
 
-function canAcknowledge(row: IncidentRow, caller: IncidentCaller): boolean {
+export function canAcknowledge(row: IncidentRow, caller: IncidentCaller): boolean {
   if (caller.isAdmin || isReporter(row, caller)) return true;
   return !!row.org_instance_id && caller.instanceIds.includes(row.org_instance_id);
 }
@@ -200,16 +196,10 @@ export function toApi(row: IncidentRow, caller: IncidentCaller): ApiIncident {
     closedAt: row.closed_at,
     suspended: Boolean(row.suspended),
     zulipUrl: row.zulip_url,
-    nis2: NIS2_STAGES.map((stage) => {
-      const cols = NIS2_COLUMNS[stage];
-      const record = row as unknown as Record<string, Date | string | null>;
-      return {
-        stage,
-        dueAt: nis2DueAt(stage, detectedAt, row.bsi_notification_at),
-        provisional: stage === 'FINAL_REPORT' && isFinalReportProvisional(row.bsi_notification_at),
-        reportedAt: (record[cols.at] as Date | null) ?? null,
-        reportedBy: actor((record[cols.by] as string | null) ?? null),
-      };
+    nis2: buildNis2Entries(row as IncidentRow & Record<string, unknown>, {
+      now: new Date(),
+      canSeeFields: canAcknowledge(row, caller),
+      actor,
     }),
     dpoInformed:
       row.dpo_informed_at && row.dpo_informed_by
@@ -557,7 +547,15 @@ export async function updateIncident(
   return toApi((await loadRow(id))!, caller);
 }
 
-/** Tick "reported to BSI" for one NIS2 stage. @throws FORBIDDEN / ALREADY_ACKNOWLEDGED / INVALID_STATUS (closed) */
+/**
+ * A closed incident still takes its final report (it is due one month after
+ * the closure); a false alarm has nothing to report.
+ */
+export function assertNis2Editable(row: IncidentRow): void {
+  if (row.status === 'FALSE_ALARM') throw new Error('INVALID_STATUS');
+}
+
+/** Tick "reported to BSI" for one NIS2 stage. @throws FORBIDDEN / ALREADY_ACKNOWLEDGED / INVALID_STATUS (false alarm) / INTERIM_NOT_REQUESTED / STAGE_NOT_DUE */
 export async function acknowledgeNis2(
   id: string,
   stage: Nis2Stage,
@@ -567,10 +565,15 @@ export async function acknowledgeNis2(
   if (!canAcknowledge(row, caller)) throw new Error('FORBIDDEN');
   const cols = NIS2_COLUMNS[stage];
   const check = (locked: IncidentRow) => {
-    if (isClosed(locked)) throw new Error('INVALID_STATUS');
+    assertNis2Editable(locked);
     if ((locked as unknown as Record<string, unknown>)[cols.at]) {
       throw new Error('ALREADY_ACKNOWLEDGED');
     }
+    if (stage === 'INTERIM_REPORT' && !locked.bsi_interim_requested_at) {
+      throw new Error('INTERIM_NOT_REQUESTED');
+    }
+    if (stage === 'PROGRESS_REPORT' && !nis2ScheduleOf(locked, new Date()).progressVisible)
+      throw new Error('STAGE_NOT_DUE');
   };
   check(row);
   await changeWithEvent(

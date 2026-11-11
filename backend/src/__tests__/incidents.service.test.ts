@@ -23,6 +23,7 @@ import { loadAllowListInput } from '../services/fhir.service';
 import { createCertificate } from '../services/certificate.service';
 import { resolveCertLogin } from '../services/auth.service';
 import { addCalendarMonth } from '../lib/nis2Deadlines';
+import { requestInterimReport } from '../services/incident-nis2.service';
 
 const sfx = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 const adminEmail = `inc-admin-${sfx}@imi-test.example.de`;
@@ -92,6 +93,7 @@ describe('incident register', () => {
     expect(incident.nis2.map((n) => n.stage)).toEqual([
       'EARLY_WARNING',
       'NOTIFICATION',
+      'INTERIM_REPORT',
       'FINAL_REPORT',
     ]);
 
@@ -228,16 +230,107 @@ describe('incident register', () => {
     const before = final(incident);
     const notificationDue = incident.nis2.find((n) => n.stage === 'NOTIFICATION')!.dueAt;
     expect(before.provisional).toBe(true);
-    expect(new Date(before.dueAt).toISOString()).toBe(
-      addCalendarMonth(new Date(notificationDue)).toISOString(),
+    expect(new Date(before.dueAt!).toISOString()).toBe(
+      addCalendarMonth(new Date(notificationDue!)).toISOString(),
     );
     await svc.confirmIncident(incident.id, admin());
     const ticked = await svc.acknowledgeNis2(incident.id, 'NOTIFICATION', admin());
     const notifiedAt = ticked.nis2.find((n) => n.stage === 'NOTIFICATION')!.reportedAt!;
     expect(final(ticked).provisional).toBe(false);
-    expect(new Date(final(ticked).dueAt).toISOString()).toBe(
+    expect(new Date(final(ticked).dueAt!).toISOString()).toBe(
       addCalendarMonth(new Date(notifiedAt)).toISOString(),
     );
+  });
+
+  describe('interim and progress reports', () => {
+    const stageOf = (i: svc.ApiIncident, stage: string) => i.nis2.find((n) => n.stage === stage);
+    const reportOld = async (daysAgo: number) => {
+      const incident = await svc.reportIncident(
+        {
+          organizationId: affected.orgId,
+          title: 'Long running incident',
+          description: 'Still being handled',
+          escalationLevel: 2,
+          detectedAt: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
+        },
+        admin(),
+      );
+      incidentIds.push(incident.id);
+      await svc.confirmIncident(incident.id, admin());
+      return incident;
+    };
+
+    it('takes an interim report only after the BSI asked for it', async () => {
+      const incident = await report(admin(), 2);
+      expect(stageOf(incident, 'INTERIM_REPORT')).toMatchObject({ dueAt: null, requestedAt: null });
+      await expect(svc.acknowledgeNis2(incident.id, 'INTERIM_REPORT', admin())).rejects.toThrow(
+        'INTERIM_NOT_REQUESTED',
+      );
+      const requestedAt = new Date(Date.now() - 3_600_000).toISOString();
+      await expect(
+        requestInterimReport(incident.id, requestedAt, siteCaller(other)),
+      ).rejects.toThrow('INCIDENT_NOT_FOUND');
+      await svc.confirmIncident(incident.id, admin());
+      await expect(
+        requestInterimReport(incident.id, requestedAt, siteCaller(other)),
+      ).rejects.toThrow('FORBIDDEN');
+      const requested = await requestInterimReport(incident.id, requestedAt, siteCaller(affected));
+      expect(stageOf(requested, 'INTERIM_REPORT')?.requestedBy).toBe(affected.email);
+      expect(new Date(stageOf(requested, 'INTERIM_REPORT')!.requestedAt!).toISOString()).toBe(
+        requestedAt,
+      );
+      const ticked = await svc.acknowledgeNis2(incident.id, 'INTERIM_REPORT', siteCaller(affected));
+      expect(stageOf(ticked, 'INTERIM_REPORT')?.reportedAt).not.toBeNull();
+      await expect(requestInterimReport(incident.id, requestedAt, admin())).rejects.toThrow(
+        'ALREADY_ACKNOWLEDGED',
+      );
+      const events = await listEvents(incident.id);
+      expect(
+        events.some((e) => (e.details as { field?: string })?.field === 'nis2InterimRequest'),
+      ).toBe(true);
+    });
+
+    it('shows the progress report once the final report falls due while the incident is open', async () => {
+      const fresh = await report(admin(), 2);
+      expect(stageOf(fresh, 'PROGRESS_REPORT')).toBeUndefined();
+      await expect(svc.acknowledgeNis2(fresh.id, 'PROGRESS_REPORT', admin())).rejects.toThrow(
+        'STAGE_NOT_DUE',
+      );
+      expect(stageOf(await reportOld(20), 'PROGRESS_REPORT')).toBeUndefined();
+      const old = await reportOld(40);
+      const listed = (await svc.listIncidents(admin())).find((i) => i.id === old.id)!;
+      expect(listed.nis2.map((n) => n.stage)).toEqual([
+        'EARLY_WARNING',
+        'NOTIFICATION',
+        'INTERIM_REPORT',
+        'PROGRESS_REPORT',
+        'FINAL_REPORT',
+      ]);
+      expect(stageOf(listed, 'FINAL_REPORT')?.dueAt).toBeNull();
+      const progress = await svc.acknowledgeNis2(old.id, 'PROGRESS_REPORT', admin());
+      expect(stageOf(progress, 'PROGRESS_REPORT')?.reportedBy).toBe(adminEmail);
+    });
+
+    it('puts the final report one month after the closure and still takes it on a closed incident', async () => {
+      const old = await reportOld(40);
+      await svc.acknowledgeNis2(old.id, 'PROGRESS_REPORT', admin());
+      const closed = await svc.closeIncident(old.id, 'CLOSED', 'Handled', admin());
+      const final = stageOf(closed, 'FINAL_REPORT')!;
+      expect(new Date(final.dueAt!).toISOString()).toBe(
+        addCalendarMonth(new Date(closed.closedAt!)).toISOString(),
+      );
+      expect(final.provisional).toBe(false);
+      const ticked = await svc.acknowledgeNis2(old.id, 'FINAL_REPORT', admin());
+      expect(stageOf(ticked, 'FINAL_REPORT')?.reportedAt).not.toBeNull();
+    });
+
+    it('refuses every NIS2 tick on a false alarm', async () => {
+      const incident = await report(admin(), 1);
+      await svc.closeIncident(incident.id, 'FALSE_ALARM', 'Scanner noise', admin());
+      await expect(svc.acknowledgeNis2(incident.id, 'EARLY_WARNING', admin())).rejects.toThrow(
+        'INVALID_STATUS',
+      );
+    });
   });
 
   it('logs every admin field change and comment as a chained event', async () => {
