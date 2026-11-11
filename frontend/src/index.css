@@ -240,152 +240,6 @@ body {
   background-color: var(--bg-page);
 }
 
-@keyframes pulse-teal {
-  0% {
-    box-shadow: 0 0 0 0 rgba(0, 107, 90, 0.2);
-  }
-  70% {
-    box-shadow: 0 0 0 6px rgba(0, 107, 90, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(0, 107, 90, 0);
-  }
-}
-
-.status-pulse {
-  animation: pulse-teal 2s infinite;
-}
-
-/* ─── Auth-screen background: aurora blobs (IMI logo gradient) ──────────── */
-.auth-aurora {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.auth-aurora::before,
-.auth-aurora::after,
-.auth-aurora > span {
-  content: '';
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.18;
-  will-change: transform;
-}
-
-/* Blob 1 — IMI magenta → violet */
-.auth-aurora::before {
-  width: 520px;
-  height: 520px;
-  top: -140px;
-  left: -120px;
-  background: radial-gradient(
-    circle at 30% 30%,
-    var(--brand-magenta) 0%,
-    var(--brand-violet) 70%,
-    transparent 100%
-  );
-  animation: aurora-drift-1 28s ease-in-out infinite;
-}
-
-/* Blob 2 — IMI violet → blue */
-.auth-aurora::after {
-  width: 560px;
-  height: 560px;
-  bottom: -160px;
-  right: -140px;
-  background: radial-gradient(
-    circle at 70% 70%,
-    var(--brand-violet) 0%,
-    var(--brand-blue) 70%,
-    transparent 100%
-  );
-  animation: aurora-drift-2 34s ease-in-out infinite;
-}
-
-/* Blob 3 — IMI blue → green, centered-left */
-.auth-aurora > span {
-  width: 420px;
-  height: 420px;
-  top: 40%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(
-    circle at 50% 50%,
-    var(--brand-green) 0%,
-    var(--brand-blue) 60%,
-    transparent 100%
-  );
-  opacity: 0.1;
-  animation: aurora-drift-3 40s ease-in-out infinite;
-}
-
-@keyframes aurora-drift-1 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(80px, 60px) scale(1.12);
-  }
-  66% {
-    transform: translate(40px, 120px) scale(0.95);
-  }
-}
-
-@keyframes aurora-drift-2 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(-60px, -40px) scale(1.08);
-  }
-  66% {
-    transform: translate(-100px, 30px) scale(0.92);
-  }
-}
-
-@keyframes aurora-drift-3 {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    transform: translate(-42%, -58%) scale(1.15);
-  }
-}
-
-/* Gradient wordmark — the IMI logo gradient stops */
-.dsf-wordmark {
-  background: linear-gradient(
-    92deg,
-    var(--brand-magenta) 0%,
-    var(--brand-violet) 36%,
-    var(--brand-blue) 68%,
-    var(--brand-green) 100%
-  );
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-  animation: wordmark-shimmer 8s ease-in-out infinite;
-}
-
-@keyframes wordmark-shimmer {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
 /* ─── Micro-interactions ──────────────────────────────────────────────────
    Opt-in utility classes. Each only animates interaction (hover/active) or a
    one-shot entrance, never the resting appearance, so static visual snapshots
@@ -813,7 +667,7 @@ body {
    a faint accent glow ring. Under reduced motion the glow stays on, static. */
 .download-nudge {
   position: relative;
-  animation: download-nudge-glow 3.2s ease-in-out infinite;
+  animation: download-nudge-glow 3.2s ease-in-out 4;
 }
 
 .download-nudge::after {
@@ -830,7 +684,7 @@ body {
   );
   background-size: 260% 100%;
   background-position: 160% 0;
-  animation: download-nudge-sheen 3.2s ease-in-out infinite;
+  animation: download-nudge-sheen 3.2s ease-in-out 4;
 }
 
 @keyframes download-nudge-sheen {
