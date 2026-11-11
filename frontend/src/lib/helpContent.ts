@@ -10,7 +10,9 @@ import type { TranslationKey } from '../i18n/en';
 export type HelpBlock =
   | { kind: 'p'; key: TranslationKey }
   | { kind: 'ul' | 'ol'; keys: TranslationKey[] }
-  | { kind: 'code'; text: string };
+  | { kind: 'code'; text: string }
+  /** The incident process diagram. */
+  | { kind: 'incidentFlow' };
 
 export interface HelpSection {
   id: string;
@@ -156,6 +158,13 @@ export const HELP_SECTIONS: HelpSection[] = [
       { kind: 'p', key: 'helpS_withdrawal_0' },
       { kind: 'p', key: 'helpS_withdrawal_1' },
     ],
+  },
+  {
+    id: 'incidents',
+    icon: 'gpp_bad',
+    titleKey: 'helpS_incidentFlow_title',
+    tocKey: 'helpS_incidentFlow_toc',
+    blocks: [{ kind: 'p', key: 'helpS_incidentFlow_0' }, { kind: 'incidentFlow' }],
   },
 ];
 
