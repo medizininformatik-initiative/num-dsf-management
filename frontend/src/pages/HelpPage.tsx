@@ -7,7 +7,7 @@
  * (instant under Reduce Motion), a FAQ deep link (#faq-2) also opens its answer, and the
  * sections reveal with a short stagger. Content structure: lib/helpContent, texts: i18n.
  * Dependencies: react-router-dom, i18n store, useMe, lib (helpContent, motion),
- * AdminPageHeader, Button, Icon, sonner.
+ * AdminPageHeader, Button, Icon, IncidentFlowDiagram, sonner.
  */
 import {
   useCallback,
@@ -30,6 +30,7 @@ import { HELP_FAQ, HELP_SECTIONS, type HelpBlock } from '../lib/helpContent';
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { Button } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
+import { IncidentFlowDiagram } from '../components/incidents/IncidentFlowDiagram';
 
 const CHIP =
   'press-effect inline-block rounded-full px-2.5 py-1 text-xs font-medium text-primary dark:text-brand-400 hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]';
@@ -76,6 +77,7 @@ function Blocks({ blocks }: { blocks: HelpBlock[] }) {
     <>
       {blocks.map((b, i) => {
         if (b.kind === 'p') return <p key={i}>{t(b.key)}</p>;
+        if (b.kind === 'incidentFlow') return <IncidentFlowDiagram key={i} />;
         if (b.kind === 'code') {
           const text = b.text.startsWith('/') ? `${window.location.origin}${b.text}` : b.text;
           return <CodeLine key={i} text={text} />;
@@ -97,11 +99,14 @@ function Section({
   id,
   title,
   index,
+  wide,
   children,
 }: {
   id: string;
   title: string;
   index: number;
+  /** Full content width, for the diagram. */
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -118,7 +123,7 @@ function Section({
       >
         {title}
       </h2>
-      <div className={BODY}>{children}</div>
+      <div className={wide ? BODY.replace('max-w-prose', 'max-w-none') : BODY}>{children}</div>
     </section>
   );
 }
@@ -144,7 +149,13 @@ export function HelpPage() {
         matches(
           t(s.titleKey),
           ...s.blocks.flatMap((b) =>
-            b.kind === 'p' ? [t(b.key)] : b.kind === 'code' ? [b.text] : b.keys.map((k) => t(k)),
+            b.kind === 'p'
+              ? [t(b.key)]
+              : b.kind === 'code'
+                ? [b.text]
+                : b.kind === 'incidentFlow'
+                  ? []
+                  : b.keys.map((k) => t(k)),
           ),
         ),
       ),
@@ -298,7 +309,13 @@ export function HelpPage() {
         ) : (
           <>
             {sections.map((s, i) => (
-              <Section key={s.id} id={s.id} title={t(s.titleKey)} index={i}>
+              <Section
+                key={s.id}
+                id={s.id}
+                title={t(s.titleKey)}
+                index={i}
+                wide={s.blocks.some((b) => b.kind === 'incidentFlow')}
+              >
                 <Blocks blocks={s.blocks} />
               </Section>
             ))}
