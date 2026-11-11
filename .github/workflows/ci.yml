@@ -197,15 +197,16 @@ jobs:
         run: docker compose exec -T backend npx ts-node src/db/seed-testdata.ts
       - name: Install Playwright browsers
         working-directory: frontend
-        # apt mirrors on the runners fail now and then (exit 100); retry with a fresh index.
-        run: |
-          for attempt in 1 2 3; do
-            npx playwright install --with-deps chromium && exit 0
-            echo "playwright install failed (attempt $attempt), retrying"
-            sleep $((attempt * 20))
-            sudo apt-get update || true
-          done
-          exit 1
+        # Only the browser download; it needs no apt. The runner image ships the
+        # system libraries Chromium uses (it has Google Chrome preinstalled).
+        run: npx playwright install chromium
+      - name: Install Playwright system dependencies (best effort)
+        working-directory: frontend
+        # apt mirrors on the runners fail for hours at times (exit 100); a
+        # missing library would surface as a browser launch error in the tests.
+        continue-on-error: true
+        timeout-minutes: 8
+        run: npx playwright install-deps chromium
       - name: Run Playwright
         working-directory: frontend
         run: npm run test:e2e
