@@ -213,6 +213,11 @@ describe('incident routes', () => {
         .send({ ...body, ...TOTP });
       expect(withCode.status).toBe(200);
     }
+    const fields = await request(app)
+      .put(`/api/v1/incidents/${id}/nis2/NOTIFICATION/fields`)
+      .set(siteAuth(site))
+      .send({ severity: 'high', impact: 'Endpoint offline' });
+    expect(fields.status).toBe(200);
     const tick = await request(app)
       .post(`/api/v1/incidents/${id}/nis2/NOTIFICATION`)
       .set(siteAuth(site));
@@ -225,6 +230,69 @@ describe('incident routes', () => {
     expect(
       (await request(app).post(`/api/v1/incidents/${id}/nis2/WHATEVER`).set(siteAuth(site))).status,
     ).toBe(400);
+  });
+
+  it('validates the NIS2 report fields and the interim request, and gates the tick on them', async () => {
+    const id = (await reportAsSite()).body.data.id;
+    const url = `/api/v1/incidents/${id}/nis2`;
+    const incomplete = await request(app).post(`${url}/EARLY_WARNING`).set(siteAuth(site));
+    expect(incomplete.status).toBe(422);
+    expect(incomplete.body.error.code).toBe('NIS2_FIELDS_INCOMPLETE');
+    expect(incomplete.body.error.message).toContain('Pflichtangaben');
+    expect(incomplete.body.error.message).toContain('required fields');
+    expect(incomplete.body.error.details.missing).toEqual([
+      'suspectedMalicious',
+      'crossBorder',
+      'affectedServices',
+    ]);
+
+    const badValue = await request(app)
+      .put(`${url}/EARLY_WARNING/fields`)
+      .set(siteAuth(site))
+      .send({ crossBorder: 'maybe' });
+    expect(badValue.status).toBe(400);
+    const unknownKey = await request(app)
+      .put(`${url}/EARLY_WARNING/fields`)
+      .set(siteAuth(site))
+      .send({ severity: 'low' });
+    expect(unknownKey.status).toBe(400);
+    const noFields = await request(app)
+      .put(`${url}/INTERIM_REPORT/fields`)
+      .set(siteAuth(site))
+      .send({});
+    expect(noFields.status).toBe(400);
+    expect(noFields.body.error.code).toBe('NIS2_STAGE_WITHOUT_FIELDS');
+    const unknownStage = await request(app)
+      .put(`${url}/WHATEVER/fields`)
+      .set(siteAuth(site))
+      .send({});
+    expect(unknownStage.status).toBe(400);
+
+    const noInterim = await request(app).post(`${url}/INTERIM_REPORT`).set(siteAuth(site));
+    expect(noInterim.status).toBe(409);
+    expect(noInterim.body.error.code).toBe('INTERIM_NOT_REQUESTED');
+    const futureRequest = await request(app)
+      .post(`${url}/interim-request`)
+      .set(siteAuth(site))
+      .send({ requestedAt: new Date(Date.now() + 86_400_000).toISOString() });
+    expect(futureRequest.status).toBe(400);
+    const request1 = await request(app)
+      .post(`${url}/interim-request`)
+      .set(siteAuth(site))
+      .send({ requestedAt: new Date(Date.now() - 3_600_000).toISOString() });
+    expect(request1.status).toBe(200);
+    const interim = request1.body.data.nis2.find(
+      (n: { stage: string }) => n.stage === 'INTERIM_REPORT',
+    );
+    expect(interim.requestedBy).toBe(site.email);
+    const tickInterim = await request(app).post(`${url}/INTERIM_REPORT`).set(siteAuth(site));
+    expect(tickInterim.status).toBe(200);
+
+    const notYours = await request(app)
+      .put(`${url}/EARLY_WARNING/fields`)
+      .set(siteAuth(bystander))
+      .send({ crossBorder: 'no' });
+    expect(notYours.status).toBe(404);
   });
 
   it("lists the approved sites and the caller's own for the report form", async () => {
