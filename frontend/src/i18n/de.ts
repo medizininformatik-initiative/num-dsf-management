@@ -2460,4 +2460,66 @@ export const de: Record<TranslationKey, string> = {
   securityResetupContinue: 'Weiter',
   securityLowBannerLink: 'Sicherheitseinstellungen öffnen',
   navSecurity: 'Sicherheit',
+  incidentFlowTitle: 'So läuft ein Vorfall ab',
+  incidentFlowIntro:
+    'Wählen Sie einen Schritt, um zu sehen, wer ihn ausführt, was automatisch geschieht und was protokolliert wird.',
+  incidentFlowCanvasLabel:
+    'Ablauf eines Vorfalls: Meldung, Bewertung, Bestätigung oder Fehlalarm, Eskalationsstufe, Sperrung oder Monitoring, NIS2-Fristen, Wiederanlauf und Abschluss.',
+  incidentFlowCurrent: 'aktueller Schritt',
+  incidentFlowThen: 'Danach',
+  incidentFlowYes: 'ja',
+  incidentFlowNo: 'nein',
+  incidentFlowClose: 'Erklärung schließen',
+  incidentFlowNote:
+    'Jeder Schritt landet in der Hash-Kette und im Audit-Log – nichts lässt sich ändern oder löschen.',
+  incidentFlowLegendLabel: 'Legende',
+  incidentFlowCat_human: 'Schritt durch Menschen',
+  incidentFlowCat_auto: 'Automatische Aktion',
+  incidentFlowCat_suspend: 'Sperrung',
+  incidentFlowCat_wait: 'Wartezeit / Frist',
+  incidentFlowCat_branch: 'Verzweigung / außerhalb',
+  incidentFlow_report_label: 'Meldung',
+  incidentFlow_report_sub: 'Mail an alle Admins',
+  incidentFlow_report_text:
+    'Jeder angemeldete Nutzer kann einen Verdacht melden, ein Standort auch über seine Zertifikats-Anmeldung. Der Vorfall startet als „gemeldet“ und ist nur für die meldende Person und die Admins sichtbar. Sofort erhalten die verifizierten Admins eine Mail (nie mit der Beschreibung); die Meldung ist das erste Ereignis der Hash-Kette und ein Audit-Log-Eintrag.',
+  incidentFlow_assess_label: 'Bewerten',
+  incidentFlow_assess_sub: '1 Admin + 2FA',
+  incidentFlow_assess_text:
+    'Ein Admin prüft die Meldung und entscheidet; ein zweiter Admin ist nicht nötig, sensible Aktionen verlangen aber den zweiten Faktor. Bestätigen, Schließen als Fehlalarm und jede Änderung von Stufe, Entdeckungszeit oder Zulip-Link sind Ereignisse im Verlauf.',
+  incidentFlow_decision_label: 'bestätigt?',
+  incidentFlow_decision_sub: 'ja / nein',
+  incidentFlow_decision_text:
+    'Ja: der Vorfall wird bestätigt und für alle sichtbar. Nein: er wird als Fehlalarm geschlossen. Eine nicht bestätigte Meldung bleibt für die übrigen Standorte verborgen.',
+  incidentFlow_falseAlarm_label: 'Fehlalarm',
+  incidentFlow_falseAlarm_sub: 'mit Grund schließen',
+  incidentFlow_falseAlarm_text:
+    'Der Admin schließt die Meldung als Fehlalarm und muss einen Grund angeben. Der Vorfall bleibt mit dem Grund im Register und in der Hash-Kette; gelöscht wird nichts. Eine bestehende Sperre muss vorher aufgehoben sein.',
+  incidentFlow_confirmed_label: 'Bestätigt',
+  incidentFlow_confirmed_sub: 'Banner + Mail an Standorte',
+  incidentFlow_confirmed_text:
+    'Bestätigt wird durch einen Admin. Automatisch erscheint für alle angemeldeten Nutzer ein roter Banner, bis der Vorfall geschlossen ist, und alle Standorte erhalten eine Mail: an ihre SECURITY-Kontakte, sonst an die DSF_ADMIN-Kontakte, sonst an die Organisations-Mail. Die Bestätigung steht als Ereignis im Verlauf und im Audit-Log.',
+  incidentFlow_escalation_label: 'Eskalationsstufe',
+  incidentFlow_escalation_sub: '1 · 2 · 3',
+  incidentFlow_escalation_text:
+    'Die Stufe (1 bis 3) wird bei der Meldung gesetzt und kann von einem Admin geändert werden; jede Änderung ist ein Ereignis. Nach dem Prozess bedeutet Stufe 1 Monitoring, Stufe 2 und 3 die Sperrung des Standorts. Das Portal erzwingt das nicht: der Admin entscheidet.',
+  incidentFlow_monitoring_label: 'Monitoring',
+  incidentFlow_monitoring_sub: 'Betrieb läuft',
+  incidentFlow_monitoring_text:
+    'Der Standort bleibt in der Allow List. Admins können Beobachtungen und Maßnahmen außerhalb des Portals als Kommentar festhalten; Kommentare sind in jedem Status möglich und stehen wie alle Einträge in der Hash-Kette.',
+  incidentFlow_suspend_label: 'Standort sperren',
+  incidentFlow_suspend_sub: 'Zertifikate · Logins · Allow List · Mail',
+  incidentFlow_suspend_text:
+    'Ein Admin wählt die Maßnahmen und bestätigt mit dem zweiten Faktor; eine unbestätigte Meldung wird im selben Schritt bestätigt. Automatisch, in dieser Reihenfolge: Zertifikats- und Login-Fingerabdrücke kommen auf die dauerhafte Sperrliste, Zertifikats-Logins werden entfernt und Sitzungen beendet, eine neue Allow-List-Version wird mit dem zurückgezogenen Standort veröffentlicht, Standorte und Admins erhalten eine Mail. Jede Maßnahme mit Ergebnis ist ein Ereignis.',
+  incidentFlow_deadlines_label: 'NIS2-Fristen',
+  incidentFlow_deadlines_sub: '24 h · 72 h · 1 Monat',
+  incidentFlow_deadlines_text:
+    'Ab der Entdeckungszeit zeigt das Portal drei Fristen: Frühwarnung nach 24 h, Meldung nach 72 h, Abschlussbericht nach einem Monat. Die Meldepflicht ans BSI liegt beim Standort; das Portal hält nur fest, wer je Stufe „ans BSI gemeldet“ abgehakt hat, ebenso „Datenschutzbeauftragte informiert“.',
+  incidentFlow_restart_label: 'Wiederanlauf & Abschluss',
+  incidentFlow_restart_sub: 'Checkliste, Review, Export',
+  incidentFlow_restart_text:
+    'Zum Aufheben einer Sperre bestätigt ein Admin die Wiederanlauf-Checkliste (Ursache behoben, Behebung getestet, Freigabe durch das Tech-Board) mit Notiz und zweitem Faktor; eine neue Allow-List-Version ohne die Sperre wird veröffentlicht. Gesperrte Zertifikate bleiben gesperrt: der Standort kehrt nur mit einem neuen, genehmigten zurück. Danach wird der Vorfall mit einer Review-Notiz geschlossen und lässt sich samt Hash-Kette als JSON oder CSV exportieren. Er bleibt dauerhaft im Register.',
+  helpS_incidentFlow_title: 'So läuft ein Vorfall ab',
+  helpS_incidentFlow_toc: 'Vorfälle',
+  helpS_incidentFlow_0:
+    'Ein Sicherheitsvorfall durchläuft feste Schritte, die nach der Bestätigung für alle angemeldeten Nutzer sichtbar sind. Das Diagramm zeigt sie; wählen Sie einen Schritt für Details. Die Vorfälle selbst stehen auf der Seite „Vorfälle“.',
 };
