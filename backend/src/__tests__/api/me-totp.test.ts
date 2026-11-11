@@ -181,12 +181,27 @@ describe('forced TOTP enrolment for certificate admins', () => {
     expect(res.body.data).toEqual({ enabled: false, remainingTans: 0, enrolmentRequired: true });
   });
 
+  it('confirm without a started setup answers 409 TOTP_ENROLMENT_EXPIRED', async () => {
+    const res = await asAdmin('post', '/api/v1/me/totp/confirm').send({ code: '123456' });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('TOTP_ENROLMENT_EXPIRED');
+  });
+
   it('setup returns a QR code and the secret', async () => {
     const res = await asAdmin('post', '/api/v1/me/totp/setup').send({});
     expect(res.status).toBe(200);
     expect(res.body.data.qrCodeUrl).toMatch(/^data:image\/png/);
     secret = res.body.data.secret;
     expect(secret).toBeTruthy();
+  });
+
+  it('a repeated setup returns the same secret; restart issues a new one', async () => {
+    const again = await asAdmin('post', '/api/v1/me/totp/setup').send({});
+    expect(again.status).toBe(200);
+    expect(again.body.data.secret).toBe(secret);
+    const restarted = await asAdmin('post', '/api/v1/me/totp/setup').send({ restart: true });
+    expect(restarted.body.data.secret).not.toBe(secret);
+    secret = restarted.body.data.secret;
   });
 
   it('confirm refuses a wrong code and a malformed one', async () => {
@@ -218,7 +233,17 @@ describe('forced TOTP enrolment for certificate admins', () => {
     const actions = rows.map(
       (r) => (typeof r.diff_json === 'string' ? JSON.parse(r.diff_json) : r.diff_json).action,
     );
-    expect(actions).toEqual(expect.arrayContaining(['started', 'enrolled']));
+    expect(actions).toEqual(
+      expect.arrayContaining(['started', 'resumed', 'restarted', 'enrolled']),
+    );
+    const failed = await db('audit_logs').where({
+      user_email: adminEmail,
+      operation: 'STEP_UP_FAILED',
+    });
+    const reasons = failed.map(
+      (r) => (typeof r.diff_json === 'string' ? JSON.parse(r.diff_json) : r.diff_json).reason,
+    );
+    expect(reasons).toEqual(expect.arrayContaining(['NO_PENDING', 'INVALID_CODE']));
   });
 
   it('a re-setup of an enrolled account needs a current code or TAN', async () => {

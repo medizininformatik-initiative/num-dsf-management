@@ -6,6 +6,8 @@
  * Dependencies: uuid, speakeasy, db/connection, redis.service, totp.service
  */
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 import speakeasy from 'speakeasy';
 import { db } from '../db/connection';
 import { redis } from '../services/redis.service';
@@ -54,8 +56,22 @@ describe('totp enrolment service', () => {
     expect(Boolean(row.totp_enabled)).toBe(false);
   });
 
+  it('returns the same pending secret on a repeated start, a new one only on restart', async () => {
+    const again = await startTotpEnrolment(userId, email);
+    expect(again.secret).toBe(secret);
+    expect(again.resumed).toBe(true);
+    expect(again.qrCodeUrl).toMatch(/^data:image\/png/);
+    const restarted = await startTotpEnrolment(userId, email, true);
+    expect(restarted.secret).not.toBe(secret);
+    expect(restarted.resumed).toBe(false);
+    secret = restarted.secret;
+  });
+
   it('refuses a wrong confirmation code and keeps the enrolment pending', async () => {
-    expect(await confirmTotpEnrolment(userId, '000000')).toBeNull();
+    expect(await confirmTotpEnrolment(userId, '000000')).toEqual({
+      ok: false,
+      reason: 'INVALID_CODE',
+    });
     const row = await db('users').where({ id: userId }).first();
     expect(Boolean(row.totp_enabled)).toBe(false);
   });
@@ -63,8 +79,9 @@ describe('totp enrolment service', () => {
   it('confirms with a valid code: enables TOTP and returns 10 TANs', async () => {
     const code = speakeasy.totp({ secret, encoding: 'base32' });
     const result = await confirmTotpEnrolment(userId, code);
-    expect(result).not.toBeNull();
-    tans = result!;
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('unreachable');
+    tans = result.backupCodes;
     expect(tans).toHaveLength(10);
     tans.forEach((t) => expect(t).toMatch(/^[0-9A-F]{8}$/));
     const row = await db('users').where({ id: userId }).first();
@@ -73,9 +90,32 @@ describe('totp enrolment service', () => {
     expect(await countBackupCodes(userId)).toBe(10);
   });
 
-  it('returns null when no enrolment is pending any more', async () => {
+  it('reports NO_PENDING when no enrolment is pending any more', async () => {
     const code = speakeasy.totp({ secret, encoding: 'base32', time: Date.now() / 1000 + 30 });
-    expect(await confirmTotpEnrolment(userId, code)).toBeNull();
+    expect(await confirmTotpEnrolment(userId, code)).toEqual({ ok: false, reason: 'NO_PENDING' });
+  });
+
+  it('reports CODE_REUSED when the code was already claimed', async () => {
+    const fresh = await startTotpEnrolment(userId, email, true);
+    const code = speakeasy.totp({ secret: fresh.secret, encoding: 'base32' });
+    const hash = crypto.createHash('sha256').update(`${userId}:${code}`).digest('hex');
+    await redis.set(`totp_used:${hash}`, '1', 'EX', 120);
+    expect(await confirmTotpEnrolment(userId, code)).toEqual({ ok: false, reason: 'CODE_REUSED' });
+    await redis.del(`totp_used:${hash}`);
+    await redis.del(`totp_pending:${userId}`);
+  });
+
+  it('releases the replay claim when the database write fails, so a retry works', async () => {
+    const fresh = await startTotpEnrolment(userId, email, true);
+    const code = speakeasy.totp({ secret: fresh.secret, encoding: 'base32' });
+    const spy = jest.spyOn(bcrypt, 'hash') as unknown as jest.SpyInstance;
+    spy.mockRejectedValueOnce(new Error('hash failed'));
+    await expect(confirmTotpEnrolment(userId, code)).rejects.toThrow('hash failed');
+    spy.mockRestore();
+    const retry = await confirmTotpEnrolment(userId, code);
+    expect(retry.ok).toBe(true);
+    if (retry.ok) tans = retry.backupCodes;
+    secret = fresh.secret;
   });
 
   it('accepts a TOTP code as second factor and refuses its replay', async () => {
