@@ -108,4 +108,44 @@ describe('IncidentsPage', () => {
       await screen.findByText('This incident does not exist or is not visible to you.'),
     ).toBeInTheDocument();
   });
+
+  it('keeps the process diagram closed while incidents exist and marks the selected incident step', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<IncidentsPage />, { route: '/app/incidents?id=i1' });
+    await screen.findByTestId('incident-detail');
+    const toggle = screen.getByRole('button', { name: 'How an incident is handled' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await user.click(toggle);
+    expect(screen.getByRole('button', { name: /^Suspend site.*current step/ })).toBeInTheDocument();
+    expect(screen.getAllByText('current step')).toHaveLength(1);
+  });
+
+  it('marks the restart step once the suspension was lifted', async () => {
+    const user = userEvent.setup();
+    getMock.mockResolvedValue({
+      data: {
+        data: {
+          ...detail,
+          incident: { ...incident, suspended: false },
+          events: [
+            ...detail.events,
+            { ...detail.events[0], id: 'e2', seq: 2, type: 'SUSPENSION_LIFTED' },
+          ],
+        },
+      },
+    });
+    renderWithProviders(<IncidentsPage />, { route: '/app/incidents?id=i1' });
+    await screen.findByTestId('incident-detail');
+    await user.click(screen.getByRole('button', { name: 'How an incident is handled' }));
+    expect(
+      screen.getByRole('button', { name: /^Restart & closure.*current step/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('opens the process diagram when there are no incidents', async () => {
+    listMock.mockResolvedValue({ data: { data: [] } });
+    renderWithProviders(<IncidentsPage />, { route: '/app/incidents' });
+    expect(await screen.findByTestId('incident-flow')).toBeInTheDocument();
+    expect(screen.queryByText('current step')).not.toBeInTheDocument();
+  });
 });
