@@ -24,6 +24,7 @@ import { createCertificate } from '../services/certificate.service';
 import { resolveCertLogin } from '../services/auth.service';
 import { addCalendarMonth } from '../lib/nis2Deadlines';
 import { requestInterimReport } from '../services/incident-nis2.service';
+import { fillStage } from './helpers/nis2Fields';
 
 const sfx = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 const adminEmail = `inc-admin-${sfx}@imi-test.example.de`;
@@ -214,6 +215,7 @@ describe('incident register', () => {
     await expect(
       svc.acknowledgeNis2(incident.id, 'EARLY_WARNING', siteCaller(other)),
     ).rejects.toThrow('FORBIDDEN');
+    await fillStage(incident.id, 'EARLY_WARNING', siteCaller(affected));
     const acked = await svc.acknowledgeNis2(incident.id, 'EARLY_WARNING', siteCaller(affected));
     expect(acked.nis2[0].reportedBy).toBe(affected.email);
     expect(acked.canAcknowledge).toBe(true);
@@ -234,6 +236,7 @@ describe('incident register', () => {
       addCalendarMonth(new Date(notificationDue!)).toISOString(),
     );
     await svc.confirmIncident(incident.id, admin());
+    await fillStage(incident.id, 'NOTIFICATION', admin());
     const ticked = await svc.acknowledgeNis2(incident.id, 'NOTIFICATION', admin());
     const notifiedAt = ticked.nis2.find((n) => n.stage === 'NOTIFICATION')!.reportedAt!;
     expect(final(ticked).provisional).toBe(false);
@@ -307,12 +310,14 @@ describe('incident register', () => {
         'FINAL_REPORT',
       ]);
       expect(stageOf(listed, 'FINAL_REPORT')?.dueAt).toBeNull();
+      await fillStage(old.id, 'PROGRESS_REPORT', admin());
       const progress = await svc.acknowledgeNis2(old.id, 'PROGRESS_REPORT', admin());
       expect(stageOf(progress, 'PROGRESS_REPORT')?.reportedBy).toBe(adminEmail);
     });
 
     it('puts the final report one month after the closure and still takes it on a closed incident', async () => {
       const old = await reportOld(40);
+      await fillStage(old.id, 'PROGRESS_REPORT', admin());
       await svc.acknowledgeNis2(old.id, 'PROGRESS_REPORT', admin());
       const closed = await svc.closeIncident(old.id, 'CLOSED', 'Handled', admin());
       const final = stageOf(closed, 'FINAL_REPORT')!;
@@ -320,6 +325,7 @@ describe('incident register', () => {
         addCalendarMonth(new Date(closed.closedAt!)).toISOString(),
       );
       expect(final.provisional).toBe(false);
+      await fillStage(old.id, 'FINAL_REPORT', admin());
       const ticked = await svc.acknowledgeNis2(old.id, 'FINAL_REPORT', admin());
       expect(stageOf(ticked, 'FINAL_REPORT')?.reportedAt).not.toBeNull();
     });

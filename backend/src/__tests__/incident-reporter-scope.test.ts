@@ -15,6 +15,7 @@
 import { db } from '../db/connection';
 import { removeSites, seedSite, type Site } from './helpers/allowListSites';
 import { signGrant } from '../lib/adminGrants';
+import { fillStage } from './helpers/nis2Fields';
 import * as svc from '../services/incidents.service';
 import { queryAudit } from '../services/auditQuery.service';
 import { listEvents } from '../services/incident-events.service';
@@ -136,6 +137,7 @@ describe("the reporter's own ticks", () => {
     const incident = await report(reporter);
     await svc.confirmIncident(incident.id, owner());
     await svc.acknowledgeDpo(incident.id, reporter);
+    await fillStage(incident.id, 'EARLY_WARNING', reporter);
     await svc.acknowledgeNis2(incident.id, 'EARLY_WARNING', reporter);
 
     const seen = (await svc.listIncidents(userOf(viewerSite))).find((i) => i.id === incident.id);
@@ -147,7 +149,9 @@ describe("the reporter's own ticks", () => {
     const events = (await listEvents(incident.id)).map((e) =>
       svc.eventForCaller(e, row, userOf(viewerSite)),
     );
+    // DPO tick, saved report fields and the stage tick
     expect(events.filter((e) => e.type === 'UPDATED').map((e) => e.actorEmail)).toEqual([
+      null,
       null,
       null,
     ]);

@@ -7,6 +7,7 @@
  */
 import { db } from '../db/connection';
 import { signGrant } from '../lib/adminGrants';
+import { fillStage } from './helpers/nis2Fields';
 import * as svc from '../services/incidents.service';
 import { listEvents } from '../services/incident-events.service';
 
@@ -79,6 +80,7 @@ describe('incident status under concurrency', () => {
 
   it('records a BSI stage and the DPO tick once', async () => {
     const id = await report();
+    await fillStage(id, 'EARLY_WARNING', admin());
     const nis2 = await Promise.allSettled([
       svc.acknowledgeNis2(id, 'EARLY_WARNING', admin()),
       svc.acknowledgeNis2(id, 'EARLY_WARNING', admin()),
@@ -89,7 +91,8 @@ describe('incident status under concurrency', () => {
     ]);
     expect(nis2.filter((o) => o.status === 'fulfilled')).toHaveLength(1);
     expect(dpo.filter((o) => o.status === 'fulfilled')).toHaveLength(1);
-    expect((await eventTypes(id)).filter((t) => t === 'UPDATED')).toHaveLength(2);
+    // fields saved, stage ticked once, DPO ticked once
+    expect((await eventTypes(id)).filter((t) => t === 'UPDATED')).toHaveLength(3);
   });
 
   it('takes no ticks on a closed incident', async () => {

@@ -13,6 +13,7 @@ import {
   nis2DueAt,
   type Nis2Stage,
 } from './nis2Deadlines';
+import { canonicalJson } from './incidentHashChain';
 import { NIS2_DATA_KEY, type Nis2Data, type Nis2FieldStage } from '../schemas/nis2Report.schema';
 
 /** The incident columns the stages are built from. */
@@ -63,6 +64,12 @@ export function parseNis2Data(raw: unknown): Nis2Data {
 
 export function stageFields(raw: unknown, stage: Nis2FieldStage): Record<string, string> {
   return { ...(parseNis2Data(raw)[NIS2_DATA_KEY[stage]] ?? {}) } as Record<string, string>;
+}
+
+/** What the hash chain covers for a stage: the canonical JSON of its fields, null when empty. */
+export function stageHashValue(raw: unknown, stage: Nis2FieldStage): string | null {
+  const fields = stageFields(raw, stage);
+  return Object.keys(fields).length > 0 ? canonicalJson(fields) : null;
 }
 
 /** Final report / progress report schedule of an incident row at `now`. */

@@ -29,7 +29,16 @@ import { writeAuditLog } from './audit.service';
 import { isAdminCaller } from '../lib/isAdmin';
 import { approvedActive, loadLatestApprovedSites } from './approved-snapshot.service';
 import { NIS2_COLUMNS, type Nis2Stage } from '../lib/nis2Deadlines';
-import { buildNis2Entries, nis2ScheduleOf, type Nis2Entry } from '../lib/nis2Entries';
+import {
+  buildNis2Entries,
+  FIELD_STAGE,
+  nis2ScheduleOf,
+  stageFields,
+  stageHashValue,
+  type Nis2Entry,
+} from '../lib/nis2Entries';
+import { Nis2FieldsIncompleteError } from '../lib/incidentErrors';
+import { missingNis2Fields } from '../schemas/nis2Report.schema';
 import { logger } from '../lib/logger';
 import type { IncidentMailEvent } from './mail-templates/incident-mail';
 
@@ -358,6 +367,9 @@ export function hashedFieldsOf(row: IncidentRow): HashedFields {
     description: row.description,
     organizationId: row.organization_id,
     detectedAt: new Date(row.detected_at).toISOString(),
+    nis2EarlyWarning: stageHashValue(row.nis2_data, 'EARLY_WARNING'),
+    nis2Notification: stageHashValue(row.nis2_data, 'NOTIFICATION'),
+    nis2FinalReport: stageHashValue(row.nis2_data, 'FINAL_REPORT'),
   };
 }
 
@@ -572,8 +584,14 @@ export async function acknowledgeNis2(
     if (stage === 'INTERIM_REPORT' && !locked.bsi_interim_requested_at) {
       throw new Error('INTERIM_NOT_REQUESTED');
     }
-    if (stage === 'PROGRESS_REPORT' && !nis2ScheduleOf(locked, new Date()).progressVisible)
+    if (stage === 'PROGRESS_REPORT' && !nis2ScheduleOf(locked, new Date()).progressVisible) {
       throw new Error('STAGE_NOT_DUE');
+    }
+    const fieldStage = FIELD_STAGE[stage];
+    if (fieldStage) {
+      const missing = missingNis2Fields(fieldStage, stageFields(locked.nis2_data, fieldStage));
+      if (missing.length > 0) throw new Nis2FieldsIncompleteError(missing);
+    }
   };
   check(row);
   await changeWithEvent(
