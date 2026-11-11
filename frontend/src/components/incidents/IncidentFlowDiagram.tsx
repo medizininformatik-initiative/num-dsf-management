@@ -204,8 +204,8 @@ export function IncidentFlowDiagram({ activeStep = null }: IncidentFlowDiagramPr
                   width: layout.width - (p.x + size / 2 + 10) - 8,
                 }
               : {
-                  left: p.x - 52,
-                  width: 104,
+                  left: p.x - (node.small ? 66 : 52),
+                  width: node.small ? 132 : 104,
                   top: node.labelAbove ? p.y - size / 2 - 6 : p.y + size / 2 + 6,
                   transform: node.labelAbove ? 'translateY(-100%)' : undefined,
                 };

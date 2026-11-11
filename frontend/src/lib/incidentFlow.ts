@@ -95,16 +95,16 @@ const half = (id: FlowNodeId): number =>
 
 /** Wide: one band left to right, suspension above and monitoring below the main line. */
 const WIDE: Record<FlowNodeId, Point> = {
-  report: { x: 70, y: 110 },
-  assess: { x: 200, y: 110 },
-  decision: { x: 330, y: 110 },
-  falseAlarm: { x: 330, y: 190 },
-  confirmed: { x: 460, y: 110 },
-  escalation: { x: 590, y: 110 },
-  suspend: { x: 730, y: 55 },
-  monitoring: { x: 730, y: 190 },
-  deadlines: { x: 870, y: 110 },
-  restart: { x: 1010, y: 110 },
+  report: { x: 70, y: 120 },
+  assess: { x: 200, y: 120 },
+  decision: { x: 330, y: 120 },
+  falseAlarm: { x: 330, y: 205 },
+  confirmed: { x: 460, y: 120 },
+  escalation: { x: 590, y: 120 },
+  suspend: { x: 730, y: 60 },
+  monitoring: { x: 730, y: 205 },
+  deadlines: { x: 870, y: 120 },
+  restart: { x: 1010, y: 120 },
 };
 
 /** Narrow: a main lane with the end/optional nodes in a second lane beside it. */
@@ -128,7 +128,7 @@ export function flowLayout(vertical: boolean, width = 0): FlowLayout {
   if (vertical) {
     return { vertical, width: Math.max(width, 300), height: 880, pos: NARROW };
   }
-  return { vertical, width: 1090, height: 255, pos: WIDE };
+  return { vertical, width: 1090, height: 270, pos: WIDE };
 }
 
 export interface EdgeGeometry {
