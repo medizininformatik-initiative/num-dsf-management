@@ -25,12 +25,15 @@ export const meTotpApi = {
       .get<{ data: TotpStatus }>(`${BASE}/me/totp/status`, { headers: authHeader() })
       .then((r) => r.data.data),
 
-  /** `code` (TOTP code or TAN) is needed only when TOTP is already enrolled. */
-  setup: (code?: string): Promise<{ qrCodeUrl: string; secret: string }> =>
+  /**
+   * `code` (TOTP code or TAN) is needed only when TOTP is already enrolled.
+   * While a pending secret exists the same one comes back; `restart` replaces it.
+   */
+  setup: (code?: string, restart?: boolean): Promise<{ qrCodeUrl: string; secret: string }> =>
     axios
       .post<{ data: { qrCodeUrl: string; secret: string } }>(
         `${BASE}/me/totp/setup`,
-        code ? { code } : {},
+        { ...(code ? { code } : {}), ...(restart ? { restart: true } : {}) },
         { headers: authHeader() },
       )
       .then((r) => r.data.data),

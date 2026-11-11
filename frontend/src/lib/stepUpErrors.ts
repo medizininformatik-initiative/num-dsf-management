@@ -10,6 +10,7 @@ import type { TranslationKey } from '../i18n/en';
 
 const STEP_UP_ERROR_KEY: Record<string, TranslationKey> = {
   TOTP_INVALID: 'totpInvalidCodeOrTan',
+  TOTP_CODE_USED: 'totpConfirmCodeUsed',
   TOTP_ENROLMENT_REQUIRED: 'totpEnrolmentRequired',
   TOTP_REQUIRED: 'totpDigitsRequired',
   TOTP_NOT_CONFIGURED: 'totpNotConfigured',
