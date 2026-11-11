@@ -2488,6 +2488,19 @@ export const de: Record<TranslationKey, string> = {
   totpEnrolSecretLabel: 'Scannen nicht möglich? Geben Sie diesen Schlüssel in der App ein:',
   totpEnrolStartFailed:
     'Die Einrichtung konnte nicht gestartet werden. Laden Sie die Seite neu und versuchen Sie es erneut.',
+  totpEnrolOldEntryHint:
+    "Löschen Sie zuerst ältere 'DSF'-Einträge in Ihrer Authenticator-App. Nur der neueste Eintrag funktioniert.",
+  totpConfirmInvalidHint:
+    'Zwei häufige Ursachen: Sie nutzen einen älteren Eintrag in Ihrer App (alte DSF-Einträge löschen, nur der neueste funktioniert) oder die Uhr Ihres Telefons geht falsch (automatische Zeit einstellen).',
+  totpConfirmCodeUsed: 'Dieser Code wurde bereits verwendet. Warten Sie auf den nächsten Code.',
+  totpConfirmRateLimited: 'Zu viele Versuche. Bitte kurz warten und erneut versuchen.',
+  totpConfirmGeneric: 'Der Code konnte nicht geprüft werden. Bitte erneut versuchen.',
+  totpConfirmSupportCode: 'Fehlercode für den Support: {code}',
+  totpEnrolExpired:
+    'Die Einrichtung ist abgelaufen oder wurde nicht gestartet. Starten Sie sie neu.',
+  totpEnrolRestartBtn: 'Einrichtung neu starten',
+  totpEnrolRestarted:
+    'Ein neuer Schlüssel wurde erstellt. Löschen Sie den alten Eintrag in Ihrer App und scannen Sie diesen neuen Code.',
   tanListTitle: 'Ihre TAN-Liste',
   tanListIntro:
     'Zehn Einmal-Codes. Jeder ersetzt einmal den Authenticator-Code, zum Beispiel bei verlorenem Telefon. Sie werden nur jetzt angezeigt.',

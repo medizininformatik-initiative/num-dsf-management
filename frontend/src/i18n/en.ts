@@ -2435,6 +2435,18 @@ export const en = {
   totpEnrolStartBtn: 'Start setup',
   totpEnrolSecretLabel: 'Cannot scan the code? Enter this key in your app:',
   totpEnrolStartFailed: 'The setup could not be started. Reload the page and try again.',
+  totpEnrolOldEntryHint:
+    "Delete older 'DSF' entries in your authenticator app first. Only the newest entry works.",
+  totpConfirmInvalidHint:
+    'Two common causes: you are using an older entry in your app (delete old DSF entries, only the newest works), or the clock of your phone is off (set it to automatic time).',
+  totpConfirmCodeUsed: 'This code was already used. Wait for the next code and try again.',
+  totpConfirmRateLimited: 'Too many attempts. Please wait a moment and try again.',
+  totpConfirmGeneric: 'The code could not be checked. Please try again.',
+  totpConfirmSupportCode: 'Error code for support: {code}',
+  totpEnrolExpired: 'The setup has expired or was not started. Start it again.',
+  totpEnrolRestartBtn: 'Restart setup',
+  totpEnrolRestarted:
+    'A new key was created. Delete the old entry in your app and scan this new code.',
   tanListTitle: 'Your TAN list',
   tanListIntro:
     'Ten single-use codes. Each one replaces the authenticator code once, for example when your phone is lost. They are shown only now.',
