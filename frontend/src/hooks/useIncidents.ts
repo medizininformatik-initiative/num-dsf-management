@@ -21,6 +21,11 @@ export function useIncidents() {
     queryFn: () => incidentsApi.list().then((r) => r.data.data),
     enabled: isAuthenticated,
     refetchInterval: 60_000,
+    // The default staleTime (30 s) and focus refetch off would keep an old
+    // list on screen; a confirmed incident must show up on the next focus or mount.
+    staleTime: 0,
+    refetchOnWindowFocus: 'always',
+    refetchOnMount: 'always',
   });
 }
 

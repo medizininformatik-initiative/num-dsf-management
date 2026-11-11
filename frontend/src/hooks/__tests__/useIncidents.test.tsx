@@ -57,6 +57,26 @@ describe('incident queries', () => {
     expect(result.current.data).toEqual([{ id: 'i1', status: 'REPORTED' }]);
   });
 
+  it('useIncidents refetches on mount even with a long default staleTime', async () => {
+    api.list.mockResolvedValue({ data: { data: [incident('i1', 'REPORTED')] } });
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 60_000 } },
+    });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+    );
+    const first = renderHook(() => useIncidents(), { wrapper });
+    await waitFor(() => expect(first.result.current.isSuccess).toBe(true), { timeout: 4000 });
+    first.unmount();
+
+    api.list.mockResolvedValue({ data: { data: [incident('i1', 'CONFIRMED')] } });
+    const second = renderHook(() => useIncidents(), { wrapper });
+    await waitFor(() => expect(second.result.current.data).toEqual([incident('i1', 'CONFIRMED')]), {
+      timeout: 4000,
+    });
+    expect(api.list).toHaveBeenCalledTimes(2);
+  });
+
   it('useIncident waits for an id', async () => {
     api.get.mockResolvedValue({ data: { data: { incident: incident('i1', 'CONFIRMED') } } });
     const { wrapper } = makeHarness();
