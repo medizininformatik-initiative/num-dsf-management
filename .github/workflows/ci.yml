@@ -197,7 +197,15 @@ jobs:
         run: docker compose exec -T backend npx ts-node src/db/seed-testdata.ts
       - name: Install Playwright browsers
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        # apt mirrors on the runners fail now and then (exit 100); retry with a fresh index.
+        run: |
+          for attempt in 1 2 3; do
+            npx playwright install --with-deps chromium && exit 0
+            echo "playwright install failed (attempt $attempt), retrying"
+            sleep $((attempt * 20))
+            sudo apt-get update || true
+          done
+          exit 1
       - name: Run Playwright
         working-directory: frontend
         run: npm run test:e2e
