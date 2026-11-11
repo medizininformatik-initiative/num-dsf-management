@@ -392,6 +392,7 @@ CustomLog ${APACHE_LOG_DIR}/dsf-debug.log dsfdebug
 ```
 
 An empty `dn` means the cert never reached Apache (TLS layer); a populated `dn` with `hdr_verify=[-]` means the `expr=` condition did not match. Remove the debug log afterwards, since it can record the full certificate.
+- **Do not cache the API.** The backend marks every `/api`, `/auth` and `/fhir` response `Cache-Control: no-store, max-age=0` (plus `Pragma: no-cache`, `Expires: 0`, `Vary: Authorization, Cookie`) and sends no ETag. Apache must pass these headers through unchanged: no `CacheEnable` / mod_cache (or mod_disk_cache, mod_mem_cache) for `/api`, `/auth` or `/fhir`, and no `Header unset Cache-Control`, `Header set Cache-Control`, `Header unset Vary` or `ExpiresActive`/`ExpiresByType` rules that reach those paths. A cached API response shows up as stale data (for example the incident banner appearing only after "Cache leeren und neu laden"). Check with `curl -sI -H 'Authorization: Bearer x' https://<host>/api/v1/incidents`: the `Cache-Control: no-store, max-age=0` line must be present.
 - Ensure no other vhost or location can inject `X-Client-Cert` / `X-Client-Verify`, and that Apache is the only ingress to the app containers (do not publish the backend or the internal nginx ports).
 
 The security model is identical to the nginx variant: the SHA-512 fingerprint match is the gate, and it is only sound if the front proxy is the sole entry point.
