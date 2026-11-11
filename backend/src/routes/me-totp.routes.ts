@@ -6,7 +6,9 @@
  * are left and to issue a new TAN list.
  *
  *   GET  /status          { enabled, remainingTans, enrolmentRequired }
- *   POST /setup           { code? }  → { qrCodeUrl, secret }. Free while TOTP is
+ *   POST /setup           { code?, restart? }  → { qrCodeUrl, secret }. While a pending
+ *                         secret is valid the same one is returned unless restart is
+ *                         true. Free while TOTP is
  *                         not enrolled; once enrolled it needs a valid TOTP code
  *                         or TAN, so a stolen session cannot swap the secret.
  *   POST /confirm         { code }   → { backupCodes } (shown once; the TAN list)
@@ -24,6 +26,7 @@ import { stepUpTotpRateLimit } from '../middleware/rateLimit.middleware';
 import {
   startTotpEnrolment,
   confirmTotpEnrolment,
+  type TotpConfirmFailure,
   countBackupCodes,
   generateBackupCodes,
   verifySecondFactor,
@@ -57,6 +60,24 @@ function audit(req: Request, operation: 'TOTP_SETUP' | 'STEP_UP_FAILED', diff: o
     ipAddress: req.ip || 'unknown',
   }).catch(() => {});
 }
+
+// Distinct answers per reason; the frontend maps the code to its own text.
+const CONFIRM_FAILURES: Record<
+  TotpConfirmFailure,
+  { status: number; code: string; message: string }
+> = {
+  NO_PENDING: {
+    status: 409,
+    code: 'TOTP_ENROLMENT_EXPIRED',
+    message: 'The setup has expired or was not started. Start the setup again.',
+  },
+  INVALID_CODE: { status: 401, code: 'TOTP_INVALID', message: 'Invalid code.' },
+  CODE_REUSED: {
+    status: 401,
+    code: 'TOTP_CODE_USED',
+    message: 'This code was already used. Wait for the next code.',
+  },
+};
 
 async function isEnabled(userId: string): Promise<boolean> {
   const row = (await db('users').where({ id: userId }).select('totp_enabled').first()) as
@@ -101,8 +122,9 @@ meTotpRouter.post(
         return;
       }
     }
-    const { qrCodeUrl, secret } = await startTotpEnrolment(user.id, user.email);
-    audit(req, 'TOTP_SETUP', { action: 'started' });
+    const restart = req.body?.restart === true;
+    const { qrCodeUrl, secret, resumed } = await startTotpEnrolment(user.id, user.email, restart);
+    audit(req, 'TOTP_SETUP', { action: restart ? 'restarted' : resumed ? 'resumed' : 'started' });
     res.json({ data: { qrCodeUrl, secret } });
   }),
 );
@@ -121,14 +143,18 @@ meTotpRouter.post(
       });
       return;
     }
-    const backupCodes = await confirmTotpEnrolment(user.id, code);
-    if (!backupCodes) {
-      audit(req, 'STEP_UP_FAILED', { reason: 'TOTP_INVALID', path: '/me/totp/confirm' });
-      res.status(401).json({
-        error: { code: 'TOTP_INVALID', message: 'Invalid code, or setup was not started.' },
+    const result = await confirmTotpEnrolment(user.id, code);
+    if (!result.ok) {
+      audit(req, 'STEP_UP_FAILED', {
+        action: 'confirm_failed',
+        reason: result.reason,
+        path: '/me/totp/confirm',
       });
+      const failure = CONFIRM_FAILURES[result.reason];
+      res.status(failure.status).json({ error: { code: failure.code, message: failure.message } });
       return;
     }
+    const backupCodes = result.backupCodes;
     audit(req, 'TOTP_SETUP', { action: 'enrolled' });
     res.json({ data: { backupCodes } });
   }),

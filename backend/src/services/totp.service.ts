@@ -38,17 +38,29 @@ function decryptSecret(ciphertext: string): string {
   return decipher.update(encrypted).toString('utf8') + decipher.final('utf8');
 }
 
+const TOTP_ISSUER = 'DSF Management';
+
+// speakeasy.generateSecret ignores `issuer`, so the otpauth URL is built
+// explicitly: the authenticator app then shows issuer + account and several
+// enrolments can be told apart.
+async function buildTotpSetup(
+  email: string,
+  base32: string,
+): Promise<{ qrCodeUrl: string; secret: string }> {
+  const url = speakeasy.otpauthURL({
+    secret: base32,
+    encoding: 'base32',
+    label: email,
+    issuer: TOTP_ISSUER,
+  });
+  return { qrCodeUrl: await QRCode.toDataURL(url), secret: base32 };
+}
+
 export async function generateTotpSetup(
   email: string,
 ): Promise<{ qrCodeUrl: string; secret: string }> {
-  const secret = speakeasy.generateSecret({
-    name: `DSF Allow List (${email})`,
-    issuer: 'IMI-Uni-Muenster',
-    length: 32,
-  });
-
-  const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url!);
-  return { qrCodeUrl, secret: secret.base32 };
+  const secret = speakeasy.generateSecret({ length: 32 });
+  return buildTotpSetup(email, secret.base32);
 }
 
 export async function saveTotpSecret(userId: string, plainSecret: string): Promise<void> {
@@ -81,11 +93,11 @@ export async function verifyTotpCode(userId: string, code: string): Promise<bool
 }
 
 // Verifies a code against one base32 secret and claims it against replay.
-async function checkTotpAgainstSecret(
-  userId: string,
-  secret: string,
-  code: string,
-): Promise<boolean> {
+type TotpCheck = { result: 'ok'; replayKey: string } | { result: 'invalid' | 'replayed' };
+
+// Reports WHY a code failed (wrong vs. already used) and hands back the claim
+// key so a caller whose follow-up work fails can release the claim again.
+async function checkTotpDetailed(userId: string, secret: string, code: string): Promise<TotpCheck> {
   // Normalize once: speakeasy verifies the whitespace-stripped token, so the
   // anti-replay claim below MUST hash the same normalized value. Hashing the
   // raw input instead would let a captured code replay under different
@@ -98,7 +110,7 @@ async function checkTotpAgainstSecret(
     window: 1,
   });
 
-  if (!valid) return false;
+  if (!valid) return { result: 'invalid' };
 
   // Anti-replay: atomically claim the code hash; returns null if already claimed.
   // TTL must be ≥ the validity window speakeasy accepts. With window: 1 (a code
@@ -108,9 +120,17 @@ async function checkTotpAgainstSecret(
   const codeHash = crypto.createHash('sha256').update(`${userId}:${normalized}`).digest('hex');
   const replayKey = `totp_used:${codeHash}`;
   const claimed = await redis.set(replayKey, '1', 'EX', 120, 'NX');
-  if (claimed === null) return false;
+  if (claimed === null) return { result: 'replayed' };
 
-  return true;
+  return { result: 'ok', replayKey };
+}
+
+async function checkTotpAgainstSecret(
+  userId: string,
+  secret: string,
+  code: string,
+): Promise<boolean> {
+  return (await checkTotpDetailed(userId, secret, code)).result === 'ok';
 }
 
 /**
@@ -129,33 +149,77 @@ const PENDING_TTL_SECONDS = 600;
 const pendingKey = (userId: string): string => `totp_pending:${userId}`;
 
 /**
- * Starts (or restarts) the enrolment of a signed-in user. The new secret waits
- * encrypted in Redis until it is confirmed, so an enrolled account keeps its
- * working secret if the user abandons a re-setup half way.
+ * Starts the enrolment of a signed-in user. The new secret waits encrypted in
+ * Redis until it is confirmed, so an enrolled account keeps its working secret
+ * if the user abandons a re-setup half way. While a pending secret is still
+ * valid, calling this again returns the SAME secret (a double click, a repeated
+ * request or a page reload must not swap the secret under the QR code the user
+ * already scanned); only `restart` replaces it.
  */
 export async function startTotpEnrolment(
   userId: string,
   email: string,
-): Promise<{ qrCodeUrl: string; secret: string }> {
+  restart = false,
+): Promise<{ qrCodeUrl: string; secret: string; resumed: boolean }> {
+  if (!restart) {
+    const pending = await redis.get(pendingKey(userId));
+    if (pending) {
+      try {
+        const setup = await buildTotpSetup(email, decryptSecret(pending));
+        await redis.expire(pendingKey(userId), PENDING_TTL_SECONDS);
+        return { ...setup, resumed: true };
+      } catch (err) {
+        logger.warn({ userId, err }, 'Pending TOTP secret unreadable, starting a new one');
+      }
+    }
+  }
   const setup = await generateTotpSetup(email);
   await redis.set(pendingKey(userId), encryptSecret(setup.secret), 'EX', PENDING_TTL_SECONDS);
-  return setup;
+  return { ...setup, resumed: false };
 }
+
+export type TotpConfirmFailure = 'NO_PENDING' | 'INVALID_CODE' | 'CODE_REUSED';
+export type TotpConfirmResult =
+  | { ok: true; backupCodes: string[] }
+  | { ok: false; reason: TotpConfirmFailure };
 
 /**
  * Confirms the pending secret with a code from the authenticator app. On
  * success the secret becomes the account's, TOTP is enabled and a fresh TAN
- * list replaces any old one (returned once, in plaintext). Returns null when
- * nothing is pending or the code is wrong.
+ * list replaces any old one (returned once, in plaintext). On failure the
+ * reason is reported (nothing pending / wrong code / code already used) and
+ * logged with the user id only, never the code or the secret. The replay claim
+ * is released again when the database write fails, so a retry with the same
+ * code is not refused as "used".
  */
-export async function confirmTotpEnrolment(userId: string, code: string): Promise<string[] | null> {
+export async function confirmTotpEnrolment(
+  userId: string,
+  code: string,
+): Promise<TotpConfirmResult> {
   const pending = await redis.get(pendingKey(userId));
-  if (!pending) return null;
-  if (!(await checkTotpAgainstSecret(userId, decryptSecret(pending), code))) return null;
+  if (!pending) {
+    logger.info({ userId, reason: 'NO_PENDING' }, 'TOTP enrolment confirm refused');
+    return { ok: false, reason: 'NO_PENDING' };
+  }
+  const check = await checkTotpDetailed(userId, decryptSecret(pending), code);
+  if (check.result !== 'ok') {
+    const reason = check.result === 'replayed' ? 'CODE_REUSED' : 'INVALID_CODE';
+    logger.warn({ userId, reason }, 'TOTP enrolment confirm refused');
+    return { ok: false, reason };
+  }
 
-  await redis.del(pendingKey(userId));
-  await db('users').where({ id: userId }).update({ totp_secret: pending, totp_enabled: true });
-  return generateBackupCodes(userId);
+  try {
+    const { codes, hashed } = await createBackupCodeSet();
+    await db('users')
+      .where({ id: userId })
+      .update({ totp_secret: pending, totp_enabled: true, backup_codes: JSON.stringify(hashed) });
+    await redis.del(pendingKey(userId));
+    logger.info({ userId }, 'TOTP enrolment confirmed');
+    return { ok: true, backupCodes: codes };
+  } catch (err) {
+    await redis.del(check.replayKey).catch(() => {});
+    throw err;
+  }
 }
 
 /** Number of unused TANs left. */
@@ -179,12 +243,18 @@ export async function resetTotp(userId: string): Promise<void> {
     .update({ totp_secret: null, totp_enabled: false, backup_codes: null });
 }
 
-// Generate 10 backup codes
-export async function generateBackupCodes(userId: string): Promise<string[]> {
+// 10 single-use codes: plaintext (shown once) and their bcrypt hashes.
+async function createBackupCodeSet(): Promise<{ codes: string[]; hashed: string[] }> {
   const codes = Array.from({ length: 10 }, () =>
     crypto.randomBytes(4).toString('hex').toUpperCase(),
   );
   const hashed = await Promise.all(codes.map((c) => bcrypt.hash(c, BCRYPT_ROUNDS)));
+  return { codes, hashed };
+}
+
+// Generate 10 backup codes
+export async function generateBackupCodes(userId: string): Promise<string[]> {
+  const { codes, hashed } = await createBackupCodeSet();
   await db('users')
     .where({ id: userId })
     .update({ backup_codes: JSON.stringify(hashed) });
