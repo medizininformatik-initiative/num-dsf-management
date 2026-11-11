@@ -142,4 +142,28 @@ describe('verifyFields', () => {
       }),
     ).toEqual(['description', 'organizationId']);
   });
+
+  it('covers the NIS2 report fields once an event recorded them', () => {
+    const core = { title: 't', description: 'd', organizationId: null, detectedAt: 'x' };
+    const stored = canonicalJson({ impact: 'down', severity: 'high' });
+    const events = [
+      reported(core),
+      {
+        type: 'UPDATED',
+        details: { field: 'nis2Fields', fieldSha256: { nis2Notification: fieldHash(stored) } },
+      },
+    ];
+    expect(verifyFields(events, { ...core, nis2Notification: stored })).toEqual([]);
+    // Fields no event recorded are not checked.
+    expect(
+      verifyFields(events, { ...core, nis2Notification: stored, nis2EarlyWarning: 'x' }),
+    ).toEqual([]);
+    expect(
+      verifyFields(events, {
+        ...core,
+        nis2Notification: canonicalJson({ impact: 'edited', severity: 'high' }),
+      }),
+    ).toEqual(['nis2Notification']);
+    expect(verifyFields(events, { ...core, nis2Notification: null })).toEqual(['nis2Notification']);
+  });
 });

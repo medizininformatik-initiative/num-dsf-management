@@ -76,9 +76,25 @@ export function verifyChain(events: ChainedEvent[]): ChainVerification {
 }
 
 /** Incident fields covered by the chain, as their canonical values. */
-export const HASHED_FIELDS = ['title', 'description', 'organizationId', 'detectedAt'] as const;
+export const HASHED_FIELDS = [
+  'title',
+  'description',
+  'organizationId',
+  'detectedAt',
+  'nis2EarlyWarning',
+  'nis2Notification',
+  'nis2FinalReport',
+] as const;
 export type HashedField = (typeof HASHED_FIELDS)[number];
-export type HashedFields = Record<HashedField, string | null>;
+/**
+ * The nis2* fields are the canonical JSON of a stage's report fields (null
+ * when empty); a field no event recorded a hash for is not checked.
+ */
+export type HashedFields = Record<
+  'title' | 'description' | 'organizationId' | 'detectedAt',
+  string | null
+> &
+  Partial<Record<'nis2EarlyWarning' | 'nis2Notification' | 'nis2FinalReport', string | null>>;
 
 /** SHA-256 over the canonical JSON of one field value. */
 export function fieldHash(value: unknown): string {
@@ -113,6 +129,6 @@ export function verifyFields(
     }
   }
   return HASHED_FIELDS.filter(
-    (field) => latest[field] !== undefined && latest[field] !== fieldHash(current[field]),
+    (field) => latest[field] !== undefined && latest[field] !== fieldHash(current[field] ?? null),
   );
 }
