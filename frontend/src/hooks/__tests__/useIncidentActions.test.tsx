@@ -17,6 +17,8 @@ const api = vi.hoisted(() => ({
   get: vi.fn(),
   report: vi.fn(),
   acknowledgeNis2: vi.fn(),
+  saveNis2Fields: vi.fn(),
+  requestNis2Interim: vi.fn(),
   acknowledgeDpo: vi.fn(),
   confirm: vi.fn(),
   suspend: vi.fn(),
@@ -34,6 +36,8 @@ import {
   useSuspendSite,
   useCloseIncident,
   useAcknowledgeNis2,
+  useSaveNis2Fields,
+  useRequestNis2Interim,
 } from '../useIncidentActions';
 
 function makeHarness() {
@@ -115,6 +119,28 @@ describe('incident writes', () => {
       await result.current.mutateAsync('NOTIFICATION').catch(() => undefined);
     });
     expect(api.acknowledgeNis2).toHaveBeenCalledWith('i1', 'NOTIFICATION');
+    expect(keys(invalidateSpy)).toContainEqual(['incidents', 'detail', 'i1']);
+  });
+
+  it('saving report fields passes the stage and the fields through and refreshes the detail', async () => {
+    api.saveNis2Fields.mockResolvedValue({ data: { data: incident('i1', 'CONFIRMED') } });
+    const { wrapper, invalidateSpy } = makeHarness();
+    const { result } = renderHook(() => useSaveNis2Fields('i1'), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ stage: 'NOTIFICATION', fields: { severity: 'high' } });
+    });
+    expect(api.saveNis2Fields).toHaveBeenCalledWith('i1', 'NOTIFICATION', { severity: 'high' });
+    expect(keys(invalidateSpy)).toContainEqual(['incidents', 'detail', 'i1']);
+  });
+
+  it('requesting an interim report sends the date and refreshes the detail', async () => {
+    api.requestNis2Interim.mockResolvedValue({ data: { data: incident('i1', 'CONFIRMED') } });
+    const { wrapper, invalidateSpy } = makeHarness();
+    const { result } = renderHook(() => useRequestNis2Interim('i1'), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync('2026-11-10T08:00:00.000Z');
+    });
+    expect(api.requestNis2Interim).toHaveBeenCalledWith('i1', '2026-11-10T08:00:00.000Z');
     expect(keys(invalidateSpy)).toContainEqual(['incidents', 'detail', 'i1']);
   });
 });

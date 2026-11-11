@@ -1,6 +1,7 @@
 /**
  * useIncidentActions.ts – write hooks of the incident register: report an
- * incident, tick a NIS2 stage or "DPO informed", and the admin actions
+ * incident, save NIS2 report fields, request an interim report, tick a NIS2
+ * stage or "DPO informed", and the admin actions
  * (confirm, suspend the site, lift the suspension, close, comment, edit).
  * Step-up writes take the TOTP code as `totpCode` (undefined in certificate
  * sessions). Every write refreshes the list and the incident's detail; a
@@ -14,6 +15,7 @@ import {
   incidentsApi,
   type CloseOutcome,
   type LiftSuspensionBody,
+  type Nis2FieldValues,
   type Nis2Stage,
   type ReportIncidentBody,
   type SuspendMeasure,
@@ -39,6 +41,24 @@ export function useAcknowledgeNis2(id: string) {
   return useMutation({
     mutationFn: (stage: Nis2Stage) =>
       incidentsApi.acknowledgeNis2(id, stage).then((r) => r.data.data),
+    onSettled: () => refresh(qc, id),
+  });
+}
+
+export function useSaveNis2Fields(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { stage: Nis2Stage; fields: Nis2FieldValues }) =>
+      incidentsApi.saveNis2Fields(id, vars.stage, vars.fields).then((r) => r.data.data),
+    onSettled: () => refresh(qc, id),
+  });
+}
+
+export function useRequestNis2Interim(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (requestedAt: string) =>
+      incidentsApi.requestNis2Interim(id, requestedAt).then((r) => r.data.data),
     onSettled: () => refresh(qc, id),
   });
 }

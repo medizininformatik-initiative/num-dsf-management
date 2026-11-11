@@ -1,7 +1,8 @@
 /**
  * incidents.api.ts – the incident register: report and read incidents (any
- * signed-in user), tick NIS2 stages and "DPO informed" (admins, the reporter
- * and users of the affected site), and the admin actions (confirm, suspend the
+ * signed-in user), save NIS2 report fields, request an interim report, tick
+ * NIS2 stages and "DPO informed" (admins, the reporter and users of the
+ * affected site), and the admin actions (confirm, suspend the
  * site, lift the suspension, close, comment, edit, export). Writes marked
  * step-up carry `totpCode` in OTP sessions and omit it in certificate sessions.
  * Dependencies: axios, auth.store.
@@ -18,7 +19,16 @@ function authHeader() {
 
 export type IncidentStatus = 'REPORTED' | 'CONFIRMED' | 'CLOSED' | 'FALSE_ALARM';
 export type EscalationLevel = 1 | 2 | 3;
-export type Nis2Stage = 'EARLY_WARNING' | 'NOTIFICATION' | 'FINAL_REPORT';
+export type Nis2Stage =
+  | 'EARLY_WARNING'
+  | 'NOTIFICATION'
+  | 'INTERIM_REPORT'
+  | 'PROGRESS_REPORT'
+  | 'FINAL_REPORT';
+/** Stages that carry report fields (the progress report shares the final report's). */
+export type Nis2FieldStage = 'EARLY_WARNING' | 'NOTIFICATION' | 'FINAL_REPORT';
+export type TriState = 'yes' | 'no' | 'unknown';
+export type Nis2Severity = 'low' | 'medium' | 'high' | 'critical';
 export type SuspendMeasure = 'BLOCK_CERTIFICATES' | 'REMOVE_LOGINS' | 'WITHDRAW' | 'MAIL_SITES';
 export type IncidentEventType =
   | 'REPORTED'
@@ -31,7 +41,13 @@ export type IncidentEventType =
   | 'FALSE_ALARM'
   | 'UPDATED';
 
-export const NIS2_STAGES: readonly Nis2Stage[] = ['EARLY_WARNING', 'NOTIFICATION', 'FINAL_REPORT'];
+export const NIS2_STAGES: readonly Nis2Stage[] = [
+  'EARLY_WARNING',
+  'NOTIFICATION',
+  'INTERIM_REPORT',
+  'PROGRESS_REPORT',
+  'FINAL_REPORT',
+];
 export const SUSPEND_MEASURES: readonly SuspendMeasure[] = [
   'BLOCK_CERTIFICATES',
   'REMOVE_LOGINS',
@@ -46,9 +62,30 @@ export interface IncidentSite {
 
 export interface Nis2Entry {
   stage: Nis2Stage;
-  dueAt: string;
+  /** Null for the interim report (the BSI requests it) and for a final report that waits for the closure. */
+  dueAt: string | null;
+  /** Final report only: the date still rests on the 72 h deadline, not on a ticked notification. */
+  provisional: boolean;
   reportedAt: string | null;
   reportedBy: string | null;
+  /** Interim report only: when the BSI asked for it. */
+  requestedAt?: string | null;
+  requestedBy?: string | null;
+  /** Report fields; null for callers who may not see them and for stages without fields. */
+  fields: Record<string, string> | null;
+}
+
+/** The report fields of the three stages that carry some (all optional while a draft). */
+export interface Nis2FieldValues {
+  suspectedMalicious?: TriState;
+  crossBorder?: TriState;
+  affectedServices?: string;
+  severity?: Nis2Severity;
+  impact?: string;
+  iocs?: string;
+  rootCause?: string;
+  mitigation?: string;
+  crossBorderFinal?: TriState;
 }
 
 export interface Incident {
@@ -70,7 +107,7 @@ export interface Incident {
   closedAt: string | null;
   suspended: boolean;
   zulipUrl: string | null;
-  /** Always three entries, in stage order. */
+  /** The NIS2 stages in the order of BSIG 32; the progress report only once it is due. */
   nis2: Nis2Entry[];
   /** `by` is null when it would name a reporter hidden from the caller. */
   dpoInformed: { at: string; by: string | null } | null;
@@ -155,6 +192,18 @@ export const incidentsApi = {
     axios.post<{ data: Incident }>(`${USER}/${id}/nis2/${stage}`, undefined, {
       headers: authHeader(),
     }),
+  /** Save report fields of a stage (a draft; an empty text clears a field). */
+  saveNis2Fields: (id: string, stage: Nis2Stage, fields: Nis2FieldValues) =>
+    axios.put<{ data: Incident }>(`${USER}/${id}/nis2/${stage}/fields`, fields, {
+      headers: authHeader(),
+    }),
+  /** The BSI asked for an interim report on this date. */
+  requestNis2Interim: (id: string, requestedAt: string) =>
+    axios.post<{ data: Incident }>(
+      `${USER}/${id}/nis2/interim-request`,
+      { requestedAt },
+      { headers: authHeader() },
+    ),
   acknowledgeDpo: (id: string) =>
     axios.post<{ data: Incident }>(`${USER}/${id}/dpo-informed`, undefined, {
       headers: authHeader(),
