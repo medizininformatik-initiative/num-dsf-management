@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8](https://github.com/Mukeyii/num-dsf-allowlist/compare/v0.1.7...v0.1.8) (2026-11-11)
+
+
+### Features
+
+* **auth:** texts for the enrolment error states and setup hints ([0341a9d](https://github.com/Mukeyii/num-dsf-allowlist/commit/0341a9dddd4c7bbcbd4ead94a121e41790cb1574))
+
+
+### Bug Fixes
+
+* **auth:** discourage password-manager autofill on TOTP and TAN inputs ([e43f0c6](https://github.com/Mukeyii/num-dsf-allowlist/commit/e43f0c685ba9c581bd841173a7278bf9bbe0133d))
+* **auth:** explain why the enrolment code was refused, offer restart on expiry ([e6537ab](https://github.com/Mukeyii/num-dsf-allowlist/commit/e6537ab35a9b6a5a39632389efb1244883ebe232))
+* **auth:** treat a reused TOTP code as a step-up error, add restart flag to setup ([6476747](https://github.com/Mukeyii/num-dsf-allowlist/commit/647674786eec7b56f0c10a582186b42dd9080d2e))
+* **totp:** keep the pending secret on repeated setup, report why a confirm failed ([912d4b0](https://github.com/Mukeyii/num-dsf-allowlist/commit/912d4b0dc78533ee645c5646a573e27b3ff2209f))
+
+
+### Performance Improvements
+
+* **auth:** drop blur filter and drift loops from the ambient background ([2f92dac](https://github.com/Mukeyii/num-dsf-allowlist/commit/2f92dac2e020e82ae5431204db854772c5f35d4d))
+* **frontend:** remove unused aurora and wordmark loops, cap the download nudge ([0910e8a](https://github.com/Mukeyii/num-dsf-allowlist/commit/0910e8a8de03378577cc491393d1043c4dd68fa2))
+
 ## [0.1.7](https://github.com/Mukeyii/num-dsf-allowlist/compare/v0.1.6...v0.1.7) (2026-11-11)
 
 
