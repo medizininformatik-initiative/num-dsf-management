@@ -26,6 +26,10 @@ import { TotpEnrolmentPage } from '../TotpEnrolmentPage';
 import { TAN_LIST_FILENAME } from '../../components/auth/TanListPanel';
 import { useAuthStore } from '../../stores/auth.store';
 
+function apiError(status: number, code: string) {
+  return { response: { status, data: { error: { code } } } };
+}
+
 const TANS = ['AAAA1111', 'BBBB2222', 'CCCC3333'];
 const createObjectURL = vi.fn(() => 'blob:tans');
 
@@ -81,7 +85,7 @@ describe('TotpEnrolmentPage', () => {
   });
 
   it('keeps the setup open and says so when the code is wrong', async () => {
-    confirm.mockRejectedValueOnce(new Error('401'));
+    confirm.mockRejectedValueOnce(apiError(401, 'TOTP_INVALID'));
     renderWithProviders(<TotpEnrolmentPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Start setup' }));
     fireEvent.change(await screen.findByLabelText('Authenticator code'), {

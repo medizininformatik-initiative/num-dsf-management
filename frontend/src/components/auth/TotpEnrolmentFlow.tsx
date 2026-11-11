@@ -4,11 +4,18 @@
  * with the secret as text and a field for the first code → the TAN list
  * (TanListPanel), after which onFinished runs. `currentCode` is the TOTP code
  * or TAN that authorises a re-setup of an already enrolled account.
+ * A failed confirmation is explained by its backend error code (wrong code,
+ * code already used, setup expired, rate limited, anything else with the code
+ * for support); only an expired setup offers "Restart setup", which creates a
+ * NEW secret and QR code. The code field is cleared only when the typed code
+ * is spent (wrong or used), never on a network or server error.
  * Dependencies: meTotp.api, TanListPanel, Button, i18n store, lib/getErrorMessage.
  */
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { meTotpApi } from '../../api/meTotp.api';
 import { getErrorCode } from '../../lib/getErrorMessage';
+import { confirmErrorKind, statusOf } from '../../lib/totpConfirmError';
+import { NO_AUTOFILL } from '../../lib/noAutofill';
 import { useI18n } from '../../stores/i18n.store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
@@ -40,14 +47,29 @@ export function TotpEnrolmentFlow({
   const [tans, setTans] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [supportCode, setSupportCode] = useState('');
+  const [canRestart, setCanRestart] = useState(false);
+  const [showCauses, setShowCauses] = useState(false);
+  const [restarted, setRestarted] = useState(false);
 
-  async function start() {
-    setLoading(true);
+  function clearError() {
     setError('');
+    setSupportCode('');
+    setCanRestart(false);
+    setShowCauses(false);
+  }
+
+  async function start(restart = false) {
+    setLoading(true);
+    clearError();
     try {
-      const setup = await meTotpApi.setup(currentCode);
+      const setup = restart
+        ? await meTotpApi.setup(currentCode, true)
+        : await meTotpApi.setup(currentCode);
       setQrCodeUrl(setup.qrCodeUrl);
       setSecret(setup.secret);
+      setCode('');
+      setRestarted(restart);
       setStep('scan');
     } catch (err) {
       setError(
@@ -73,13 +95,28 @@ export function TotpEnrolmentFlow({
     e.preventDefault();
     if (code.length !== 6) return;
     setLoading(true);
-    setError('');
+    clearError();
     try {
       setTans(await meTotpApi.confirm(code));
       setStep('tans');
-    } catch {
-      setError(t('totpConfirmInvalidCode'));
-      setCode('');
+    } catch (err) {
+      const kind = confirmErrorKind(err);
+      if (kind === 'invalid') {
+        setError(t('totpConfirmInvalidCode'));
+        setShowCauses(true);
+        setCode('');
+      } else if (kind === 'used') {
+        setError(t('totpConfirmCodeUsed'));
+        setCode('');
+      } else if (kind === 'expired') {
+        setError(t('totpEnrolExpired'));
+        setCanRestart(true);
+      } else if (kind === 'rate') {
+        setError(t('totpConfirmRateLimited'));
+      } else {
+        setError(t('totpConfirmGeneric'));
+        setSupportCode(getErrorCode(err) ?? statusOf(err) ?? 'NETWORK');
+      }
     } finally {
       setLoading(false);
     }
@@ -130,6 +167,9 @@ export function TotpEnrolmentFlow({
           <p className="text-center text-xs text-[color:var(--text-muted)]">
             {t('totpSetupQrHint')}
           </p>
+          <p className="text-center text-xs font-medium text-[color:var(--text-secondary)]">
+            {restarted ? t('totpEnrolRestarted') : t('totpEnrolOldEntryHint')}
+          </p>
         </div>
       )}
       {qrCodeUrl && (
@@ -145,6 +185,7 @@ export function TotpEnrolmentFlow({
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
+            {...NO_AUTOFILL}
             maxLength={6}
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
@@ -155,6 +196,19 @@ export function TotpEnrolmentFlow({
         </div>
       )}
       {error && <ErrorText>{error}</ErrorText>}
+      {showCauses && <Note>{t('totpConfirmInvalidHint')}</Note>}
+      {supportCode && <Note>{t('totpConfirmSupportCode', { code: supportCode })}</Note>}
+      {canRestart && (
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full"
+          disabled={loading}
+          onClick={() => void start(true)}
+        >
+          {t('totpEnrolRestartBtn')}
+        </Button>
+      )}
       {qrCodeUrl && (
         <Button type="submit" className="w-full" disabled={code.length !== 6 || loading}>
           {loading ? t('totpConfirmVerifying') : t('totpConfirmCompleteBtn')}
@@ -162,6 +216,10 @@ export function TotpEnrolmentFlow({
       )}
     </form>
   );
+}
+
+function Note({ children }: { children: string }) {
+  return <p className="text-xs text-[color:var(--text-muted)]">{children}</p>;
 }
 
 function ErrorText({ children }: { children: string }) {
