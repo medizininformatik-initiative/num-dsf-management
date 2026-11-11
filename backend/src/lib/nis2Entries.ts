@@ -49,6 +49,13 @@ export const FIELD_STAGE: Partial<Record<Nis2Stage, Nis2FieldStage>> = {
   FINAL_REPORT: 'FINAL_REPORT',
 };
 
+/** Fields of a stage in the order the BSI form asks for them. */
+export const FIELD_ORDER: Record<Nis2FieldStage, readonly string[]> = {
+  EARLY_WARNING: ['suspectedMalicious', 'crossBorder', 'affectedServices'],
+  NOTIFICATION: ['severity', 'impact', 'iocs'],
+  FINAL_REPORT: ['rootCause', 'mitigation', 'crossBorderFinal'],
+};
+
 /** incidents.nis2_data as an object (the driver returns JSON columns parsed or as text). */
 export function parseNis2Data(raw: unknown): Nis2Data {
   let value = raw;
