@@ -48,8 +48,9 @@ export function useAdminStats() {
   });
 }
 
-export function usePendingApprovals() {
+export function usePendingApprovals(enabled = true) {
   return useQuery<PendingRequest[]>({
+    enabled,
     queryKey: ['admin', 'pending-approvals'],
     queryFn: () => adminApi.getPendingApprovals().then((r) => r.data.data),
     staleTime: 15_000,

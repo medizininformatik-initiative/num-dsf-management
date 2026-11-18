@@ -13,7 +13,9 @@
  * 'drawer' – the full layout inside the narrow-screen Drawer, its blocks
  * staggering in, with the close button in the header.
  * The root fills its box; AppPage owns width, position and motion.
- * Dependencies: auth.store, canvas.store, i18n.store, useMe, authApi,
+ * Admins see the count of open approval requests as a pill on the approval
+ * review link and on the Administration section.
+ * Dependencies: auth.store, canvas.store, i18n.store, useMe, usePendingApprovals, authApi,
  * react-router-dom, lib/environment, ui/Icon, ui/Button, BrandMark, Collapse,
  * InstanceSwitcher, sidebarStyles.
  */
@@ -23,6 +25,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/auth.store';
 import { useI18n } from '../../stores/i18n.store';
 import { useMe } from '../../hooks/useMe';
+import { usePendingApprovals } from '../../hooks/useAdmin';
 import { authApi } from '../../api/auth.api';
 import { DSF_ENVIRONMENT, ENV_ACCENT, IS_PRODUCTION } from '../../lib/environment';
 import { Icon } from '../ui/Icon';
@@ -57,6 +60,23 @@ interface LinkItem {
   icon: string;
   label: string;
   end?: boolean;
+  /** Open-item count shown as a pill when above 0. */
+  badge?: number;
+}
+
+/** Small count pill; the accessible text names what is counted. */
+function CountBadge({ count }: { count: number }) {
+  const { t } = useI18n();
+  if (count <= 0) return null;
+  return (
+    <span
+      role="status"
+      aria-label={t('pendingRequestsBadge', { n: count })}
+      className="ml-auto inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-error px-1 text-2xs font-semibold leading-none text-white"
+    >
+      <span aria-hidden="true">{count > 9 ? '9+' : count}</span>
+    </span>
+  );
 }
 
 const stagger = (index: number) => ({ '--stagger-index': index }) as CSSProperties;
@@ -86,6 +106,7 @@ function NavItem({
             className={`shrink-0 transition-colors duration-short ease-standard ${iconTone(isActive)}`}
           />
           <span className={`min-w-0 flex-1 truncate ${fade(rail)}`}>{item.label}</span>
+          {!rail && <CountBadge count={item.badge ?? 0} />}
         </>
       )}
     </NavLink>
@@ -100,6 +121,7 @@ function NavSection({
   open,
   active,
   rail,
+  badge = 0,
   onToggle,
   onNavigate,
 }: {
@@ -111,6 +133,8 @@ function NavSection({
   /** The current route belongs to the section. */
   active: boolean;
   rail: boolean;
+  /** Open-item count shown on the header while the section is collapsed. */
+  badge?: number;
   onToggle: () => void;
   onNavigate?: () => void;
 }) {
@@ -128,6 +152,7 @@ function NavSection({
       >
         <Icon name={icon} size={20} className={`shrink-0 ${iconTone(highlighted)}`} />
         <span className={`min-w-0 flex-1 truncate ${fade(rail)}`}>{label}</span>
+        {!open && !rail && <CountBadge count={badge} />}
         <Icon
           name="chevron_right"
           size={14}
@@ -227,8 +252,15 @@ export function Sidebar({
     drawer: { icon: 'close', label: t('shellCloseNav') },
   }[variant];
 
+  const pendingCount = usePendingApprovals(!!me?.isAdmin).data?.length ?? 0;
   const adminLinks: LinkItem[] = [
-    { to: '/app/admin', icon: 'task_alt', label: t('approvalReview'), end: true },
+    {
+      to: '/app/admin',
+      icon: 'task_alt',
+      label: t('approvalReview'),
+      end: true,
+      badge: pendingCount,
+    },
     { to: '/app/admin/users', icon: 'group', label: t('sidebarUserManagement') },
     { to: '/app/admin/certificates', icon: 'badge', label: t('adminCertTitle') },
     { to: '/app/admin/promotions', icon: 'verified_user', label: t('sidebarPromotions') },
@@ -361,6 +393,7 @@ export function Sidebar({
                 open={adminOpen}
                 active={isAdminRoute}
                 rail={rail}
+                badge={pendingCount}
                 onToggle={() => toggleGroup('admin')}
                 onNavigate={onNavigate}
               />

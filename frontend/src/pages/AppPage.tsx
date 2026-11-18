@@ -33,6 +33,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useMatch } from 'react-router-dom';
 import { useCanvasStore } from '../stores/canvas.store';
 import { useI18n } from '../stores/i18n.store';
+import { useNewRequestNotifier } from '../hooks/useNewRequestNotifier';
 import { useInstances } from '../hooks/useInstance';
 import { useModals } from '../hooks/useModals';
 import { useOrganization } from '../hooks/useOrganization';
@@ -116,6 +117,7 @@ function InstancePlaceholder({ loading }: { loading: boolean }) {
 
 export function AppPage() {
   const { t } = useI18n();
+  useNewRequestNotifier();
   const activeInstanceId = useCanvasStore((s) => s.activeInstanceId);
   const isCanvasRoute = !!useMatch('/app');
   const isMapRoute = !!useMatch('/app/map');
