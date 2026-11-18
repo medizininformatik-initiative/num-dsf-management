@@ -103,7 +103,7 @@ export function IntroSlides() {
                 aria-label={t('introSlideLabel', { n: i + 1, total })}
                 aria-hidden={active ? undefined : true}
                 {...inert}
-                className={`grid w-full shrink-0 items-center gap-6 p-5 transition-opacity duration-medium ease-standard sm:p-8 md:grid-cols-2 ${
+                className={`grid w-full shrink-0 items-center gap-6 p-5 transition-opacity duration-medium ease-standard sm:p-8 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] ${
                   active ? 'opacity-100' : 'opacity-0'
                 }`}
               >

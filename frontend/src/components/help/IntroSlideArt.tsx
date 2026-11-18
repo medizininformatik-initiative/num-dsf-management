@@ -23,7 +23,7 @@ function NodeBox({ node, accent }: { node: Node; accent?: boolean }) {
   return (
     <div className={`${NODE} ${accent ? NODE_ACCENT : ''}`}>
       <Icon name={node.icon} size={22} className="text-[color:var(--accent)]" />
-      <span className="max-w-full break-words">{t(node.labelKey)}</span>
+      <span className="max-w-full whitespace-nowrap">{t(node.labelKey)}</span>
     </div>
   );
 }
@@ -49,15 +49,12 @@ function Fan({ count }: { count: number }) {
 
 function Fanout({ top, bottom }: { top: Node; bottom: Node[] }) {
   return (
-    <div className="mx-auto w-full max-w-sm" aria-hidden="true">
+    <div className="mx-auto w-full max-w-md" aria-hidden="true">
       <div className="mx-auto w-28">
         <NodeBox node={top} accent />
       </div>
       <Fan count={bottom.length} />
-      <div
-        className="grid gap-2"
-        style={{ gridTemplateColumns: `repeat(${bottom.length}, minmax(0, 1fr))` }}
-      >
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {bottom.map((n) => (
           <NodeBox key={n.labelKey} node={n} />
         ))}
@@ -69,12 +66,12 @@ function Fanout({ top, bottom }: { top: Node; bottom: Node[] }) {
 function Steps({ steps }: { steps: Node[] }) {
   return (
     <div
-      className="mx-auto flex max-w-md flex-wrap items-center justify-center gap-x-1 gap-y-2"
+      className="mx-auto flex flex-wrap items-center justify-center gap-x-1 gap-y-2 lg:flex-nowrap"
       aria-hidden="true"
     >
       {steps.map((s, i) => (
         <div key={s.labelKey} className="flex items-center gap-1">
-          <div className="w-24">
+          <div className="min-w-[5.5rem]">
             <NodeBox node={s} accent={i === steps.length - 1} />
           </div>
           {i < steps.length - 1 && (
