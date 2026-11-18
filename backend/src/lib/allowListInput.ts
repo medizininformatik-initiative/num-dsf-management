@@ -9,6 +9,8 @@
  * own member entry, so any receiver view is derived from the stored members.
  * That keeps the stored JSON independent of who asks later, and the live and
  * the stored path go through the same derivation.
+ * The receiver view also deletes the receiver's affiliations of its earlier
+ * endpoints (removedAffiliations of its own member entry).
  * Contact data is never part of the input (GDPR, F-BND-04).
  * applyIncidentBlocks applies the suspensions and blocked thumbprints of the
  * incident register on top of the approved state.
@@ -72,9 +74,12 @@ export function receiverViewInput(
     affiliations: (self?.affiliations ?? [])
       .filter((a) => a.endpoint === endpoint)
       .map((a) => ({ parent: a.parent, roles: a.roles })),
-    removedAffiliations: (self?.removedAffiliations ?? [])
-      .filter((a) => a.endpoint === endpoint)
-      .map((a) => ({ parent: a.parent })),
+    // Also earlier endpoints of the receiver: its site may still hold the
+    // affiliation published for the endpoint it moved away from.
+    removedAffiliations: (self?.removedAffiliations ?? []).map((a) => ({
+      parent: a.parent,
+      endpoint: a.endpoint,
+    })),
   };
   return {
     members: stored.members.filter((m) => m.identifier !== organization),

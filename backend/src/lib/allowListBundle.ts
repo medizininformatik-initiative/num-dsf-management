@@ -74,7 +74,8 @@ export interface AllowListReceiver {
   organization: string;
   endpoint: string;
   affiliations: Array<{ parent: string; roles: string[] }>;
-  removedAffiliations: Array<{ parent: string }>;
+  /** `endpoint` defaults to the receiver's endpoint; set for an earlier endpoint of the receiver. */
+  removedAffiliations: Array<{ parent: string; endpoint?: string }>;
 }
 
 /** An organization withdrawn from the allow list (deactivated, deactivation approved). */
@@ -133,6 +134,23 @@ export function affiliationUrl(parent: string, member: string, endpoint: string)
     `&participating-organization:identifier=${ORG_ID_SYSTEM}|${member}` +
     `&endpoint:identifier=${EP_ID_SYSTEM}|${endpoint}`
   );
+}
+
+/** Inverse of affiliationUrl; null for any other URL. */
+export function parseAffiliationUrl(
+  url: string,
+): { parent: string; member: string; endpoint: string } | null {
+  const prefix = 'OrganizationAffiliation?';
+  if (!url.startsWith(prefix)) return null;
+  const params = url.slice(prefix.length).split('&');
+  const keys = [
+    `primary-organization:identifier=${ORG_ID_SYSTEM}|`,
+    `participating-organization:identifier=${ORG_ID_SYSTEM}|`,
+    `endpoint:identifier=${EP_ID_SYSTEM}|`,
+  ];
+  if (params.length !== 3 || !params.every((p, i) => p.startsWith(keys[i]))) return null;
+  const [parent, member, endpoint] = params.map((p, i) => p.slice(keys[i].length));
+  return parent && member && endpoint ? { parent, member, endpoint } : null;
 }
 
 /** A member is publishable when the DSF organization profile can be met. */
@@ -250,8 +268,17 @@ export function buildAllowListBundle(
   const receiverRemoved = receiver
     ? unique(
         receiver.removedAffiliations
-          .filter((r) => r.parent && !receiverAffiliations.some((a) => a.parent === r.parent))
-          .map((r) => affiliationUrl(r.parent, receiver.organization, receiver.endpoint)),
+          .filter(
+            (r) =>
+              r.parent &&
+              !(
+                (r.endpoint ?? receiver.endpoint) === receiver.endpoint &&
+                receiverAffiliations.some((a) => a.parent === r.parent)
+              ),
+          )
+          .map((r) =>
+            affiliationUrl(r.parent, receiver.organization, r.endpoint ?? receiver.endpoint),
+          ),
       ).sort(byText)
     : [];
 
