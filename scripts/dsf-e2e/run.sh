@@ -13,6 +13,9 @@
 # Scenarios and expected outcome:
 #   apache        Apache front configured like production    -> completed, peers applied
 #   apache-again  the same download a second time            -> completed, updated in place
+#   move-endpoint a peer's affiliation moves to a new endpoint -> completed, old
+#                 affiliation deleted, new one present (DSF refuses to create it
+#                 while the old one exists, so the bundle must delete the old one)
 #   leave-hub     a peer leaves the hub in the portal        -> completed, affiliation deleted
 #   withdraw      a peer is withdrawn (deactivation approved) -> completed, peer deleted
 #   nginx         repository nginx/nginx.conf as front       -> completed
@@ -321,6 +324,18 @@ verify_peers 1
 
 scenario apache-again "https://allowlist.portal-e2e.example.de/fhir/Bundle/$RECEIVER_EP" completed
 verify_peers 1
+
+portal_js "
+  const old = await db('endpoints').where({ identifier: 'fhir.$PEER2' }).first();
+  await db('endpoints').insert({ ...old, identifier: 'fhir-new.$PEER2' });
+  await db('memberships').where({ organization_id: '$PEER2' }).update({ endpoint_id: 'fhir-new.$PEER2' });
+  await db('endpoints').where({ identifier: 'fhir.$PEER2' }).del();"
+approve_change "$PEER2"
+publish_version move-endpoint
+scenario move-endpoint "https://allowlist.portal-e2e.example.de/fhir/Bundle/$RECEIVER_EP" completed
+oa="OrganizationAffiliation?primary-organization:identifier=$ORG_SID%7C$HUB&participating-organization:identifier=$ORG_SID%7C$PEER2"
+check "$PEER2 old affiliation deleted" "$(total "$oa&endpoint:identifier=$EP_SID%7Cfhir.$PEER2")" 0
+check "$PEER2 new affiliation present" "$(total "$oa&endpoint:identifier=$EP_SID%7Cfhir-new.$PEER2")" 1
 
 portal_js "await db('memberships').where({ organization_id: '$PEER2' }).update({ deleted_at: new Date() });"
 approve_change "$PEER2"
