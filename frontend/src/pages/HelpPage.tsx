@@ -7,7 +7,7 @@
  * (instant under Reduce Motion), a FAQ deep link (#faq-2) also opens its answer, and the
  * sections reveal with a short stagger. Content structure: lib/helpContent, texts: i18n.
  * Dependencies: react-router-dom, i18n store, useMe, lib (helpContent, motion),
- * AdminPageHeader, Button, Icon, IncidentFlowDiagram, sonner.
+ * AdminPageHeader, Button, Icon, IncidentFlowDiagram, IntroSlides, sonner.
  */
 import {
   useCallback,
@@ -31,6 +31,7 @@ import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { Button } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
 import { IncidentFlowDiagram } from '../components/incidents/IncidentFlowDiagram';
+import { IntroSlides } from '../components/help/IntroSlides';
 
 const CHIP =
   'press-effect inline-block rounded-full px-2.5 py-1 text-xs font-medium text-primary dark:text-brand-400 hover:bg-[color:var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]';
@@ -296,6 +297,7 @@ export function HelpPage() {
       />
 
       <div className="px-6 py-6 sm:px-8">
+        {!needle && <IntroSlides />}
         {total === 0 ? (
           <div role="status" className="surface-card animate-fade-in p-5 text-center">
             <p className="text-sm font-semibold text-[color:var(--text-primary)]">
