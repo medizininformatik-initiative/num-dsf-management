@@ -3,6 +3,8 @@
  * Admins receive full details. Non-admins receive only active/inactive +
  * endpoint names + aggregate cert status — no PII, no IPs, no exact expiry dates.
  * Sites the incident register withdraws are not on the map.
+ * City, postcode and country come from the approved snapshot; an empty snapshot
+ * value falls back to the live organization column.
  * Dependencies: db, approved-snapshot.service, fhir.service
  */
 import { db } from '../db/connection';
@@ -48,6 +50,19 @@ function certStatus(validUntils: (Date | string | null)[]): {
   if (furthest - now < THIRTY_DAYS)
     return { status: 'EXPIRING', next: new Date(furthest).toISOString(), daysUntil: days };
   return { status: 'VALID', next: new Date(furthest).toISOString(), daysUntil: days };
+}
+
+/**
+ * Address field for the map: the approved snapshot's value, unless it is empty
+ * or whitespace-only (older snapshots stored '' for city/postcode/country), then
+ * the live column. An empty live value becomes null.
+ */
+export function snapshotOrLive(
+  snapshotValue: string | null | undefined,
+  liveValue: string | null | undefined,
+): string | null {
+  if (snapshotValue?.trim()) return snapshotValue;
+  return liveValue?.trim() ? liveValue : null;
 }
 
 export async function getNetworkMap(opts: { isAdmin: boolean }) {
@@ -120,11 +135,11 @@ export async function getNetworkMap(opts: { isAdmin: boolean }) {
       identifier: org.identifier,
       name: snapshotOrgField(snapshot, 'name') ?? org.name,
       active: true,
-      city: snapshotOrgField(snapshot, 'city') ?? org.city ?? null,
+      city: snapshotOrLive(snapshotOrgField(snapshot, 'city'), org.city),
       // Organization master data (not personal data); the map places a site by
       // its own postcode when the city name is not in its city table.
-      postal_code: snapshotOrgField(snapshot, 'postal_code') ?? org.postal_code ?? null,
-      country_code: snapshotOrgField(snapshot, 'country_code') ?? org.country_code ?? null,
+      postal_code: snapshotOrLive(snapshotOrgField(snapshot, 'postal_code'), org.postal_code),
+      country_code: snapshotOrLive(snapshotOrgField(snapshot, 'country_code'), org.country_code),
       cert_status: status,
     };
 
