@@ -39,6 +39,8 @@ export interface ApprovalStatus extends ApprovalRequest {
   submitted_by?: string | null;
   /** Data snapshot the request was sent with (JSON string or parsed object). */
   snapshot_json?: string | object | null;
+  /** False when the data equals the last approved snapshot; null/undefined when unknown. */
+  changedSinceApproval?: boolean | null;
 }
 
 export function useApprovalStatus(instanceId: string | null) {

@@ -335,6 +335,22 @@ describe('ApprovalModal — request state up front', () => {
     expect(history).toHaveTextContent(t('noApprovalRequests'));
   });
 
+  it('disables submit and shows a hint when nothing changed since the last approval', () => {
+    seedPassingData();
+    data.approval = { id: 'r1', status: 'APPROVED', changedSinceApproval: false };
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+    expect(submitButton()).toBeDisabled();
+    expect(screen.getByText(t('approvalNoChangesHint'))).toBeInTheDocument();
+  });
+
+  it.each([true, null])('keeps submit enabled when changedSinceApproval is %s', (v) => {
+    seedPassingData();
+    data.approval = { id: 'r1', status: 'APPROVED', changedSinceApproval: v };
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+    expect(submitButton()).toBeEnabled();
+    expect(screen.queryByText(t('approvalNoChangesHint'))).not.toBeInTheDocument();
+  });
+
   it('lists the full history with the last approved date, in both dialog states', () => {
     seedPassingData();
     data.history = [

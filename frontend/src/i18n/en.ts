@@ -730,6 +730,7 @@ export const en = {
   approvalRunningSubtitle:
     'IMI is reviewing this request. You can withdraw it until a decision has been made.',
   approvalRunningLabel: 'Request running',
+  approvalNoChangesHint: 'No changes since the last approval',
   approvalRunningHint: 'Show the running request',
   approvalRunningSubmitted: 'Submitted',
   approvalRunningSubmittedBy: 'Submitted by',

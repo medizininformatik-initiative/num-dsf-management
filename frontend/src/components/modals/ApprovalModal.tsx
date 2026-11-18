@@ -6,7 +6,9 @@
  * a rejection shows its reason). The checklist is the shared readiness rule (deriveReadiness, as in
  * the wizard and the right panel); an open item closes the dialog and jumps to
  * its card. Below, the data the request will snapshot. Submits through the
- * cross-user guard; backend refusals map to translated messages.
+ * cross-user guard; backend refusals map to translated messages. When the data
+ * equals the last approved snapshot (changedSinceApproval === false) submit is
+ * disabled with a hint.
  * Dependencies: Modal, Callout, Button, Icon, StatusPill, ApprovalStatusBanner,
  * lib/readiness, lib/certStatus, lib/dateUtils, entity hooks, useApproval,
  * useCrossUserGuard, i18n store.
@@ -153,7 +155,8 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
     memberships,
     approval,
   });
-  const canSubmit = readiness.canSubmit && !statusQuery.isLoading;
+  const unchanged = approval?.changedSinceApproval === false;
+  const canSubmit = readiness.canSubmit && !statusQuery.isLoading && !unchanged;
 
   function jumpTo(key: ReadinessKey) {
     onClose();
@@ -401,21 +404,28 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
             {withdrawing ? t('modalSavingBtn') : t('approvalWithdrawBtn')}
           </Button>
         ) : (
-          <Button onClick={handleSubmit} disabled={!canSubmit || isPending}>
-            {isPending ? (
-              t('modalSavingBtn')
-            ) : readiness.withdrawal ? (
-              <>
-                <Icon name="logout" size={16} />
-                {t('approvalWithdrawalSubmit')}
-              </>
-            ) : (
-              <>
-                <Icon name="send" size={16} />
-                {t('approvalModalSubmitBtn')}
-              </>
+          <>
+            {unchanged && (
+              <span className="mr-auto self-center text-xs text-[color:var(--text-muted)]">
+                {t('approvalNoChangesHint')}
+              </span>
             )}
-          </Button>
+            <Button onClick={handleSubmit} disabled={!canSubmit || isPending}>
+              {isPending ? (
+                t('modalSavingBtn')
+              ) : readiness.withdrawal ? (
+                <>
+                  <Icon name="logout" size={16} />
+                  {t('approvalWithdrawalSubmit')}
+                </>
+              ) : (
+                <>
+                  <Icon name="send" size={16} />
+                  {t('approvalModalSubmitBtn')}
+                </>
+              )}
+            </Button>
+          </>
         )}
       </div>
     </Modal>

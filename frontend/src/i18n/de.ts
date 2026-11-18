@@ -740,6 +740,7 @@ export const de: Record<TranslationKey, string> = {
   approvalRunningSubtitle:
     'Das IMI prüft diesen Antrag. Sie können ihn zurückziehen, bis eine Entscheidung gefallen ist.',
   approvalRunningLabel: 'Antrag läuft',
+  approvalNoChangesHint: 'Keine Änderungen seit der letzten Freigabe',
   approvalRunningHint: 'Laufenden Antrag anzeigen',
   approvalRunningSubmitted: 'Gesendet',
   approvalRunningSubmittedBy: 'Gesendet von',

@@ -11,6 +11,7 @@
  * newer allow-list version exists than the site has obtained, it shimmers softly
  * and carries a red dot with a hint (nothing while loading or up to date).
  * The "Report incident" button is there on every route, for every user.
+ * With nothing changed since the last approval the CTA turns secondary (still clickable).
  * Dependencies: SearchBar, NotificationCenter, ReportIncidentButton, Button,
  * Icon, canvas.store, useApproval, useAllowListFreshness, theme.store,
  * i18n.store
@@ -42,6 +43,7 @@ export function TopBar({
   const { data } = useApprovalStatus(showInstanceActions ? activeInstanceId : null);
   const approval: ApprovalStatus | null | undefined = data;
   const pending = approval?.status === 'PENDING';
+  const unchanged = approval?.changedSinceApproval === false;
   const { data: freshness } = useAllowListFreshness(showInstanceActions ? activeInstanceId : null);
   const newVersion = freshness?.outdated ? freshness.currentVersion : null;
   const nudgeHint = newVersion === null ? '' : t('allowListNewHint', { n: newVersion });
@@ -119,7 +121,12 @@ export function TopBar({
                 </StatusPill>
               </Button>
             ) : (
-              <Button variant="primary" size="sm" onClick={onApproval}>
+              <Button
+                variant={unchanged ? 'secondary' : 'primary'}
+                size="sm"
+                onClick={onApproval}
+                title={unchanged ? t('approvalNoChangesHint') : undefined}
+              >
                 <Icon name="send" size={14} />
                 <span className="sr-only sm:not-sr-only">{t('sendForApproval')}</span>
               </Button>

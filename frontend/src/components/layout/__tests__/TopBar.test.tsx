@@ -95,6 +95,29 @@ describe('TopBar', () => {
     expect(label).not.toHaveClass('xl:not-sr-only');
   });
 
+  it('greys the approval CTA out when nothing changed since the last approval', () => {
+    approval.data = { status: 'APPROVED', changedSinceApproval: false };
+    const onApproval = vi.fn();
+    renderWithProviders(
+      <TopBar onDownload={vi.fn()} onApproval={onApproval} showInstanceActions />,
+    );
+    const send = screen.getByRole('button', { name: /send for approval/i });
+    expect(send).toBeEnabled();
+    expect(send).toHaveClass('btn-secondary');
+    expect(send).not.toHaveClass('btn-primary');
+    expect(send).toHaveAttribute('title', 'No changes since the last approval');
+    fireEvent.click(send);
+    expect(onApproval).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([true, null])('keeps the primary approval CTA when changedSinceApproval is %s', (v) => {
+    approval.data = { status: 'APPROVED', changedSinceApproval: v };
+    renderWithProviders(<TopBar onDownload={vi.fn()} onApproval={vi.fn()} showInstanceActions />);
+    const send = screen.getByRole('button', { name: /send for approval/i });
+    expect(send).toHaveClass('btn-primary');
+    expect(send).not.toHaveAttribute('title');
+  });
+
   it('offers the approval action again after a rejection', () => {
     approval.data = { status: 'REJECTED' };
     renderWithProviders(<TopBar onDownload={vi.fn()} onApproval={vi.fn()} showInstanceActions />);
