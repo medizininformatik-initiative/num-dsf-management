@@ -25,6 +25,9 @@ vi.mock('../../components/admin/RequestCard', () => ({
   ),
 }));
 
+// The overview tiles have their own test; keep this page test on the review list.
+vi.mock('../../components/admin/AdminStatsSection', () => ({ AdminStatsSection: () => null }));
+
 import { AdminPage } from '../AdminPage';
 
 function makeRequest(id: string): PendingRequest {

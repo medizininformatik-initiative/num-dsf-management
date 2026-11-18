@@ -7,7 +7,7 @@
  * loading spinner uses animate-spin (it keeps turning under Reduce Motion, as
  * a busy indicator should).
  *
- * Dependencies: useAdmin/useMe hooks, RequestCard, AdminPageHeader, Icon.
+ * Dependencies: useAdmin/useMe hooks, RequestCard, AdminStatsSection, AdminPageHeader, Icon.
  */
 import type { CSSProperties } from 'react';
 import { Link, Navigate } from 'react-router-dom';
@@ -16,6 +16,7 @@ import { useMe } from '../hooks/useMe';
 import { useI18n } from '../stores/i18n.store';
 import { RequestCard, type RequestCardProps } from '../components/admin/RequestCard';
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
+import { AdminStatsSection } from '../components/admin/AdminStatsSection';
 import { Icon } from '../components/ui/Icon';
 
 export function AdminPage() {
@@ -44,7 +45,12 @@ export function AdminPage() {
       />
 
       <div className="space-y-4 px-6 py-6 sm:px-8">
-        <div className="flex gap-3 rounded-card border border-info-border bg-info-surface p-4 text-sm text-info-fg">
+        <AdminStatsSection pendingTargetId="admin-pending-requests" />
+
+        <div
+          id="admin-pending-requests"
+          className="flex scroll-mt-20 gap-3 rounded-card border border-info-border bg-info-surface p-4 text-sm text-info-fg"
+        >
           <Icon name="shield" size={20} className="shrink-0" />
           <div className="space-y-0.5">
             <p className="font-semibold">{t('adminFourEyesTitle')}</p>

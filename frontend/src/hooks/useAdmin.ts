@@ -4,7 +4,7 @@
  * Dependencies: admin.api, caWhitelist.api, caBlacklist.api, tanstack/react-query
  */
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { adminApi, type PendingRequest } from '../api/admin.api';
+import { adminApi, type AdminStats, type PendingRequest } from '../api/admin.api';
 import { caWhitelistApi } from '../api/caWhitelist.api';
 import { caBlacklistApi } from '../api/caBlacklist.api';
 
@@ -36,6 +36,16 @@ function invalidateAfterDecision(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ['network', 'map'] });
   qc.invalidateQueries({ queryKey: ['approval-status'] });
   qc.invalidateQueries({ queryKey: ['approval-history'] });
+}
+
+/** Summary numbers for the admin overview tiles. */
+export function useAdminStats() {
+  return useQuery<AdminStats>({
+    queryKey: ['admin', 'stats'],
+    queryFn: () => adminApi.getStats().then((r) => r.data.data),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
 }
 
 export function usePendingApprovals() {

@@ -43,7 +43,35 @@ export interface PendingRequest {
   signatures: ApprovalSignature[];
 }
 
+export interface AdminStats {
+  sites: {
+    total: number;
+    active: number;
+    withLoginCertificate: number;
+    everLoggedIn: number;
+    loggedInLast24h: number;
+    published: number;
+  };
+  requests: {
+    pending: number;
+    approved: number;
+    rejected: number;
+    withdrawn: number;
+    draft: number;
+    approvedLast24h: number;
+  };
+  allowList: {
+    currentVersion: number | null;
+    currentPublishedAt: string | null;
+    sitesUpToDate: number;
+    sitesNeverFetched: number;
+  };
+  incidents: { open: number };
+}
+
 export const adminApi = {
+  getStats: () => api.get<{ data: AdminStats }>('/admin/stats'),
+
   getPendingApprovals: () =>
     api.get<{ data: PendingRequest[] }>('/admin/approval/pending'),
 
