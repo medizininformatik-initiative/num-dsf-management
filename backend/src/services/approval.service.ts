@@ -4,7 +4,7 @@
  * PENDING → WITHDRAWN (the site takes its own request back)
  * Dependencies: db/connection, audit.service, approval-reminder.service, fhir.service
  *               (loadMembers), approved-snapshot.service (types), lib/approvalState,
- *               login-certificate-sync.service
+ *               login-certificate-sync.service, lib/approvedIps
  */
 import { Knex } from 'knex';
 import { db } from '../db/connection';
@@ -17,6 +17,7 @@ import {
 } from './approval-reminder.service';
 import { siteOfEmail, validateApproval, deriveStatus, ApprovalSig } from '../lib/approvalState';
 import { loadMembers } from './fhir.service';
+import { extractApprovedIps } from '../lib/approvedIps';
 import { syncLoginCertificatesAfterApproval } from './login-certificate-sync.service';
 import type { AllowListSection } from './approved-snapshot.service';
 import { errCode } from '../lib/errMessage';
@@ -189,11 +190,25 @@ export async function getApprovalStatus(instanceId: string) {
 }
 
 export async function getApprovalHistory(instanceId: string) {
-  return db('approval_requests')
+  const rows = await db('approval_requests')
     .where({ instance_id: instanceId })
-    .select('id', 'status', 'created_at', 'submitted_at', 'resolved_at', 'resolved_by', 'comment')
+    .select(
+      'id',
+      'status',
+      'created_at',
+      'submitted_at',
+      'resolved_at',
+      'resolved_by',
+      'comment',
+      'snapshot_json',
+    )
     .orderBy('created_at', 'desc')
     .limit(20);
+  // The snapshot holds contacts and is large: only the IPs the diff badge needs go out.
+  return rows.map(({ snapshot_json, ...row }) => ({
+    ...row,
+    approved_ips: extractApprovedIps(snapshot_json),
+  }));
 }
 
 export async function getPendingApprovals() {
