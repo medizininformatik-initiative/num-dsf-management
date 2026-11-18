@@ -211,6 +211,7 @@ describe('bundle-versions.service – createSnapshot retires moved affiliations'
       .filter((e) => e.request.method === 'DELETE')
       .map((e) => e.request.url);
   };
+  const oldEndpoint = `Endpoint?identifier=http://dsf.dev/sid/endpoint-identifier|old.${org}`;
   const oldAffiliation = `OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|${hub}&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|${org}&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|old.${org}`;
 
   afterAll(async () => {
@@ -231,8 +232,8 @@ describe('bundle-versions.service – createSnapshot retires moved affiliations'
     const v2 = await snapshot(`new.${org}`);
     const v3 = await snapshot(`new.${org}`);
     expect(await deletes(v1)).toEqual([]);
-    expect(await deletes(v2)).toEqual([oldAffiliation]);
-    expect(await deletes(v3)).toEqual([oldAffiliation]);
+    expect(await deletes(v2)).toEqual([oldAffiliation, oldEndpoint]);
+    expect(await deletes(v3)).toEqual([oldAffiliation, oldEndpoint]);
     // The stored input carries the retirement, so receiver views render it.
     const row = await db('bundle_versions').where({ id: v3 }).first();
     expect(JSON.parse(row.input_json).members[0].removedAffiliations).toEqual([

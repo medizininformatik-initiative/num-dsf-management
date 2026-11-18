@@ -121,8 +121,9 @@ describe('withRetiredAffiliations', () => {
   it('does not duplicate an already removed affiliation', () => {
     const m = member('m.example.de', 'new.m.example.de');
     m.removedAffiliations = [{ parent: HUB, endpoint: 'old.m.example.de' }];
-    const current = input([m]);
-    expect(withRetiredAffiliations(current, previous)).toBe(current);
+    const [retired] = withRetiredAffiliations(input([m]), previous).members;
+    expect(retired.removedAffiliations).toHaveLength(1);
+    expect(retired.removedEndpoints).toEqual(['old.m.example.de']);
   });
 
   it('a withdrawn member gets nothing from this mechanism', () => {
