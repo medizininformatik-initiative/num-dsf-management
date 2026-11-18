@@ -1096,6 +1096,10 @@ export const de: Record<TranslationKey, string> = {
   downloadGuideStep3Body:
     'Starten Sie den DSF-Prozess downloadAllowList ({link}) auf Ihrem DSF mit dem unten genannten Task-Input. Ihr DSF ruft das Bundle mit dem DSF-Client-Zertifikat Ihres Standorts ab, das im Portal registriert sein muss.',
   downloadGuideProcessLink: 'dsf-process-allow-list',
+  downloadGuideManualTitle: 'Alternativ: manuell hochladen',
+  downloadGuideManualBody:
+    'Ohne Zugriff auf die DSF-Oberfläche können Sie das heruntergeladene Bundle direkt an Ihren DSF FHIR-Server senden. Verwenden Sie dafür das Client-Zertifikat Ihres DSF FHIR-Servers (lokale Organisation), z. B. aus dessen secrets-Verzeichnis. Beim manuellen Hochladen entfällt die Prüfung durch den Prozess downloadAllowList; prüfen Sie den Hash vorher wie in Schritt 2.',
+  downloadGuideManualPlaceholder: 'https://IHR_DSF_FHIR_HOST/fhir/',
   downloadGuideTaskInput: 'Task-Input',
   downloadGuideIdentifiers:
     'Ihr Organisations-Identifier und der Endpoint-Identifier müssen mit der Konfiguration Ihres DSF-Servers übereinstimmen (DEV_DSF_FHIR_SERVER_ORGANIZATION_IDENTIFIER_VALUE und der Host von DEV_DSF_FHIR_SERVER_BASE_URL).',

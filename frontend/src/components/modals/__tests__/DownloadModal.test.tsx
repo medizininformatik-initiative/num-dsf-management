@@ -270,6 +270,36 @@ describe('DownloadModal – guide, IP list and gate', () => {
     expect(link.parentElement).toHaveTextContent(/registered in the portal\.$/);
   });
 
+  it('shows the manual upload curl command with a placeholder before an endpoint is chosen', () => {
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    const cmd = screen.getByText(/^curl --cert client_certificate[.]pem/);
+    expect(cmd).toHaveTextContent('-H "Accept: application/fhir+json"');
+    expect(cmd).toHaveTextContent('-H "Content-Type: application/fhir+json"');
+    expect(cmd).not.toHaveTextContent('xml');
+    expect(cmd).toHaveTextContent(
+      '--data-binary @dsf-allow-list.json https://YOUR_DSF_FHIR_HOST/fhir/',
+    );
+  });
+
+  it('targets the selected endpoint with exactly one trailing slash and the downloaded file', async () => {
+    await downloadVersion3();
+    const cmd = screen.getByText(/^curl --cert client_certificate[.]pem/);
+    expect(
+      cmd.textContent?.endsWith(
+        '--data-binary @dsf-allow-list-v3.json https://fhir.klinik.example.de/fhir/',
+      ),
+    ).toBe(true);
+  });
+
+  it('adds the trailing slash when the address has none', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    await user.selectOptions(screen.getByLabelText('Endpoint'), 'broken.example.de');
+    expect(
+      screen.getByText(/^curl --cert/).textContent?.endsWith(' ftp://broken.example.de/'),
+    ).toBe(true);
+  });
+
   it('hides the IP address list from non-admins', () => {
     renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
     expect(screen.queryByTestId('download-ip-btn')).toBeNull();

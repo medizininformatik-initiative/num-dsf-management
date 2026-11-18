@@ -1080,6 +1080,10 @@ export const en = {
   downloadGuideStep3Body:
     'Start the DSF process downloadAllowList ({link}) on your DSF with the Task input below. Your DSF fetches the bundle with the site’s DSF client certificate, which must be registered in the portal.',
   downloadGuideProcessLink: 'dsf-process-allow-list',
+  downloadGuideManualTitle: 'Alternative: upload manually',
+  downloadGuideManualBody:
+    'Without access to the DSF web UI you can send the downloaded bundle straight to your DSF FHIR server. Use the client certificate of your DSF FHIR server (local organization), e.g. from its secrets directory. A manual upload skips the checks of the downloadAllowList process; verify the hash first as in step 2.',
+  downloadGuideManualPlaceholder: 'https://YOUR_DSF_FHIR_HOST/fhir/',
   downloadGuideTaskInput: 'Task input',
   downloadGuideIdentifiers:
     'Your organization identifier and the endpoint identifier must match your DSF server’s configuration (DEV_DSF_FHIR_SERVER_ORGANIZATION_IDENTIFIER_VALUE and the host of DEV_DSF_FHIR_SERVER_BASE_URL).',

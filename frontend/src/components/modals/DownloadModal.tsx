@@ -216,6 +216,16 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
       : 'unchecked';
   const commandFile = verification?.fileName ?? 'dsf-allow-list.json';
   const [stepBefore, stepAfter = ''] = t('downloadGuideStep3Body').split('{link}');
+  const selectedAddress = endpoints.find(
+    (ep: EndpointOption) => ep.identifier === selectedEndpoint,
+  )?.address;
+  const uploadTarget = selectedAddress
+    ? `${selectedAddress.replace(/[/]+$/, '')}/`
+    : t('downloadGuideManualPlaceholder');
+  const uploadCommand =
+    'curl --cert client_certificate.pem --key client_certificate_private_key.pem ' +
+    '-H "Accept: application/fhir+json" -H "Content-Type: application/fhir+json" ' +
+    `--data-binary @${commandFile} ${uploadTarget}`;
 
   return (
     <Modal open={open} onClose={onClose} title={t('downloadModalTitle')} width="max-w-2xl">
@@ -406,6 +416,15 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
                 <Icon name="info" size={14} className="mt-0.5 shrink-0 text-info-fg" />
                 <span>{t('downloadGuideIdentifiers')}</span>
               </p>
+              <div className="space-y-1.5 border-t border-[color:var(--border)] pt-2">
+                <p className={fieldLabelClass}>{t('downloadGuideManualTitle')}</p>
+                <p className={helpText}>{t('downloadGuideManualBody')}</p>
+                <CopyField
+                  value={uploadCommand}
+                  label={t('downloadGuideManualTitle')}
+                  onCopy={(text) => void copy(text)}
+                />
+              </div>
             </Step>
           </ol>
         </section>
