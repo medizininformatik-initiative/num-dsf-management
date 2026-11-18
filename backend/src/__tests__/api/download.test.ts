@@ -1,7 +1,7 @@
 /**
  * download.test.ts — Integration tests for the download routes.
  * Covers GET /api/v1/instances/:id/download/bundle (signed FHIR bundle)
- * and GET /api/v1/download/ip-address-list (admin Excel export).
+ * and GET /api/v1/download/ip-address-list (Excel export for every signed-in user).
  *
  * Each suite seeds its OWN uniquely-named rows (concurrency-safe) and tears
  * them down in afterAll. No shared fixed-ID seed helpers are used.
@@ -299,12 +299,11 @@ describe('Download routes', () => {
       expect(res.body.error.code).toBe('UNAUTHORIZED');
     });
 
-    it('returns 403 for a non-admin user', async () => {
+    it('returns 200 for a normal (non-admin) user', async () => {
       const res = await request(app)
         .get('/api/v1/download/ip-address-list')
         .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBe(403);
-      expect(res.body.error.code).toBe('FORBIDDEN');
+      expect(res.status).toBe(200);
     });
   });
 });

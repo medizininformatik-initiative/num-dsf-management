@@ -381,8 +381,8 @@ Mounted at `/api/v1/instances/:instanceId/download` and `/api/v1/download`.
 | GET | /api/v1/instances/:instanceId/download/full-bundle | requireAuth | Network-wide FHIR bundle (audited). Returns `application/fhir+json` attachment. |
 | GET | /api/v1/instances/:instanceId/download/bundle | requireOwner | Per-endpoint signed bundle of the current version. Query `?endpointId=` (required), `&version=<n>` (optional, an older version; 404 if unknown). Signature, content-hash and `X-Bundle-Version` headers. |
 | GET | /api/v1/instances/:id/bundle-history | requireOwner | Versions a site can download for one endpoint. Query `?endpointId=` (required, must belong to the instance), `&limit=`. → `{ data: [{ versionNumber, createdAt, triggeredBy, notes, isCurrent }] }`, newest first. |
-| GET | /api/v1/instances/:instanceId/download/ip-address-list | requireAdmin | Excel (`.xlsx`) export of all allow-listed IPs. |
-| GET | /api/v1/download/ip-address-list | requireAdmin | Same export without instance scope. |
+| GET | /api/v1/instances/:instanceId/download/ip-address-list | requireAuth | Excel (`.xlsx`) export of all allow-listed IPs. |
+| GET | /api/v1/download/ip-address-list | requireAuth | Same export without instance scope. |
 | GET | /api/v1/download/full-bundle | requireAuth | Network-wide bundle without instance scope. |
 | GET | /api/v1/download/bundle | requireOwner | Bundle route also reachable without instance scope (requires `endpointId`). |
 

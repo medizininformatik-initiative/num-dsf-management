@@ -370,13 +370,13 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
       expect((await request(app).get('/fhir/Bundle/e')).status).toBe(401);
     });
 
-    it('the Excel IP list is admin only', async () => {
+    it('the Excel IP list is open to a site session', async () => {
       const token = await certToken(siteUserId, siteEmail, siteInstanceId);
       const res = await request(app)
         .get('/api/v1/download/ip-address-list')
         .set('Authorization', `Bearer ${token}`)
         .set(certHeaders(SITE_PEM));
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(200);
     });
   });
 

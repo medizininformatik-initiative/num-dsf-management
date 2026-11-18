@@ -1,17 +1,18 @@
 /**
  * download.routes.ts – FHIR-Bundle and IP-list export endpoints
- * Dependencies: auth/instance/admin middleware, bundle-versions.service,
+ * Dependencies: auth/instance middleware, bundle-versions.service,
  *               excel.service, bundle-signing.service, audit.service, sanitizeError
  *
  * /bundle             — tenant export of the current version (or `?version=`),
  *                       signed with kid + content hash, X-Bundle-Version
  * /full-bundle        — network-wide bundle of the current version (authenticated download)
- * /ip-address-list    — admin Excel export of all allow-listed IPs
+ * /ip-address-list    — Excel export of all allow-listed IPs (organization names, endpoint
+ *                       URLs, IPs; no contact data) for every signed-in user, sites need it
+ *                       for their firewalls
  */
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireInstanceOwnership } from '../middleware/instance.middleware';
-import { requireImiAdmin } from '../middleware/admin.middleware';
 import {
   getPublishedFullBundle,
   getPublishedReceiverBundle,
@@ -107,11 +108,12 @@ downloadRouter.get('/bundle', requireAuth, requireInstanceOwnership, async (req,
   }
 });
 
-downloadRouter.get('/ip-address-list', requireAuth, requireImiAdmin, async (req, res) => {
+downloadRouter.get('/ip-address-list', requireAuth, async (req, res) => {
   try {
     const buffer = await generateIpAddressListExcel();
     writeAuditLog({
       userEmail: req.user!.email,
+      instanceId: req.user!.scopeInstanceId,
       resourceType: 'AUTH',
       operation: 'CREATE',
       diffJson: { action: 'ip_address_list_download', byteSize: buffer.length },
