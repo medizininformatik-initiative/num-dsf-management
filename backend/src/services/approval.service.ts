@@ -4,7 +4,7 @@
  * PENDING → WITHDRAWN (the site takes its own request back)
  * Dependencies: db/connection, audit.service, approval-reminder.service, fhir.service
  *               (loadMembers), approved-snapshot.service (types), lib/approvalState,
- *               login-certificate-sync.service, lib/approvedIps
+ *               login-certificate-sync.service, lib/approvedIps, lib/snapshotCompare
  */
 import { Knex } from 'knex';
 import { db } from '../db/connection';
@@ -18,6 +18,7 @@ import {
 import { siteOfEmail, validateApproval, deriveStatus, ApprovalSig } from '../lib/approvalState';
 import { loadMembers } from './fhir.service';
 import { extractApprovedIps } from '../lib/approvedIps';
+import { snapshotsDiffer } from '../lib/snapshotCompare';
 import { syncLoginCertificatesAfterApproval } from './login-certificate-sync.service';
 import type { AllowListSection } from './approved-snapshot.service';
 import { errCode } from '../lib/errMessage';
@@ -154,6 +155,21 @@ export async function withdrawApproval(instanceId: string, userEmail: string, ip
 }
 
 /**
+ * Whether the current data differs from the latest APPROVED snapshot of the instance;
+ * null when there is no approved snapshot, no organization, or the stored one is unreadable.
+ */
+async function changedSinceLastApproval(instanceId: string): Promise<boolean | null> {
+  const approved = await db('approval_requests')
+    .where({ instance_id: instanceId, status: 'APPROVED' })
+    .orderByRaw('COALESCE(resolved_at, created_at) DESC')
+    .first('snapshot_json');
+  if (!approved) return null;
+  const current = await buildSnapshot(instanceId, db);
+  if (!current) return null;
+  return snapshotsDiffer(current, approved.snapshot_json);
+}
+
+/**
  * Latest request of an instance plus its four-eyes progress, so the site sees
  * how many of the two approvals it has and when silent consent would approve
  * it. Signer identities stay hidden; only counts and dates are exposed.
@@ -185,6 +201,8 @@ export async function getApprovalStatus(instanceId: string) {
   return {
     ...request,
     submitted_by: (submitted?.user_email as string | undefined) ?? null,
+    changedSinceApproval:
+      request.status === 'PENDING' ? null : await changedSinceLastApproval(instanceId),
     fourEyes: { approvals: approvals.length, required: 2, silentConsentAt },
   };
 }
