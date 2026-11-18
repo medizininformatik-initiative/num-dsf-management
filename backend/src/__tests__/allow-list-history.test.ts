@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import {
   affiliationUrl,
   buildAllowListBundle,
+  endpointUrl,
   parseAffiliationUrl,
   type AllowListMember,
 } from '../lib/allowListBundle';
@@ -86,6 +87,14 @@ describe('withRetiredAffiliations', () => {
     const urls = methodsAndUrls(withRetiredAffiliations(moved(), previous));
     expect(urls).toContain(`DELETE ${oldUrl}`);
     expect(urls).toContain(`PUT ${newUrl}`);
+  });
+
+  it('moved endpoint: the old Endpoint is deleted too (DSF refuses a duplicate address)', () => {
+    // The new endpoint may keep the old address; DSF rejects the create while the old
+    // Endpoint exists, and deletes run before creates within the transaction.
+    const urls = methodsAndUrls(withRetiredAffiliations(moved(), previous));
+    expect(urls).toContain(`DELETE ${endpointUrl('old.m.example.de')}`);
+    expect(urls).not.toContain(`DELETE ${endpointUrl('new.m.example.de')}`);
   });
 
   it('unchanged affiliation: no DELETE, and the input object is returned as is', () => {

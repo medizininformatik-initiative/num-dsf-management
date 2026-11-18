@@ -9,7 +9,10 @@
  * transaction of every receiver still holding the old one. The conditional
  * DELETE for each (parent, member, old endpoint) is therefore emitted in every
  * later version, but only for a member that is still published and whose old
- * endpoint is gone. A DELETE without a match is harmless in DSF.
+ * endpoint is gone. The old Endpoint resource is deleted as well: DSF also
+ * refuses to create an Endpoint whose address already exists, so a replacement
+ * endpoint with the same address would otherwise fail the transaction.
+ * A DELETE without a match is harmless in DSF.
  * Pure: the caller supplies the earlier versions' bundles.
  * Dependencies: lib/allowListBundle, lib/allowListInput (types only)
  */
@@ -40,9 +43,10 @@ export function publishedAffiliations(bundleJson: string): AffiliationTriple[] {
 }
 
 /**
- * Adds a previously published affiliation to the member's removedAffiliations
- * when its endpoint is no longer one of the member's current endpoints (the
- * endpoint was changed or removed). Everything else is left alone: members
+ * Adds a previously published affiliation to the member's removedAffiliations,
+ * and its endpoint to the member's removedEndpoints, when that endpoint is no
+ * longer one of the member's current endpoints (the endpoint was changed or
+ * removed). Everything else is left alone: members
  * absent from the input (withdrawn, suspended, unpublishable, not approved)
  * stay with the removal path, and an affiliation dropped while its endpoint
  * still exists stays with the soft-delete path. Returns the input itself when
@@ -55,6 +59,7 @@ export function withRetiredAffiliations(
   const members = new Map(input.members.map((m) => [m.identifier, m]));
   const key = (t: { parent: string; endpoint: string }) => `${t.parent}|${t.endpoint}`;
   const added = new Map<string, Array<{ parent: string; endpoint: string }>>();
+  const goneEndpoints = new Map<string, Set<string>>();
   const seen = new Set<string>();
 
   for (const t of previous) {
@@ -63,18 +68,25 @@ export function withRetiredAffiliations(
     seen.add(id);
     const member = members.get(t.member);
     if (!member || member.endpoints.some((e) => e.identifier === t.endpoint)) continue;
+    goneEndpoints.set(t.member, (goneEndpoints.get(t.member) ?? new Set()).add(t.endpoint));
     if (member.removedAffiliations.some((a) => key(a) === key(t))) continue;
     added.set(t.member, [
       ...(added.get(t.member) ?? []),
       { parent: t.parent, endpoint: t.endpoint },
     ]);
   }
-  if (added.size === 0) return input;
+  if (goneEndpoints.size === 0) return input;
   return {
     ...input,
     members: input.members.map((m) =>
-      added.has(m.identifier)
-        ? { ...m, removedAffiliations: [...m.removedAffiliations, ...added.get(m.identifier)!] }
+      goneEndpoints.has(m.identifier)
+        ? {
+            ...m,
+            removedAffiliations: [...m.removedAffiliations, ...(added.get(m.identifier) ?? [])],
+            removedEndpoints: [
+              ...new Set([...(m.removedEndpoints ?? []), ...goneEndpoints.get(m.identifier)!]),
+            ],
+          }
         : m,
     ),
   };
