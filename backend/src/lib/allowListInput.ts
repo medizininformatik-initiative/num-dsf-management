@@ -74,12 +74,13 @@ export function receiverViewInput(
     affiliations: (self?.affiliations ?? [])
       .filter((a) => a.endpoint === endpoint)
       .map((a) => ({ parent: a.parent, roles: a.roles })),
-    // Also earlier endpoints of the receiver: its site may still hold the
-    // affiliation published for the endpoint it moved away from.
-    removedAffiliations: (self?.removedAffiliations ?? []).map((a) => ({
-      parent: a.parent,
-      endpoint: a.endpoint,
-    })),
+    // Also affiliations of endpoints the receiver no longer has: its site may
+    // still hold the one published for the endpoint it moved away from.
+    removedAffiliations: (self?.removedAffiliations ?? [])
+      .filter(
+        (a) => a.endpoint === endpoint || !self?.endpoints.some((e) => e.identifier === a.endpoint),
+      )
+      .map((a) => ({ parent: a.parent, endpoint: a.endpoint })),
   };
   return {
     members: stored.members.filter((m) => m.identifier !== organization),

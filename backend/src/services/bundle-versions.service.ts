@@ -16,8 +16,8 @@
  * receiver view of every version reproducible, which backs the published
  * allow list (current version + history, read by the DSF process) and the
  * restore of an old version. ~50-100 KB / version.
- * A new version also deletes every affiliation earlier versions published and
- * the new state lacks (lib/allowListHistory).
+ * A new version also deletes affiliations earlier versions published for an
+ * endpoint that the member no longer has (lib/allowListHistory).
  */
 import { db } from '../db/connection';
 import { v4 as uuidv4 } from 'uuid';
@@ -72,8 +72,8 @@ export interface SnapshotResult {
 }
 
 /**
- * Receivers may skip versions, so every affiliation any earlier version
- * published and the new state no longer has is deleted again (see
+ * Receivers may skip versions, so an affiliation any earlier version
+ * published for an endpoint its member no longer has is deleted again (see
  * lib/allowListHistory). Done once per created version; the result is stored.
  */
 async function withHistoricRetirements(input: StoredAllowListInput): Promise<StoredAllowListInput> {

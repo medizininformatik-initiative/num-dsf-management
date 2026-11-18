@@ -80,14 +80,10 @@ describe('publishedAffiliations', () => {
 
 describe('withRetiredAffiliations', () => {
   const previous = [{ parent: HUB, member: 'm.example.de', endpoint: 'old.m.example.de' }];
+  const moved = () => input([member('m.example.de', 'new.m.example.de')]);
 
   it('moved endpoint: DELETE old, PUT new', () => {
-    const urls = methodsAndUrls(
-      withRetiredAffiliations(
-        input([member('m.example.de', 'new.m.example.de', ['old.m.example.de'])]),
-        previous,
-      ),
-    );
+    const urls = methodsAndUrls(withRetiredAffiliations(moved(), previous));
     expect(urls).toContain(`DELETE ${oldUrl}`);
     expect(urls).toContain(`PUT ${newUrl}`);
   });
@@ -98,17 +94,18 @@ describe('withRetiredAffiliations', () => {
     expect(methodsAndUrls(current).some((u) => u.startsWith('DELETE'))).toBe(false);
   });
 
+  it('endpoint still exists but the affiliation was dropped: not this mechanism', () => {
+    const current = input([member('m.example.de', 'new.m.example.de', ['old.m.example.de'])]);
+    expect(withRetiredAffiliations(current, previous)).toBe(current);
+  });
+
   it('keeps the DELETE in later versions that build on a stored version', () => {
-    const v2 = withRetiredAffiliations(
-      input([member('m.example.de', 'new.m.example.de')]),
-      previous,
-    );
+    const v2 = withRetiredAffiliations(moved(), previous);
     // v3: its history is v1 (old PUT) and v2 (new PUT, old DELETE).
-    const v3 = withRetiredAffiliations(input([member('m.example.de', 'new.m.example.de')]), [
+    const v3 = withRetiredAffiliations(moved(), [
       ...previous,
       ...publishedAffiliations(JSON.stringify(buildAllowListBundle(fullViewInput(v2)))),
     ]);
-    expect(methodsAndUrls(v3)).toContain(`DELETE ${oldUrl}`);
     expect(methodsAndUrls(v3).filter((u) => u === `DELETE ${oldUrl}`)).toHaveLength(1);
   });
 
@@ -119,37 +116,40 @@ describe('withRetiredAffiliations', () => {
     expect(withRetiredAffiliations(current, previous)).toBe(current);
   });
 
-  it('a withdrawn member is deleted through its removal, once', () => {
+  it('a withdrawn member gets nothing from this mechanism', () => {
     const removed = [
       { identifier: 'm.example.de', endpoints: ['new.m.example.de'], affiliations: [] },
     ];
-    const urls = methodsAndUrls(withRetiredAffiliations(input([], removed), previous));
-    expect(urls.filter((u) => u === `DELETE ${oldUrl}`)).toHaveLength(1);
+    const current = input([], removed);
+    expect(withRetiredAffiliations(current, previous)).toBe(current);
+    expect(methodsAndUrls(current)).not.toContain(`DELETE ${oldUrl}`);
   });
 
-  it('ignores organizations that are neither member nor withdrawn', () => {
+  it('a member temporarily absent from the input gets no DELETE', () => {
     const current = input([member('other.example.de', 'e.other.example.de')]);
     expect(withRetiredAffiliations(current, previous)).toBe(current);
   });
 
-  it('does not delete an affiliation an old version published that is active again', () => {
-    const current = input([member('m.example.de', 'old.m.example.de')]);
-    const urls = methodsAndUrls(withRetiredAffiliations(current, previous));
-    expect(urls).toContain(`PUT ${oldUrl}`);
-    expect(urls).not.toContain(`DELETE ${oldUrl}`);
-  });
-
   it('receiver view: its own old endpoint is deleted, the new one published', () => {
-    const stored = withRetiredAffiliations(
-      input([member('m.example.de', 'new.m.example.de', ['old.m.example.de'])]),
-      previous,
-    );
     const bundle = buildAllowListBundle(
-      receiverViewInput(stored, 'm.example.de', 'new.m.example.de'),
+      receiverViewInput(
+        withRetiredAffiliations(moved(), previous),
+        'm.example.de',
+        'new.m.example.de',
+      ),
     );
     const urls = (bundle.entry ?? []).map((e) => `${e.request.method} ${e.request.url}`);
     expect(urls).toContain(`DELETE ${oldUrl}`);
     expect(urls).toContain(`PUT ${newUrl}`);
+  });
+
+  it('receiver view: a soft-deleted affiliation of a still existing other endpoint is not deleted', () => {
+    const m = member('m.example.de', 'new.m.example.de', ['old.m.example.de']);
+    m.removedAffiliations = [{ parent: HUB, endpoint: 'old.m.example.de' }];
+    const bundle = buildAllowListBundle(
+      receiverViewInput(input([m]), 'm.example.de', 'new.m.example.de'),
+    );
+    expect((bundle.entry ?? []).map((e) => e.request.url)).not.toContain(oldUrl);
   });
 
   it('receiver view: other members still get their own DELETE', () => {

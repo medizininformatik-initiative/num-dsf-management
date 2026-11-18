@@ -8,7 +8,8 @@
  * member whose affiliation moved to another endpoint would break the whole
  * transaction of every receiver still holding the old one. The conditional
  * DELETE for each (parent, member, old endpoint) is therefore emitted in every
- * later version. A DELETE without a match is harmless in DSF.
+ * later version, but only for a member that is still published and whose old
+ * endpoint is gone. A DELETE without a match is harmless in DSF.
  * Pure: the caller supplies the earlier versions' bundles.
  * Dependencies: lib/allowListBundle, lib/allowListInput (types only)
  */
@@ -39,20 +40,21 @@ export function publishedAffiliations(bundleJson: string): AffiliationTriple[] {
 }
 
 /**
- * Adds every previously published affiliation that is not active now to the
- * member's removedAffiliations, or to the withdrawal of a withdrawn member.
- * Triples of organizations that are neither a member nor withdrawn are skipped
- * (nothing is published for them). Returns the input itself when nothing is added.
+ * Adds a previously published affiliation to the member's removedAffiliations
+ * when its endpoint is no longer one of the member's current endpoints (the
+ * endpoint was changed or removed). Everything else is left alone: members
+ * absent from the input (withdrawn, suspended, unpublishable, not approved)
+ * stay with the removal path, and an affiliation dropped while its endpoint
+ * still exists stays with the soft-delete path. Returns the input itself when
+ * nothing is added.
  */
 export function withRetiredAffiliations(
   input: StoredAllowListInput,
   previous: Iterable<AffiliationTriple>,
 ): StoredAllowListInput {
   const members = new Map(input.members.map((m) => [m.identifier, m]));
-  const removals = new Map(input.removed.map((r) => [r.identifier, r]));
   const key = (t: { parent: string; endpoint: string }) => `${t.parent}|${t.endpoint}`;
-  const addedToMember = new Map<string, Array<{ parent: string; endpoint: string }>>();
-  const addedToRemoval = new Map<string, Array<{ parent: string; endpoint: string }>>();
+  const added = new Map<string, Array<{ parent: string; endpoint: string }>>();
   const seen = new Set<string>();
 
   for (const t of previous) {
@@ -60,39 +62,20 @@ export function withRetiredAffiliations(
     if (seen.has(id)) continue;
     seen.add(id);
     const member = members.get(t.member);
-    const removal = removals.get(t.member);
-    if (member) {
-      const known = new Set(
-        [...member.affiliations, ...member.removedAffiliations].map((a) => key(a)),
-      );
-      if (known.has(key(t))) continue;
-      addedToMember.set(t.member, [
-        ...(addedToMember.get(t.member) ?? []),
-        { parent: t.parent, endpoint: t.endpoint },
-      ]);
-    } else if (removal) {
-      if (removal.affiliations.some((a) => key(a) === key(t))) continue;
-      addedToRemoval.set(t.member, [
-        ...(addedToRemoval.get(t.member) ?? []),
-        { parent: t.parent, endpoint: t.endpoint },
-      ]);
-    }
+    if (!member || member.endpoints.some((e) => e.identifier === t.endpoint)) continue;
+    if (member.removedAffiliations.some((a) => key(a) === key(t))) continue;
+    added.set(t.member, [
+      ...(added.get(t.member) ?? []),
+      { parent: t.parent, endpoint: t.endpoint },
+    ]);
   }
-  if (addedToMember.size === 0 && addedToRemoval.size === 0) return input;
+  if (added.size === 0) return input;
   return {
     ...input,
     members: input.members.map((m) =>
-      addedToMember.has(m.identifier)
-        ? {
-            ...m,
-            removedAffiliations: [...m.removedAffiliations, ...addedToMember.get(m.identifier)!],
-          }
+      added.has(m.identifier)
+        ? { ...m, removedAffiliations: [...m.removedAffiliations, ...added.get(m.identifier)!] }
         : m,
-    ),
-    removed: input.removed.map((r) =>
-      addedToRemoval.has(r.identifier)
-        ? { ...r, affiliations: [...r.affiliations, ...addedToRemoval.get(r.identifier)!] }
-        : r,
     ),
   };
 }
