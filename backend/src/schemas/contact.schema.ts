@@ -12,7 +12,8 @@ export const createContactSchema = z.object({
   phone: z
     .string()
     .max(50)
-    .regex(/^\+?[\d\s\-()]{7,20}$/, 'Invalid phone format')
+    // optional leading +, digits, spaces and - ( ) / . ; at least 6 digits (extensions allowed)
+    .regex(/^(?=(?:\D*\d){6})\+?[\d\s\-()/.]+$/, 'Invalid phone format')
     .optional()
     .or(z.literal('')),
   addressLine: z.string().max(255).optional().default(''),

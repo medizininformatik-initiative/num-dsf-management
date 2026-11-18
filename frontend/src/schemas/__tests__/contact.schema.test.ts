@@ -36,4 +36,19 @@ describe('contactSchema', () => {
     expect(contactSchema.safeParse({ ...base, phone: '' }).success).toBe(true);
     expect(contactSchema.safeParse({ ...base, phone: 'call me' }).success).toBe(false);
   });
+
+  it('accepts numbers with extension, separators and up to 50 characters', () => {
+    const ok = (phone: string) => contactSchema.safeParse({ ...base, phone }).success;
+    expect(ok('+49 (0) 251 83-12345 / 6789')).toBe(true);
+    expect(ok('0251.83.12345')).toBe(true);
+    expect(ok('1'.repeat(50))).toBe(true);
+    expect(ok('1'.repeat(51))).toBe(false);
+  });
+
+  it('rejects letters and numbers with fewer than 6 digits', () => {
+    const ok = (phone: string) => contactSchema.safeParse({ ...base, phone }).success;
+    expect(ok('+49 251 83x')).toBe(false);
+    expect(ok('12 345')).toBe(false);
+    expect(ok('(+) - / .')).toBe(false);
+  });
 });

@@ -12,7 +12,9 @@ export const contactSchema = z.object({
   email: z.string().email('emailInvalid').max(255, 'emailTooLong'),
   phone: z
     .string()
-    .regex(/^\+?[\d\s\-()]{7,20}$/, 'contactPhoneInvalid')
+    .max(50, 'contactPhoneInvalid')
+    // optional leading +, digits, spaces and - ( ) / . ; at least 6 digits (extensions allowed)
+    .regex(/^(?=(?:\D*\d){6})\+?[\d\s\-()/.]+$/, 'contactPhoneInvalid')
     .optional()
     .or(z.literal('')),
   addressLine: z.string().optional(),
