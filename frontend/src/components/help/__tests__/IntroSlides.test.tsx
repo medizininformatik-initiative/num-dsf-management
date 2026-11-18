@@ -19,20 +19,20 @@ class TestPointerEvent extends MouseEvent {
 }
 
 function counter() {
-  return screen.getByText(/^\d \/ 5$/).textContent;
+  return screen.getByText(/^\d+ \/ 10$/).textContent;
 }
 
 describe('IntroSlides', () => {
-  it('shows five slides as a carousel and starts on the first', () => {
+  it('shows ten slides as a carousel and starts on the first', () => {
     useI18n.setState({ lang: 'de' });
     render(<IntroSlides />);
     expect(screen.getByRole('region', { name: /Einführung/ })).toHaveAttribute(
       'aria-roledescription',
       'carousel',
     );
-    expect(document.querySelectorAll('[aria-roledescription="slide"]')).toHaveLength(5);
-    expect(counter()).toBe('1 / 5');
-    expect(screen.getByRole('group', { name: '1 von 5' })).toBeVisible();
+    expect(document.querySelectorAll('[aria-roledescription="slide"]')).toHaveLength(10);
+    expect(counter()).toBe('1 / 10');
+    expect(screen.getByRole('group', { name: '1 von 10' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Vorherige Folie' })).toBeDisabled();
   });
 
@@ -42,11 +42,11 @@ describe('IntroSlides', () => {
     render(<IntroSlides />);
     const next = screen.getByRole('button', { name: 'Next slide' });
     await user.click(next);
-    expect(counter()).toBe('2 / 5');
+    expect(counter()).toBe('2 / 10');
     await user.click(screen.getByRole('button', { name: 'Previous slide' }));
-    expect(counter()).toBe('1 / 5');
-    for (let i = 0; i < 4; i++) await user.click(next);
-    expect(counter()).toBe('5 / 5');
+    expect(counter()).toBe('1 / 10');
+    for (let i = 0; i < 9; i++) await user.click(next);
+    expect(counter()).toBe('10 / 10');
     expect(next).toBeDisabled();
   });
 
@@ -55,7 +55,7 @@ describe('IntroSlides', () => {
     const user = userEvent.setup();
     render(<IntroSlides />);
     await user.click(screen.getByRole('button', { name: 'Go to slide 4' }));
-    expect(counter()).toBe('4 / 5');
+    expect(counter()).toBe('4 / 10');
     expect(screen.getByRole('button', { name: 'Go to slide 4' })).toHaveAttribute(
       'aria-current',
       'true',
@@ -71,9 +71,9 @@ describe('IntroSlides', () => {
     render(<IntroSlides />);
     screen.getByRole('region').focus();
     await user.keyboard('{ArrowRight}{ArrowRight}');
-    expect(counter()).toBe('3 / 5');
+    expect(counter()).toBe('3 / 10');
     await user.keyboard('{ArrowLeft}');
-    expect(counter()).toBe('2 / 5');
+    expect(counter()).toBe('2 / 10');
   });
 
   it('changes slide on a touch swipe past the threshold only', () => {
@@ -83,13 +83,13 @@ describe('IntroSlides', () => {
     const surface = document.querySelector('.touch-pan-y') as HTMLElement;
     fireEvent.pointerDown(surface, { pointerType: 'touch', clientX: 200 });
     fireEvent.pointerUp(surface, { pointerType: 'touch', clientX: 170 });
-    expect(counter()).toBe('1 / 5');
+    expect(counter()).toBe('1 / 10');
     fireEvent.pointerDown(surface, { pointerType: 'touch', clientX: 200 });
     fireEvent.pointerUp(surface, { pointerType: 'touch', clientX: 120 });
-    expect(counter()).toBe('2 / 5');
+    expect(counter()).toBe('2 / 10');
     fireEvent.pointerDown(surface, { pointerType: 'touch', clientX: 100 });
     fireEvent.pointerUp(surface, { pointerType: 'touch', clientX: 180 });
-    expect(counter()).toBe('1 / 5');
+    expect(counter()).toBe('1 / 10');
     vi.unstubAllGlobals();
   });
 });

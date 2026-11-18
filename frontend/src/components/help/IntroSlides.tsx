@@ -147,7 +147,7 @@ export function IntroSlides() {
                   aria-label={t('introGoTo', { n: i + 1 })}
                   aria-current={i === index ? 'true' : undefined}
                   onClick={() => go(i)}
-                  className={`group flex h-8 w-6 items-center justify-center rounded-full ${FOCUS}`}
+                  className={`group flex h-8 w-4 items-center justify-center sm:w-6 rounded-full ${FOCUS}`}
                 >
                   <span
                     className={`block h-2 w-2 rounded-full transition-colors duration-short ${

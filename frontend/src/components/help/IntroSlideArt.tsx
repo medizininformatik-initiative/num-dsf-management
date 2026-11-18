@@ -109,13 +109,64 @@ export function EntitiesArt() {
   );
 }
 
+/** A grid of icon tiles, for slides that list capabilities rather than a sequence. */
+function Tiles({ tiles }: { tiles: Node[] }) {
+  return (
+    <div className="mx-auto grid max-w-md grid-cols-2 gap-2 sm:grid-cols-3" aria-hidden="true">
+      {tiles.map((n) => (
+        <NodeBox key={n.labelKey} node={n} />
+      ))}
+    </div>
+  );
+}
+
 export function ApprovalArt() {
   return (
     <Steps
       steps={[
         { icon: 'edit_document', labelKey: 'introS3_draft' },
-        { icon: 'fact_check', labelKey: 'introS3_approval' },
+        { icon: 'fact_check', labelKey: 'introS3_approval1' },
+        { icon: 'groups', labelKey: 'introS3_approval2' },
         { icon: 'cloud_done', labelKey: 'introS3_published' },
+      ]}
+    />
+  );
+}
+
+export function DecentralArt() {
+  return (
+    <Steps
+      steps={[
+        { icon: 'how_to_reg', labelKey: 'introS4_request' },
+        { icon: 'groups', labelKey: 'introS4_other' },
+        { icon: 'verified', labelKey: 'introS4_effective' },
+      ]}
+    />
+  );
+}
+
+export function AccessArt() {
+  return (
+    <Steps
+      steps={[
+        { icon: 'workspace_premium', labelKey: 'introS5_cert' },
+        { icon: 'shield_lock', labelKey: 'introS5_factor' },
+        { icon: 'lock_open', labelKey: 'introS5_access' },
+      ]}
+    />
+  );
+}
+
+export function EvidenceArt() {
+  return (
+    <Tiles
+      tiles={[
+        { icon: 'key_off', labelKey: 'introS6_key' },
+        { icon: 'verified_user', labelKey: 'introS6_ca' },
+        { icon: 'block', labelKey: 'introS6_block' },
+        { icon: 'history_edu', labelKey: 'introS6_audit' },
+        { icon: 'person_off', labelKey: 'introS6_gdpr' },
+        { icon: 'backup', labelKey: 'introS6_backup' },
       ]}
     />
   );
@@ -125,10 +176,37 @@ export function IncidentArt() {
   return (
     <Steps
       steps={[
-        { icon: 'campaign', labelKey: 'introS4_report' },
-        { icon: 'task_alt', labelKey: 'introS4_confirm' },
-        { icon: 'block', labelKey: 'introS4_suspend' },
-        { icon: 'lock_open', labelKey: 'introS4_lift' },
+        { icon: 'campaign', labelKey: 'introS7_report' },
+        { icon: 'task_alt', labelKey: 'introS7_confirm' },
+        { icon: 'block', labelKey: 'introS7_suspend' },
+        { icon: 'lock_open', labelKey: 'introS7_lift' },
+      ]}
+    />
+  );
+}
+
+export function MarketplaceArt() {
+  return (
+    <Steps
+      steps={[
+        { icon: 'code', labelKey: 'introS8_repo' },
+        { icon: 'data_object', labelKey: 'introS8_manifest' },
+        { icon: 'storefront', labelKey: 'introS8_market' },
+      ]}
+    />
+  );
+}
+
+export function ToolsArt() {
+  return (
+    <Tiles
+      tiles={[
+        { icon: 'map', labelKey: 'introS9_map' },
+        { icon: 'event', labelKey: 'introS9_expiry' },
+        { icon: 'table_view', labelKey: 'introS9_excel' },
+        { icon: 'data_object', labelKey: 'introS9_bundle' },
+        { icon: 'history', labelKey: 'introS9_audit' },
+        { icon: 'backup', labelKey: 'introS9_backup' },
       ]}
     />
   );
