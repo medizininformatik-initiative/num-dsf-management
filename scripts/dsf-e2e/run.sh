@@ -15,7 +15,8 @@
 #   apache-again  the same download a second time            -> completed, updated in place
 #   move-endpoint a peer's affiliation moves to a new endpoint -> completed, old
 #                 affiliation deleted, new one present (DSF refuses to create it
-#                 while the old one exists, so the bundle must delete the old one)
+#                 while the old one exists, so the bundle must delete the old one
+#                 and the old endpoint, which carries the same address)
 #   leave-hub     a peer leaves the hub in the portal        -> completed, affiliation deleted
 #   withdraw      a peer is withdrawn (deactivation approved) -> completed, peer deleted
 #   nginx         repository nginx/nginx.conf as front       -> completed
@@ -54,6 +55,7 @@ PLUGIN=dsf-process-allow-list-1.0.0.1.jar
 PLUGIN_URL="https://github.com/datasharingframework/dsf-process-allow-list/releases/download/v1.0.0.1/$PLUGIN"
 PLUGIN_SHA256=fc41756eed40fabf68ca2a4f9aad0c2923343d6a8c2c52e57de815191e244738
 
+PEER2_EP="fhir.$PEER2" # becomes fhir-new.* once the peer moved
 FAILURES=0
 SUMMARY=()
 
@@ -288,7 +290,9 @@ verify_peers() { # verify_peers <expected affiliation count for PEER2>
     check "$peer SHA-512 thumbprint" \
       "$(printf '%s' "$org" | jsonq 'j.entry[0].resource.extension.map((x) => x.valueString).join(",")')" \
       "$(fp sha512 "$CERTS/$peer.crt")"
-    check "$peer endpoint" "$(total "Endpoint?identifier=$EP_SID%7Cfhir.$peer")" 1
+    local ep="fhir.$peer"
+    [ "$peer" = "$PEER2" ] && ep="$PEER2_EP"
+    check "$peer endpoint" "$(total "Endpoint?identifier=$EP_SID%7C$ep")" 1
   done
   local oa="OrganizationAffiliation?primary-organization:identifier=$ORG_SID%7C$HUB"
   check "$PEER1 affiliation (DIC+HRP)" \
@@ -337,6 +341,8 @@ scenario move-endpoint "https://allowlist.portal-e2e.example.de/fhir/Bundle/$REC
 oa="OrganizationAffiliation?primary-organization:identifier=$ORG_SID%7C$HUB&participating-organization:identifier=$ORG_SID%7C$PEER2"
 check "$PEER2 old affiliation deleted" "$(total "$oa&endpoint:identifier=$EP_SID%7Cfhir.$PEER2")" 0
 check "$PEER2 new affiliation present" "$(total "$oa&endpoint:identifier=$EP_SID%7Cfhir-new.$PEER2")" 1
+check "$PEER2 old endpoint deleted" "$(total "Endpoint?identifier=$EP_SID%7Cfhir.$PEER2")" 0
+PEER2_EP="fhir-new.$PEER2"
 
 portal_js "await db('memberships').where({ organization_id: '$PEER2' }).update({ deleted_at: new Date() });"
 approve_change "$PEER2"
