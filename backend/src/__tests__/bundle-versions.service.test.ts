@@ -14,7 +14,7 @@
  */
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/connection';
-import { diffVersions } from '../services/bundle-versions.service';
+import { createSnapshot, diffVersions } from '../services/bundle-versions.service';
 
 function entry(resourceType: string, id: string, extra: Record<string, unknown> = {}) {
   return { resource: { resourceType, id, ...extra } };
@@ -178,5 +178,65 @@ describe('bundle-versions.service – diffVersions stable identity', () => {
     expect(diff.added[0].resource?.identifier?.[0]?.value).toBe(ep2Fqdn);
     expect(diff.removed.length).toBe(0);
     expect(diff.changed.length).toBe(0);
+  });
+});
+
+describe('bundle-versions.service – createSnapshot retires moved affiliations', () => {
+  const ids: string[] = [];
+  const email = `bv-move-${Date.now()}@example.de`;
+  const stamp = Date.now();
+  const hub = `hub-${stamp}.example.de`;
+  const org = `mover-${stamp}.example.de`;
+  const thumbprint = 'a'.repeat(128);
+
+  const stored = (endpoint: string) => ({
+    members: [
+      {
+        identifier: org,
+        name: 'Mover',
+        thumbprints: [thumbprint],
+        endpoints: [{ identifier: endpoint, name: null, address: `https://${endpoint}/fhir` }],
+        affiliations: [{ parent: hub, endpoint, roles: ['DIC'] }],
+        removedAffiliations: [],
+      },
+    ],
+    removed: [],
+    parentNames: { [hub]: 'Hub' },
+  });
+  const deletes = async (id: string) => {
+    const row = await db('bundle_versions').where({ id }).first();
+    return (
+      JSON.parse(row.bundle_json).entry as Array<{ request: { method: string; url: string } }>
+    )
+      .filter((e) => e.request.method === 'DELETE')
+      .map((e) => e.request.url);
+  };
+  const oldAffiliation = `OrganizationAffiliation?primary-organization:identifier=http://dsf.dev/sid/organization-identifier|${hub}&participating-organization:identifier=http://dsf.dev/sid/organization-identifier|${org}&endpoint:identifier=http://dsf.dev/sid/endpoint-identifier|old.${org}`;
+
+  afterAll(async () => {
+    await db('bundle_versions').whereIn('id', ids).del();
+  });
+
+  it('deletes the old affiliation in the version after the move and in every later one', async () => {
+    const snapshot = async (endpoint: string) => {
+      const r = await createSnapshot({
+        triggeredBy: 'MANUAL',
+        triggeredByEmail: email,
+        input: stored(endpoint),
+      });
+      ids.push(r.id);
+      return r.id;
+    };
+    const v1 = await snapshot(`old.${org}`);
+    const v2 = await snapshot(`new.${org}`);
+    const v3 = await snapshot(`new.${org}`);
+    expect(await deletes(v1)).toEqual([]);
+    expect(await deletes(v2)).toEqual([oldAffiliation]);
+    expect(await deletes(v3)).toEqual([oldAffiliation]);
+    // The stored input carries the retirement, so receiver views render it.
+    const row = await db('bundle_versions').where({ id: v3 }).first();
+    expect(JSON.parse(row.input_json).members[0].removedAffiliations).toEqual([
+      { parent: hub, endpoint: `old.${org}` },
+    ]);
   });
 });

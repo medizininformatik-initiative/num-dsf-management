@@ -16,6 +16,8 @@
  * receiver view of every version reproducible, which backs the published
  * allow list (current version + history, read by the DSF process) and the
  * restore of an old version. ~50-100 KB / version.
+ * A new version also deletes every affiliation earlier versions published and
+ * the new state lacks (lib/allowListHistory).
  */
 import { db } from '../db/connection';
 import { v4 as uuidv4 } from 'uuid';
@@ -33,6 +35,7 @@ import {
   type StoredAllowListInput,
 } from '../lib/allowListInput';
 import type { AllowListBundle } from '../lib/allowListBundle';
+import { publishedAffiliations, withRetiredAffiliations } from '../lib/allowListHistory';
 import { signBundle } from './bundle-signing.service';
 import { writeAuditLog } from './audit.service';
 
@@ -68,8 +71,21 @@ export interface SnapshotResult {
   contentHash: string;
 }
 
+/**
+ * Receivers may skip versions, so every affiliation any earlier version
+ * published and the new state no longer has is deleted again (see
+ * lib/allowListHistory). Done once per created version; the result is stored.
+ */
+async function withHistoricRetirements(input: StoredAllowListInput): Promise<StoredAllowListInput> {
+  const rows: Array<{ bundle_json: string }> = await db('bundle_versions').select('bundle_json');
+  return withRetiredAffiliations(
+    input,
+    rows.flatMap((r) => publishedAffiliations(r.bundle_json)),
+  );
+}
+
 export async function createSnapshot(args: SnapshotArgs): Promise<SnapshotResult> {
-  const input = args.input ?? (await loadAllowListInput());
+  const input = await withHistoricRetirements(args.input ?? (await loadAllowListInput()));
   const bundle = renderFullBundle(input);
   const { signature, contentHash, json } = signBundle(bundle);
   const id = uuidv4();
