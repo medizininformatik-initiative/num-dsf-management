@@ -1,8 +1,7 @@
 /**
  * IpDiffBadge.test.tsx — covers the IP-diff badge that compares current endpoint
- * IPs against the snapshot of the last APPROVED request: added (+) and removed (−)
- * badge states, plus the null branches (no diff, no approved history, malformed
- * snapshot). useApprovalHistory and useEndpoints are mocked per test via vi.fn so
+ * IPs against the approved IPs of the last APPROVED request (approved_ips): added (+) and removed (−)
+ * badge states, plus the null branches (no diff, no approved history, unknown baseline). useApprovalHistory and useEndpoints are mocked per test via vi.fn so
  * each case can return its own history/endpoint shapes.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -11,7 +10,7 @@ import { renderWithProviders } from '../../../test/renderWithProviders';
 
 interface HistoryRow {
   status: string;
-  snapshot_json: unknown;
+  approved_ips?: string[] | null;
 }
 interface EndpointRow {
   ipAddresses?: { ip: string }[];
@@ -30,12 +29,7 @@ vi.mock('../../../hooks/useEndpoints', () => ({
 import { IpDiffBadge } from '../IpDiffBadge';
 
 function approvedSnapshot(ips: string[]): HistoryRow {
-  return {
-    status: 'APPROVED',
-    snapshot_json: {
-      endpoints: [{ ipAddresses: ips.map((ip) => ({ ip })) }],
-    },
-  };
+  return { status: 'APPROVED', approved_ips: ips };
 }
 
 function currentEndpoints(ips: string[]): EndpointRow[] {
@@ -115,7 +109,7 @@ describe('IpDiffBadge', () => {
 
   it('renders nothing when there is no APPROVED request in history', () => {
     historyMock.mockReturnValue({
-      data: [{ status: 'PENDING', snapshot_json: { endpoints: [] } }],
+      data: [{ status: 'PENDING', approved_ips: [] }],
     });
     endpointsMock.mockReturnValue({ data: currentEndpoints(['10.0.0.1']) });
 
@@ -124,10 +118,8 @@ describe('IpDiffBadge', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('renders nothing when the approved snapshot JSON is malformed', () => {
-    historyMock.mockReturnValue({
-      data: [{ status: 'APPROVED', snapshot_json: '{not valid json' }],
-    });
+  it('renders nothing when the approved IPs are unknown (null)', () => {
+    historyMock.mockReturnValue({ data: [{ status: 'APPROVED', approved_ips: null }] });
     endpointsMock.mockReturnValue({ data: currentEndpoints(['10.0.0.1']) });
 
     const { container } = renderWithProviders(<IpDiffBadge instanceId="i1" />);
@@ -135,20 +127,12 @@ describe('IpDiffBadge', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('parses a stringified snapshot and diffs against it', () => {
-    historyMock.mockReturnValue({
-      data: [
-        {
-          status: 'APPROVED',
-          snapshot_json: JSON.stringify({ endpoints: [{ ips: [{ ip: '10.0.0.1' }] }] }),
-        },
-      ],
-    });
-    endpointsMock.mockReturnValue({ data: currentEndpoints(['10.0.0.2']) });
+  it('renders nothing when approved_ips is absent', () => {
+    historyMock.mockReturnValue({ data: [{ status: 'APPROVED' }] });
+    endpointsMock.mockReturnValue({ data: currentEndpoints(['10.0.0.1']) });
 
-    renderWithProviders(<IpDiffBadge instanceId="i1" />);
+    const { container } = renderWithProviders(<IpDiffBadge instanceId="i1" />);
 
-    expect(screen.getByText('+ 10.0.0.2')).toBeInTheDocument();
-    expect(screen.getByText('− 10.0.0.1')).toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
   });
 });

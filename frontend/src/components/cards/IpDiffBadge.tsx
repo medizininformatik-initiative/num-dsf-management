@@ -1,11 +1,11 @@
 /**
  * IpDiffBadge.tsx – Shows the endpoint IP changes since the last approved approval request:
  * added IPs as success chips, removed ones as struck-through danger chips, each group a
- * labelled list. Renders nothing without an approved request, without a change, or for an
- * unreadable snapshot.
+ * labelled list. Renders nothing without an approved request, without a change, or when the
+ * approved IPs are unknown (approved_ips null).
  * Dependencies: useApprovalHistory, useEndpoints, i18n store, Icon.
  */
-import { useApprovalHistory } from '../../hooks/useApproval';
+import { useApprovalHistory, type ApprovalRequest } from '../../hooks/useApproval';
 import { useEndpoints } from '../../hooks/useEndpoints';
 import { useI18n } from '../../stores/i18n.store';
 import { Icon } from '../ui/Icon';
@@ -15,11 +15,6 @@ interface Props {
   instanceId: string;
   /** Only a warning pill that says there are changes (the simplified view). */
   compact?: boolean;
-}
-
-interface ApprovalHistoryRow {
-  status: string;
-  snapshot_json: unknown;
 }
 
 interface EndpointIpRow {
@@ -38,7 +33,7 @@ export function IpDiffBadge({ instanceId, compact = false }: Props) {
   const { data: endpoints = [] } = useEndpoints(instanceId);
 
   // Find last APPROVED request
-  const lastApproved = history.find((r: ApprovalHistoryRow) => r.status === 'APPROVED');
+  const lastApproved = history.find((r: ApprovalRequest) => r.status === 'APPROVED');
   if (!lastApproved) return null;
 
   // Get current IPs
@@ -47,29 +42,9 @@ export function IpDiffBadge({ instanceId, compact = false }: Props) {
     (ep.ipAddresses || []).forEach((ip: EndpointIpRow) => currentIps.add(ip.ip));
   });
 
-  // Get previous IPs from snapshot
-  const previousIps = new Set<string>();
-  try {
-    const snapshot: unknown =
-      typeof lastApproved.snapshot_json === 'string'
-        ? JSON.parse(lastApproved.snapshot_json)
-        : lastApproved.snapshot_json;
-    const snapshotEndpoints = (snapshot as { endpoints?: unknown })?.endpoints;
-    if (Array.isArray(snapshotEndpoints)) {
-      snapshotEndpoints.forEach((ep: unknown) => {
-        const ips =
-          (ep as { ipAddresses?: unknown })?.ipAddresses ?? (ep as { ips?: unknown })?.ips;
-        if (Array.isArray(ips)) {
-          ips.forEach((ip: unknown) => {
-            const value = (ip as { ip?: unknown })?.ip;
-            if (typeof value === 'string') previousIps.add(value);
-          });
-        }
-      });
-    }
-  } catch {
-    return null;
-  }
+  // The baseline is unknown (no readable snapshot): showing a diff would be false.
+  if (!lastApproved.approved_ips) return null;
+  const previousIps = new Set<string>(lastApproved.approved_ips);
 
   const added = [...currentIps].filter((ip) => !previousIps.has(ip));
   const removed = [...previousIps].filter((ip) => !currentIps.has(ip));

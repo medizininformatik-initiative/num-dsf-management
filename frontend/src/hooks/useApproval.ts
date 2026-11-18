@@ -20,6 +20,8 @@ export interface ApprovalRequest {
   resolved_by: string | null;
   /** Rejection reason. */
   comment: string | null;
+  /** Sorted IPs of the request's snapshot; null when the snapshot is unreadable. */
+  approved_ips?: string[] | null;
 }
 
 /** Four-eyes progress of the latest request. */

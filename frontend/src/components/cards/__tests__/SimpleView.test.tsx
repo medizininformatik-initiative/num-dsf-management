@@ -139,9 +139,7 @@ describe('simplified view: Endpoints', () => {
   });
 
   it('keeps a compact pill when IPs changed since the last approval', () => {
-    state.history = [
-      { status: 'APPROVED', snapshot_json: { endpoints: [{ ipAddresses: [{ ip: '10.0.0.1' }] }] } },
-    ];
+    state.history = [{ status: 'APPROVED', approved_ips: ['10.0.0.1'] }];
     renderWithProviders(<EndpointsCard instanceId="i1" />);
     expect(screen.getByText('IP changes')).toBeInTheDocument();
     expect(screen.queryByText('IP changes since the last approval')).not.toBeInTheDocument();
