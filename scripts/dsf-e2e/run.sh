@@ -141,6 +141,7 @@ portal_js() { # portal_js <async js body using db>
 const { db } = require("./src/db/connection");
 new Function("db", "return (async () => {" + process.env.JS + "})()")(db)
   .then((out) => { if (out !== undefined) console.log(out); return db.destroy(); })
+  .then(() => process.exit(0))
   .catch((e) => { console.error(e.message); process.exit(1); });'
 }
 
