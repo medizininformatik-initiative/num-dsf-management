@@ -6,6 +6,7 @@
  * Endpoints (all behind requireAuth + requireImiAdmin):
  *   GET /admin/instances        — list all instances (cross-tenant view)
  *   GET /admin/audit            — paginated cross-instance audit log
+ *   GET /admin/stats            — summary numbers for the admin overview
  *
  * All DB work lives in services/admin.service.ts and
  * services/auditQuery.service.ts — handlers stay thin.
@@ -17,6 +18,7 @@ import { validate } from '../middleware/validate.middleware';
 import { asyncHandler } from '../lib/asyncHandler';
 import { auditQuerySchema } from '../schemas/query.schema';
 import { listAllInstances } from '../services/admin.service';
+import { getAdminStats } from '../services/admin-stats.service';
 import { listAdminAudit } from '../services/auditQuery.service';
 
 export const adminRouter = Router();
@@ -26,6 +28,13 @@ adminRouter.get(
   '/instances',
   asyncHandler(async (_req, res) => {
     res.json({ data: await listAllInstances() });
+  }),
+);
+
+adminRouter.get(
+  '/stats',
+  asyncHandler(async (_req, res) => {
+    res.json({ data: await getAdminStats() });
   }),
 );
 

@@ -287,6 +287,7 @@ Mounted at `/api/v1/admin`. All `requireAdmin`.
 |--------|------|------|---------|
 | GET | /api/v1/admin/instances | requireAdmin | List all instances (cross-tenant). |
 | GET | /api/v1/admin/audit | requireAdmin | Paginated cross-instance audit log (`?page=&limit=`); includes `meta` pagination. |
+| GET | /api/v1/admin/stats | requireAdmin | Summary numbers for the admin overview: `sites` (total, active, withLoginCertificate, everLoggedIn, loggedInLast24h, published), `requests` (counts per status, approvedLast24h), `allowList` (currentVersion, currentPublishedAt, sitesUpToDate, sitesNeverFetched), `incidents.open` (REPORTED + CONFIRMED). |
 
 ### Marketplace (admin writes)
 
