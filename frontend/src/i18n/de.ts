@@ -63,6 +63,8 @@ export const de: Record<TranslationKey, string> = {
     'Die erneute Zertifikatsprüfung ist fehlgeschlagen. Seite neu laden und erneut versuchen.',
   instances: 'Instanzen',
   newInstance: 'Neue Instanz',
+  searchInstances: 'Instanz suchen',
+  searchInstancesNoMatch: 'Keine Treffer',
   noInstanceSelected: 'Keine Instanz ausgewählt',
   sendForApproval: 'Zur Genehmigung senden',
   downloadAllowList: 'Allow-Liste herunterladen',

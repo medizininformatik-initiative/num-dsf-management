@@ -61,6 +61,8 @@ export const en = {
   certStepUpFailedToast: 'Certificate re-verification failed. Reload the page and try again.',
   instances: 'Instances',
   newInstance: 'New instance',
+  searchInstances: 'Search instances',
+  searchInstancesNoMatch: 'No matches',
   noInstanceSelected: 'No instance selected',
   sendForApproval: 'Send for approval',
   downloadAllowList: 'Download allow list',

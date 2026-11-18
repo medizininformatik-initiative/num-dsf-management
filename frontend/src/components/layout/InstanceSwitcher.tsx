@@ -4,7 +4,9 @@
  * (aria-pressed; pinned instances sort first and are remembered in
  * localStorage; on hover-capable screens the toggle shows on hover, focus or
  * when pinned), plus "New instance". Rows match the navigation rows: 36 px,
- * 13 px type, the accent pill on the active instance. Not shown in the rail.
+ * 13 px type, the accent pill on the active instance. Instances sort
+ * alphabetically by label (pinned group first); with more than 5 instances a
+ * search field filters the list by label (Escape clears). Not shown in the rail.
  * Dependencies: canvas.store, i18n.store, useInstance, react-router-dom,
  * sidebarStyles, ui/Icon, ui/Button, InstanceCreateModal.
  */
@@ -17,6 +19,9 @@ import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
 import { InstanceCreateModal } from '../modals/InstanceCreateModal';
 import { ACTIVE, ROW_FOCUS, SECTION_HEADER, SIDEBAR_TEXT } from './sidebarStyles';
+
+/** The search field only appears for lists longer than this. */
+const SEARCH_THRESHOLD = 5;
 
 const PINNED_KEY = 'dsf-pinned-instances';
 
@@ -33,13 +38,14 @@ function readPinned(): string[] {
 }
 
 export function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { data: instances = [] } = useInstances();
   const activeInstanceId = useCanvasStore((s) => s.activeInstanceId);
   const setActiveInstance = useCanvasStore((s) => s.setActiveInstance);
   const [showCreate, setShowCreate] = useState(false);
+  const [query, setQuery] = useState('');
   const [pinnedIds, setPinnedIds] = useState(readPinned);
   const headingId = useId();
 
@@ -61,10 +67,15 @@ export function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   // network-wide and general pages it would compete with the current nav item.
   const instanceScoped = !NOT_INSTANCE_SCOPED.test(pathname);
 
-  // Pinned instances first; the sort is stable, so the API order is kept otherwise.
+  // Pinned instances first, each group alphabetical by label.
   const sorted = [...instances].sort(
-    (a, b) => Number(pinnedIds.includes(b.id)) - Number(pinnedIds.includes(a.id)),
+    (a, b) =>
+      Number(pinnedIds.includes(b.id)) - Number(pinnedIds.includes(a.id)) ||
+      a.label.localeCompare(b.label, lang, { sensitivity: 'base', numeric: true }),
   );
+  const showSearch = instances.length > SEARCH_THRESHOLD;
+  const needle = showSearch ? query.trim().toLowerCase() : '';
+  const visible = needle ? sorted.filter((i) => i.label.toLowerCase().includes(needle)) : sorted;
 
   return (
     <section aria-labelledby={headingId} className="shrink-0 animate-fade-in px-3 pb-3 pt-1">
@@ -82,8 +93,36 @@ export function InstanceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
           {t('newInstance')}
         </Button>
       </div>
+      {showSearch && (
+        <div className="relative mb-1">
+          <Icon
+            name="search"
+            size={14}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)]"
+          />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && query) {
+                e.preventDefault();
+                setQuery('');
+              }
+            }}
+            placeholder={t('searchInstances')}
+            aria-label={t('searchInstances')}
+            className="h-8 w-full rounded-control border border-[color:var(--border)] bg-[color:var(--bg-input)] pl-8 pr-2 text-[13px] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--focus-ring)] focus:outline-none focus:ring-[3px] focus:ring-primary/20 dark:focus:ring-brand-400/30 [&::-webkit-search-cancel-button]:hidden"
+          />
+        </div>
+      )}
+      {needle && visible.length === 0 && (
+        <p className="px-[10px] py-1 text-[13px] text-[color:var(--text-muted)]">
+          {t('searchInstancesNoMatch')}
+        </p>
+      )}
       <ul className="flex max-h-[200px] flex-col gap-0.5 overflow-y-auto">
-        {sorted.map((inst) => {
+        {visible.map((inst) => {
           const isPinned = pinnedIds.includes(inst.id);
           const isActive = inst.id === activeInstanceId && instanceScoped;
           return (
