@@ -40,6 +40,7 @@ services:
       target: prod
       args:
         VITE_API_URL: /api/v1
+        VITE_DSF_ENVIRONMENT: ${DSF_ENVIRONMENT:-PRODUCTION}
     restart: always
     networks:
       - frontend-net
