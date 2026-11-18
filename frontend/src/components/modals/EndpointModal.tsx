@@ -6,8 +6,9 @@
  * collapses out when removed (usePresence), with focus moving to a
  * neighbouring row. React Hook Form + endpointSchema; create/update through
  * useEndpoints behind the cross-user guard; unsaved input asks before the
- * dialog is dismissed.
- * Dependencies: Modal, FormField, Button, Icon, usePresence, useEndpoints,
+ * dialog is dismissed. Changing the address of an existing endpoint shows
+ * EndpointChangeWarning.
+ * Dependencies: Modal, FormField, EndpointChangeWarning, Button, Icon, usePresence, useEndpoints,
  *               useCrossUserGuard, i18n store.
  */
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties } from 'react';
@@ -25,6 +26,7 @@ import {
   inputClass,
   ModalFooter,
 } from './FormField';
+import { EndpointChangeWarning } from './EndpointChangeWarning';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { endpointSchema, EndpointFormData } from '../../schemas/endpoint.schema';
@@ -167,11 +169,13 @@ export function EndpointModal({ open, onClose, instanceId, endpointId, defaultVa
     control,
     reset,
     setFocus,
-    formState: { errors, isDirty },
+    watch,
+    formState: { errors, isDirty, defaultValues: initialValues },
   } = useForm<z.input<typeof endpointSchema>, unknown, EndpointFormData>({
     resolver: zodResolver(endpointSchema),
     defaultValues: { ipAddresses: [], ...defaultValues },
   });
+  const addressChanged = !!endpointId && watch('address') !== (initialValues?.address ?? '');
   const { fields, append, remove } = useFieldArray({ control, name: 'ipAddresses' });
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set());
   const fieldsRef = useRef(fields);
@@ -314,6 +318,7 @@ export function EndpointModal({ open, onClose, instanceId, endpointId, defaultVa
             placeholder={t('endpointModalFieldAddressPlaceholder')}
           />
         </FormField>
+        {addressChanged && <EndpointChangeWarning />}
         <div
           role="group"
           aria-labelledby={ipLabelId}

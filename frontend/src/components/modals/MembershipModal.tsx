@@ -3,8 +3,9 @@
  * React Hook Form + membershipSchema; create/update through useMemberships behind the cross-user guard.
  * The parent organization is chosen from the known Verbünde and the parents already in use, or
  * entered as a new identifier. Roles are a labelled checkbox group with translated descriptions; unsaved input asks before the
- * dialog is dismissed.
- * Dependencies: Modal, FormField (FormField, FormFieldGroup, CheckboxCards), useMemberships,
+ * dialog is dismissed. Switching an existing membership to another endpoint shows
+ * EndpointChangeWarning.
+ * Dependencies: Modal, EndpointChangeWarning, FormField (FormField, FormFieldGroup, CheckboxCards), useMemberships,
  *               useEndpoints, useParentOrganizations, useCrossUserGuard, i18n store.
  */
 import { useEffect, useState } from 'react';
@@ -12,6 +13,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
+import { EndpointChangeWarning } from './EndpointChangeWarning';
 import {
   CheckboxCards,
   FormField,
@@ -109,7 +111,7 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
     reset,
     watch,
     setValue,
-    formState: { errors, isDirty, isSubmitted },
+    formState: { errors, isDirty, isSubmitted, defaultValues: initialValues },
   } = useForm<MembershipFormData>({
     resolver: zodResolver(membershipSchema),
     defaultValues: { roles: [], ...defaultValues },
@@ -122,6 +124,8 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
 
   const { data: memberships = [] } = useMemberships(instanceId);
   const currentParent = watch('parentOrganization');
+  const endpointChanged =
+    !!membershipId && watch('endpointId') !== (initialValues?.endpointId ?? '');
   const parentsQuery = useParentOrganizations();
   const [customParent, setCustomParent] = useState(false);
   const parents = parentsQuery.isError ? FALLBACK_PARENTS : (parentsQuery.data ?? []);
@@ -269,6 +273,7 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
             ))}
           </select>
         </FormField>
+        {endpointChanged && <EndpointChangeWarning />}
         <FormFieldGroup
           label={t('membershipModalFieldRoles')}
           required

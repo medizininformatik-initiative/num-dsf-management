@@ -509,6 +509,8 @@ export const en = {
   ipDiffTitle: 'IP changes since the last approval',
   ipDiffAdded: 'Added IP addresses',
   ipDiffRemoved: 'Removed IP addresses',
+  endpointChangeWarning:
+    'Warning: This change affects every site in the network. After approval, the other DSF instances import the new state. Until then your site is still registered under the old endpoint, and processes may fail in the meantime. Only change endpoints once your DSF is already running at the new address, and inform the network team.',
   endpointCardDeleteTitle: 'Delete endpoint?',
   endpointCardDeleteMessage: '{name} will be removed from the allow list.',
   endpointCardDeleteConsequence:

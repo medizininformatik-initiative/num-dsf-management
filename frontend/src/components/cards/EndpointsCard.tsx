@@ -93,12 +93,13 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
       message: t('endpointCardDeleteMessage', {
         name: ep.name ? `${ep.name} (${ep.identifier})` : ep.identifier,
       }),
-      consequence:
+      consequence: `${
         bound === 0
           ? t('endpointCardDeleteConsequence')
           : bound === 1
             ? t('endpointCardDeleteMembershipsOne')
-            : t('endpointCardDeleteMembershipsMany', { n: bound }),
+            : t('endpointCardDeleteMembershipsMany', { n: bound })
+      } ${t('endpointChangeWarning')}`,
       confirmLabel: t('delete'),
       remove: () => deleteMut.mutateAsync(ep.identifier),
     });

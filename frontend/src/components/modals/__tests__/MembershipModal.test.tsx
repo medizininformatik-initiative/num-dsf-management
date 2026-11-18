@@ -5,7 +5,17 @@ import { renderWithProviders } from '../../../test/renderWithProviders';
 
 const createMock = vi.hoisted(() => vi.fn().mockResolvedValue({}));
 vi.mock('../../../hooks/useMemberships', () => ({
-  useMemberships: () => ({ data: [], isLoading: false }),
+  useMemberships: () => ({
+    data: [
+      {
+        id: 'm1',
+        parent_organization: 'eyematics.org',
+        endpoint_id: 'ep1.example.de',
+        roles: ['DIC'],
+      },
+    ],
+    isLoading: false,
+  }),
   useCreateMembership: () => ({ mutate: vi.fn(), mutateAsync: createMock, isPending: false }),
   useUpdateMembership: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
@@ -13,6 +23,7 @@ vi.mock('../../../hooks/useEndpoints', () => ({
   useEndpoints: () => ({
     data: [
       { identifier: 'ep1.example.de', name: 'EP One', address: 'https://ep1.example.de/fhir' },
+      { identifier: 'ep2.example.de', name: 'EP Two', address: 'https://ep2.example.de/fhir' },
     ],
     isLoading: false,
   }),
@@ -151,5 +162,38 @@ describe('MembershipModal', () => {
         };
       }
     });
+  });
+});
+
+describe('MembershipModal endpoint change warning', () => {
+  const warning = /affects every site in the network/;
+  const pickEndpoint = (user: ReturnType<typeof userEvent.setup>, label: RegExp) =>
+    user.selectOptions(
+      screen.getByRole('combobox', { name: /endpoint/i }),
+      screen.getByRole('option', { name: label }),
+    );
+
+  it('appears in edit mode only once the endpoint differs from the initial one', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <MembershipModal open onClose={() => {}} instanceId="i1" membershipId="m1" />,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: /endpoint/i })).toHaveValue('ep1.example.de'),
+    );
+    expect(screen.queryByText(warning)).not.toBeInTheDocument();
+
+    await pickEndpoint(user, /EP Two/);
+    expect(await screen.findByText(warning)).toBeInTheDocument();
+
+    await pickEndpoint(user, /EP One/);
+    await waitFor(() => expect(screen.queryByText(warning)).not.toBeInTheDocument());
+  });
+
+  it('stays hidden in create mode', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<MembershipModal open onClose={() => {}} instanceId="i1" />);
+    await pickEndpoint(user, /EP Two/);
+    expect(screen.queryByText(warning)).not.toBeInTheDocument();
   });
 });

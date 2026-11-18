@@ -142,6 +142,7 @@ describe('EndpointsCard deletion', () => {
       within(dialog).getByText(/The 2 memberships bound to this endpoint are deleted with it/),
     ).toBeInTheDocument();
     expect(deleteEndpoint).not.toHaveBeenCalled();
+    expect(within(dialog).getByText(/affects every site in the network/)).toBeInTheDocument();
 
     await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(deleteEndpoint).toHaveBeenCalledWith('fhir.ukm.de'));

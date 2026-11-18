@@ -171,3 +171,31 @@ describe('EndpointModal IP rows', () => {
     expect(screen.queryByRole('textbox', { name: 'IP address 2' })).not.toBeInTheDocument();
   });
 });
+
+describe('EndpointModal change warning', () => {
+  const warning = /affects every site in the network/;
+
+  it('is hidden in edit mode until the address differs from its initial value', async () => {
+    render(
+      <Wrapper>
+        <EndpointModal open={true} onClose={() => {}} instanceId="i1" endpointId="ep1" />
+      </Wrapper>,
+    );
+    const address = screen.getByDisplayValue('https://orig.example.de/dsf');
+    expect(screen.queryByText(warning)).not.toBeInTheDocument();
+
+    fireEvent.change(address, { target: { value: 'https://new.example.de/dsf' } });
+    expect(await screen.findByText(warning)).toBeInTheDocument();
+
+    fireEvent.change(address, { target: { value: 'https://orig.example.de/dsf' } });
+    await waitFor(() => expect(screen.queryByText(warning)).not.toBeInTheDocument());
+  });
+
+  it('is hidden in create mode', () => {
+    renderAdd();
+    fireEvent.change(screen.getByPlaceholderText(/https/i), {
+      target: { value: 'https://new.example.de/dsf' },
+    });
+    expect(screen.queryByText(warning)).not.toBeInTheDocument();
+  });
+});

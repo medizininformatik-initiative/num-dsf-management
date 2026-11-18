@@ -518,6 +518,8 @@ export const de: Record<TranslationKey, string> = {
   ipDiffTitle: 'IP-Änderungen seit der letzten Freigabe',
   ipDiffAdded: 'Hinzugefügte IP-Adressen',
   ipDiffRemoved: 'Entfernte IP-Adressen',
+  endpointChangeWarning:
+    'Achtung: Diese Änderung betrifft alle Standorte im Netz. Nach der Freigabe importieren die anderen DSF-Instanzen den neuen Stand. Bis dahin ist Ihr Standort unter dem alten Endpoint eingetragen; Prozesse können in dieser Zeit fehlschlagen. Ändern Sie Endpoints nur, wenn Ihr DSF unter der neuen Adresse bereits läuft, und informieren Sie das Netzwerk-Team.',
   endpointCardDeleteTitle: 'Endpunkt löschen?',
   endpointCardDeleteMessage: '{name} wird aus der Allow-Liste entfernt.',
   endpointCardDeleteConsequence:
