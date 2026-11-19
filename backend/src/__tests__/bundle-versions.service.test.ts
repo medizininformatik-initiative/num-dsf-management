@@ -14,7 +14,12 @@
  */
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/connection';
-import { createSnapshot, diffVersions } from '../services/bundle-versions.service';
+import { affiliationUrl } from '../lib/allowListBundle';
+import {
+  createSnapshot,
+  diffVersions,
+  historicAffiliations,
+} from '../services/bundle-versions.service';
 
 function entry(resourceType: string, id: string, extra: Record<string, unknown> = {}) {
   return { resource: { resourceType, id, ...extra } };
@@ -239,5 +244,48 @@ describe('bundle-versions.service – createSnapshot retires moved affiliations'
     expect(JSON.parse(row.input_json).members[0].removedAffiliations).toEqual([
       { parent: hub, endpoint: `old.${org}` },
     ]);
+  });
+});
+
+describe('bundle-versions.service – historicAffiliations', () => {
+  const ids = [uuidv4(), uuidv4()];
+  const hub = 'hub-hist.example.de';
+  const url = (m: string) => affiliationUrl(hub, m, `e.${m}`);
+  const bundle = (m: string) =>
+    JSON.stringify({ entry: [{ request: { method: 'PUT', url: url(m) } }] });
+  const row = (id: string, m: string) => ({
+    id,
+    triggered_by: 'MANUAL',
+    triggered_by_email: 'hist@example.de',
+    content_hash: id.replace(/-/g, '').padEnd(64, '0'),
+    signature: 'sig',
+    bundle_json: bundle(m),
+  });
+
+  afterAll(async () => {
+    await db('bundle_versions').whereIn('id', ids).del();
+  });
+
+  it('parses a stored bundle once and returns the affiliations of all versions', async () => {
+    await db('bundle_versions').insert(row(ids[0], 'a-hist.example.de'));
+    const bodyLoads: string[] = [];
+    const onQuery = (q: { sql: string }) => {
+      if (/bundle_json/.test(q.sql) && /where/i.test(q.sql)) bodyLoads.push(q.sql);
+    };
+    db.on('query', onQuery);
+    try {
+      await historicAffiliations();
+      expect(bodyLoads).toHaveLength(1);
+      await db('bundle_versions').insert(row(ids[1], 'b-hist.example.de'));
+      const all = await historicAffiliations();
+      expect(bodyLoads).toHaveLength(2);
+      await historicAffiliations();
+      expect(bodyLoads).toHaveLength(2);
+      expect(all.map((t) => t.member)).toEqual(
+        expect.arrayContaining(['a-hist.example.de', 'b-hist.example.de']),
+      );
+    } finally {
+      db.removeListener('query', onQuery);
+    }
   });
 });

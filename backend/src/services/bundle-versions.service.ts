@@ -35,7 +35,11 @@ import {
   type StoredAllowListInput,
 } from '../lib/allowListInput';
 import type { AllowListBundle } from '../lib/allowListBundle';
-import { publishedAffiliations, withRetiredAffiliations } from '../lib/allowListHistory';
+import {
+  publishedAffiliations,
+  withRetiredAffiliations,
+  type AffiliationTriple,
+} from '../lib/allowListHistory';
 import { signBundle } from './bundle-signing.service';
 import { writeAuditLog } from './audit.service';
 
@@ -77,11 +81,34 @@ export interface SnapshotResult {
  * lib/allowListHistory). Done once per created version; the result is stored.
  */
 async function withHistoricRetirements(input: StoredAllowListInput): Promise<StoredAllowListInput> {
-  const rows: Array<{ bundle_json: string }> = await db('bundle_versions').select('bundle_json');
-  return withRetiredAffiliations(
-    input,
-    rows.flatMap((r) => publishedAffiliations(r.bundle_json)),
+  return withRetiredAffiliations(input, await historicAffiliations());
+}
+
+// A stored bundle never changes, so the affiliations parsed from it are kept per
+// (id, content hash) and only bundles not seen yet are loaded and parsed.
+const affiliationsByVersion = new Map<string, AffiliationTriple[]>();
+
+/** Affiliations every stored version published. */
+export async function historicAffiliations(): Promise<AffiliationTriple[]> {
+  const versions: Array<{ id: string; content_hash: string }> = await db('bundle_versions').select(
+    'id',
+    'content_hash',
   );
+  const cacheKey = (v: { id: string; content_hash: string }) => `${v.id}:${v.content_hash}`;
+  const missing = versions.filter((v) => !affiliationsByVersion.has(cacheKey(v)));
+  if (missing.length > 0) {
+    const rows: Array<{ id: string; bundle_json: string }> = await db('bundle_versions')
+      .select('id', 'bundle_json')
+      .whereIn(
+        'id',
+        missing.map((v) => v.id),
+      );
+    const bodies = new Map(rows.map((r) => [r.id, r.bundle_json]));
+    for (const v of missing) {
+      affiliationsByVersion.set(cacheKey(v), publishedAffiliations(bodies.get(v.id) ?? ''));
+    }
+  }
+  return versions.flatMap((v) => affiliationsByVersion.get(cacheKey(v)) ?? []);
 }
 
 export async function createSnapshot(args: SnapshotArgs): Promise<SnapshotResult> {
