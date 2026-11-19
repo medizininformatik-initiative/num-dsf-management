@@ -20,9 +20,15 @@ function withTotp(totpCode?: string): { totpCode: string } | Record<string, neve
 
 const api = {
   get: <T>(url: string) => axios.get<T>(`${BASE}${url}`, { headers: authHeader() }),
-  post: <T = unknown>(url: string, data?: unknown) => axios.post<T>(`${BASE}${url}`, data, { headers: authHeader() }),
+  post: <T = unknown>(url: string, data?: unknown) =>
+    axios.post<T>(`${BASE}${url}`, data, { headers: authHeader() }),
   delete: <T = unknown>(url: string, config?: { data?: unknown }) =>
-    axios.request<T>({ method: 'DELETE', url: `${BASE}${url}`, headers: authHeader(), data: config?.data }),
+    axios.request<T>({
+      method: 'DELETE',
+      url: `${BASE}${url}`,
+      headers: authHeader(),
+      data: config?.data,
+    }),
 };
 
 export interface ApprovalSignature {
@@ -34,6 +40,24 @@ export interface ApprovalSignature {
   comment?: string | null;
 }
 
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+export type RiskSeverity = 'info' | 'low' | 'medium' | 'high';
+
+export interface RiskFinding {
+  code: string;
+  severity: RiskSeverity;
+  weight: number;
+  params: Record<string, string | number>;
+}
+
+/** Suspiciousness verdict the backend attaches to each pending request (null if unavailable). */
+export interface RiskAssessment {
+  level: RiskLevel;
+  score: number;
+  firstRequest: boolean;
+  findings: RiskFinding[];
+}
+
 export interface PendingRequest {
   id: string;
   status: string;
@@ -41,6 +65,7 @@ export interface PendingRequest {
   submitted_at?: string;
   snapshot_json: string | object | null;
   signatures: ApprovalSignature[];
+  risk?: RiskAssessment | null;
 }
 
 export interface AdminStats {
@@ -72,16 +97,19 @@ export interface AdminStats {
 export const adminApi = {
   getStats: () => api.get<{ data: AdminStats }>('/admin/stats'),
 
-  getPendingApprovals: () =>
-    api.get<{ data: PendingRequest[] }>('/admin/approval/pending'),
+  getPendingApprovals: () => api.get<{ data: PendingRequest[] }>('/admin/approval/pending'),
 
   approveRequest: (requestId: string, totpCode?: string) =>
     api.post<{ data: { status: 'PENDING' | 'APPROVED'; reason?: string } }>(
-      `/admin/approval/${requestId}/approve`, withTotp(totpCode)
+      `/admin/approval/${requestId}/approve`,
+      withTotp(totpCode),
     ),
 
   rejectRequest: (requestId: string, comment: string, totpCode?: string) =>
-    api.post<{ data: { id: string; status: string } }>(`/admin/approval/${requestId}/reject`, { comment, ...withTotp(totpCode) }),
+    api.post<{ data: { id: string; status: string } }>(`/admin/approval/${requestId}/reject`, {
+      comment,
+      ...withTotp(totpCode),
+    }),
 };
 
 export interface WhitelistEntry {
@@ -100,23 +128,37 @@ export const adminUsersApi = {
     return res.data.data;
   },
   add: async (email: string, totpCode?: string) => {
-    const res = await api.post<{ data: { ok: true } }>('/admin/users', { email, ...withTotp(totpCode) });
+    const res = await api.post<{ data: { ok: true } }>('/admin/users', {
+      email,
+      ...withTotp(totpCode),
+    });
     return res.data.data;
   },
   lock: async (email: string, reason: string, totpCode?: string) => {
-    const res = await api.post(`/admin/users/${encodeURIComponent(email)}/lock`, { reason, ...withTotp(totpCode) });
+    const res = await api.post(`/admin/users/${encodeURIComponent(email)}/lock`, {
+      reason,
+      ...withTotp(totpCode),
+    });
     return res.data;
   },
   unlock: async (email: string, totpCode?: string) => {
-    const res = await api.post(`/admin/users/${encodeURIComponent(email)}/unlock`, withTotp(totpCode));
+    const res = await api.post(
+      `/admin/users/${encodeURIComponent(email)}/unlock`,
+      withTotp(totpCode),
+    );
     return res.data;
   },
   demote: async (email: string, totpCode?: string) => {
-    const res = await api.post(`/admin/users/${encodeURIComponent(email)}/demote`, withTotp(totpCode));
+    const res = await api.post(
+      `/admin/users/${encodeURIComponent(email)}/demote`,
+      withTotp(totpCode),
+    );
     return res.data;
   },
   remove: async (email: string, totpCode?: string) => {
-    const res = await api.delete(`/admin/users/${encodeURIComponent(email)}`, { data: withTotp(totpCode) });
+    const res = await api.delete(`/admin/users/${encodeURIComponent(email)}`, {
+      data: withTotp(totpCode),
+    });
     return res.data;
   },
 };
@@ -140,14 +182,20 @@ export const adminPromotionsApi = {
     return res.data.data;
   },
   create: async (targetEmail: string, totpCode?: string) => {
-    const res = await api.post<{ data: { id: string } }>('/admin/promotions', { targetEmail, ...withTotp(totpCode) });
+    const res = await api.post<{ data: { id: string } }>('/admin/promotions', {
+      targetEmail,
+      ...withTotp(totpCode),
+    });
     return res.data.data;
   },
   approve: async (id: string, totpCode?: string) => {
     return api.post(`/admin/promotions/${encodeURIComponent(id)}/approve`, withTotp(totpCode));
   },
   reject: async (id: string, reason: string, totpCode?: string) => {
-    return api.post(`/admin/promotions/${encodeURIComponent(id)}/reject`, { reason, ...withTotp(totpCode) });
+    return api.post(`/admin/promotions/${encodeURIComponent(id)}/reject`, {
+      reason,
+      ...withTotp(totpCode),
+    });
   },
   cancel: async (id: string, totpCode?: string) => {
     return api.post(`/admin/promotions/${encodeURIComponent(id)}/cancel`, withTotp(totpCode));
