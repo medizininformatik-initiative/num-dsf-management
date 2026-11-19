@@ -67,13 +67,24 @@ docs/            guides, ADRs, screenshots
 
 Production runs with Docker Compose behind a TLS-terminating reverse proxy. Installation, updates, environment variables, migrations, certificate sign-in, and backup and restore are described in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md); running from the released images in [`docs/RUN-FROM-IMAGE.md`](docs/RUN-FROM-IMAGE.md).
 
+## Automation: renew client certificates via the API
+
+Sites can renew their DSF client certificate before it expires without the web UI. Authenticate with the current client certificate (mTLS) at `POST /auth/client-cert-login`, upload the new certificate with `POST /api/v1/instances/:id/certificates/:cid/renew` and submit the approval request. Admins still approve it (four-eyes). The old certificate keeps working until it expires, so renew ahead of time.
+
+`scripts/site-cert-renew.sh` does this and renews when less than 30 days are left; `--dry-run` only reports:
+
+```sh
+scripts/site-cert-renew.sh --base-url https://dsf.example.org --cert cur.pem --key cur.key --new-cert new.pem --dry-run
+```
+
+Endpoints, error codes, rate limits and the stability promise: [`docs/automation.md`](docs/automation.md).
+
 ## Documentation
 
 | Topic | Where |
 |---|---|
 | Getting started, admin guide, FAQ | [`docs/wiki/`](docs/wiki/) |
 | API reference | [`docs/wiki/API-Reference.md`](docs/wiki/API-Reference.md) |
-| Site automation (certificate renewal) | [`docs/automation.md`](docs/automation.md) |
 | Architecture and decisions | [`docs/wiki/Architecture.md`](docs/wiki/Architecture.md), [`docs/adr/`](docs/adr/) |
 | Database schema and migrations | [`docs/database/`](docs/database/) |
 | Security policy | [`SECURITY.md`](SECURITY.md) |
