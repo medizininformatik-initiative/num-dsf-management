@@ -10,6 +10,7 @@
  * FormField primitives, Button, i18n store, incidentErrors, React Hook Form,
  * Zod, sonner.
  */
+import { Select } from '../ui/Select';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,7 +27,7 @@ import {
 import type { TranslationKey } from '../../i18n/en';
 import { useI18n } from '../../stores/i18n.store';
 import { Button } from '../ui/Button';
-import { FormField, fieldHintClass, inputClass, selectClass } from '../modals/FormField';
+import { FormField, fieldHintClass, inputClass } from '../modals/FormField';
 import { incidentErrorMessage } from './incidentErrors';
 
 const LABEL_KEY: Record<keyof Nis2FieldsForm, TranslationKey> = {
@@ -98,14 +99,14 @@ export function Nis2StageFields({ incidentId, stage, fieldStage, values, locked,
     if (def.kind === 'tri' || def.kind === 'severity') {
       const options = def.kind === 'tri' ? TRI_OPTIONS : SEVERITY_OPTIONS;
       return (
-        <select {...register(name)} disabled={locked} className={selectClass}>
+        <Select {...register(name)} disabled={locked}>
           <option value="">{t('incidentNis2Select')}</option>
           {options.map(([value, key]) => (
             <option key={value} value={value}>
               {t(key)}
             </option>
           ))}
-        </select>
+        </Select>
       );
     }
     if (def.kind === 'line') {

@@ -19,10 +19,11 @@
  * useAllowListFreshness, entities API, DownloadVersionList, BundlePreview, lib/fingerprint,
  * i18n store, sonner.
  */
+import { Select } from '../ui/Select';
 import { useId, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
-import { fieldHintClass, fieldLabelClass, ModalFooter, selectClass } from './FormField';
+import { fieldHintClass, fieldLabelClass, ModalFooter } from './FormField';
 import { useEndpoints } from '../../hooks/useEndpoints';
 import { useBundleHistory } from '../../hooks/useBundleHistory';
 import {
@@ -251,14 +252,13 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
           <label htmlFor={`${uid}-endpoint`} className={`mb-1.5 block ${fieldLabelClass}`}>
             {t('downloadModalSelectEndpoint')}
           </label>
-          <select
+          <Select
             id={`${uid}-endpoint`}
             value={selectedEndpoint}
             onChange={(e) => {
               setSelectedEndpoint(e.target.value);
               setVerification(null);
             }}
-            className={selectClass}
           >
             <option value="">{t('downloadModalSelectEndpointPlaceholder')}</option>
             {endpoints.map((ep: EndpointOption) => (
@@ -266,7 +266,7 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
                 {ep.name || ep.identifier}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <DsfTaskStart

@@ -8,6 +8,7 @@
  * Dependencies: Modal, EndpointChangeWarning, FormField (FormField, FormFieldGroup, CheckboxCards), useMemberships,
  *               useEndpoints, useParentOrganizations, useCrossUserGuard, i18n store.
  */
+import { Select } from '../ui/Select';
 import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,7 +19,6 @@ import {
   CheckboxCards,
   FormField,
   FormFieldGroup,
-  selectClass,
   inputClass,
   ModalFooter,
   type CheckboxCardOption,
@@ -207,10 +207,9 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
           hint={parentsQuery.isError ? t('membershipParentLoadFailed') : undefined}
           infoKey="glossaryParentOrg"
         >
-          <select
+          <Select
             value={customParent ? OTHER : (currentParent ?? '')}
             onChange={(e) => onParentSelect(e.target.value)}
-            className={selectClass}
           >
             <option value="">
               {parentsQuery.isLoading
@@ -239,7 +238,7 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
               </optgroup>
             )}
             <option value={OTHER}>{t('membershipParentOther')}</option>
-          </select>
+          </Select>
         </FormField>
         {customParent && (
           <FormField
@@ -264,14 +263,14 @@ export function MembershipModal({ open, onClose, instanceId, membershipId, defau
           error={errors.endpointId?.message}
           hint={t('membershipModalFieldEndpointHint')}
         >
-          <select {...register('endpointId')} className={selectClass}>
+          <Select {...register('endpointId')}>
             <option value="">{t('membershipModalFieldEndpointPlaceholder')}</option>
             {(endpoints as EndpointOption[]).map((ep) => (
               <option key={ep.identifier} value={ep.identifier}>
                 {ep.name || ep.identifier} ({ep.address})
               </option>
             ))}
-          </select>
+          </Select>
         </FormField>
         {endpointChanged && <EndpointChangeWarning />}
         <FormFieldGroup

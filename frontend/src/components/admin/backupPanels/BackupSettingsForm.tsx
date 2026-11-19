@@ -6,6 +6,7 @@
  * Dependencies: react-hook-form, zod schema, Button, Icon, fieldClasses,
  * FormField (checkbox class), i18n store.
  */
+import { Select } from '../../ui/Select';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -67,11 +68,11 @@ export function BackupSettingsForm({ settings, saving, onSave }: BackupSettingsF
           <label htmlFor="backup-mode" className={LABEL_CLASS}>
             {t('backupIntervalLabel')}
           </label>
-          <select id="backup-mode" className={FIELD_CLASS} {...register('mode')}>
+          <Select id="backup-mode" {...register('mode')}>
             <option value="EVERY_6H">{t('backupModeEvery6h')}</option>
             <option value="EVERY_12H">{t('backupModeEvery12h')}</option>
             <option value="DAILY">{t('backupModeDaily')}</option>
-          </select>
+          </Select>
           <span className={HINT_CLASS}>{t('backupIntervalHint')}</span>
         </div>
         {mode === 'DAILY' && (

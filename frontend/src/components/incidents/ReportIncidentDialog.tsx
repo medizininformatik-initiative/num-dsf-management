@@ -11,18 +11,13 @@
  * useOrganization, canvas store, incident.schema, getErrorMessage, i18n store,
  * React Hook Form, Zod, sonner.
  */
+import { Select } from '../ui/Select';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Modal } from '../modals/Modal';
-import {
-  FormField,
-  ModalFooter,
-  checkboxClass,
-  inputClass,
-  selectClass,
-} from '../modals/FormField';
+import { FormField, ModalFooter, checkboxClass, inputClass } from '../modals/FormField';
 import { useIncidentSites } from '../../hooks/useIncidents';
 import { useReportIncident } from '../../hooks/useIncidentActions';
 import { useMe } from '../../hooks/useMe';
@@ -138,9 +133,9 @@ function ReportForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <FormField label={t('incidentFieldSite')} error={errors.organizationId?.message}>
-        <select
+        <Select
           {...register('organizationId')}
-          className={selectClass}
+
           data-testid="incident-site-select"
         >
           <option value="">{t('incidentSiteUnknown')}</option>
@@ -149,7 +144,7 @@ function ReportForm({
               {s.name} ({s.identifier})
             </option>
           ))}
-        </select>
+        </Select>
       </FormField>
 
       <FormField label={t('incidentFieldTitle')} required error={errors.title?.message}>
@@ -177,11 +172,11 @@ function ReportForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField label={t('incidentFieldLevel')} required error={errors.escalationLevel?.message}>
-          <select {...register('escalationLevel')} className={selectClass}>
+          <Select {...register('escalationLevel')}>
             <option value="1">{t('incidentLevel1')}</option>
             <option value="2">{t('incidentLevel2')}</option>
             <option value="3">{t('incidentLevel3')}</option>
-          </select>
+          </Select>
         </FormField>
         <FormField
           label={t('incidentFieldDetectedAt')}

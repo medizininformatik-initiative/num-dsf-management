@@ -9,7 +9,7 @@
  * - FieldError: the announced (role="alert") error line that fades/slides in.
  * - fieldLabelClass / fieldHintClass: the one label and hint style, for
  *   labels and hints that sit outside a FormField.
- * - inputClass / selectClass / checkboxClass: one field style with a
+ * - inputClass / checkboxClass: one field style with a
  *   consistent focus ring and the theme's input fill and border tokens.
  * - ModalFooter: Cancel, an optional Back and the one primary CTA (Button).
  * Dependencies: Button, Icon, InfoHint, i18n store.
@@ -192,8 +192,6 @@ export const fieldSurfaceClass =
   'disabled:cursor-not-allowed disabled:opacity-60';
 
 export const inputClass = `w-full px-3 py-2 text-sm placeholder:text-[color:var(--text-muted)] ${fieldSurfaceClass}`;
-
-export const selectClass = `w-full px-3 py-2 text-sm ${fieldSurfaceClass}`;
 
 export const checkboxClass =
   'h-4 w-4 shrink-0 cursor-pointer rounded-small accent-primary dark:accent-brand-400 ' +

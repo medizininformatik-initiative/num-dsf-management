@@ -7,6 +7,7 @@
  * approve or reject it (step-up) and the requester cancel it.
  * Dependencies: bundleVersionsApi, bundleHistory/* components, useMe, i18n store.
  */
+import { Select } from '../components/ui/Select';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -171,11 +172,7 @@ export function AdminBundleVersionsPage() {
                       </h2>
                       <label className="flex items-center gap-2 text-xs font-semibold text-[color:var(--text-secondary)]">
                         {t('historyCompareWith')}
-                        <select
-                          value={from.id}
-                          onChange={(e) => setFromId(e.target.value)}
-                          className="rounded-control border border-[color:var(--border-strong)] bg-[color:var(--bg-input)] px-2 py-1 text-sm text-[color:var(--text-primary)] focus-visible:border-[color:var(--focus-ring)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]"
-                        >
+                        <Select value={from.id} onChange={(e) => setFromId(e.target.value)}>
                           {versions
                             .filter((v) => v.id !== to.id)
                             .map((v) => (
@@ -183,7 +180,7 @@ export function AdminBundleVersionsPage() {
                                 v{v.version_number}
                               </option>
                             ))}
-                        </select>
+                        </Select>
                       </label>
                     </div>
                     {diff.isLoading ? (

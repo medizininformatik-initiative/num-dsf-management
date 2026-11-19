@@ -10,6 +10,7 @@
  * Dependencies: React Hook Form, Zod, FormField, Button, StepUpConfirmDialog, useUpdateIncident,
  * incident.schema, incidentErrors, i18n store, sonner.
  */
+import { Select } from '../ui/Select';
 import { useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,7 +25,7 @@ import {
   zulipUrlSchema,
 } from '../../schemas/incident.schema';
 import { useI18n } from '../../stores/i18n.store';
-import { FormField, inputClass, selectClass } from '../modals/FormField';
+import { FormField, inputClass } from '../modals/FormField';
 import { Button } from '../ui/Button';
 import { StepUpConfirmDialog } from '../admin/StepUpConfirmDialog';
 import { incidentErrorMessage } from './incidentErrors';
@@ -117,11 +118,11 @@ export function IncidentSettingsForm({ incident, onLevelRaised }: IncidentSettin
             required
             error={errors.escalationLevel?.message}
           >
-            <select {...register('escalationLevel')} className={selectClass}>
+            <Select {...register('escalationLevel')}>
               <option value="1">{t('incidentLevel1')}</option>
               <option value="2">{t('incidentLevel2')}</option>
               <option value="3">{t('incidentLevel3')}</option>
-            </select>
+            </Select>
           </FormField>
           <FormField
             label={t('incidentFieldDetectedAt')}

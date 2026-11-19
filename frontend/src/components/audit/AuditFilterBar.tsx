@@ -4,9 +4,10 @@
  * Fully controlled: the page owns the form state and applies it to the query.
  * Dependencies: Button, Icon, FormField classes, i18n store, audit.api types
  */
+import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
-import { inputClass, selectClass, checkboxClass } from '../modals/FormField';
+import { inputClass, checkboxClass } from '../modals/FormField';
 import { useI18n } from '../../stores/i18n.store';
 import type { AuditSite } from '../../api/audit.api';
 import {
@@ -83,9 +84,9 @@ export function AuditFilterBar({ value, onChange, sites, exporting, onExport }: 
           <label htmlFor="audit-site" className={LABEL}>
             {t('auditFilterSite')}
           </label>
-          <select
+          <Select
             id="audit-site"
-            className={selectClass}
+
             value={value.instanceId}
             onChange={(e) => set('instanceId', e.target.value)}
           >
@@ -96,15 +97,15 @@ export function AuditFilterBar({ value, onChange, sites, exporting, onExport }: 
                 {s.org_identifier ? ` (${s.org_identifier})` : ''}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label htmlFor="audit-resource" className={LABEL}>
             {t('auditColResource')}
           </label>
-          <select
+          <Select
             id="audit-resource"
-            className={selectClass}
+
             value={value.resource}
             onChange={(e) => set('resource', e.target.value)}
           >
@@ -114,15 +115,15 @@ export function AuditFilterBar({ value, onChange, sites, exporting, onExport }: 
                 {t(key)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label htmlFor="audit-operation" className={LABEL}>
             {t('auditColOperation')}
           </label>
-          <select
+          <Select
             id="audit-operation"
-            className={selectClass}
+
             value={value.operation}
             onChange={(e) => set('operation', e.target.value)}
           >
@@ -132,7 +133,7 @@ export function AuditFilterBar({ value, onChange, sites, exporting, onExport }: 
                 {t(key)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="sm:col-span-2">
           <label htmlFor="audit-q" className={LABEL}>
