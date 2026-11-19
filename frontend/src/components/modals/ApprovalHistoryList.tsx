@@ -8,6 +8,7 @@
 import { useApprovalHistory, type ApprovalRequest } from '../../hooks/useApproval';
 import { formatDateTime } from '../../lib/dateUtils';
 import { useI18n } from '../../stores/i18n.store';
+import { ApprovalDeciders } from '../layout/ApprovalDeciders';
 import { ApprovalStatePill } from '../layout/ApprovalStatusBanner';
 
 export function ApprovalHistoryList({ instanceId }: { instanceId: string }) {
@@ -48,6 +49,7 @@ export function ApprovalHistoryList({ instanceId }: { instanceId: string }) {
                   </time>
                   <ApprovalStatePill status={req.status} />
                 </div>
+                <ApprovalDeciders req={req} className="mt-1" />
                 {req.status === 'REJECTED' && req.comment && (
                   <p className="mt-1 whitespace-pre-wrap break-words text-xs text-[color:var(--text-secondary)]">
                     {req.comment}

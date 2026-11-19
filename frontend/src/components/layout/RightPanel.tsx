@@ -31,6 +31,7 @@ import { formatDateTime, relTime } from '../../lib/dateUtils';
 import { useI18n } from '../../stores/i18n.store';
 import type { TranslationKey } from '../../i18n/en';
 import { Icon } from '../ui/Icon';
+import { ApprovalDeciders } from './ApprovalDeciders';
 import { ApprovalStatePill, ApprovalStatusBanner } from './ApprovalStatusBanner';
 import { Collapse } from './Collapse';
 import { ExpiryTimeline } from './ExpiryTimeline';
@@ -176,6 +177,7 @@ export function RightPanel({
                         {relTime(when, t)}
                       </time>
                     </div>
+                    <ApprovalDeciders req={req} className="mt-1 pl-2" />
                     {resolved && req.comment && (
                       <p className="mt-1 whitespace-pre-wrap break-words pl-2 text-xs text-[color:var(--text-secondary)]">
                         {req.comment}
