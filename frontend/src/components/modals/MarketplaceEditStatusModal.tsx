@@ -11,7 +11,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
-import { FormField, selectClass, inputClass, checkboxClass, ModalFooter } from './FormField';
+import { FormField, inputClass, checkboxClass, ModalFooter } from './FormField';
+import { Select } from '../ui/Select';
 import { marketplaceEditFormSchema, MarketplaceEditForm } from '../../schemas/marketplace.schema';
 import { useUpdateMarketplaceMeta } from '../../hooks/useMarketplace';
 import { useI18n } from '../../stores/i18n.store';
@@ -111,11 +112,11 @@ export function MarketplaceEditStatusModal({
     <Modal open={open} onClose={onClose} title={t('marketplaceEditMeta')} isDirty={isDirty}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <FormField label={t('marketplaceFieldStatus')} required error={errors.status?.message}>
-          <select {...register('status')} className={selectClass}>
+          <Select {...register('status')}>
             <option value="APPROVED">{t('marketplaceStatusApproved')}</option>
             <option value="EXPERIMENTAL">{t('marketplaceStatusExperimental')}</option>
             <option value="DEPRECATED">{t('marketplaceStatusDeprecated')}</option>
-          </select>
+          </Select>
         </FormField>
 
         <label className="flex w-fit cursor-pointer items-center gap-2 text-sm font-medium text-[color:var(--text-primary)]">
@@ -124,12 +125,12 @@ export function MarketplaceEditStatusModal({
         </label>
 
         <FormField label={t('marketplaceAdvisorySeverity')}>
-          <select {...register('advisorySeverity')} className={selectClass}>
+          <Select {...register('advisorySeverity')}>
             <option value="">{t('marketplaceSeverityNone')}</option>
             <option value="INFO">INFO</option>
             <option value="WARNING">WARNING</option>
             <option value="CRITICAL">CRITICAL</option>
-          </select>
+          </Select>
         </FormField>
 
         <FormField label={t('marketplaceAdvisory')}>

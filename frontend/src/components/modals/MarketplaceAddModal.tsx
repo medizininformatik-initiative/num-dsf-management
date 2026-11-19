@@ -9,7 +9,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { z } from 'zod';
 import { toast } from 'sonner';
 import { Modal } from './Modal';
-import { FormField, inputClass, selectClass, ModalFooter } from './FormField';
+import { FormField, inputClass, ModalFooter } from './FormField';
+import { Select } from '../ui/Select';
 import { marketplaceAddFormSchema, MarketplaceAddForm } from '../../schemas/marketplace.schema';
 import { useAddMarketplace } from '../../hooks/useMarketplace';
 import { useI18n } from '../../stores/i18n.store';
@@ -71,11 +72,11 @@ export function MarketplaceAddModal({ open, onClose }: Props) {
         </FormField>
 
         <FormField label={t('marketplaceFieldStatus')} required error={errors.status?.message}>
-          <select {...register('status')} className={selectClass}>
+          <Select {...register('status')}>
             <option value="APPROVED">{t('marketplaceStatusApproved')}</option>
             <option value="EXPERIMENTAL">{t('marketplaceStatusExperimental')}</option>
             <option value="DEPRECATED">{t('marketplaceStatusDeprecated')}</option>
-          </select>
+          </Select>
         </FormField>
 
         {needsTotpStepUp() && (

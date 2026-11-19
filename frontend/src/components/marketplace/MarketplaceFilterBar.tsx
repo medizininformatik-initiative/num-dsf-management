@@ -8,6 +8,7 @@
 import type { Ref } from 'react';
 import { useI18n } from '../../stores/i18n.store';
 import { Icon } from '../ui/Icon';
+import { Select } from '../ui/Select';
 import type { BrowseFilters, SortKey, StatusFilter, TrustFilter } from './marketplaceUtils';
 
 interface Props {
@@ -19,9 +20,6 @@ interface Props {
   topics: string[];
   dsfVersions: string[];
 }
-
-const SELECT_CLASS =
-  'press-effect min-h-[40px] rounded-full border border-[color:var(--border-strong)] bg-[color:var(--bg-input)] px-3.5 py-2 text-sm text-[color:var(--text-primary)] outline-none focus:border-[color:var(--focus-ring)] focus:ring-[3px] focus:ring-primary/20 dark:focus:ring-brand-400/30';
 
 export function MarketplaceFilterBar({
   searchValue,
@@ -86,11 +84,11 @@ export function MarketplaceFilterBar({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <select
+        <Select
+          pill
           aria-label={t('marketplaceFilterTopic')}
           value={filters.topic}
           onChange={(e) => onChange({ topic: e.target.value })}
-          className={SELECT_CLASS}
         >
           <option value="">{t('marketplaceFilterAllTopics')}</option>
           {topics.map((tp) => (
@@ -98,12 +96,12 @@ export function MarketplaceFilterBar({
               {tp}
             </option>
           ))}
-        </select>
-        <select
+        </Select>
+        <Select
+          pill
           aria-label={t('marketplaceFilterDsf')}
           value={filters.dsf}
           onChange={(e) => onChange({ dsf: e.target.value })}
-          className={SELECT_CLASS}
         >
           <option value="">{t('marketplaceFilterAnyDsf')}</option>
           {dsfVersions.map((v) => (
@@ -111,29 +109,29 @@ export function MarketplaceFilterBar({
               {t('marketplaceDsfRunsOn', { v })}
             </option>
           ))}
-        </select>
-        <select
+        </Select>
+        <Select
+          pill
           aria-label={t('marketplaceFilterTrust')}
           value={filters.trust}
           onChange={(e) => onChange({ trust: e.target.value as TrustFilter })}
-          className={SELECT_CLASS}
         >
           <option value="ALL">{t('marketplaceTrustAll')}</option>
           <option value="verified">{t('marketplaceTrustVerified')}</option>
           <option value="community">{t('marketplaceTrustCommunity')}</option>
           <option value="caution">{t('marketplaceTrustCaution')}</option>
-        </select>
+        </Select>
         <label className="ml-auto flex items-center gap-2 text-sm text-[color:var(--text-secondary)]">
           {t('marketplaceSort')}
-          <select
+          <Select
+            pill
             value={filters.sort}
             onChange={(e) => onChange({ sort: e.target.value as SortKey })}
-            className={SELECT_CLASS}
           >
             <option value="relevance">{t('marketplaceSortRelevance')}</option>
             <option value="updated">{t('marketplaceSortUpdated')}</option>
             <option value="popular">{t('marketplaceSortPopular')}</option>
-          </select>
+          </Select>
         </label>
       </div>
     </div>
