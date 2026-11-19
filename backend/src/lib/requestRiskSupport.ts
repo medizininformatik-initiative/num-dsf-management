@@ -1,21 +1,31 @@
 /**
  * requestRiskSupport.ts – Helpers of the request-risk assessment: tolerant normalisation of an
- * approval snapshot, DN / domain / IP utilities. Pure, no I/O.
- * Dependencies: net (isIP)
+ * approval snapshot (certificates keep the issuer facts stored with the snapshot, endpoint
+ * addresses are parsed, IPs are normalised) and DN utilities that respect escaped commas. Pure,
+ * no I/O.
+ * Dependencies: lib/requestRiskNet
  */
-import { isIP } from 'net';
+import { normalizeIp, parseEndpointAddress, type EndpointAddress } from './requestRiskNet';
 
 const DAY_MS = 86400_000;
 
 export interface NCert {
   id: string;
   thumbprint: string;
+  /** CN as stored in the certificates table. */
   subject: string;
   validUntil: string | null;
+  /** Facts stored with the snapshot since certDescribe; absent in older snapshots. */
+  issuerDn?: string;
+  subjectDn?: string;
+  sanDns?: string[];
+  notAfter?: string;
 }
 export interface NEndpoint {
   identifier: string;
-  host: string | null;
+  /** Raw address as stored. */
+  address: string;
+  parsed: EndpointAddress;
   ips: Set<string>;
 }
 export interface NContact {
@@ -23,14 +33,22 @@ export interface NContact {
   types: string[];
   emailValidated: boolean;
 }
+export interface NMembership {
+  /** Parent identifier as written in the snapshot (compared case-insensitively). */
+  parent: string;
+  roles: Set<string>;
+}
 export interface NSnap {
+  /** False when the snapshot has no organization identifier (unreadable or empty). */
+  readable: boolean;
   orgId: string;
   orgName: string | null;
   active: boolean | null;
   contacts: NContact[];
   endpoints: NEndpoint[];
   certs: NCert[];
-  memberships: Map<string, Set<string>>;
+  /** Keyed by the lower-cased parent identifier. */
+  memberships: Map<string, NMembership>;
   digest: string | null;
 }
 
@@ -42,6 +60,9 @@ function str(v: unknown): string {
 }
 function arr(v: unknown): unknown[] {
   return Array.isArray(v) ? v : [];
+}
+function optStr(v: unknown): string | undefined {
+  return typeof v === 'string' && v !== '' ? v : undefined;
 }
 /** A JSON column that may arrive as an array or as its JSON text. */
 function list(v: unknown): string[] {
@@ -66,27 +87,21 @@ function parseSnapshotInput(raw: unknown): Record<string, unknown> {
   return rec(raw);
 }
 
-function hostOf(address: string, fallback: string): string | null {
-  try {
-    return new URL(address).hostname.toLowerCase() || null;
-  } catch {
-    return fallback ? fallback.toLowerCase() : null;
-  }
-}
-
 export function normalize(raw: unknown): NSnap {
   const s = parseSnapshotInput(raw);
   const org = rec(s.organization);
-  const memberships = new Map<string, Set<string>>();
+  const memberships = new Map<string, NMembership>();
   for (const m of arr(s.memberships)) {
-    const parent = str(rec(m).parent_organization);
+    const parent = str(rec(m).parent_organization).trim();
     if (!parent) continue;
-    const roles = memberships.get(parent) ?? new Set<string>();
-    list(rec(m).roles).forEach((r) => roles.add(r));
-    memberships.set(parent, roles);
+    const entry = memberships.get(parent.toLowerCase()) ?? { parent, roles: new Set<string>() };
+    list(rec(m).roles).forEach((r) => entry.roles.add(r));
+    memberships.set(parent.toLowerCase(), entry);
   }
+  const orgId = str(org.identifier).toLowerCase();
   return {
-    orgId: str(org.identifier).toLowerCase(),
+    readable: orgId !== '',
+    orgId,
     orgName: typeof org.name === 'string' ? org.name : null,
     active: org.active === undefined || org.active === null ? null : !!org.active,
     contacts: arr(s.contacts).map((c) => ({
@@ -95,84 +110,86 @@ export function normalize(raw: unknown): NSnap {
       emailValidated: !!rec(c).email_validated,
     })),
     endpoints: arr(s.endpoints).map((e) => {
-      const identifier = str(rec(e).identifier);
+      const address = str(rec(e).address);
       const ipList = arr(rec(e).ipAddresses ?? rec(e).ips).map((x) => str(rec(x).ip));
+      const ips = ipList.filter(Boolean).map((ip) => normalizeIp(ip) ?? ip.toLowerCase());
       return {
-        identifier,
-        host: hostOf(str(rec(e).address), identifier),
-        ips: new Set(ipList.filter(Boolean)),
+        identifier: str(rec(e).identifier),
+        address,
+        parsed: parseEndpointAddress(address),
+        ips: new Set(ips),
       };
     }),
-    certs: arr(s.certificates).map((c) => ({
-      id: str(rec(c).id),
-      thumbprint: str(rec(c).thumbprint),
-      subject: str(rec(c).subject),
-      validUntil: typeof rec(c).valid_until === 'string' ? (rec(c).valid_until as string) : null,
-    })),
+    certs: arr(s.certificates).map((c) => {
+      const r = rec(c);
+      return {
+        id: str(r.id),
+        thumbprint: str(r.thumbprint),
+        subject: str(r.subject),
+        validUntil: typeof r.valid_until === 'string' ? r.valid_until : null,
+        issuerDn: optStr(r.issuerDn),
+        subjectDn: optStr(r.subjectDn),
+        sanDns: Array.isArray(r.sanDns) ? list(r.sanDns) : undefined,
+        notAfter: optStr(r.notAfter),
+      };
+    }),
     memberships,
     digest: typeof s.editableDigest === 'string' ? s.editableDigest : null,
   };
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── DN helpers ────────────────────────────────────────────────────────────────
 
-/** Same normalisation as ca-blacklist.service.normalizeDn (kept here to stay free of the DB). */
+/** RDNs of a DN, split on commas that are neither escaped (`\,`) nor inside double quotes. */
+export function splitDn(dn: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  let quoted = false;
+  for (let i = 0; i < dn.length; i++) {
+    const ch = dn[i];
+    if (ch === '\\' && i + 1 < dn.length) {
+      current += ch + dn[++i];
+    } else if (ch === '"') {
+      quoted = !quoted;
+      current += ch;
+    } else if (ch === ',' && !quoted) {
+      parts.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  parts.push(current);
+  return parts.map((p) => p.trim()).filter(Boolean);
+}
+
+function unescapeDnValue(value: string): string {
+  const trimmed =
+    value.length >= 2 && value.startsWith('"') && value.endsWith('"') ? value.slice(1, -1) : value;
+  return trimmed.replace(/\\(.)/g, '$1').trim();
+}
+
+/** Order- and case-insensitive form of a DN, for comparing two certificate DNs. */
 export function normDn(dn: string): string {
-  return dn
-    .split(',')
-    .map((p) => p.trim().toLowerCase())
-    .filter(Boolean)
+  return splitDn(dn)
+    .map((p) => p.toLowerCase())
     .sort()
     .join(',');
 }
 
-/** Common name of a DN (`CN=` RDN), or the whole DN when it has none. */
+/** Common name of a DN (`CN=` RDN, escapes resolved), or the whole DN when it has none. */
 export function commonName(dn: string): string {
-  const m = /(?:^|,)\s*CN=([^,]*)/i.exec(dn);
-  return (m ? m[1] : dn).trim();
+  const rdn = splitDn(dn).find((p) => /^cn=/i.test(p));
+  return rdn ? unescapeDnValue(rdn.slice(3)) : dn.trim();
 }
 
-/** Last two labels of a host; IP addresses and short names are returned unchanged. */
-export function registrableDomain(host: string): string {
-  const h = host.toLowerCase();
-  if (isIP(h) !== 0) return h;
-  const labels = h.split('.').filter(Boolean);
-  return labels.length <= 2 ? h : labels.slice(-2).join('.');
-}
-
-function privateV4(ip: string): boolean {
-  const [a, b] = ip.split('.').map(Number);
-  return (
-    a === 10 ||
-    a === 127 ||
-    a === 0 ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 169 && b === 254) ||
-    (a === 100 && b >= 64 && b <= 127)
-  );
-}
-
-/** RFC1918, loopback, link-local, CGNAT, 0.0.0.0/8, IPv6 ULA / link-local / loopback. */
-export function isPrivateIp(ip: string): boolean {
-  const kind = isIP(ip);
-  if (kind === 4) return privateV4(ip);
-  if (kind !== 6) return false;
-  const lower = ip.toLowerCase();
-  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(lower);
-  if (mapped) return privateV4(mapped[1]);
-  if (lower === '::1' || lower === '::') return true;
-  const first = parseInt(lower.split(':')[0] || '0', 16);
-  return (first & 0xfe00) === 0xfc00 || (first & 0xffc0) === 0xfe80;
-}
-
-export function daysUntil(iso: string | null, now: Date): number | null {
+export function daysUntil(iso: string | null | undefined, now: Date): number | null {
   if (!iso) return null;
   const t = new Date(iso).getTime();
   return Number.isNaN(t) ? null : Math.floor((t - now.getTime()) / DAY_MS);
 }
 
 export function nameMatches(name: string, domain: string): boolean {
-  const n = name.toLowerCase().replace(/^\*\./, '');
+  const n = name.toLowerCase().replace(/^\*\./, '').replace(/\.+$/, '');
   return n === domain || n.endsWith(`.${domain}`);
 }

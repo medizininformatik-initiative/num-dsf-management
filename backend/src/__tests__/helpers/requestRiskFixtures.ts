@@ -23,14 +23,25 @@ export interface CertSpec {
   days: number;
   issuer?: string;
   sans?: string[];
+  /** Store issuer / subject / SAN / expiry in the snapshot entry (as buildSnapshot does). */
+  embed?: boolean;
 }
 
 export function certRow(c: CertSpec) {
+  const cn = c.cn ?? `dsf.${ORG}`;
   return {
     id: c.id,
-    subject: c.cn ?? `dsf.${ORG}`,
+    subject: cn,
     thumbprint: `T-${c.id}`,
     valid_until: inDays(c.days),
+    ...(c.embed
+      ? {
+          issuerDn: c.issuer ?? GEANT,
+          subjectDn: `C=DE,CN=${cn}`,
+          sanDns: c.sans ?? [cn],
+          notAfter: inDays(c.days),
+        }
+      : {}),
   };
 }
 
@@ -98,6 +109,10 @@ export interface Case {
   caStatus?: Record<string, CaStatus>;
   context?: Partial<RiskContext>;
   extraInfo?: CertSpec[];
+  /** Pass no database certificate facts (the rows are gone). */
+  noDb?: boolean;
+  previousResolvedAt?: Date | null;
+  beforePrevious?: SnapSpec | null;
 }
 
 export function run(c: Case) {
@@ -107,7 +122,9 @@ export function run(c: Case) {
   const input: RiskInput = {
     current: snap(c.current),
     previous: prev === null ? null : snap(prev),
-    certInfo: infoFor([...prevCerts, ...curCerts, ...(c.extraInfo ?? [])]),
+    previousResolvedAt: c.previousResolvedAt ?? null,
+    beforePrevious: c.beforePrevious ? snap(c.beforePrevious) : null,
+    certInfo: c.noDb ? {} : infoFor([...prevCerts, ...curCerts, ...(c.extraInfo ?? [])]),
     caStatus: c.caStatus ?? { [GEANT]: 'whitelisted', [R11]: 'whitelisted' },
     context: ctx(c.context),
   };

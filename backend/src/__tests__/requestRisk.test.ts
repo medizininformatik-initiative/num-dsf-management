@@ -184,24 +184,24 @@ describe('certificate rules', () => {
       },
       previous: {
         certs: [
-          { id: 'o1', days: 10 },
-          { id: 'o2', days: 10 },
+          { id: 'o1', days: 100 },
+          { id: 'o2', days: 100 },
         ],
       },
     });
     expect(codes(r)).toContain('CERT_ALL_REPLACED');
   });
 
-  it('notes a new certificate that expires within 30 days without raising the score', () => {
+  it('flags a new certificate that expires within 30 days as a low finding', () => {
     const r = run({
       current: { certs: [{ id: 'new', days: 20 }] },
       previous: { certs: [{ id: 'old', days: 10 }] },
     });
     const short = r.findings.find((f) => f.code === 'CERT_SHORT_VALIDITY');
-    expect(short).toMatchObject({ severity: 'info', weight: 0 });
+    expect(short).toMatchObject({ severity: 'low', weight: 1 });
   });
 
-  it('skips issuer checks when the certificate row is gone', () => {
+  it('does not call a replacement a renewal when issuer and old expiry are unknown', () => {
     const input: RiskInput = {
       current: snap({ certs: [{ id: 'new', days: 365 }] }),
       previous: snap({ certs: [{ id: 'old', days: 12 }] }),
@@ -210,7 +210,7 @@ describe('certificate rules', () => {
       context: ctx(),
     };
     const r = assessRequest(input);
-    expect(r.findings.map((f) => f.code)).toEqual(['CERT_RENEWAL']);
-    expect(r.level).toBe('LOW');
+    expect(r.findings.map((f) => f.code)).toContain('CERT_NOT_COMPARABLE');
+    expect(r.findings.map((f) => f.code)).not.toContain('CERT_RENEWAL');
   });
 });

@@ -99,7 +99,7 @@ describe('endpoint rules', () => {
       context: { otherOrgsByIp: { '93.184.216.77': ['other.example.de'] } },
     });
     const f = r.findings.find((x) => x.code === 'IP_SHARED');
-    expect(f?.params).toMatchObject({ ip: '93.184.216.77', org: 'other.example.de' });
+    expect(f?.params).toEqual({ n: 1, orgs: 'other.example.de' });
   });
 });
 
