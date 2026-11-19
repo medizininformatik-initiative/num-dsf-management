@@ -48,8 +48,11 @@ import { randomUUID } from 'crypto';
 import { logger } from './lib/logger';
 import { NOT_FOUND_CODES } from './lib/notFoundCodes';
 import { installProcessHandlers } from './lib/processHandlers';
+import { assertCertProxyConfig } from './lib/certProxyTrust';
 
 installProcessHandlers();
+// Cert mode in production must not trust X-Client-* from arbitrary peers.
+assertCertProxyConfig();
 
 const app = express();
 

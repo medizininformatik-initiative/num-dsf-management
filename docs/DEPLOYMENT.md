@@ -385,6 +385,14 @@ The bundled nginx already performs the client-cert authentication, and it is the
   RequestHeader set X-Client-Cert "expr=%{escape:%{SSL:SSL_CLIENT_CERT}}" "expr=%{SSL:SSL_CLIENT_VERIFY} =~ /^(SUCCESS|GENEROUS|FAILED:(self.signed|unable to ))/"
   ```
   `%{escape:...}` percent-encodes the PEM, which is what nginx's `$ssl_client_escaped_cert` does and what the backend's `decodeURIComponent` expects. A raw `%{SSL_CLIENT_CERT}s` would put bare newlines into a header.
+- **Prove the proxy to the backend (`CLIENT_CERT_PROXY_SECRET`).** Clearing headers only protects the path through Apache; anything that can reach the backend port directly (another container, a host process) could still send its own `X-Client-Verify`/`X-Client-Cert` with a public certificate. Therefore the backend additionally requires a shared secret in `X-Proxy-Auth` and, with `AUTH_MODE=cert` and `NODE_ENV=production`, refuses to start without it:
+  ```bash
+  openssl rand -hex 32        # put the output into .env.prod as CLIENT_CERT_PROXY_SECRET=<value>
+  ```
+  ```apache
+  RequestHeader set X-Proxy-Auth "<the same value>"
+  ```
+  Add that line inside the proxied vhost/location, next to the other `RequestHeader` rules. `set` overwrites any value a client sent, so no separate `unset` is needed. Rollout order: add the Apache line and reload Apache first (the old backend ignores the header), then deploy the backend with the new `.env.prod`; doing it the other way round makes every login fail until Apache sends the header. Optionally also set `CLIENT_CERT_TRUSTED_PROXIES` (comma-separated IPs/CIDRs, e.g. the Apache address on the `dsf-edge` bridge); the backend then also requires the TCP peer address to match (X-Forwarded-For is not used). The bundled nginx variant sends the header when `certs/proxy-auth.conf` exists and contains `proxy_set_header X-Proxy-Auth "<value>";`. Never log or commit the secret.
 - **Accepting `FAILED:self-signed` is required, not sloppy.** nginx with `optional_no_ca` skips chain validation entirely and reports `SUCCESS`. Apache still reports the OpenSSL result, and under TLS 1.3 a self-signed client cert arrives as `FAILED:self-signed certificate` rather than `GENEROUS`, so a `SUCCESS|GENEROUS`-only match silently drops every DSF certificate. The pattern above admits exactly the self-signed and unknown-issuer cases that `optional_no_ca` is meant to allow, while still rejecting `FAILED:certificate has expired` and `FAILED:certificate revoked`. The real gate stays the SHA-512 fingerprint match.
 - Return `403` for `/auth/request-otp`, `/auth/verify-otp`, `/auth/verify-totp`, `/auth/setup-totp`, and `/auth/confirm-totp` so the OTP path stays closed.
 - Proxy `/api/`, `/auth/`, `/fhir/` and `/health` to the backend and `/` to the frontend (the frontend image does its own SPA fallback, so no 404 rewriting is needed). Set `RequestHeader set X-Forwarded-Proto "https"` so the session cookie stays `secure`.

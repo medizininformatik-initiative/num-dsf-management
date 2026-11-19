@@ -8,6 +8,7 @@
 import crypto from 'crypto';
 import type { Request } from 'express';
 import { sha512FingerprintFromPem } from './certFingerprint';
+import { isFromTrustedProxy } from './certProxyTrust';
 
 export interface ClientCertInfo {
   thumbprint: string;
@@ -35,6 +36,8 @@ export interface ClientCertInfo {
  * A certificate outside its validity period is refused here as well (null).
  */
 export function extractClientCert(req: Request): ClientCertInfo | null {
+  // Single source of truth: headers count only when the proxy proves itself.
+  if (!isFromTrustedProxy(req)) return null;
   const verify = req.headers['x-client-verify'];
   if (verify !== 'SUCCESS') return null;
   // Only X-Client-Cert: every supported proxy config (nginx, Apache) sets it
