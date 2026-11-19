@@ -193,7 +193,8 @@ export async function syncEntry(id: string): Promise<void> {
     await db('marketplace_entries')
       .where({ id })
       .update({
-        description: main.description,
+        // GitHub returns null for most repos; keep a stored description then.
+        ...(main.description?.trim() ? { description: main.description } : {}),
         stars: main.stargazers_count,
         license: main.license?.spdx_id || null,
         topics: JSON.stringify(main.topics ?? []),

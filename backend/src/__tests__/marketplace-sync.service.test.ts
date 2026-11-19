@@ -385,3 +385,55 @@ describe('marketplace-sync.service – homepage URL sanitation', () => {
     expect(row.homepage).toBe('https://docs.example.org');
   });
 });
+
+describe('marketplace-sync.service – description preservation', () => {
+  const stamp = Date.now();
+  const id = uuidv4();
+  const gitUrl = `https://github.com/dsf-test/mp-desc-${stamp}`;
+
+  beforeAll(async () => {
+    await db('marketplace_entries').insert({
+      id,
+      name: `mp-desc-${stamp}`,
+      description: 'curated description',
+      git_url: gitUrl,
+      status: 'EXPERIMENTAL',
+      metadata_source: 'MANUAL',
+      added_by: `mp-desc-${stamp}@example.de`,
+      added_at: new Date(),
+      updated_at: new Date(),
+    });
+  });
+
+  afterAll(async () => {
+    global.fetch = realFetch;
+    await db('marketplace_releases').where({ entry_id: id }).del();
+    await db('marketplace_entries').where({ id }).del();
+  });
+
+  afterEach(() => {
+    global.fetch = realFetch;
+  });
+
+  it('keeps the stored description when GitHub has none', async () => {
+    global.fetch = mockGithub({ repo: { description: null } });
+    await syncEntry(id);
+    expect((await db('marketplace_entries').where({ id }).first()).description).toBe(
+      'curated description',
+    );
+  });
+
+  it('keeps the stored description when GitHub returns a blank one', async () => {
+    global.fetch = mockGithub({ repo: { description: '   ' } });
+    await syncEntry(id);
+    expect((await db('marketplace_entries').where({ id }).first()).description).toBe(
+      'curated description',
+    );
+  });
+
+  it('lets a non-empty GitHub description win', async () => {
+    global.fetch = mockGithub({ repo: { description: 'from github' } });
+    await syncEntry(id);
+    expect((await db('marketplace_entries').where({ id }).first()).description).toBe('from github');
+  });
+});
