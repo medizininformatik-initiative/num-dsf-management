@@ -156,6 +156,8 @@ PEM certificates per organization. `last_notified_at` (009) throttles expiry mai
 | last_notified_at | TIMESTAMP | yes | NULL | |
 | uploaded_by | VARCHAR(255) | yes | NULL | E-mail of the uploader (031); NULL = unknown, not eligible as login certificate |
 | uploaded_by_admin | TINYINT(1) | yes | NULL | Whether the uploading session was an admin (031) |
+| publish_in_allowlist | TINYINT(1) | no | 1 | 1 = the SHA-512 thumbprint is published in the allow list (040); 0 = never published |
+| use_for_login | TINYINT(1) | no | 1 | 1 = may log in as the organization after approval (040); 0 = never a login certificate |
 
 FKs: `organization_id` → `organizations.identifier` ON DELETE CASCADE (fk_cert_org).
 

@@ -114,7 +114,8 @@ Mounted at `/api/v1/instances/:instanceId/certificates`. All endpoints `requireO
 | POST | /api/v1/instances/:instanceId/certificates/preview | requireOwner | Parse a PEM without storing it (subject, expiry, DSF fingerprint, issuer checks). |
 | POST | /api/v1/instances/:instanceId/certificates | requireOwner | Upload a PEM certificate (201). |
 | DELETE | /api/v1/instances/:instanceId/certificates/:cid | requireOwner | Delete a certificate → `{ deleted: true }`. |
-| POST | /api/v1/instances/:instanceId/certificates/:cid/renew | requireOwner | Replace/renew a certificate's PEM. |
+| POST | /api/v1/instances/:instanceId/certificates/:cid/renew | requireOwner | Replace/renew a certificate's PEM; the new certificate inherits the purpose flags. |
+| PATCH | /api/v1/instances/:instanceId/certificates/:cid/purpose | requireOwner | Body `{ publishInAllowlist?, useForLogin? }` (at least one): per certificate, publish the thumbprint in the allow list and/or use it for login → the certificate (also carries both flags in the list). Applies with the next approved request (the approval snapshot stores both). Submitting an approval fails with `NO_PUBLISHED_CERTIFICATE` when certificates exist but none is published. |
 
 POST body (`createCertificateSchema`): `{ pem }` — must contain `-----BEGIN CERTIFICATE-----`. PEM containing private-key material is rejected with `400 PRIVATE_KEY_REJECTED`; PEM content is never logged.
 

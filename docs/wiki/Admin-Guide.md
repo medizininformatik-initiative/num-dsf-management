@@ -50,6 +50,12 @@ writes):
 7. Admins are notified immediately of the decision
 8. Site contacts receive notification after 30 minutes (gives time to reverse)
 
+Each certificate in the snapshot shows two badges: **In allow list** / **Not published** and
+**Login** / **No login**. The site sets both per certificate before submitting. Only published
+thumbprints reach the allow list, only login certificates may sign in once the request is approved
+(a login-only certificate never appears in a bundle, a published-only one never logs in). Older
+snapshots without the flags count as both set. At least one certificate must be published.
+
 ### Request risk assessment
 
 Every pending request opens with a pill and one or two sentences that say how suspicious it looks.
@@ -79,6 +85,8 @@ medium or high finding or comes from a new IP address.
 | `CERT_ALL_REPLACED` | All previous certificates (more than one) are gone and not all were routine renewals | +2 |
 | `CERT_EXPIRED` | A new certificate is already expired | +2 |
 | `CERT_SHORT_VALIDITY` | A new certificate expires within 30 days | +1 |
+| `CERT_LOGIN_ONLY` | A certificate is used for login only (not published) and is new or was published before | +2 |
+| `CERT_UNPUBLISHED` | A previously published certificate is no longer published (and not login-only) | +1 |
 | `ENDPOINT_ADDRESS_CHANGED` | Host of an existing endpoint changed | +2 |
 | `ENDPOINT_SCHEME_DOWNGRADE` | Endpoint address changed from https to http | +2 |
 | `ENDPOINT_URL_CHANGED` | Port or path of an endpoint address changed (same host) | +1 |
