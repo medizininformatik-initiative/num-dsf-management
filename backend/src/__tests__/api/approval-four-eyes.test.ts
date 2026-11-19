@@ -165,6 +165,32 @@ describe('4-eyes approval workflow', () => {
     expect(sigs).toHaveLength(2);
   });
 
+  it('the site approval history lists the deciding admins', async () => {
+    for (const token of [adminAToken, adminCToken]) {
+      await request(app)
+        .post(`/api/v1/admin/approval/${rid}/approve`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ totpCode: '000000' });
+    }
+
+    const res = await request(app)
+      .get(`/api/v1/instances/${TEST_INSTANCE_ID}/approval/history`)
+      .set('Authorization', `Bearer ${userToken}`);
+
+    expect(res.status).toBe(200);
+    const entry = res.body.data.find((h: { id: string }) => h.id === rid);
+    expect(entry.resolved_by).toBe(ADMIN_C_EMAIL);
+    expect(
+      entry.decisions.map((d: { admin_email: string; decision: string }) => [
+        d.admin_email,
+        d.decision,
+      ]),
+    ).toEqual([
+      [ADMIN_A_EMAIL, 'APPROVE'],
+      [ADMIN_C_EMAIL, 'APPROVE'],
+    ]);
+  });
+
   it('second approval from same site -> 409 ALREADY_APPROVED_SAME_SITE', async () => {
     // Admin A approves first
     await request(app)

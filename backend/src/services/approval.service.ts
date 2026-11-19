@@ -264,10 +264,17 @@ export async function getApprovalHistory(instanceId: string) {
     )
     .orderBy('created_at', 'desc')
     .limit(20);
+  // Individual admin decisions (IMI operator addresses; sites may see who decided).
+  const sigsByRequest = await getSignaturesForRequests(rows.map((r: { id: string }) => r.id));
   // The snapshot holds contacts and is large: only the IPs the diff badge needs go out.
-  return rows.map(({ snapshot_json, ...row }) => ({
+  return rows.map(({ snapshot_json, ...row }: { snapshot_json: unknown; id: string }) => ({
     ...row,
     approved_ips: extractApprovedIps(snapshot_json),
+    decisions: (sigsByRequest.get(row.id) ?? []).map((s) => ({
+      admin_email: s.admin_email,
+      decision: s.decision,
+      signed_at: s.signed_at,
+    })),
   }));
 }
 
