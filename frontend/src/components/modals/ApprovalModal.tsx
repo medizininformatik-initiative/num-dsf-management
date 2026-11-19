@@ -25,6 +25,7 @@ import {
 } from '../../hooks/useApproval';
 import { useConfirm } from '../../hooks/useConfirm';
 import { ApprovalRunningRequest } from './ApprovalRunningRequest';
+import { CertificatePurposeControls } from '../cards/CertificatePurposeControls';
 import { ApprovalHistoryList } from './ApprovalHistoryList';
 import { useOrganization } from '../../hooks/useOrganization';
 import { useContacts } from '../../hooks/useContacts';
@@ -38,6 +39,7 @@ import {
   deriveReadiness,
   READINESS_ICON,
   READINESS_LABEL,
+  hasValidCertificate,
   revealReadinessCard,
   type ReadinessKey,
 } from '../../lib/readiness';
@@ -65,6 +67,8 @@ interface CertificateRow {
   id: string;
   subject: string;
   valid_until: string;
+  publishInAllowlist?: boolean;
+  useForLogin?: boolean;
 }
 interface MembershipRow {
   id: string;
@@ -155,6 +159,11 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
     memberships,
     approval,
   });
+  // Valid certificates exist but none is published: DSF needs one thumbprint in the allow list.
+  const noneValidPublished =
+    !readiness.withdrawal &&
+    hasValidCertificate(certs) &&
+    !readiness.items.find((i) => i.key === 'certificates')?.done;
   const unchanged = approval?.changedSinceApproval === false;
   const canSubmit = readiness.canSubmit && !statusQuery.isLoading && !unchanged;
 
@@ -362,22 +371,30 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
           </Section>
           <Section title={t('requestCardSectionCertificates', { n: certs.length })}>
             {certs.length === 0 && <p className={muted}>{t('approvalModalNoCerts')}</p>}
+            {noneValidPublished && (
+              <Callout tone="warning" icon="verified_user" title={t('readinessCertificates')}>
+                <p>{t('certPurposeNonePublished')}</p>
+              </Callout>
+            )}
             {certs.map((c) => {
               const expired = certValidity(c.valid_until).state === 'expired';
               const date = formatDate(c.valid_until, lang) || c.valid_until;
               return (
-                <div key={c.id} className={`${itemBox} flex items-start justify-between gap-2`}>
-                  <div className="min-w-0">
-                    <p className="mono-id break-all text-xs font-medium text-[color:var(--text-primary)]">
-                      {c.subject}
-                    </p>
-                    <p className={muted}>
-                      {expired
-                        ? t('approvalModalExpired', { date })
-                        : t('approvalModalExpires', { date })}
-                    </p>
+                <div key={c.id} className={itemBox}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="mono-id break-all text-xs font-medium text-[color:var(--text-primary)]">
+                        {c.subject}
+                      </p>
+                      <p className={muted}>
+                        {expired
+                          ? t('approvalModalExpired', { date })
+                          : t('approvalModalExpires', { date })}
+                      </p>
+                    </div>
+                    {expired && <StatusPill tone="danger">{t('expiryTimelineExpired')}</StatusPill>}
                   </div>
-                  {expired && <StatusPill tone="danger">{t('expiryTimelineExpired')}</StatusPill>}
+                  <CertificatePurposeControls instanceId={instanceId} cert={c} />
                 </div>
               );
             })}

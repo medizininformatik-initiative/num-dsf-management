@@ -37,6 +37,7 @@ vi.mock('../../../hooks/useMemberships', () => ({
   useDeleteMembership: () => mutation,
 }));
 vi.mock('../../../hooks/useCertificates', () => ({
+  useUpdateCertificatePurpose: () => ({ mutate: vi.fn(), isPending: false }),
   useCertificates: () => query(state.certs),
   useDeleteCertificate: () => mutation,
 }));

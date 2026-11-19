@@ -7,7 +7,8 @@
  *   - an active organization,
  *   - a contact with the MEDIC role,
  *   - at least one endpoint,
- *   - at least one certificate that has not expired (certValidity),
+ *   - at least one certificate that has not expired (certValidity) and is published in the
+ *     allow list (publishInAllowlist; DSF needs one thumbprint),
  *   - at least one membership.
  * It counts as submitted only while the latest request is PENDING or APPROVED;
  * a REJECTED or DRAFT request has to be sent again.
@@ -63,7 +64,7 @@ export interface ReadinessInput {
   organization?: { active?: unknown } | null;
   contacts?: { types?: unknown }[];
   endpoints?: unknown[];
-  certificates?: { valid_until?: string | null }[];
+  certificates?: { valid_until?: string | null; publishInAllowlist?: boolean }[];
   memberships?: unknown[];
   /** Latest approval request (GET /approval/status); null when there is none. */
   approval?: { status?: string } | null;
@@ -92,11 +93,23 @@ export function hasMedicContact(contacts: { types?: unknown }[] = []): boolean {
   return contacts.some((c) => parseJsonArray(c.types).includes('MEDIC'));
 }
 
+/** A certificate the site publishes in the allow list; older backends send no flag (published). */
+export function isPublished(cert: { publishInAllowlist?: boolean }): boolean {
+  return cert.publishInAllowlist !== false;
+}
+
 /** At least one certificate has not expired yet. */
 export function hasValidCertificate(certificates: { valid_until?: string | null }[] = []): boolean {
   return certificates.some(
     (c) => !!c.valid_until && certValidity(c.valid_until).state !== 'expired',
   );
+}
+
+/** At least one certificate is valid AND published in the allow list (DSF needs one thumbprint). */
+export function hasPublishedValidCertificate(
+  certificates: { valid_until?: string | null; publishInAllowlist?: boolean }[] = [],
+): boolean {
+  return hasValidCertificate(certificates.filter(isPublished));
 }
 
 export function deriveReadiness(input: ReadinessInput): Readiness {
@@ -105,7 +118,7 @@ export function deriveReadiness(input: ReadinessInput): Readiness {
     { key: 'organization', done: !!input.organization && Boolean(input.organization.active) },
     { key: 'contacts', done: hasMedicContact(input.contacts) },
     { key: 'endpoints', done: (input.endpoints?.length ?? 0) > 0 },
-    { key: 'certificates', done: hasValidCertificate(input.certificates) },
+    { key: 'certificates', done: hasPublishedValidCertificate(input.certificates) },
     { key: 'memberships', done: (input.memberships?.length ?? 0) > 0 },
   ];
   const openCount = items.filter((i) => !i.done).length;

@@ -21,6 +21,7 @@ import { useMe } from '../../hooks/useMe';
 import { LoginBadge, LoginFingerprintEntries, LoginSwitch } from './LoginCertificateControls';
 import { useLoginCertificateActions } from './useLoginCertificateActions';
 import { EntityCard } from './EntityCard';
+import { CertificatePurposeControls } from './CertificatePurposeControls';
 import { FkLink } from './FkLink';
 import { Details, DetailsToggle } from './CardDetails';
 import { useCardDetails } from '../../hooks/useCardDetails';
@@ -53,6 +54,8 @@ type CertRow = Pick<
   | 'issuerDn'
   | 'issuerTrusted'
   | 'uploadedByClinic'
+  | 'publishInAllowlist'
+  | 'useForLogin'
 >;
 
 type CertTone = (typeof CERT_STATE_TONE)[CertState];
@@ -189,6 +192,7 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
             return (
               <CertificateItem
                 key={cert.id}
+                instanceId={instanceId}
                 cert={cert}
                 index={index}
                 detailed={details.detailed}
@@ -249,7 +253,9 @@ function CertificateItem({
   canManageLogin,
   onToggleLogin,
   onRemove,
+  instanceId,
 }: {
+  instanceId: string;
   cert: CertRow;
   index: number;
   detailed: boolean;
@@ -316,6 +322,8 @@ function CertificateItem({
 
         <CertificateFingerprints cert={cert} />
       </Details>
+
+      <CertificatePurposeControls instanceId={instanceId} cert={{ ...cert, subject: name }} />
 
       <div className="mt-2 flex items-center justify-between gap-2">
         {detailed && canManageLogin ? (

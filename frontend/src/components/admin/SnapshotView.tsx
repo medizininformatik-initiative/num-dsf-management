@@ -158,6 +158,18 @@ export function SnapshotView({ snapshot, t }: { snapshot: SnapshotData; t: Trans
                       })}
                     </div>
                   )}
+                  <div className="mt-1 flex flex-wrap gap-1" data-testid="snapshot-cert-purpose">
+                    {cert.publish_in_allowlist === false ? (
+                      <StatusPill tone="warning">{t('certPurposeBadgeNotPublished')}</StatusPill>
+                    ) : (
+                      <StatusPill tone="success">{t('certPurposeBadgePublished')}</StatusPill>
+                    )}
+                    {cert.use_for_login === false ? (
+                      <StatusPill tone="neutral">{t('certPurposeBadgeNoLogin')}</StatusPill>
+                    ) : (
+                      <StatusPill tone="info">{t('certPurposeBadgeLogin')}</StatusPill>
+                    )}
+                  </div>
                 </SnapshotItem>
               ))}
             </div>

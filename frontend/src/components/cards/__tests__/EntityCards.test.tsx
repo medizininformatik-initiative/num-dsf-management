@@ -27,6 +27,7 @@ vi.mock('../../../hooks/useEndpoints', () => ({
   useDeleteEndpoint: vi.fn(),
 }));
 vi.mock('../../../hooks/useCertificates', () => ({
+  useUpdateCertificatePurpose: () => ({ mutate: vi.fn(), isPending: false }),
   useCertificates: vi.fn(),
   useDeleteCertificate: vi.fn(),
 }));

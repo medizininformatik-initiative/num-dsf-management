@@ -31,6 +31,8 @@ const TEMPLATE: Record<string, TranslationKey> = {
   CERT_SUBJECT_MISMATCH: 'riskCertSubjectMismatch',
   CERT_ADDED: 'riskCertAdded',
   CERT_ALL_REPLACED: 'riskCertAllReplaced',
+  CERT_LOGIN_ONLY: 'riskCertLoginOnly',
+  CERT_UNPUBLISHED: 'riskCertUnpublished',
   ENDPOINT_ADDRESS_CHANGED: 'riskEndpointAddressChanged',
   ENDPOINT_SCHEME_DOWNGRADE: 'riskEndpointSchemeDowngrade',
   ENDPOINT_URL_CHANGED: 'riskEndpointUrlChanged',

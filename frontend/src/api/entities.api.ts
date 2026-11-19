@@ -44,6 +44,16 @@ export interface ApiCertificate {
   issuerTrusted: boolean;
   /** Uploaded by the clinic itself (not an admin): only such certificates may be allowed for login. */
   uploadedByClinic?: boolean;
+  /** The thumbprint is published in the allow list; absent on older backends (counts as true). */
+  publishInAllowlist?: boolean;
+  /** May log in as the organization once approved; absent on older backends (counts as true). */
+  useForLogin?: boolean;
+}
+
+/** What a certificate is used for; at least one field. */
+export interface CertificatePurposePatch {
+  publishInAllowlist?: boolean;
+  useForLogin?: boolean;
 }
 
 /** What an upload would register, from POST /certificates/preview (nothing is stored). */
@@ -85,16 +95,13 @@ function api(instanceId: string) {
       }),
     createInstance: (data: { label: string }) =>
       axios.post(`${BASE}/instances`, data, { headers: authHeader() }),
-    getInstance: (id: string) =>
-      axios.get(`${BASE}/instances/${id}`, { headers: authHeader() }),
+    getInstance: (id: string) => axios.get(`${BASE}/instances/${id}`, { headers: authHeader() }),
 
-    getOrganization: () =>
-      axios.get(`${base}/organization`, { headers: authHeader() }),
+    getOrganization: () => axios.get(`${base}/organization`, { headers: authHeader() }),
     updateOrganization: (data: object) =>
       axios.put(`${base}/organization`, data, { headers: authHeader() }),
 
-    getContacts: () =>
-      axios.get(`${base}/contacts`, { headers: authHeader() }),
+    getContacts: () => axios.get(`${base}/contacts`, { headers: authHeader() }),
     createContact: (data: object) =>
       axios.post(`${base}/contacts`, data, { headers: authHeader() }),
     updateContact: (id: string, data: object) =>
@@ -102,8 +109,7 @@ function api(instanceId: string) {
     deleteContact: (id: string) =>
       axios.delete(`${base}/contacts/${id}`, { headers: authHeader() }),
 
-    getEndpoints: () =>
-      axios.get(`${base}/endpoints`, { headers: authHeader() }),
+    getEndpoints: () => axios.get(`${base}/endpoints`, { headers: authHeader() }),
     createEndpoint: (data: object) =>
       axios.post(`${base}/endpoints`, data, { headers: authHeader() }),
     updateEndpoint: (id: string, data: object) =>
@@ -111,19 +117,19 @@ function api(instanceId: string) {
     deleteEndpoint: (id: string) =>
       axios.delete(`${base}/endpoints/${id}`, { headers: authHeader() }),
 
-    getCertificates: () =>
-      axios.get(`${base}/certificates`, { headers: authHeader() }),
+    getCertificates: () => axios.get(`${base}/certificates`, { headers: authHeader() }),
     createCertificate: (pem: string) =>
       axios.post(`${base}/certificates`, { pem }, { headers: authHeader() }),
     previewCertificate: (pem: string) =>
       axios.post(`${base}/certificates/preview`, { pem }, { headers: authHeader() }),
+    updateCertificatePurpose: (id: string, patch: CertificatePurposePatch) =>
+      axios.patch(`${base}/certificates/${id}/purpose`, patch, { headers: authHeader() }),
     deleteCertificate: (id: string) =>
       axios.delete(`${base}/certificates/${id}`, { headers: authHeader() }),
     renewCertificate: (certId: string, pem: string) =>
       axios.post(`${base}/certificates/${certId}/renew`, { pem }, { headers: authHeader() }),
 
-    getMemberships: () =>
-      axios.get(`${base}/memberships`, { headers: authHeader() }),
+    getMemberships: () => axios.get(`${base}/memberships`, { headers: authHeader() }),
     createMembership: (data: object) =>
       axios.post(`${base}/memberships`, data, { headers: authHeader() }),
     updateMembership: (id: string, data: object) =>
@@ -131,14 +137,10 @@ function api(instanceId: string) {
     deleteMembership: (id: string) =>
       axios.delete(`${base}/memberships/${id}`, { headers: authHeader() }),
 
-    getApprovalStatus: () =>
-      axios.get(`${base}/approval/status`, { headers: authHeader() }),
-    getApprovalHistory: () =>
-      axios.get(`${base}/approval/history`, { headers: authHeader() }),
-    submitApproval: () =>
-      axios.post(`${base}/approval/submit`, {}, { headers: authHeader() }),
-    withdrawApproval: () =>
-      axios.post(`${base}/approval/withdraw`, {}, { headers: authHeader() }),
+    getApprovalStatus: () => axios.get(`${base}/approval/status`, { headers: authHeader() }),
+    getApprovalHistory: () => axios.get(`${base}/approval/history`, { headers: authHeader() }),
+    submitApproval: () => axios.post(`${base}/approval/submit`, {}, { headers: authHeader() }),
+    withdrawApproval: () => axios.post(`${base}/approval/withdraw`, {}, { headers: authHeader() }),
 
     downloadBundle: (endpointId: string, version?: number) =>
       axios.get(
@@ -157,17 +159,21 @@ function api(instanceId: string) {
       }),
     downloadIpList: () =>
       axios.get(`${BASE}/download/ip-address-list`, {
-        headers: authHeader(), responseType: 'blob',
+        headers: authHeader(),
+        responseType: 'blob',
       }),
 
     getAuditLog: (params: string) =>
       axios.get(`${base}/audit?${params}`, { headers: authHeader() }),
 
-    getExpiringCerts: () =>
-      axios.get(`${base}/certificates/expiring`, { headers: authHeader() }),
+    getExpiringCerts: () => axios.get(`${base}/certificates/expiring`, { headers: authHeader() }),
 
     resendVerification: (contactId: string) =>
-      axios.post(`${base}/contacts/${contactId}/resend-verification`, {}, { headers: authHeader() }),
+      axios.post(
+        `${base}/contacts/${contactId}/resend-verification`,
+        {},
+        { headers: authHeader() },
+      ),
   };
 }
 

@@ -20,7 +20,14 @@ export interface SnapshotData {
     name?: string;
     ips?: Array<{ ip: string; is_fhir?: boolean; is_bpe?: boolean }>;
   }>;
-  certificates?: Array<{ subject?: string; thumbprint?: string; valid_until?: string }>;
+  certificates?: Array<{
+    subject?: string;
+    thumbprint?: string;
+    valid_until?: string;
+    /** Purpose flags (migration 040); absent in older snapshots, where both were true. */
+    publish_in_allowlist?: boolean;
+    use_for_login?: boolean;
+  }>;
   memberships?: Array<{ parent_organization?: string; roles?: string[]; endpoint_id?: string }>;
   contacts?: Array<{ name?: string; email?: string; types?: string[] }>;
 }

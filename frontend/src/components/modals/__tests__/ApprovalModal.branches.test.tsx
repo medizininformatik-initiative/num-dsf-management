@@ -49,6 +49,7 @@ vi.mock('../../../hooks/useEndpoints', () => ({
 }));
 vi.mock('../../../hooks/useCertificates', () => ({
   useCertificates: () => ({ data: data.certs, isLoading: false }),
+  useUpdateCertificatePurpose: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 vi.mock('../../../hooks/useMemberships', () => ({
   useMemberships: () => ({ data: data.memberships, isLoading: false }),
@@ -199,6 +200,18 @@ describe('ApprovalModal — shared readiness rule', () => {
 
     expect(screen.getByRole('button', { name: /Missing Valid certificate/ })).toBeInTheDocument();
     expect(screen.getByText('Expired')).toBeInTheDocument();
+    expect(submitButton()).toBeDisabled();
+  });
+
+  it('blocks submit with a message when no valid certificate is published in the allow list', () => {
+    seedPassingData();
+    data.certs = [
+      { id: 'cert-1', subject: 'CN=ukm.de', valid_until: '2099-01-01', publishInAllowlist: false },
+    ];
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+
+    expect(screen.getByText(t('certPurposeNonePublished'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Missing Valid certificate/ })).toBeInTheDocument();
     expect(submitButton()).toBeDisabled();
   });
 

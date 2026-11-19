@@ -4,7 +4,7 @@
  * the shared post-mutation caches (see invalidateAfterEntityMutation).
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, type CertificatePreview } from '../api/entities.api';
+import { api, type CertificatePreview, type CertificatePurposePatch } from '../api/entities.api';
 import { invalidateAfterEntityMutation } from './useEntityInvalidation';
 
 export function useCertificates(instanceId: string | null) {
@@ -48,6 +48,19 @@ export function useDeleteCertificate(instanceId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['certificates', instanceId] });
       qc.invalidateQueries({ queryKey: ['certs-expiring', instanceId] });
+      invalidateAfterEntityMutation(qc, instanceId);
+    },
+  });
+}
+
+/** Set what a certificate is used for (publish in the allow list, use for login). */
+export function useUpdateCertificatePurpose(instanceId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ certId, patch }: { certId: string; patch: CertificatePurposePatch }) =>
+      api(instanceId).updateCertificatePurpose(certId, patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['certificates', instanceId] });
       invalidateAfterEntityMutation(qc, instanceId);
     },
   });

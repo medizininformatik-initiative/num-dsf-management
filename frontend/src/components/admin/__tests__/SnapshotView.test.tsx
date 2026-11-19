@@ -59,6 +59,27 @@ describe('SnapshotView', () => {
     expect(screen.getByText(t('adminSnapshotExpires', { date: '1 Jan 2027' }))).toBeInTheDocument();
   });
 
+  it('shows the purpose flags of a certificate; a snapshot without them reads as both set', () => {
+    const { rerender } = render(<SnapshotView snapshot={SNAPSHOT} t={t} />);
+    const badges = screen.getByTestId('snapshot-cert-purpose');
+    expect(badges).toHaveTextContent('In allow list');
+    expect(badges).toHaveTextContent('Login');
+    expect(badges).not.toHaveTextContent('No login');
+
+    rerender(
+      <SnapshotView
+        snapshot={{
+          ...SNAPSHOT,
+          certificates: [
+            { subject: 'CN=ukm.de', publish_in_allowlist: false, use_for_login: true },
+          ],
+        }}
+        t={t}
+      />,
+    );
+    expect(screen.getByTestId('snapshot-cert-purpose')).toHaveTextContent('Not published');
+  });
+
   it('renders the membership parent org, roles and endpoint id', () => {
     render(<SnapshotView snapshot={SNAPSHOT} t={t} />);
     expect(screen.getByText('num.de')).toBeInTheDocument();

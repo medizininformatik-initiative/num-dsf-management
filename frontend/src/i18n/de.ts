@@ -2863,4 +2863,23 @@ export const de: Record<TranslationKey, string> = {
   siteRemovalConfirmedNoVersionToast:
     'Standort entfernt, aber die Veröffentlichung ist fehlgeschlagen. Bitte manuell eine neue Allow-List-Version erzeugen.',
   siteRemovalCancelledToast: 'Antrag zurückgezogen.',
+
+  // Per certificate: publish in the allow list and/or use for login
+  certPurposePublish: 'In Allow List veröffentlichen',
+  certPurposeLogin: 'Für Login verwenden',
+  certPurposeHint:
+    'Veröffentlichte Zertifikate stehen in der Allow List, die andere Standorte laden (mindestens eines ist nötig). Login-Zertifikate dürfen sich als Ihre Organisation anmelden. Änderungen gelten nach der nächsten Freigabe.',
+  certPurposeSavedToast:
+    'Gespeichert. Senden Sie einen neuen Freigabeantrag, damit die Änderung gilt.',
+  certPurposeNonePublished:
+    'Kein Zertifikat ist in der Allow List veröffentlicht. Veröffentlichen Sie mindestens ein Zertifikat, bevor Sie den Antrag senden.',
+  certPurposeBadgePublished: 'In Allow List',
+  certPurposeBadgeNotPublished: 'Nicht veröffentlicht',
+  certPurposeBadgeLogin: 'Login',
+  certPurposeBadgeNoLogin: 'Kein Login',
+  riskCertLoginOnly:
+    'Zertifikat {cn} dient nur dem Login und ist nicht in der Allow List veröffentlicht',
+  riskCertUnpublished: 'Zertifikat {cn} ist nicht mehr in der Allow List veröffentlicht',
+  loginCertErrNotForLogin:
+    'Der Standort hat dieses Zertifikat vom Login ausgeschlossen (Für Login verwenden ist aus).',
 };

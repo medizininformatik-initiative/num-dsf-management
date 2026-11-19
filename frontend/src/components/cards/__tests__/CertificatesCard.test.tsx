@@ -31,6 +31,7 @@ let rows: Row[] | undefined = [];
 let isError = false;
 
 vi.mock('../../../hooks/useCertificates', () => ({
+  useUpdateCertificatePurpose: () => ({ mutate: vi.fn(), isPending: false }),
   useCertificates: () => ({ data: rows, isLoading: false, isError, refetch }),
   useDeleteCertificate: () => ({ mutate: vi.fn(), mutateAsync: deleteCertificate }),
 }));

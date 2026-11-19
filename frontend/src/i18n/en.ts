@@ -2800,6 +2800,22 @@ export const en = {
   siteRemovalConfirmedNoVersionToast:
     'Site removed, but publishing failed. Create a new allow list version manually.',
   siteRemovalCancelledToast: 'Request cancelled.',
+
+  // Per certificate: publish in the allow list and/or use for login
+  certPurposePublish: 'Publish in allow list',
+  certPurposeLogin: 'Use for login',
+  certPurposeHint:
+    'Published certificates appear in the allow list other sites download (at least one is required). Login certificates may sign in as your organization. Changes apply after the next approval.',
+  certPurposeSavedToast: 'Saved. Send a new request for approval to apply the change.',
+  certPurposeNonePublished:
+    'No certificate is published in the allow list. Publish at least one certificate before you send the request.',
+  certPurposeBadgePublished: 'In allow list',
+  certPurposeBadgeNotPublished: 'Not published',
+  certPurposeBadgeLogin: 'Login',
+  certPurposeBadgeNoLogin: 'No login',
+  riskCertLoginOnly: 'certificate {cn} is used for login only and not published in the allow list',
+  riskCertUnpublished: 'certificate {cn} is no longer published in the allow list',
+  loginCertErrNotForLogin: 'The site excluded this certificate from login (Use for login is off).',
 } as const;
 
 export type TranslationKey = keyof typeof en;

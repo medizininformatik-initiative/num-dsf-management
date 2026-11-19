@@ -37,6 +37,7 @@ export function useLoginCertificateActions(
     const known = getErrorCode(err);
     if (known === 'ADMIN_CERTIFICATE') return toast.error(t('loginCertErrAdminCert'));
     if (known === 'NOT_CLINIC_UPLOADED') return toast.error(t('loginCertErrNotClinic'));
+    if (known === 'NOT_FOR_LOGIN') return toast.error(t('loginCertErrNotForLogin'));
     if (known === 'FINGERPRINT_IN_USE') return toast.error(t('loginCertErrInUse'));
     if (known === 'CERT_BLOCKED') return toast.error(t('loginCertErrBlocked'));
     toast.error(

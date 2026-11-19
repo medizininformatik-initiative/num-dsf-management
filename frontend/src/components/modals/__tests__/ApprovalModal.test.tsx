@@ -19,6 +19,7 @@ vi.mock('../../../hooks/useEndpoints', () => ({
 }));
 vi.mock('../../../hooks/useCertificates', () => ({
   useCertificates: () => ({ data: [], isLoading: false }),
+  useUpdateCertificatePurpose: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 vi.mock('../../../hooks/useMemberships', () => ({
   useMemberships: () => ({ data: [], isLoading: false }),
