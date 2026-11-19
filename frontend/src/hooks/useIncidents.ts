@@ -11,14 +11,16 @@ import { incidentsApi, type Incident } from '../api/incidents.api';
 import { useAuthStore } from '../stores/auth.store';
 
 export const INCIDENTS_KEY = ['incidents'] as const;
+/** The admin list including archived incidents. */
+export const INCIDENTS_WITH_ARCHIVED_KEY = ['incidents', 'with-archived'] as const;
 export const incidentKey = (id: string) => ['incidents', 'detail', id] as const;
 export const INCIDENT_SITES_KEY = ['incidents', 'organizations'] as const;
 
-export function useIncidents() {
+export function useIncidents(includeArchived = false) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return useQuery({
-    queryKey: INCIDENTS_KEY,
-    queryFn: () => incidentsApi.list().then((r) => r.data.data),
+    queryKey: includeArchived ? INCIDENTS_WITH_ARCHIVED_KEY : INCIDENTS_KEY,
+    queryFn: () => incidentsApi.list(includeArchived).then((r) => r.data.data),
     enabled: isAuthenticated,
     refetchInterval: 60_000,
     // The default staleTime (30 s) and focus refetch off would keep an old

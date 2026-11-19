@@ -2,7 +2,7 @@
  * useIncidentActions.ts – write hooks of the incident register: report an
  * incident, save NIS2 report fields, request an interim report, tick a NIS2
  * stage or "DPO informed", and the admin actions
- * (confirm, suspend the site, lift the suspension, close, comment, edit).
+ * (confirm, suspend the site, lift the suspension, close, archive, comment, edit).
  * Step-up writes take the TOTP code as `totpCode` (undefined in certificate
  * sessions). Every write refreshes the list and the incident's detail; a
  * suspension or its lift also refreshes the network map, whose site states
@@ -21,10 +21,11 @@ import {
   type SuspendMeasure,
   type UpdateIncidentBody,
 } from '../api/incidents.api';
-import { INCIDENTS_KEY, incidentKey } from './useIncidents';
+import { INCIDENTS_KEY, INCIDENTS_WITH_ARCHIVED_KEY, incidentKey } from './useIncidents';
 
 function refresh(qc: QueryClient, id?: string) {
   qc.invalidateQueries({ queryKey: INCIDENTS_KEY, exact: true });
+  qc.invalidateQueries({ queryKey: INCIDENTS_WITH_ARCHIVED_KEY, exact: true });
   if (id) qc.invalidateQueries({ queryKey: incidentKey(id) });
 }
 
@@ -113,6 +114,15 @@ export function useCloseIncident(id: string) {
       incidentsApi
         .close(id, { outcome: vars.outcome, note: vars.note }, vars.totpCode)
         .then((r) => r.data.data),
+    onSuccess: () => refresh(qc, id),
+  });
+}
+
+export function useArchiveIncident(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (totpCode: string | undefined) =>
+      incidentsApi.archive(id, totpCode).then((r) => r.data.data),
     onSuccess: () => refresh(qc, id),
   });
 }

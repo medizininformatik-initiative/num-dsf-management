@@ -56,6 +56,7 @@ export const EVENT_KEY: Record<IncidentEventType, TranslationKey> = {
   CLOSED: 'incidentEventCLOSED',
   FALSE_ALARM: 'incidentEventFALSE_ALARM',
   UPDATED: 'incidentEventUPDATED',
+  ARCHIVED: 'incidentEventARCHIVED',
 };
 
 export const EVENT_ICON: Record<IncidentEventType, string> = {
@@ -68,6 +69,7 @@ export const EVENT_ICON: Record<IncidentEventType, string> = {
   CLOSED: 'task_alt',
   FALSE_ALARM: 'do_not_disturb_on',
   UPDATED: 'edit',
+  ARCHIVED: 'inventory_2',
 };
 
 export const MEASURE_KEY: Record<SuspendMeasure, TranslationKey> = {

@@ -39,7 +39,8 @@ export type IncidentEventType =
   | 'SUSPENSION_LIFTED'
   | 'CLOSED'
   | 'FALSE_ALARM'
-  | 'UPDATED';
+  | 'UPDATED'
+  | 'ARCHIVED';
 
 export const NIS2_STAGES: readonly Nis2Stage[] = [
   'EARLY_WARNING',
@@ -115,6 +116,9 @@ export interface Incident {
   canAcknowledge: boolean;
   /** The caller reported it. */
   isMine: boolean;
+  /** Set once an admin archived the incident (only listed with includeArchived). */
+  archivedAt?: string | null;
+  archivedBy?: string | null;
 }
 
 export interface IncidentEvent {
@@ -183,7 +187,12 @@ const ADMIN = `${BASE}/admin/incidents`;
 export const incidentsApi = {
   organizations: () =>
     axios.get<{ data: IncidentSite[] }>(`${USER}/organizations`, { headers: authHeader() }),
-  list: () => axios.get<{ data: Incident[] }>(USER, { headers: authHeader() }),
+  /** Admins can ask for archived incidents too. */
+  list: (includeArchived = false) =>
+    axios.get<{ data: Incident[] }>(USER, {
+      headers: authHeader(),
+      ...(includeArchived ? { params: { includeArchived: true } } : {}),
+    }),
   get: (id: string) =>
     axios.get<{ data: IncidentDetail }>(`${USER}/${id}`, { headers: authHeader() }),
   report: (body: ReportIncidentBody) =>
@@ -224,19 +233,25 @@ export const incidentsApi = {
       { headers: authHeader() },
     ),
   liftSuspension: (id: string, body: LiftSuspensionBody, totpCode?: string) =>
-    axios.post<{ data: Incident }>(
-      `${ADMIN}/${id}/lift-suspension`,
-      withCode(body, totpCode),
-      { headers: authHeader() },
-    ),
+    axios.post<{ data: Incident }>(`${ADMIN}/${id}/lift-suspension`, withCode(body, totpCode), {
+      headers: authHeader(),
+    }),
   close: (id: string, body: { outcome: CloseOutcome; note: string }, totpCode?: string) =>
     axios.post<{ data: Incident }>(`${ADMIN}/${id}/close`, withCode(body, totpCode), {
       headers: authHeader(),
     }),
-  comment: (id: string, text: string) =>
-    axios.post<{ data: IncidentEvent }>(`${ADMIN}/${id}/comment`, { text }, {
+  archive: (id: string, totpCode?: string) =>
+    axios.post<{ data: Incident }>(`${ADMIN}/${id}/archive`, withCode({}, totpCode), {
       headers: authHeader(),
     }),
+  comment: (id: string, text: string) =>
+    axios.post<{ data: IncidentEvent }>(
+      `${ADMIN}/${id}/comment`,
+      { text },
+      {
+        headers: authHeader(),
+      },
+    ),
   /** Changing detectedAt or zulipUrl needs the step-up code. */
   update: (id: string, body: UpdateIncidentBody, totpCode?: string) =>
     axios.patch<{ data: Incident }>(`${ADMIN}/${id}`, withCode(body, totpCode), {
