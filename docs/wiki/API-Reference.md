@@ -253,6 +253,19 @@ Mounted at `/api/v1/admin/organizations`. All `requireAdmin`; writes need the st
 | POST | /api/v1/admin/admin-cert-requests/:id/cancel | requireAdmin + step-up | Requester withdraws the request. Pending requests expire after 7 days. |
 | GET | /api/v1/instances/:id/certificates/login-certificates | requireAuth + instance | Read-only view of the same list for the instance's users (badges in the certificates card). |
 
+### Site removal (4-eyes)
+
+Mounted at `/api/v1/admin/instance-removals`. All `requireAdmin`; writes need the step-up (TOTP code, or the re-presented client certificate in certificate sessions).
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/admin/instance-removals | requireAdmin | Pending requests plus those decided in the last 30 days: `[{ id, instanceId, organizationId, reason, requestedBy, requestedAt, status, decidedBy, decidedAt, versionNumber }]`. |
+| POST | /api/v1/admin/instance-removals | requireAdmin + step-up | Request the removal. Body `{ instanceId, reason, totpCode? }` → 201. `404 INSTANCE_NOT_FOUND`, `409 ALREADY_REMOVED` / `REQUEST_ALREADY_PENDING`. |
+| POST | /api/v1/admin/instance-removals/:id/confirm | requireAdmin + step-up | A second admin of another e-mail domain executes it → `{ removal, versionNumber, published }` (`published` false when the new allow-list version could not be created; create one by hand). `403 SELF_CONFIRM` / `SAME_SITE`, `409 NOT_PENDING` (first decision wins). |
+| POST | /api/v1/admin/instance-removals/:id/cancel | requireAdmin + step-up | The requester withdraws the pending request (`403 NOT_REQUESTER`). |
+
+`GET /api/v1/admin/instances` now carries `removed_at`. A removed instance answers `403` on every `/api/v1/instances/:id/...` route for non-admins and is left out of their instance list.
+
 ### Bundle Versions
 
 Mounted at `/api/v1/admin/bundle-versions`. All `requireAdmin`.

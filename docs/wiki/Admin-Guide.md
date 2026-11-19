@@ -126,6 +126,26 @@ Notes on how the rules are applied:
 - The text under the pill shows at most the five most severe findings, then "+n more"; names taken
   from the site's data are shortened to 40 characters and stripped of control characters.
 
+## Removing a Site
+
+A site that left the network is removed on the **Approval Review** page
+(section "Remove a site"). Two admins with different e-mail domains are needed,
+the same rule as for an approval:
+
+1. Admin A picks the site, writes a reason and requests the removal (step-up).
+   A can cancel while the request is open; nobody can confirm their own request.
+2. Admin B (other domain) confirms (step-up). The removal runs at once.
+
+What happens: the organization counts as withdrawn, so a new allow-list version
+(MANUAL, created automatically) deletes its Organization, Endpoints and
+affiliations on every DSF server. Its login certificates are removed, its
+sessions end, it can no longer log in and it disappears from the owner's
+instance list. A pending approval request of the site is withdrawn. If creating
+the version fails, the removal still stands and the toast says so; create a
+version on the Bundle Versions page. Nothing is deleted from the database
+(soft removal); hard deletion is not part of the portal. Request, confirm and
+cancel are audited (`AUTH`, `diff_json.action` `instance_removal_*`).
+
 ## Email Whitelist
 
 Manage who can log in:

@@ -62,6 +62,8 @@ DSF instances owned by a user.
 | created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 | archived_at | DATETIME | yes | NULL | Set while the instance is archived (036) |
 | archived_by | VARCHAR(255) | yes | NULL | E-mail of the user who archived it (036) |
+| removed_at | DATETIME(3) | yes | NULL | Set when two admins removed the site (039): withdrawn from the allow list, no login, hidden from everyone but admins. Rows are kept |
+| removed_by | VARCHAR(255) | yes | NULL | E-mail of the confirming admin (039) |
 
 FKs: `user_id` → `users.id` ON DELETE CASCADE (fk_inst_user).
 
@@ -400,6 +402,24 @@ Four-eyes requests to register an admin certificate for a colleague (031). The P
 | comment | TEXT | yes | NULL | |
 | created_at | DATETIME(3) | no | — | |
 | pending_fp | CHAR(128) | generated | fingerprint while PENDING, else NULL | UNIQUE (uq_acr_one_pending_fp): one pending request per certificate |
+
+## instance_removal_requests
+
+Four-eyes requests to remove a whole site (039). Admin A requests, an admin of another e-mail domain confirms; the requester may cancel while PENDING. Executing it sets `instances.removed_at`. No FK: the row outlives a (never approved) instance that is deleted later.
+
+| Column | Type | Nullable | Default | Key |
+|---|---|---|---|---|
+| id | CHAR(36) | no | — | PK |
+| instance_id | CHAR(36) | no | — | idx_irr_instance |
+| organization_id | VARCHAR(255) | yes | NULL | Identifier at request time |
+| reason | TEXT | no | — | |
+| requested_by | VARCHAR(255) | no | — | |
+| requested_at | DATETIME(3) | no | — | idx_irr_status (with status) |
+| status | ENUM('PENDING','CONFIRMED','CANCELLED') | no | 'PENDING' | |
+| decided_by | VARCHAR(255) | yes | NULL | Confirming admin, or the requester on cancel |
+| decided_at | DATETIME(3) | yes | NULL | |
+| version_number | INT | yes | NULL | Allow-list version published on execution; NULL when publishing failed |
+| pending_instance | CHAR(36) | generated | instance_id while PENDING, else NULL | UNIQUE (uq_irr_one_pending): one pending request per instance |
 
 ## bundle_versions
 
