@@ -35,6 +35,7 @@ import {
 import { generateTotpSetup, saveTotpSecret } from '../services/totp.service';
 import { writeAuditLog } from '../services/audit.service';
 import { extractClientCert } from '../lib/clientCert';
+import { certHeadersWithoutTrustedProxy } from '../lib/certProxyTrust';
 import { recordAdminCertUse } from '../services/admin-certificates.service';
 import { isDevEnv } from '../lib/isDevEnv';
 import { db } from '../db/connection';
@@ -306,6 +307,14 @@ authRouter.post(
     // here. extractClientCert already enforces X-Client-Verify === 'SUCCESS',
     // but we reject up front so a forged X-Client-Cert never reaches the lookup
     // even if that helper is ever changed.
+    // A proxy that sends certificate headers without proving itself is a configuration
+    // problem on the operator's side, not a missing certificate.
+    if (certHeadersWithoutTrustedProxy(req)) {
+      res.status(401).json({
+        error: { code: 'PROXY_NOT_TRUSTED', message: 'The proxy configuration is incomplete.' },
+      });
+      return;
+    }
     if (req.headers['x-client-verify'] !== 'SUCCESS') {
       res
         .status(401)

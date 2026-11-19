@@ -126,6 +126,31 @@ describe('POST /auth/client-cert-login', () => {
     expect(res.body.error.code).toBe('NO_CLIENT_CERT');
   });
 
+  it('401 PROXY_NOT_TRUSTED when certificate headers come without a valid X-Proxy-Auth', async () => {
+    process.env.CLIENT_CERT_PROXY_SECRET = 'p'.repeat(40);
+    try {
+      const headers = {
+        'x-client-verify': 'SUCCESS',
+        'x-client-cert': encodeURIComponent(SAMPLE_PEM),
+      };
+      const missing = await request(appWith()).post('/auth/client-cert-login').set(headers);
+      expect(missing.status).toBe(401);
+      expect(missing.body.error.code).toBe('PROXY_NOT_TRUSTED');
+      const wrong = await request(appWith())
+        .post('/auth/client-cert-login')
+        .set({ ...headers, 'x-proxy-auth': 'nope' });
+      expect(wrong.body.error.code).toBe('PROXY_NOT_TRUSTED');
+      expect(JSON.stringify(wrong.body)).not.toContain('nope');
+      // No certificate headers at all (the proxy did not see a certificate): still NO_CLIENT_CERT.
+      const none = await request(appWith())
+        .post('/auth/client-cert-login')
+        .set('x-proxy-auth', 'p'.repeat(40));
+      expect(none.body.error.code).toBe('NO_CLIENT_CERT');
+    } finally {
+      delete process.env.CLIENT_CERT_PROXY_SECRET;
+    }
+  });
+
   it('401 when a cert is presented but nginx verification did not succeed', async () => {
     const res = await request(appWith())
       .post('/auth/client-cert-login')

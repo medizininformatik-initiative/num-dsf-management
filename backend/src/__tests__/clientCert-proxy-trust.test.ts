@@ -9,7 +9,12 @@
  */
 import type { Request } from 'express';
 import { extractClientCert } from '../lib/clientCert';
-import { assertCertProxyConfig, warnIfProxySecretMissing } from '../lib/certProxyTrust';
+import {
+  assertCertProxyConfig,
+  certHeadersWithoutTrustedProxy,
+  resetProxyTrustWarning,
+  warnIfProxySecretMissing,
+} from '../lib/certProxyTrust';
 
 const SAMPLE_PEM = `-----BEGIN CERTIFICATE-----
 MIIBkTCB+wIJALRiMLAh2wLSMA0GCSqGSIb3DQEBCwUAMBExDzANBgNVBAMMBnRl
@@ -206,5 +211,48 @@ describe('fail closed outside development/test without a secret', () => {
     warnIfProxySecretMissing({ warn });
     expect(warn).toHaveBeenCalledTimes(1);
     expect(String(warn.mock.calls[0][0])).not.toContain(SECRET);
+  });
+});
+
+describe('certHeadersWithoutTrustedProxy', () => {
+  afterEach(() => {
+    delete process.env.CLIENT_CERT_PROXY_SECRET;
+    resetProxyTrustWarning();
+  });
+
+  it('is true when certificate headers come without a valid X-Proxy-Auth', () => {
+    process.env.CLIENT_CERT_PROXY_SECRET = SECRET;
+    const warn = jest.fn();
+    expect(certHeadersWithoutTrustedProxy(reqWith(base), { warn })).toBe(true);
+    expect(
+      certHeadersWithoutTrustedProxy(reqWith({ ...base, 'x-proxy-auth': 'wrong' }), { warn }),
+    ).toBe(true);
+    expect(certHeadersWithoutTrustedProxy(reqWith({ 'x-client-verify': 'NONE' }), { warn })).toBe(
+      true,
+    );
+  });
+
+  it('is false without certificate headers or with a valid proxy', () => {
+    process.env.CLIENT_CERT_PROXY_SECRET = SECRET;
+    const warn = jest.fn();
+    expect(certHeadersWithoutTrustedProxy(reqWith({}), { warn })).toBe(false);
+    expect(
+      certHeadersWithoutTrustedProxy(reqWith({ ...base, 'x-proxy-auth': SECRET }), { warn }),
+    ).toBe(false);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('warns at most once a minute and never logs the secret or header values', () => {
+    process.env.CLIENT_CERT_PROXY_SECRET = SECRET;
+    const warn = jest.fn();
+    const req = reqWith({ ...base, 'x-proxy-auth': 'wrong-value' });
+    certHeadersWithoutTrustedProxy(req, { warn }, 1_000_000);
+    certHeadersWithoutTrustedProxy(req, { warn }, 1_030_000);
+    expect(warn).toHaveBeenCalledTimes(1);
+    certHeadersWithoutTrustedProxy(req, { warn }, 1_061_000);
+    expect(warn).toHaveBeenCalledTimes(2);
+    const text = String(warn.mock.calls[0][0]);
+    expect(text).toContain('X-Proxy-Auth');
+    for (const secret of [SECRET, 'wrong-value', 'SUCCESS']) expect(text).not.toContain(secret);
   });
 });

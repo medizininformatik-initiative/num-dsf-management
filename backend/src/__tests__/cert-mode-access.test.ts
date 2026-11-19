@@ -185,6 +185,21 @@ describe('certificate-only mode (AUTH_MODE=cert)', () => {
       expect(res.body.error.code).toBe('CERT_REQUIRED');
     });
 
+    it('says PROXY_NOT_TRUSTED when the certificate headers lack a valid X-Proxy-Auth', async () => {
+      const token = await certToken(siteUserId, siteEmail, siteInstanceId);
+      process.env.CLIENT_CERT_PROXY_SECRET = 'p'.repeat(40);
+      try {
+        const res = await request(app)
+          .get('/api/v1/instances')
+          .set('Authorization', `Bearer ${token}`)
+          .set(certHeaders(SITE_PEM));
+        expect(res.status).toBe(401);
+        expect(res.body.error.code).toBe('PROXY_NOT_TRUSTED');
+      } finally {
+        delete process.env.CLIENT_CERT_PROXY_SECRET;
+      }
+    });
+
     it('a spoofed X-Client-Cert without a verified handshake is rejected', async () => {
       const token = await certToken(siteUserId, siteEmail, siteInstanceId);
       const res = await request(app)

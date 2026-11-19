@@ -5,12 +5,15 @@
  * With CLIENT_CERT_PROXY_SECRET set, the proxy must also send it as X-Proxy-Auth;
  * with CLIENT_CERT_TRUSTED_PROXIES set, the TCP peer must be in that list
  * (X-Forwarded-For is deliberately not consulted). Both are read per call.
- * Dependencies: crypto, net, lib/authMode
+ * certHeadersWithoutTrustedProxy tells a misconfigured proxy (client-certificate headers but no
+ * valid X-Proxy-Auth) from a browser that sent no certificate, with a throttled warning.
+ * Dependencies: crypto, net, lib/authMode, lib/logger
  */
 import crypto from 'crypto';
 import net from 'net';
 import type { Request } from 'express';
 import { isCertAuthMode } from './authMode';
+import { logger } from './logger';
 
 export const MIN_PROXY_SECRET_LENGTH = 32;
 
@@ -95,6 +98,37 @@ export function isFromTrustedProxy(req: Request): boolean {
   if (secret && !secretMatches(req, secret)) return false;
   const proxies = process.env.CLIENT_CERT_TRUSTED_PROXIES;
   if (proxies && !peerTrusted(req, proxies)) return false;
+  return true;
+}
+
+const PROXY_WARN_INTERVAL_MS = 60_000;
+let lastProxyWarnAt = 0;
+
+/** Test hook: forget the last warning so the next one is logged again. */
+export function resetProxyTrustWarning(): void {
+  lastProxyWarnAt = 0;
+}
+
+/**
+ * True when the request carries client-certificate headers (X-Client-Verify or X-Client-Cert)
+ * but does not come from a trusted proxy: the proxy configuration is incomplete (missing or
+ * wrong X-Proxy-Auth), which is not the same as a browser without a certificate. Logs a
+ * warning at most once a minute; never header values or the secret.
+ */
+export function certHeadersWithoutTrustedProxy(
+  req: Request,
+  log: { warn: (msg: string) => void } = logger,
+  now: number = Date.now(),
+): boolean {
+  const present =
+    req.headers['x-client-verify'] !== undefined || req.headers['x-client-cert'] !== undefined;
+  if (!present || isFromTrustedProxy(req)) return false;
+  if (now - lastProxyWarnAt >= PROXY_WARN_INTERVAL_MS) {
+    lastProxyWarnAt = now;
+    log.warn(
+      'client certificate headers arrived without a valid X-Proxy-Auth: check the proxy configuration',
+    );
+  }
   return true;
 }
 

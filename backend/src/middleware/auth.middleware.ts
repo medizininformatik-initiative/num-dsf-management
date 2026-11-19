@@ -20,6 +20,7 @@ import { redis } from '../services/redis.service';
 import { isScopeRevoked } from '../services/scope-revocation.service';
 import { isCertAuthMode } from '../lib/authMode';
 import { extractClientCert } from '../lib/clientCert';
+import { certHeadersWithoutTrustedProxy } from '../lib/certProxyTrust';
 import { db } from '../db/connection';
 import { isTotpEnrolmentRequired } from '../lib/totpEnrolment';
 
@@ -150,6 +151,12 @@ async function authenticate(
       ok = false;
     }
     if (!ok) {
+      if (certHeadersWithoutTrustedProxy(req)) {
+        res.status(401).json({
+          error: { code: 'PROXY_NOT_TRUSTED', message: 'The proxy configuration is incomplete.' },
+        });
+        return;
+      }
       res.status(401).json({
         error: {
           code: 'CERT_REQUIRED',
