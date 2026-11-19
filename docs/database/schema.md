@@ -1,7 +1,7 @@
 # Database Schema
 
 MySQL 8 / InnoDB, charset `utf8mb4`, collation `utf8mb4_unicode_ci`, database `dsf_allowlist`.
-Derived from `db/migrations/001`–`018`. Columns reflect the final state after all `ALTER TABLE` statements.
+Derived from `db/migrations/001`–`037`. Columns reflect the final state after all `ALTER TABLE` statements.
 
 ## email_whitelist
 
@@ -60,6 +60,8 @@ DSF instances owned by a user.
 | user_id | CHAR(36) | no | — | idx_inst_user |
 | label | VARCHAR(255) | no | — | |
 | created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
+| archived_at | DATETIME | yes | NULL | Set while the instance is archived (036) |
+| archived_by | VARCHAR(255) | yes | NULL | E-mail of the user who archived it (036) |
 
 FKs: `user_id` → `users.id` ON DELETE CASCADE (fk_inst_user).
 
@@ -150,6 +152,8 @@ PEM certificates per organization. `last_notified_at` (009) throttles expiry mai
 | valid_until | DATE | yes | NULL | |
 | created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 | last_notified_at | TIMESTAMP | yes | NULL | |
+| uploaded_by | VARCHAR(255) | yes | NULL | E-mail of the uploader (031); NULL = unknown, not eligible as login certificate |
+| uploaded_by_admin | TINYINT(1) | yes | NULL | Whether the uploading session was an admin (031) |
 
 FKs: `organization_id` → `organizations.identifier` ON DELETE CASCADE (fk_cert_org).
 
@@ -177,8 +181,8 @@ Approval workflow header. Effective status derived from `approval_signatures` (s
 | Column | Type | Nullable | Default | Key |
 |---|---|---|---|---|
 | id | CHAR(36) | no | UUID() | PK |
-| instance_id | CHAR(36) | no | — | idx_ar_inst |
-| status | ENUM('DRAFT','PENDING','APPROVED','REJECTED') | no | 'DRAFT' | idx_ar_status |
+| instance_id | CHAR(36) | no | — | idx_ar_inst (composite with created_at, 020) |
+| status | ENUM('DRAFT','PENDING','APPROVED','REJECTED','WITHDRAWN') | no | 'DRAFT' | idx_ar_status |
 | created_at | DATETIME(3) | no | CURRENT_TIMESTAMP(3) | |
 | submitted_at | DATETIME | yes | NULL | |
 | resolved_at | DATETIME | yes | NULL | |
@@ -207,7 +211,7 @@ FKs: `approval_request_id` → `approval_requests.id` ON DELETE CASCADE (fk_sign
 
 ## audit_logs
 
-Append-only audit trail. UPDATE/DELETE blocked by triggers (013). `resource_type` extended for MARKETPLACE (011/014).
+Append-only audit trail. UPDATE/DELETE blocked by triggers (013). `resource_type` and `operation` are extended by migrations 011, 014, 026, 027, 028 and 035.
 
 | Column | Type | Nullable | Default | Key |
 |---|---|---|---|---|
@@ -215,9 +219,9 @@ Append-only audit trail. UPDATE/DELETE blocked by triggers (013). `resource_type
 | timestamp | DATETIME | no | CURRENT_TIMESTAMP | idx_al_time |
 | user_email | VARCHAR(255) | yes | NULL | idx_al_user |
 | instance_id | CHAR(36) | yes | NULL | idx_al_inst |
-| resource_type | ENUM('ORGANIZATION','CONTACT','ENDPOINT','CERTIFICATE','MEMBERSHIP','AUTH','APPROVAL','MARKETPLACE') | no | — | idx_al_res (with resource_id) |
+| resource_type | ENUM('ORGANIZATION','CONTACT','ENDPOINT','CERTIFICATE','MEMBERSHIP','AUTH','APPROVAL','MARKETPLACE','AUDIT','BACKUP','INCIDENT') | no | — | idx_al_res (with resource_id) |
 | resource_id | VARCHAR(255) | yes | NULL | idx_al_res |
-| operation | ENUM('CREATE','UPDATE','DELETE','APPROVE','REJECT','LOGIN','LOGOUT','OTP_REQUEST','OTP_VERIFY','TOTP_SETUP','TOTP_VERIFY','FAILED_LOGIN') | no | — | |
+| operation | ENUM('CREATE','UPDATE','DELETE','APPROVE','REJECT','LOGIN','LOGOUT','OTP_REQUEST','OTP_VERIFY','TOTP_SETUP','TOTP_VERIFY','FAILED_LOGIN','WITHDRAW','DENIED','STEP_UP_FAILED','RATE_LIMITED','EXPORT','DOWNLOAD') | no | — | |
 | diff_json | JSON | yes | NULL | |
 | ip_address | VARCHAR(45) | yes | NULL | |
 
@@ -346,6 +350,57 @@ Cached Mozilla trust-store snapshot for the admin CA picker (016).
 
 FKs: none.
 
+## marketplace_releases
+
+Release history of a marketplace entry (019).
+
+| Column | Type | Nullable | Default | Key |
+|---|---|---|---|---|
+| id | CHAR(36) | no | — | PK |
+| entry_id | CHAR(36) | no | — | UNIQUE with tag (uq_entry_tag) |
+| tag | VARCHAR(100) | no | — | |
+| published_at | TIMESTAMP | yes | NULL | |
+
+FKs: `entry_id` → `marketplace_entries.id` ON DELETE CASCADE (fk_mp_rel_entry).
+
+## admin_cert_fingerprints
+
+Client certificates an admin (who has no organization) may sign in with (021, 030).
+
+| Column | Type | Nullable | Default | Key |
+|---|---|---|---|---|
+| id | CHAR(36) | no | UUID() | PK |
+| email | VARCHAR(255) | no | — | idx_admin_cert_email |
+| fingerprint | VARCHAR(128) | no | — | UNIQUE (uq_admin_cert_fp) |
+| created_at | DATETIME | no | CURRENT_TIMESTAMP | |
+| created_by | VARCHAR(255) | yes | NULL | |
+| subject | VARCHAR(255) | yes | NULL | Certificate subject (030) |
+| valid_until | DATETIME | yes | NULL | notAfter of the certificate (030) |
+| last_used_at | DATETIME | yes | NULL | Last successful login (030) |
+| label | VARCHAR(100) | yes | NULL | Free text chosen by the admin (030) |
+| last_warned_at | DATETIME | yes | NULL | Last expiry warning mail (030) |
+
+## admin_cert_requests
+
+Four-eyes requests to register an admin certificate for a colleague (031). The PEM is a public certificate and is kept to re-validate it at approval time.
+
+| Column | Type | Nullable | Default | Key |
+|---|---|---|---|---|
+| id | CHAR(36) | no | — | PK |
+| target_email | VARCHAR(255) | no | — | idx_acr_target |
+| fingerprint | CHAR(128) | no | — | |
+| subject | VARCHAR(255) | yes | NULL | |
+| valid_until | DATETIME | yes | NULL | |
+| label | VARCHAR(100) | yes | NULL | |
+| pem | TEXT | no | — | |
+| requested_by | VARCHAR(255) | no | — | |
+| status | ENUM('PENDING','APPROVED','REJECTED','CANCELLED') | no | 'PENDING' | idx_acr_status_created (with created_at) |
+| decided_by | VARCHAR(255) | yes | NULL | |
+| decided_at | DATETIME(3) | yes | NULL | |
+| comment | TEXT | yes | NULL | |
+| created_at | DATETIME(3) | no | — | |
+| pending_fp | CHAR(128) | generated | fingerprint while PENDING, else NULL | UNIQUE (uq_acr_one_pending_fp): one pending request per certificate |
+
 ## bundle_versions
 
 Full FHIR bundle snapshots persisted on each approval (017). Signed with RS256 over `content_hash`.
@@ -395,9 +450,10 @@ Which client certificates may log in as an organization (029). A login through a
 | fingerprint | CHAR(128) | no | — | PK; SHA-512 of the certificate DER, lower-case hex. One certificate logs in for at most one organization |
 | organization_id | VARCHAR(255) | no | — | FK → organizations.identifier ON DELETE CASCADE |
 | certificate_id | CHAR(36) | yes | NULL | FK → certificates.id ON DELETE CASCADE; NULL for fingerprint-only entries |
-| source | ENUM | no | — | ONBOARDING, ADMIN, MIGRATED |
+| source | ENUM | no | — | ONBOARDING, ADMIN, MIGRATED, APPROVAL (033) |
 | created_by | VARCHAR(255) | yes | NULL | |
 | created_at | DATETIME(3) | no | — | |
+| valid_until | DATETIME | yes | NULL | Expiry of the linked certificate, kept after a renewal unlinks it (033) |
 
 ## certificate_thumbprint_locks
 

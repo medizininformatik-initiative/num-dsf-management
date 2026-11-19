@@ -1,7 +1,7 @@
 # Migration Catalog
 
 Chronological list of `db/migrations/*.sql`. Purpose taken from each file's leading comment.
-All migrations are idempotent (existence-guarded) except 013–018, which run unconditionally.
+Most migrations are existence-guarded and safe to re-run; 014 and 016–018 run unconditionally.
 
 | # | File | Purpose | Triggers / Constraints |
 |---|---|---|---|
@@ -24,14 +24,21 @@ All migrations are idempotent (existence-guarded) except 013–018, which run un
 | 017 | 017_bundle_versions.sql | Create bundle_versions table for FHIR bundle snapshots | FK to approval_requests (ON DELETE SET NULL) |
 | 018 | 018_contacts_language.sql | Add contacts.language for per-contact notification locale | — |
 | 019 | 019_marketplace_v2.sql | Marketplace v2: add DSF metadata, trust-signal, and slug columns to marketplace_entries; create marketplace_releases table for release history (shipped in v0.1.2) | — |
+| 020 | 020_approval_requests_inst_created_index.sql | Composite (instance_id, created_at) index on approval_requests for the latest-request lookups | — |
+| 021 | 021_client_cert_sha512_and_admin_certs.sql | SHA-512 fingerprint per organization (organizations.client_cert_fingerprint) and admin_cert_fingerprints for certificate login of admins | Unique keys |
 | 022 | 022_ca_whitelist.sql | Create ca_whitelist and seed it with the CAs DSF 2.1.1 accepts (client certificate CAs and server roots) | — |
 | 023 | 023_approval_requests_created_at_ms.sql | approval_requests.created_at in milliseconds, so the latest request of an instance is unambiguous | — |
 | 024 | 024_bundle_versions_input.sql | bundle_versions.input_json: the builder input of each version, so receiver views and restores can be rebuilt (older versions stay NULL and are not restorable) | Nullable LONGTEXT column |
 | 025 | 025_bundle_restore_requests.sql | Create bundle_restore_requests: four-eyes requests to restore an old bundle version (a unique key on a generated column allows one PENDING request at a time) | FK to bundle_versions (ON DELETE CASCADE) |
+| 026 | 026_approval_withdrawn.sql | Add WITHDRAWN to approval_requests.status and WITHDRAW to audit_logs.operation | ENUM modify |
+| 027 | 027_audit_comprehensive.sql | Audit log: add operations DENIED, STEP_UP_FAILED, RATE_LIMITED, EXPORT and resource type AUDIT; index the filter columns | ENUM modify |
 | 028 | 028_backup_settings.sql | Create backup_settings (single-row schedule) and backup_runs (history of backup attempts); append 'BACKUP' to audit_logs.resource_type and 'DOWNLOAD' to audit_logs.operation, preserving the values already in the live ENUMs | — |
 | 029 | 029_org_login_certificates.sql | Create org_login_certificates (admin-managed certificate login: SHA-512 fingerprint to organization, optional link to an uploaded certificate, source ONBOARDING/ADMIN/MIGRATED) and backfill it from organizations.client_cert_fingerprint (MIGRATED, certificate linked by the SHA-512 of its PEM); the old column is deprecated and no longer read | — |
+| 030 | 030_admin_cert_lifecycle.sql | admin_cert_fingerprints: subject, valid_until, last_used_at, label, last_warned_at for expiry warnings and successor certificates | — |
+| 031 | 031_cert_recovery_four_eyes.sql | admin_cert_requests (four-eyes certificate recovery for a colleague) and certificates.uploaded_by / uploaded_by_admin (only clinic-uploaded certificates may become login certificates) | Unique pending_fp |
 | 032 | 032_allowlist_fetches.sql | Create allowlist_fetches: per instance the newest allow-list version it obtained, through its DSF (mTLS fetch) or a portal download, so the portal can nudge a site that has not picked up a new version | FK to instances (ON DELETE CASCADE) |
 | 033 | 033_login_certificates_from_allow_list.sql | Login certificates follow the approved allow list: add source APPROVAL to org_login_certificates (entries enabled by an approved snapshot thumbprint) and valid_until (expiry of the certificate behind the entry, kept when a renewal unlinks it, used by the daily 30-day cleanup); backfill valid_until from linked certificates | ENUM modify |
 | 034 | 034_certificate_thumbprint_locks.sql | Create certificate_thumbprint_locks: one lock row per certificate thumbprint, locked inside the upload/renewal transaction so the "one organization per certificate" check and the insert are atomic (two organizations uploading the same PEM at once no longer both succeed). Not a unique index on certificates.thumbprint, because the same organization may upload a certificate more than once | PK thumbprint |
 | 035 | 035_incidents.sql | Incident register: create incidents (status, escalation level 1-3, detection time for the NIS2 deadlines, suspension flag, BSI-reported ticks per stage, DPO informed, Zulip link), incident_events (append-only timeline, SHA-256 hash chain prev_hash/hash ordered by seq) and blocked_certificate_thumbprints (SHA-512 thumbprints an incident blocked for good); append INCIDENT to audit_logs.resource_type | FK incidents → organizations (ON DELETE SET NULL, organization_id takes the collation of organizations.identifier); FK events/blocks → incidents; unique (incident_id, seq); Triggers: incident_events_no_update/_no_delete, blocked_certificate_thumbprints_no_update/_no_delete |
+| 036 | 036_instance_archive.sql | instances.archived_at / archived_by: an owner can archive an instance; the allow list is not touched | — |
 | 037 | 037_incident_nis2_reports.sql | NIS2 reporting aids of an incident: add incidents.nis2_data (JSON, structured report fields per stage), bsi_interim_requested_at/_by and bsi_interim_at/_by (interim report requested by the BSI, ticked as reported) and bsi_progress_at/_by (progress report ticked as reported) | Re-runnable (information_schema checks); no new constraints |
