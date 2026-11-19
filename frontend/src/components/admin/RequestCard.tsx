@@ -7,14 +7,14 @@
  * Why Approve is unavailable is shown as text next to the buttons.
  *
  * Dependencies: useAdmin (approve/reject mutations), useConfirm, useI18n,
- * Button, StatusPill, Icon, TotpCodeField, fieldClasses, sonner toast.
+ * Button, StatusPill, Icon, TotpCodeField, RiskBanner, fieldClasses, sonner toast.
  */
 import { useId, useState } from 'react';
 import { isStepUpCodeComplete } from '../../lib/stepUpCode';
 import { toast } from 'sonner';
 import { useApproveRequest, useRejectRequest } from '../../hooks/useAdmin';
 import { useConfirm } from '../../hooks/useConfirm';
-import type { ApprovalSignature } from '../../api/admin.api';
+import type { ApprovalSignature, RiskAssessment } from '../../api/admin.api';
 import { useI18n } from '../../stores/i18n.store';
 import { getErrorMessageForStepUp } from '../../lib/getErrorMessage';
 import { needsTotpStepUp } from '../../lib/authMode';
@@ -26,6 +26,7 @@ import { TotpCodeField } from './TotpCodeField';
 import { FIELD_CLASS } from './fieldClasses';
 import { parseSnapshot, type SnapshotData } from './parseSnapshot';
 import { SnapshotView } from './SnapshotView';
+import { RiskBanner } from './RiskBanner';
 
 const SILENT_CONSENT_MS = 7 * 86400_000;
 
@@ -37,6 +38,7 @@ interface RequestCardProps {
     submitted_at?: string;
     snapshot_json: string | object | null;
     signatures: ApprovalSignature[];
+    risk?: RiskAssessment | null;
   };
   meEmail: string | null;
 }
@@ -152,6 +154,8 @@ export function RequestCard({ request, meEmail }: RequestCardProps) {
 
   return (
     <article aria-labelledby={titleId} className="surface-card flex flex-col gap-4 p-5">
+      {request.risk && <RiskBanner risk={request.risk} />}
+
       {/* Card header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-[min(100%,16rem)] flex-1">
