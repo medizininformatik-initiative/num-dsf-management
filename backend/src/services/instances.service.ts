@@ -27,6 +27,9 @@ export interface InstanceRow {
   created_at: Date;
   archived_at?: Date | null;
   archived_by?: string | null;
+  /** Set once two admins removed the site (migration 039); only admins still see it. */
+  removed_at?: Date | null;
+  removed_by?: string | null;
 }
 
 export interface EnrichedInstanceRow extends InstanceRow {
@@ -65,7 +68,7 @@ export async function listForUser(
   // An org-scoped session sees exactly its own instance, whoever owns it.
   if (scopeInstanceId) query.where({ id: scopeInstanceId });
   else if (!isAdmin) {
-    query.where({ user_id: userId });
+    query.where({ user_id: userId }).whereNull('removed_at');
     if (!opts.includeArchived) query.whereNull('archived_at');
   }
   const instances = await query;
@@ -158,6 +161,8 @@ export async function getInstance(
     if (!caller) return null;
     q.andWhere({ user_id: caller.id });
   }
+  // A removed site is gone for everyone but the admins.
+  if (!isAdmin) q.whereNull('removed_at');
   const instance = await q.first();
   if (!instance) return null;
   const owner = await db('users').where({ id: instance.user_id }).select('email').first();
@@ -194,7 +199,10 @@ async function setArchived(
   ipAddress: string,
   archived: boolean,
 ): Promise<InstanceRow | null> {
-  const instance = await db<InstanceRow>('instances').where({ id, user_id: userId }).first();
+  const instance = await db<InstanceRow>('instances')
+    .where({ id, user_id: userId })
+    .whereNull('removed_at')
+    .first();
   if (!instance) return null;
   const patch = archived
     ? { archived_at: new Date(), archived_by: userEmail }
@@ -255,7 +263,11 @@ export async function deleteInstance(
   ipAddress: string,
 ): Promise<boolean> {
   const deleted = await db.transaction(async (trx) => {
-    const instance = await trx('instances').where({ id, user_id: userId }).forUpdate().first();
+    const instance = await trx('instances')
+      .where({ id, user_id: userId })
+      .whereNull('removed_at')
+      .forUpdate()
+      .first();
     if (!instance) return false;
 
     const blocking = await trx('approval_requests')

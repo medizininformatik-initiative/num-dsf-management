@@ -31,6 +31,8 @@ export interface ApprovedSite {
   orgIdentifier: string;
   orgName: string;
   orgActive: boolean;
+  /** The instance was removed by two admins (migration 039): withdrawn whatever the snapshot says. */
+  removed: boolean;
   /** Parsed snapshot_json, or null when NULL/unparseable. */
   snapshot: Json | null;
 }
@@ -42,6 +44,7 @@ interface ApprovedRow {
   identifier: string;
   name: string;
   active: unknown;
+  removed_at: unknown;
 }
 
 function isObject(value: unknown): value is Json {
@@ -67,7 +70,7 @@ function parseSnapshot(raw: unknown): Json | null {
  */
 export async function loadLatestApprovedSites(): Promise<ApprovedSite[]> {
   const result = (await db.raw(
-    `SELECT r.id, r.instance_id, r.snapshot_json, o.identifier, o.name, o.active
+    `SELECT r.id, r.instance_id, r.snapshot_json, o.identifier, o.name, o.active, i.removed_at
        FROM (
          SELECT id, instance_id, snapshot_json,
                 ROW_NUMBER() OVER (
@@ -77,6 +80,7 @@ export async function loadLatestApprovedSites(): Promise<ApprovedSite[]> {
           WHERE status = 'APPROVED'
        ) r
        JOIN organizations o ON o.instance_id = r.instance_id
+       JOIN instances i ON i.id = r.instance_id
       WHERE r.rn = 1
       ORDER BY o.identifier`,
   )) as [ApprovedRow[], unknown];
@@ -86,6 +90,7 @@ export async function loadLatestApprovedSites(): Promise<ApprovedSite[]> {
     orgIdentifier: row.identifier,
     orgName: row.name,
     orgActive: Boolean(row.active),
+    removed: row.removed_at !== null && row.removed_at !== undefined,
     snapshot: parseSnapshot(row.snapshot_json),
   }));
 }
@@ -131,8 +136,9 @@ export function warnUnusableSnapshot(site: ApprovedSite): void {
   );
 }
 
-/** Whether the approved state of the site is active (live value as fallback). */
+/** Whether the approved state of the site is active (live value as fallback); a removed site never is. */
 export function approvedActive(site: ApprovedSite): boolean {
+  if (site.removed) return false;
   const section = allowListSection(site.snapshot);
   if (section) return section.active;
   const org = site.snapshot?.organization;

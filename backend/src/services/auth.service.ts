@@ -445,6 +445,8 @@ async function resolveOrgLogin(fingerprint: string): Promise<{
     .join('instances as i', 'i.id', 'o.instance_id')
     .join('users as u', 'u.id', 'i.user_id')
     .where('l.fingerprint', fingerprint)
+    // A site removed by two admins (migration 039) cannot log in.
+    .whereNull('i.removed_at')
     // A thumbprint blocked by an incident never logs in, whatever re-added it.
     // Compared with the bound value, not column to column: the two tables may
     // carry different collations in older databases (see migration 031).

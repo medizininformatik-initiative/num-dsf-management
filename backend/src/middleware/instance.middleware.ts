@@ -61,6 +61,8 @@ async function checkInstanceOwnership(
   if (!isAdmin && !scope) {
     query.andWhere({ user_id: req.user!.id });
   }
+  // A site removed by two admins (migration 039) is closed to everyone but the admins.
+  if (!isAdmin) query.whereNull('removed_at');
   const instance = await query.first();
 
   if (!instance) {

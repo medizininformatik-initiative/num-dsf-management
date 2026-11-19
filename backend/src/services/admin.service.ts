@@ -16,6 +16,7 @@ export interface AdminInstanceRow {
   user_email: string;
   org_identifier: string | null;
   org_name: string | null;
+  removed_at: Date | null;
 }
 
 export async function listAllInstances(): Promise<AdminInstanceRow[]> {
@@ -29,6 +30,7 @@ export async function listAllInstances(): Promise<AdminInstanceRow[]> {
       'u.email as user_email',
       'o.identifier as org_identifier',
       'o.name as org_name',
+      'i.removed_at',
     )
     .orderBy('i.created_at', 'desc');
 }

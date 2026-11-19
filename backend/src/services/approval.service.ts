@@ -122,9 +122,16 @@ async function buildSnapshot(instanceId: string, trx: Knex | Knex.Transaction = 
  * and notifies IMI (non-blocking).
  * @throws APPROVAL_ALREADY_PENDING if a PENDING request already exists.
  * @throws ORGANIZATION_NOT_FOUND if the instance has no organization to snapshot.
+ * @throws INSTANCE_REMOVED if two admins removed the site.
  */
 export async function submitApproval(instanceId: string, userEmail: string, ipAddress: string) {
   return db.transaction(async (trx) => {
+    // A removed site (migration 039) can never be approved again.
+    const removed = await trx('instances')
+      .where({ id: instanceId })
+      .whereNotNull('removed_at')
+      .first('id');
+    if (removed) throw new Error('INSTANCE_REMOVED');
     const pending = await trx('approval_requests')
       .where({ instance_id: instanceId, status: 'PENDING' })
       .forUpdate()

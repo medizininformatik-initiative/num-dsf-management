@@ -280,7 +280,8 @@ async function loadApprovedState(): Promise<{
       active = site.orgActive;
       member = liveByOrg.get(site.orgIdentifier) as AllowListMember;
     }
-    if (active) members.push(member);
+    // A site removed by two admins is withdrawn whatever its snapshot says.
+    if (active && !site.removed) members.push(member);
     else removed.push(toRemoval(member));
   }
   return { members, removed };
