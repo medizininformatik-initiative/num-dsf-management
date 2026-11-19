@@ -19,7 +19,7 @@ usage() {
 Usage: ${SCRIPT_NAME} <NEW_TREE> [--dry-run]
 
   NEW_TREE    Path to the unpacked new source tree, e.g.
-              /tmp/dsf-new/num-dsf-allowlist-main
+              /tmp/dsf-new/num-dsf-management-main
   --dry-run   Preview only: does not copy anything, does not touch the
               database, does not rebuild or restart containers. Runs steps
               1-4 in preview mode; steps 5-6 are skipped and reported as such.
@@ -54,8 +54,8 @@ rsync and already-applied migrations are skipped (the rebuild/restart in
 step 5 always runs again).
 
 Examples:
-  ${SCRIPT_NAME} /tmp/dsf-new/num-dsf-allowlist-main --dry-run
-  ${SCRIPT_NAME} /tmp/dsf-new/num-dsf-allowlist-main
+  ${SCRIPT_NAME} /tmp/dsf-new/num-dsf-management-main --dry-run
+  ${SCRIPT_NAME} /tmp/dsf-new/num-dsf-management-main
 EOF
 }
 

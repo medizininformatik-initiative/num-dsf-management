@@ -11,8 +11,8 @@ Local setup, test suites and repository conventions.
 ## Local setup
 
 ```bash
-git clone https://github.com/Mukeyii/num-dsf-allowlist.git
-cd num-dsf-allowlist
+git clone https://github.com/medizininformatik-initiative/num-dsf-management.git
+cd num-dsf-management
 cp .env.example .env
 bash scripts/generate-keys.sh          # RS256 JWT keys + TOTP key
 

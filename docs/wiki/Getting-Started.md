@@ -10,8 +10,8 @@
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/Mukeyii/num-dsf-allowlist.git
-cd num-dsf-allowlist
+git clone https://github.com/medizininformatik-initiative/num-dsf-management.git
+cd num-dsf-management
 cp .env.example .env
 ```
 

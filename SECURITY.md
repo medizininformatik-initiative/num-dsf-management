@@ -9,7 +9,7 @@ A compromise can leak contact data of staff, inject endpoints or certificates in
 Do **not** open a public GitHub issue for a security problem.
 
 1. **Preferred:** open a private advisory at
-   <https://github.com/Mukeyii/num-dsf-allowlist/security/advisories/new>.
+   <https://github.com/medizininformatik-initiative/num-dsf-management/security/advisories/new>.
    The report stays private until a fix is ready.
 2. **Without a GitHub account:** contact the institute via
    <https://www.medizin.uni-muenster.de/imi/das-institut.html> and mention "DSF Management Portal security report" in the subject.

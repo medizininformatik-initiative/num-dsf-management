@@ -72,7 +72,7 @@ All configuration flows through environment variables. Copy `.env.example` (deve
 ```bash
 # 1. Clone
 git clone <repo-url>
-cd num-dsf-allowlist
+cd num-dsf-management
 
 # 2. Environment
 cp .env.prod.example .env.prod
@@ -122,23 +122,23 @@ For a server without git: download the `main` branch as a zip, unpack it next to
 Download the zip in a browser, or, if the repository is private, with a personal access token:
 
 ```bash
-# Browser: https://github.com/Mukeyii/num-dsf-allowlist/archive/refs/heads/main.zip
+# Browser: https://github.com/medizininformatik-initiative/num-dsf-management/archive/refs/heads/main.zip
 # then copy the file to the server (scp/sftp), or from the server itself with a token:
 curl -L -H "Authorization: token <TOKEN>" \
   -o /tmp/dsf-main.zip \
-  https://github.com/Mukeyii/num-dsf-allowlist/archive/refs/heads/main.zip
+  https://github.com/medizininformatik-initiative/num-dsf-management/archive/refs/heads/main.zip
 
 mkdir -p /tmp/dsf-new
 unzip -q /tmp/dsf-main.zip -d /tmp/dsf-new
-# unpacks to /tmp/dsf-new/num-dsf-allowlist-main
+# unpacks to /tmp/dsf-new/num-dsf-management-main
 ```
 
 **2. Preview, then apply**
 
 ```bash
 cd /opt/dsf-allowlist
-scripts/update-server.sh /tmp/dsf-new/num-dsf-allowlist-main --dry-run
-scripts/update-server.sh /tmp/dsf-new/num-dsf-allowlist-main
+scripts/update-server.sh /tmp/dsf-new/num-dsf-management-main --dry-run
+scripts/update-server.sh /tmp/dsf-new/num-dsf-management-main
 ```
 
 The dry run reports exactly which files rsync would change and which migrations are pending, without touching anything (no copy, no database, no rebuild). Review it before running for real.
@@ -633,7 +633,7 @@ bash scripts/backup-db.sh
 bash scripts/backup-db.sh /mnt/backups
 
 # Schedule via cron (daily at 2 AM)
-0 2 * * * cd /path/to/num-dsf-allowlist && bash scripts/backup-db.sh >> /var/log/dsf-backup.log 2>&1
+0 2 * * * cd /path/to/num-dsf-management && bash scripts/backup-db.sh >> /var/log/dsf-backup.log 2>&1
 ```
 
 The script:

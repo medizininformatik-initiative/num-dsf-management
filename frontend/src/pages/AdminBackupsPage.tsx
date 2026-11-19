@@ -29,7 +29,7 @@ import { getErrorMessageForStepUp } from '../lib/getErrorMessage';
 import { useI18n } from '../stores/i18n.store';
 
 const DOCS_URL =
-  'https://github.com/Mukeyii/num-dsf-allowlist/blob/main/docs/DEPLOYMENT.md#backup-und-wiederherstellung';
+  'https://github.com/medizininformatik-initiative/num-dsf-management/blob/main/docs/DEPLOYMENT.md#backup-und-wiederherstellung';
 
 type Pending =
   | { kind: 'save'; input: BackupSettingsInput }

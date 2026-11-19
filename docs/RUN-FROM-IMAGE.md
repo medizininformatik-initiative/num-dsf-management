@@ -39,21 +39,21 @@ Offline, from the downloaded bundle:
 ```bash
 sha256sum -c dsf-allowlist-images-<tag>.tar.gz.sha256   # optional integrity check
 docker load -i dsf-allowlist-images-<tag>.tar.gz
-#  -> Loaded image: ghcr.io/mukeyii/dsf-allowlist-backend:<tag>
-#  -> Loaded image: ghcr.io/mukeyii/dsf-allowlist-frontend:<tag>
+#  -> Loaded image: ghcr.io/medizininformatik-initiative/dsf-allowlist-backend:<tag>
+#  -> Loaded image: ghcr.io/medizininformatik-initiative/dsf-allowlist-frontend:<tag>
 ```
 
 Or, online, pull from the registry instead of loading the file:
 
 ```bash
-docker pull ghcr.io/mukeyii/dsf-allowlist-backend:<tag>
-docker pull ghcr.io/mukeyii/dsf-allowlist-frontend:<tag>
+docker pull ghcr.io/medizininformatik-initiative/dsf-allowlist-backend:<tag>
+docker pull ghcr.io/medizininformatik-initiative/dsf-allowlist-frontend:<tag>
 ```
 
 ### 2. Point Compose at those images
 
 ```bash
-printf 'IMAGE_OWNER=mukeyii\nIMAGE_TAG=<tag>\n' > .image.env
+printf 'IMAGE_OWNER=medizininformatik-initiative\nIMAGE_TAG=<tag>\n' > .image.env
 ```
 
 The Release run-kit already includes this file.
