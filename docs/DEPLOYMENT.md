@@ -509,8 +509,11 @@ Older versions stay readable with the same client certificate and the same endpo
 | `GET /fhir/Bundle/<endpoint>` | Current version, receiver view. |
 | `GET /fhir/Bundle/<endpoint>/_history` | FHIR `Bundle` of type `history`, newest first, one entry per version without the resource (`fullUrl`, `request`, `response.etag`, `response.lastModified`). `?_count=` limits the list (default 50, maximum 200). |
 | `GET /fhir/Bundle/<endpoint>/_history/<version>` | The receiver view of that version, `meta.versionId` set. `404` for an unknown version or a version created before migration 024. |
+| `GET /fhir/Bundle/<endpoint>/purge` | Only conditional DELETEs for everything the portal ever published, except the site's own organization and endpoints (see below). |
 
 To apply an old list on a site, set the Task input `allow_list` to the `_history/<version>` URL. The BPE reads it like the current link.
+
+The purge link removes the whole allow list from the site's own DSF server (all organizations, endpoints and affiliations ever published, also entries with the same identifiers from other sources; communication with all sites stops until the normal allow list is imported again). The download dialog shows it in a separate "danger zone" only after the endpoint identifier was typed, and every fetch is audited.
 
 Site users see the same versions in the GUI (`GET /api/v1/instances/:id/bundle-history?endpointId=...`) and download one with `.../download/bundle?endpointId=...&version=<n>`. The response carries `X-Bundle-Version`.
 
