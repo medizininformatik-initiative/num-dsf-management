@@ -73,6 +73,7 @@ Production runs with Docker Compose behind a TLS-terminating reverse proxy. Inst
 |---|---|
 | Getting started, admin guide, FAQ | [`docs/wiki/`](docs/wiki/) |
 | API reference | [`docs/wiki/API-Reference.md`](docs/wiki/API-Reference.md) |
+| Site automation (certificate renewal) | [`docs/automation.md`](docs/automation.md) |
 | Architecture and decisions | [`docs/wiki/Architecture.md`](docs/wiki/Architecture.md), [`docs/adr/`](docs/adr/) |
 | Database schema and migrations | [`docs/database/`](docs/database/) |
 | Security policy | [`SECURITY.md`](SECURITY.md) |

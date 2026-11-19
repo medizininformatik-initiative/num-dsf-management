@@ -18,6 +18,7 @@ Web application for managing the participants of the Data Sharing Framework (DSF
 - [Getting Started](Getting-Started.md): local setup with Docker Compose
 - [Architecture](Architecture.md): runtime topology, authentication, approval and bundle lifecycle
 - [API Reference](API-Reference.md): all endpoints
+- [Site automation](../automation.md): script-friendly endpoints for certificate renewal
 - [Security](Security.md): authentication, transport and data-protection controls
 - [Admin Guide](Admin-Guide.md): approval workflow and administration
 - [FAQ](FAQ.md): common questions
