@@ -4,10 +4,12 @@
  *
  * A "site" is one organizations row (one per instance). All figures come from
  * a handful of aggregate queries; nothing is counted per organization in a loop.
- * Dependencies: db/connection, bundle-versions.service (currentVersionNumber)
+ * Dependencies: db/connection, bundle-versions.service (currentVersionNumber),
+ *               fhir.service (countPublishedOrganizations)
  */
 import { db } from '../db/connection';
 import { currentVersionNumber } from './bundle-versions.service';
+import { countPublishedOrganizations } from './fhir.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -89,11 +91,7 @@ export async function getAdminStats(now: Date = new Date()): Promise<AdminStats>
       .first(),
     db('org_login_certificates').countDistinct({ n: 'organization_id' }).first(),
     siteLogins(),
-    db('approval_requests as r')
-      .join('organizations as o', 'o.instance_id', 'r.instance_id')
-      .where('r.status', 'APPROVED')
-      .countDistinct({ n: 'o.identifier' })
-      .first(),
+    countPublishedOrganizations(),
     db('approval_requests').select('status').count({ n: '*' }).groupBy('status'),
     db('approval_requests')
       .where('status', 'APPROVED')
@@ -135,7 +133,7 @@ export async function getAdminStats(now: Date = new Date()): Promise<AdminStats>
       everLoggedIn: lastLogins.length,
       // audit_logs.timestamp is stored in UTC like every DATETIME here.
       loggedInLast24h: lastLogins.filter((r) => new Date(r.last_login) >= since).length,
-      published: num(published as CountRow),
+      published,
     },
     requests: {
       pending: byStatus.get('PENDING') ?? 0,

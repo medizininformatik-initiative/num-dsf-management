@@ -319,6 +319,16 @@ export async function incidentWithdrawnOrganizations(): Promise<Set<string>> {
   return new Set(approved.members.map((m) => m.identifier).filter((id) => !kept.has(id)));
 }
 
+/**
+ * Number of organizations the allow list publishes right now: approved, active, not withdrawn
+ * by the incident register and complete enough to publish (thumbprint and endpoint).
+ */
+export async function countPublishedOrganizations(): Promise<number> {
+  const approved = await loadApprovedState();
+  const { members } = await withIncidentBlocks({ ...approved, parentNames: {} });
+  return members.filter(isPublishable).length;
+}
+
 /** An input with the current incident suspensions and thumbprint blocks applied. */
 export async function withIncidentBlocks(
   input: StoredAllowListInput,

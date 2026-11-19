@@ -158,4 +158,17 @@ describe('GET /api/v1/admin/stats', () => {
     expect(after.sites.everLoggedIn - before.sites.everLoggedIn).toBe(0);
     expect(after.sites.loggedInLast24h - before.sites.loggedInLast24h).toBe(0);
   });
+
+  it('counts as published only sites that are in the current allow list', async () => {
+    const admin = await seedAdminUser();
+    const token = getTestToken(admin.email, admin.userId);
+    const before = await readStats(token);
+    const live = await seedSite({ label: 'stats-live' });
+    const deactivated = await seedSite({ label: 'stats-off', active: false });
+    sites.push(live, deactivated);
+    const after = await readStats(token);
+    // An approved request alone is not enough: the deactivated site is withdrawn.
+    expect(after.requests.approved - before.requests.approved).toBe(2);
+    expect(after.sites.published - before.sites.published).toBe(1);
+  });
 });
