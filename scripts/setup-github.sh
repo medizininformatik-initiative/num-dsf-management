@@ -96,7 +96,7 @@ checks_json="[${checks_json%,}]"
 upsert_ruleset() {
   local name="$1" body="$2" id=""
   if [ "$DRY" = 0 ]; then
-    id=$(gh api "repos/$REPO/rulesets" --jq ".[] | select(.name==\"$name\") | .id" 2>/dev/null | head -1)
+    id=$(gh api "repos/$REPO/rulesets" --jq ".[] | select(.name==\"$name\") | .id" 2>/dev/null | grep -E "^[0-9]+$" | head -1)
   fi
   if [ -n "$id" ]; then
     api_try "ruleset $name (update)" PUT "repos/$REPO/rulesets/$id" "$body"
