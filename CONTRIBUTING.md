@@ -1,7 +1,6 @@
 # Contributing
 
-Thanks for working on the DSF Management Portal. This guide covers
-local setup, the test suites, and the conventions the repository follows.
+Local setup, test suites and repository conventions.
 
 ## Prerequisites
 
@@ -63,16 +62,15 @@ docker compose exec backend npx jest --forceExit <pattern>
   staged files) and a commit-msg hook (commitlint enforces Conventional Commits).
   They install on `npm install` at the repo root.
 - **Dependencies:** Dependabot opens grouped weekly PRs for backend, frontend, and
-  GitHub Actions. `npm audit --audit-level=high` gates CI; the frontend uses
-  better-npm-audit to exclude a single vitest-UI advisory that CI never exercises.
+  GitHub Actions. CI runs `better-npm-audit audit --level high` in both workspaces.
 - **Coverage:** `npm run test:coverage` in each workspace enforces minimum coverage
   thresholds (also enforced in CI). Thresholds are set at the current floor and
   ratchet upward over time.
 
 ## Conventions
 
-- **Branches:** never commit feature work directly to `main` in a fork; open a
-  branch and a pull request.
+- **Branches:** do not commit feature work directly to `main`; open a branch and a
+  pull request.
 - **Commits:** Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`,
   `refactor:`, `chore:`, `ci:`). Keep each commit to one cohesive change.
 - **File headers:** every source file starts with a short comment stating its
@@ -87,8 +85,8 @@ docker compose exec backend npx jest --forceExit <pattern>
 
 CI must be green before merge. The pipeline runs backend + frontend type-check,
 ESLint, and tests (with coverage thresholds), a Prettier format check, a
-high-severity `npm audit` gate, the contract suite, Playwright E2E with visual
-regression, a bundle-size check, and a Docker build. See
+high-severity dependency audit, a gitleaks secret scan, the contract suite,
+Playwright E2E with visual regression, a bundle-size check, and a Docker build. See
 `.github/workflows/ci.yml`.
 
 Architecture decisions are recorded under [`docs/adr/`](docs/adr/); when a change

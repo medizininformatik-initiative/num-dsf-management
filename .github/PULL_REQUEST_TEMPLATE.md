@@ -29,9 +29,10 @@
 - [ ] Frontend Tests
 - [ ] frontend-e2e
 - [ ] frontend-contract
-- [ ] frontend-storybook
 - [ ] frontend-bundle
 - [ ] Security Audit
+- [ ] Format Check
+- [ ] Secret Scan
 
 ## Linked issue
 
