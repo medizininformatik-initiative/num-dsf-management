@@ -109,6 +109,8 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build --n
 
 For a server with no git that instead unpacks a downloaded zip, see "Updating a zip-based deployment" right below.
 
+> **Upgrade note (migrations 038-041).** Apply migrations 038 to 041 (incident archive, site removal, certificate purpose, certificate block lifts) **before** the new backend starts; `scripts/update-server.sh` does this for you. With the new backend and the old schema every site login and every `/fhir` request fails with HTTP 500 (the table `certificate_block_lifts` is missing). On a hand-run `git pull` update, apply them first as described in "Database migrations".
+
 > **Upgrade note (client-certificate proxy secret).** The backend now only trusts the client-certificate headers from a proxy that proves itself with `CLIENT_CERT_PROXY_SECRET` (header `X-Proxy-Auth`). For the **cert-auth stack** (`AUTH_MODE=cert`) the backend refuses to start until the secret (32+ characters) is in `.env.prod`, and the bundled nginx needs `certs/proxy-auth.conf` containing `proxy_set_header X-Proxy-Auth "<secret>";` (`chmod 600`); without both, `scripts/update-server.sh` times out waiting for a healthy backend. Behind host Apache add the `RequestHeader set X-Proxy-Auth` include first (see "Fronting the app with your own Apache2"). In the OTP-mode stacks without a secret, certificate login and FHIR access stay off until it is set. `/health/ready` now answers loopback callers only.
 
 ### Updating a zip-based deployment (no git on the server)
