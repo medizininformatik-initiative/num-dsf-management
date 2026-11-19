@@ -100,10 +100,26 @@ describe('marketplaceUtils', () => {
 
   it('puts name matches first under relevance and picks featured entries', () => {
     const list = [
-      e({ id: 'topic', name: 'Other', topics: ['transfer'], verified: true }),
+      e({ id: 'topic', name: 'Other', topics: ['transfer'], verified: true, stars: 5 }),
       e({ id: 'name', name: 'Transfer tool' }),
     ];
     expect(filterAndSort(list, { ...DEFAULT_FILTERS, q: 'transfer' })[0].id).toBe('name');
     expect(featuredOf(list).map((x) => x.id)).toEqual(['topic']);
+  });
+
+  it('featuredOf is empty when no entry has stars', () => {
+    const list = [e({ id: 'a', verified: true }), e({ id: 'b', verified: true })];
+    expect(featuredOf(list)).toEqual([]);
+  });
+
+  it('featuredOf keeps only starred entries, most stars first, max 3', () => {
+    const list = [
+      e({ id: 'zero', verified: true, stars: 0 }),
+      e({ id: 's2', verified: true, stars: 2 }),
+      e({ id: 's9', verified: true, stars: 9 }),
+      e({ id: 's5', verified: true, stars: 5 }),
+      e({ id: 's1', verified: true, stars: 1 }),
+    ];
+    expect(featuredOf(list).map((x) => x.id)).toEqual(['s9', 's5', 's2']);
   });
 });

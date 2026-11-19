@@ -154,10 +154,16 @@ export function filterAndSort(entries: MarketplaceEntry[], f: BrowseFilters): Ma
   return [...out].sort(cmp[f.sort]);
 }
 
-/** Verified, approved and healthy entries, most starred first. */
+/**
+ * Verified, approved and healthy entries that have at least one GitHub star,
+ * most starred first. Unstarred entries never qualify, so the section stays
+ * empty (and hidden) instead of showing arbitrary picks.
+ */
 export function featuredOf(entries: MarketplaceEntry[], max = 3): MarketplaceEntry[] {
   return entries
-    .filter((e) => e.verified && e.status === 'APPROVED' && trustLevel(e) === 'verified')
+    .filter(
+      (e) => e.verified && e.status === 'APPROVED' && trustLevel(e) === 'verified' && e.stars > 0,
+    )
     .sort((a, b) => b.stars - a.stars)
     .slice(0, max);
 }
