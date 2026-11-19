@@ -37,6 +37,13 @@ describe('Sidebar pending badge', () => {
     expect(screen.getAllByLabelText('3 open requests').length).toBeGreaterThan(0);
   });
 
+  it('uses the singular for one request', () => {
+    me.isAdmin = true;
+    pending.data = [{ id: 'a' }];
+    renderSidebar();
+    expect(screen.getAllByLabelText('1 open request').length).toBeGreaterThan(0);
+  });
+
   it('shows no badge without pending requests', () => {
     me.isAdmin = true;
     pending.data = [];

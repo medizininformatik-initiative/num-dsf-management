@@ -71,7 +71,9 @@ function CountBadge({ count }: { count: number }) {
   return (
     <span
       role="status"
-      aria-label={t('pendingRequestsBadge', { n: count })}
+      aria-label={t(count === 1 ? 'pendingRequestsBadge' : 'pendingRequestsBadgePlural', {
+        n: count,
+      })}
       className="ml-auto inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-error px-1 text-2xs font-semibold leading-none text-white"
     >
       <span aria-hidden="true">{count > 9 ? '9+' : count}</span>
