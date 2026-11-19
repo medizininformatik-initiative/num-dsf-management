@@ -63,6 +63,12 @@ export const updateIncidentSchema = z
 
 export const incidentStepUpSchema = z.object({ totpCode });
 
+// Four-eyes lift of the certificate blocks of a false alarm (migration 041).
+export const requestBlockLiftSchema = z.object({
+  reason: z.string().trim().min(1).max(2000),
+  totpCode,
+});
+
 export const INCIDENT_MEASURES = [
   'BLOCK_CERTIFICATES',
   'REMOVE_LOGINS',

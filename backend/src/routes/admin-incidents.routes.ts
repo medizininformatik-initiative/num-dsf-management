@@ -1,7 +1,7 @@
 /**
  * admin-incidents.routes.ts – Admin actions on incidents
  * (/api/v1/admin/incidents). One admin acts alone; confirm, suspend, lift,
- * close and archive need the fresh step-up (TOTP code or re-presented client
+ * close, archive and the four-eyes lift of certificate blocks need the fresh step-up (TOTP code or re-presented client
  * certificate), and so does a field update that changes the detection time
  * (it moves the NIS2 deadlines) or the Zulip link (shown to every site);
  * the escalation level and comments do not. Export downloads one
@@ -31,11 +31,13 @@ import {
   exportIncidentQuerySchema,
   incidentStepUpSchema,
   liftSuspensionSchema,
+  requestBlockLiftSchema,
   suspendIncidentSchema,
   updateIncidentSchema,
 } from '../schemas/incident.schema';
 import * as svc from '../services/incidents.service';
 import { liftSuspension, suspendIncident } from '../services/incident-suspension.service';
+import * as blockLifts from '../services/incident-block-lifts.service';
 import {
   buildIncidentExport,
   incidentExportCsv,
@@ -128,6 +130,51 @@ adminIncidentsRouter.post(
   validate(incidentStepUpSchema),
   asyncHandler(async (req, res) => {
     await act(res, 200, async () => svc.archiveIncident(req.params.id, await caller(req)));
+  }),
+);
+
+// Certificate blocks of a false alarm and their four-eyes lift: admin A requests (reason), admin B
+// of another e-mail domain confirms, the requester may cancel. All writes need the step-up.
+adminIncidentsRouter.get(
+  '/:id/block-lifts',
+  asyncHandler(async (req, res) => {
+    await act(res, 200, async () => {
+      if (!(await svc.loadIncidentRow(req.params.id))) throw new Error('INCIDENT_NOT_FOUND');
+      return blockLifts.listBlocks(req.params.id);
+    });
+  }),
+);
+
+adminIncidentsRouter.post(
+  '/:id/block-lifts',
+  ...stepUp,
+  validate(requestBlockLiftSchema),
+  asyncHandler(async (req, res) => {
+    await act(res, 201, async () =>
+      blockLifts.requestLift(req.params.id, req.body.reason, await caller(req)),
+    );
+  }),
+);
+
+adminIncidentsRouter.post(
+  '/:id/block-lifts/:rid/confirm',
+  ...stepUp,
+  validate(incidentStepUpSchema),
+  asyncHandler(async (req, res) => {
+    await act(res, 200, async () =>
+      blockLifts.confirmLift(req.params.id, req.params.rid, await caller(req)),
+    );
+  }),
+);
+
+adminIncidentsRouter.post(
+  '/:id/block-lifts/:rid/cancel',
+  ...stepUp,
+  validate(incidentStepUpSchema),
+  asyncHandler(async (req, res) => {
+    await act(res, 200, async () =>
+      blockLifts.cancelLift(req.params.id, req.params.rid, await caller(req)),
+    );
   }),
 );
 
