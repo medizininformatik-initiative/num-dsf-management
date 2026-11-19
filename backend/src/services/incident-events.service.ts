@@ -30,6 +30,7 @@ export const INCIDENT_EVENT_TYPES = [
   'CLOSED',
   'FALSE_ALARM',
   'UPDATED',
+  'ARCHIVED',
 ] as const;
 export type IncidentEventType = (typeof INCIDENT_EVENT_TYPES)[number];
 

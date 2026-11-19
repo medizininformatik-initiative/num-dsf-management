@@ -114,7 +114,11 @@ export async function getAdminStats(now: Date = new Date()): Promise<AdminStats>
       .count({ n: '*' })
       .first(),
     // Open = not yet closed: REPORTED (unconfirmed) and CONFIRMED. CLOSED and FALSE_ALARM are done.
-    db('incidents').whereIn('status', ['REPORTED', 'CONFIRMED']).count({ n: '*' }).first(),
+    db('incidents')
+      .whereIn('status', ['REPORTED', 'CONFIRMED'])
+      .whereNull('archived_at')
+      .count({ n: '*' })
+      .first(),
   ]);
 
   const byStatus = new Map(

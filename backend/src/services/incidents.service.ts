@@ -81,6 +81,8 @@ export interface IncidentRow {
   bsi_progress_by: string | null;
   /** Structured report fields per NIS2 stage (JSON; parsed or text, see lib/nis2Entries). */
   nis2_data: unknown;
+  archived_at?: Date | null;
+  archived_by?: string | null;
 }
 
 /** The signed-in user as the incident register needs it. */
@@ -116,6 +118,9 @@ export interface ApiIncident {
   dpoInformed: { at: Date; by: string | null } | null;
   canAcknowledge: boolean;
   isMine: boolean;
+  /** Set once an admin archived the incident (admins only see it with includeArchived). */
+  archivedAt: Date | null;
+  archivedBy: string | null;
 }
 
 /** Caller from an authenticated request user (org-scoped sessions act for one instance). */
@@ -216,14 +221,23 @@ export function toApi(row: IncidentRow, caller: IncidentCaller): ApiIncident {
         : null,
     canAcknowledge: canAcknowledge(row, caller),
     isMine: isReporter(row, caller),
+    archivedAt: row.archived_at ?? null,
+    archivedBy: caller.isAdmin ? (row.archived_by ?? null) : null,
   };
 }
 
-/** Visible incidents: open ones (REPORTED, CONFIRMED) first, then newest first. */
-export async function listIncidents(caller: IncidentCaller): Promise<ApiIncident[]> {
+/**
+ * Visible incidents: open ones (REPORTED, CONFIRMED) first, then newest first.
+ * Archived incidents are left out; only an admin can ask for them.
+ */
+export async function listIncidents(
+  caller: IncidentCaller,
+  opts: { includeArchived?: boolean } = {},
+): Promise<ApiIncident[]> {
   const query = baseQuery()
     .orderByRaw("CASE WHEN i.status IN ('REPORTED','CONFIRMED') THEN 0 ELSE 1 END")
     .orderBy('i.reported_at', 'desc');
+  if (!(caller.isAdmin && opts.includeArchived)) query.whereNull('i.archived_at');
   if (!caller.isAdmin) {
     query.where((q) =>
       q.whereNotNull('i.confirmed_at').orWhere((own) => {
@@ -667,6 +681,35 @@ export async function closeIncident(
   const updated = (await loadRow(id))!;
   await auditIncident(updated, caller, 'UPDATE', { action: 'incident_close', outcome });
   await notifyIncident(updated, 'closed', caller.email);
+  return toApi(updated, caller);
+}
+
+/**
+ * Archive (soft delete) a finished incident: only FALSE_ALARM or CLOSED, and
+ * only once it no longer suspends a site. The row, its timeline and the
+ * blocked thumbprints stay; the incident just leaves the default lists.
+ * @throws NOT_ARCHIVABLE / ALREADY_ARCHIVED
+ */
+export async function archiveIncident(id: string, caller: IncidentCaller): Promise<ApiIncident> {
+  const row = await requireAdminRow(id);
+  const check = (locked: IncidentRow) => {
+    if (locked.archived_at) throw new Error('ALREADY_ARCHIVED');
+    if (!isClosed(locked) || locked.suspended) throw new Error('NOT_ARCHIVABLE');
+  };
+  check(row);
+  await changeWithEvent(
+    id,
+    { archived_at: new Date(), archived_by: caller.email },
+    caller.email,
+    'ARCHIVED',
+    { status: row.status },
+    check,
+  );
+  const updated = (await loadRow(id))!;
+  await auditIncident(updated, caller, 'UPDATE', {
+    action: 'incident_archive',
+    status: row.status,
+  });
   return toApi(updated, caller);
 }
 

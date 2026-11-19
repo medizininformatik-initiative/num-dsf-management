@@ -17,6 +17,8 @@ const STATUS: Record<string, number> = {
   ALREADY_SUSPENDED: 409,
   NOT_SUSPENDED: 409,
   STILL_SUSPENDED: 409,
+  NOT_ARCHIVABLE: 409,
+  ALREADY_ARCHIVED: 409,
   INTERIM_NOT_REQUESTED: 409,
   STAGE_NOT_DUE: 409,
   NIS2_FIELDS_INCOMPLETE: 422,
@@ -24,6 +26,9 @@ const STATUS: Record<string, number> = {
 };
 
 const MESSAGES: Record<string, string> = {
+  NOT_ARCHIVABLE:
+    'Nur ein abgeschlossener Vorfall oder Fehlalarm ohne aktive Sperre kann archiviert werden. / Only a closed incident or false alarm without an active suspension can be archived.',
+  ALREADY_ARCHIVED: 'Der Vorfall ist bereits archiviert. / The incident is already archived.',
   INTERIM_NOT_REQUESTED:
     'Das BSI hat keine Zwischenmeldung angefordert. / No interim report was requested by the BSI.',
   STAGE_NOT_DUE: 'Diese Meldestufe ist noch nicht fällig. / This reporting stage is not due yet.',
