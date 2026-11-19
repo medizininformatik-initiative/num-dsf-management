@@ -88,10 +88,10 @@
   --bg-input: #1c1c1f;
   --bg-hover: #222226;
   --border: #2c2c30;
-  /* muted: 5.6 on card, 4.8 on hover; secondary: 7.1 on card */
+  /* muted: 6.7 on card, 5.8 on hover; secondary: 8.9 on card */
   --text-primary: #f2f2f4;
-  --text-secondary: #a1a1a8;
-  --text-muted: #8e8e95;
+  --text-secondary: #b4b4bb;
+  --text-muted: #9c9ca3;
   --shadow: rgba(0, 0, 0, 0.4);
   --primary: #9b94d4;
   --accent: #9b94d4;
