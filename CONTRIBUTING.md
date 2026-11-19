@@ -89,5 +89,8 @@ high-severity dependency audit, a gitleaks secret scan, the contract suite,
 Playwright E2E with visual regression, a bundle-size check, and a Docker build. See
 `.github/workflows/ci.yml`.
 
+Branching, review, labels, releases and deployment are described in
+[`docs/development-workflow.md`](docs/development-workflow.md).
+
 Architecture decisions are recorded under [`docs/adr/`](docs/adr/); when a change
 alters a recorded decision, add or supersede the relevant ADR.
