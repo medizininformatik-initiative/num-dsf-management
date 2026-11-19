@@ -126,8 +126,29 @@ Apache 2.0, see [`LICENSE`](LICENSE). Institute of Medical Informatics, Universi
 <div align="center">
   <a href="https://www.medizin.uni-muenster.de/imi/das-institut.html">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="frontend/public/logos/IMI-Logo-grad-eng-dark.png">
-      <img src="frontend/public/logos/IMI-Logo-grad-eng.png" alt="Institute of Medical Informatics, University of Münster" height="110" />
+      <source media="(prefers-color-scheme: dark)" srcset="docs/logos/imi-dark.svg">
+      <img src="docs/logos/imi.svg" alt="Institute of Medical Informatics, University of Münster" height="110" />
+    </picture>
+  </a>
+  <br /><br />
+  <a href="https://www.uni-muenster.de">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/logos/uni-muenster-dark.svg">
+      <img src="docs/logos/uni-muenster.svg" alt="University of Münster" height="40" />
+    </picture>
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://www.ukm.de">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/logos/ukm-dark.png">
+      <img src="docs/logos/ukm.png" alt="Universitätsklinikum Münster" height="40" />
+    </picture>
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://medic.uni-muenster.de">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/logos/medic-dark.png">
+      <img src="docs/logos/medic.png" alt="MeDIC – Medizinisches Datenintegrationszentrum" height="48" />
     </picture>
   </a>
 </div>
