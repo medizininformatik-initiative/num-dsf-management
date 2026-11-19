@@ -77,6 +77,13 @@ describe('publishedAffiliations', () => {
     expect(publishedAffiliations('not json')).toEqual([]);
     expect(publishedAffiliations('{}')).toEqual([]);
   });
+
+  it('does not throw on a null entry element or a non-array entry', () => {
+    expect(publishedAffiliations(JSON.stringify({ entry: [null] }))).toEqual([]);
+    expect(publishedAffiliations(JSON.stringify({ entry: { request: {} } }))).toEqual([]);
+    expect(publishedAffiliations(JSON.stringify({ entry: 'x' }))).toEqual([]);
+    expect(publishedAffiliations('null')).toEqual([]);
+  });
 });
 
 describe('withRetiredAffiliations', () => {

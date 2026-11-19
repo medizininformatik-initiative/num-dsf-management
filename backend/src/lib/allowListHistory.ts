@@ -27,16 +27,18 @@ export interface AffiliationTriple {
 
 /** Affiliations a stored bundle publishes (its PUT entries); unreadable JSON yields none. */
 export function publishedAffiliations(bundleJson: string): AffiliationTriple[] {
-  let bundle: { entry?: Array<{ request?: { method?: string; url?: string } }> };
+  let bundle: { entry?: unknown } | null;
   try {
     bundle = JSON.parse(bundleJson);
   } catch {
     return [];
   }
   const triples: AffiliationTriple[] = [];
-  for (const entry of bundle?.entry ?? []) {
-    if (entry.request?.method !== 'PUT' || typeof entry.request.url !== 'string') continue;
-    const triple = parseAffiliationUrl(entry.request.url);
+  const entries = Array.isArray(bundle?.entry) ? bundle.entry : [];
+  for (const entry of entries as Array<{ request?: { method?: string; url?: string } } | null>) {
+    const request = entry?.request;
+    if (request?.method !== 'PUT' || typeof request.url !== 'string') continue;
+    const triple = parseAffiliationUrl(request.url);
     if (triple) triples.push(triple);
   }
   return triples;
