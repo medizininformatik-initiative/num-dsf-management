@@ -28,7 +28,7 @@ writes):
 
 | Page | Path | Purpose |
 |---|---|---|
-| Approval Review | `/app/admin` | Action pending approval requests |
+| Approval Review | `/app/admin` | Statistics overview (sites, requests, allow-list freshness, open incidents), pending approval requests, site removal; `/app/admin/help` explains the pages |
 | User Management | `/app/admin/users` | Whitelist + lock/unlock/demote/remove |
 | Promotions | `/app/admin/promotions` | Approve/reject admin-promotion requests |
 | Admin Certificates | `/app/admin/certificates` | Client certificates of admins: add, label, remove, request one for a colleague |
@@ -49,6 +49,9 @@ writes):
 6. Click **Approve** or **Reject** (rejection requires a comment)
 7. Admins are notified immediately of the decision
 8. Site contacts receive notification after 30 minutes (gives time to reverse)
+
+The site's approval history (`GET .../approval/history`) lists each request with the admins who
+decided it (e-mail, decision, time), so a site can see who approved or rejected.
 
 Each certificate in the snapshot shows two badges: **In allow list** / **Not published** and
 **Login** / **No login**. The site sets both per certificate before submitting. Only published
@@ -170,6 +173,12 @@ approval-based login certificates. The login certificates that were removed
 with the site (including onboarding and admin-added ones) are not brought back;
 add them again on the site's certificate page or in the Admin area.
 
+A DSF server that holds the allow list can be emptied again with the purge bundle
+`GET /fhir/Bundle/:endpointId/purge` (mTLS, same endpoint scoping as the allow list, rate limited
+per certificate, every fetch audited). It contains only conditional DELETEs for every Organization,
+Endpoint and affiliation the portal ever published, except the caller's own Organization and
+Endpoints.
+
 ## Email Whitelist
 
 Manage who can log in:
@@ -232,7 +241,9 @@ no waiting period.
    certificate, which goes through the normal four-eyes approval.
 6. **Close.** Close as CLOSED with the post-incident review and the measures
    derived from it, or as FALSE_ALARM with the reason. Lift any suspension
-   first. Incidents are never deleted.
+   first. Incidents are never deleted; a closed or false-alarm incident that no longer suspends a
+   site can be archived (soft delete, step-up, timeline event `ARCHIVED`). Archived incidents
+   leave the default lists and counters; admins see them with `includeArchived`.
 
    **Lifting the certificate blocks of a false alarm.** The blocks of the
    thumbprints stay after a suspension is lifted. If the incident ends as
@@ -284,6 +295,28 @@ site's instance, so the site's own audit log does not show them. For authority r
 download one incident as JSON or CSV (`GET /api/v1/admin/incidents/:id/export`).
 The download includes the full timeline and the hash values. Mails never
 contain the description.
+
+## Certificates and CA lists
+
+Per certificate a site sets whether its thumbprint is **published in the allow list** and whether
+it is **used for login** (`publish_in_allowlist`, `use_for_login`; certificate card or
+`PATCH .../certificates/:cid/purpose`). Both apply with the next approved request.
+
+CA Lists (`/app/admin/ca-blacklist`): the **blacklist** rejects uploads and renewals from a
+distrusted CA (`CA_BLACKLISTED`); the **whitelist** holds the CAs the DSF accepts (seeded with the
+DSF 2.1.1 defaults). Other issuers are flagged and, with `CA_WHITELIST_ENFORCE=true`, rejected
+(`CA_NOT_WHITELISTED`).
+
+## Marketplace and federation map
+
+The marketplace lists DSF processes from GitHub repositories (daily sync). Admins add an entry by
+repository URL, set its status (`APPROVED`, `EXPERIMENTAL`, `DEPRECATED`), verification and
+advisory; every write needs the step-up. The "Recommended" row on the marketplace page shows only
+verified, approved entries that have at least one GitHub star. The sync keeps the stored
+description when GitHub returns none.
+
+The federation map (`/app/map`) shows all sites of the allow list with a legend below the map.
+Withdrawn sites are left out.
 
 ## Certificate Renewal
 
