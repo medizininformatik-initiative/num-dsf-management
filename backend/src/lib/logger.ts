@@ -31,6 +31,7 @@ export const REDACT_PATHS = [
   'req.headers.authorization',
   'req.headers.cookie',
   'req.headers["x-client-cert"]',
+  'req.headers["x-proxy-auth"]',
   'err.body',
   'err.raw',
 ];
