@@ -3,9 +3,12 @@
  * request arrives. Mounted once in the app shell. Polls the pending list
  * through usePendingApprovals (shared cache with the admin page and the
  * sidebar badge; no polling in background tabs), remembers the ids already
- * seen per admin in localStorage and shows a toast plus a notification-center
- * entry for ids it has not seen. The first load after login only records the
- * current ids. Storage failures fall back to an in-memory set.
+ * seen per admin in localStorage (a growing set, capped at the last 500 ids, so
+ * an id that leaves and returns to the list is not announced again) and shows a
+ * toast plus a notification-center entry for ids it has not seen, also ones that
+ * arrived between sessions. Only the very first load for an admin without a
+ * stored key stays silent and records the current ids. Storage failures fall
+ * back to an in-memory set.
  * Dependencies: useMe, useAdmin, parseSnapshot, i18n.store, notification.store,
  * sonner, react-router-dom.
  */
@@ -20,6 +23,7 @@ import { useI18n } from '../stores/i18n.store';
 import { useNotificationStore } from '../stores/notification.store';
 
 const STORAGE_PREFIX = 'dsf.seenPendingRequests:';
+const MAX_SEEN = 500;
 
 function readSeen(key: string): Set<string> | null {
   try {
@@ -66,8 +70,9 @@ export function useNewRequestNotifier(): void {
     const state = seenRef.current;
     const currentIds = new Set(pending.map((r) => r.id));
     const known = state.ids;
-    state.ids = currentIds;
-    writeSeen(key, currentIds);
+    const merged = new Set([...(known ?? []), ...currentIds]);
+    state.ids = new Set([...merged].slice(-MAX_SEEN));
+    writeSeen(key, state.ids);
     if (known === null) return; // first load: record without notifying
     const fresh = pending.filter((r) => !known.has(r.id));
     if (fresh.length === 0) return;

@@ -94,6 +94,25 @@ describe('useNewRequestNotifier', () => {
     expect(toastInfo.mock.calls[0][0]).toBe('New approval request: r2');
   });
 
+  it('does not announce an id again when it leaves and returns', async () => {
+    reply(req('r1'), req('r2'));
+    const qc = setup();
+    await loaded(qc);
+    reply(req('r1'));
+    await refetch(qc);
+    reply(req('r1'), req('r2'));
+    await refetch(qc);
+    expect(toastInfo).not.toHaveBeenCalled();
+  });
+
+  it('announces ids that arrived between sessions', async () => {
+    localStorage.setItem('dsf.seenPendingRequests:a@x.de', JSON.stringify(['r1']));
+    reply(req('r1'), req('r2', 'Gamma'));
+    setup();
+    await waitFor(() => expect(toastInfo).toHaveBeenCalledTimes(1));
+    expect(toastInfo.mock.calls[0][0]).toBe('New approval request: Gamma');
+  });
+
   it('aggregates several new ids into one toast', async () => {
     reply(req('r1'));
     const qc = setup();
