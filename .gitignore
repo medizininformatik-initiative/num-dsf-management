@@ -1,7 +1,7 @@
 # =============================================================================
 # DSF Management Portal — .gitignore
 # Comprehensive ignore list for Node.js + React + TypeScript stack with
-# Docker Compose, Playwright, Storybook, and AI coding assistants.
+# Docker Compose, Playwright and Storybook.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -124,7 +124,7 @@ $RECYCLE.BIN/
 .history/
 
 # -----------------------------------------------------------------------------
-# AI coding assistants (machine-specific, opinionated)
+# Local tool files (machine-specific)
 # -----------------------------------------------------------------------------
 .claude/
 .claude-flow/
@@ -247,7 +247,7 @@ venv/
 .svelte-kit/
 
 # -----------------------------------------------------------------------------
-# Graphify knowledge graph (local tool output, never committed)
+# Generated local tool output (never committed)
 # -----------------------------------------------------------------------------
 graphify-out/
 

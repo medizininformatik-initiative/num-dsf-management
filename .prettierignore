@@ -27,5 +27,5 @@ CHANGELOG.md
 # committed (unformatted) version does not fail CI. Remove once that change lands.
 backend/src/index.ts
 
-# Graphify knowledge graph (generated; graph.json is committed but not Prettier-managed)
+# Generated local tool output (not Prettier-managed)
 graphify-out/
