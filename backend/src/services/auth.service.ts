@@ -491,9 +491,22 @@ export async function findCertUserId(fingerprint: string): Promise<string | null
  * owner from its Redis record; an unknown or already revoked token writes none
  * (the caller's own claims about who it is are never trusted).
  */
-export async function logout(refreshToken: string, ipAddress: string): Promise<void> {
+export async function logout(
+  refreshToken: string,
+  ipAddress: string,
+  opts?: { certFingerprint?: string | null },
+): Promise<void> {
   const hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
   const userId = await getRefreshToken(hash);
+  // Certificate-only deployment: a stolen refresh cookie alone must not be
+  // able to end the real user's session. Revoke only for the certificate the
+  // session belongs to; otherwise leave the token untouched (the caller still
+  // clears its own cookie and answers success).
+  if (isCertAuthMode() && userId) {
+    const fp = opts?.certFingerprint;
+    const resolved = fp && isValidSha512Fingerprint(fp) ? await resolveCertLogin(fp) : null;
+    if (!resolved || resolved.user.id !== userId) return;
+  }
   await deleteRefreshToken(hash);
   if (!userId) return;
   const user = await db('users').where({ id: userId }).first('email');

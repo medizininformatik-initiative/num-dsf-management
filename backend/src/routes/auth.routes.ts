@@ -383,7 +383,9 @@ authRouter.post(
   asyncHandler(async (req: Request, res: Response) => {
     const refreshToken = req.cookies?.refreshToken;
     if (typeof refreshToken === 'string' && refreshToken) {
-      await logout(refreshToken, req.ip || 'unknown');
+      await logout(refreshToken, req.ip || 'unknown', {
+        certFingerprint: extractClientCert(req)?.fingerprint ?? null,
+      });
     }
     res.clearCookie('refreshToken', { path: '/auth' });
     res.json({ data: { message: 'Logged out' } });
