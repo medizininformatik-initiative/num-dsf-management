@@ -246,7 +246,10 @@ async function loadApprovedState(): Promise<{
   const certIds = legacy.flatMap((s) => snapshotCertificateIds(s.snapshot) ?? []);
   const [certs, liveMembers] = await Promise.all([
     certIds.length > 0
-      ? (db('certificates').whereIn('id', certIds).select('id', 'pem') as Promise<CertPem[]>)
+      ? (db('certificates')
+          .whereIn('id', certIds)
+          .where('publish_in_allowlist', 1)
+          .select('id', 'pem') as Promise<CertPem[]>)
       : Promise.resolve([] as CertPem[]),
     loadMembers(unusable.map((s) => ({ identifier: s.orgIdentifier, name: s.orgName }))),
   ]);
@@ -259,6 +262,7 @@ async function loadApprovedState(): Promise<{
     orphaned.length > 0
       ? await db('certificates')
           .whereIn('organization_id', orphaned)
+          .where('publish_in_allowlist', 1)
           .select('id', 'organization_id', 'pem')
           .orderBy([{ column: 'created_at' }, { column: 'id' }])
       : [];

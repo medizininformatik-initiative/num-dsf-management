@@ -277,6 +277,35 @@ describe('snapshots without the allowList section', () => {
     expect((await memberOf(site))?.thumbprints).toEqual([dsfThumbprint(live)]);
   });
 
+  it('never publishes a login-only certificate from a legacy snapshot', async () => {
+    const site = await newSite();
+    const cert = await db('certificates').where({ organization_id: site.orgId }).first();
+    const loginOnlyId = uuidv4();
+    await db('certificates').insert({
+      id: loginOnlyId,
+      organization_id: site.orgId,
+      pem: makeCertPem(`login-only.${site.orgId}`),
+      subject: 'login-only',
+      thumbprint: 'b'.repeat(64),
+      valid_until: new Date('2035-01-01'),
+      created_at: new Date(),
+      publish_in_allowlist: 0,
+      use_for_login: 1,
+    });
+    const snapshot = (ids: string[]) => ({
+      organization: { identifier: site.orgId, name: 'Legacy', active: true },
+      endpoints: [{ identifier: site.endpointIds[0], name: null, address: 'https://x.example.de' }],
+      certificates: ids.map((id) => ({ id })),
+      memberships: [],
+    });
+    // Listed by id.
+    await insertRequest(site, 'APPROVED', snapshot([cert.id, loginOnlyId]));
+    expect((await memberOf(site))?.thumbprints).toEqual([dsfThumbprint(cert)]);
+    // Fallback to the live certificates when none of the listed ones exists.
+    await insertRequest(site, 'APPROVED', snapshot([uuidv4()]));
+    expect((await memberOf(site))?.thumbprints).toEqual([dsfThumbprint(cert)]);
+  });
+
   it('derives a legacy deactivation as a removed organization', async () => {
     const site = await newSite();
     await insertRequest(site, 'APPROVED', {
