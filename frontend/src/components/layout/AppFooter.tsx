@@ -6,6 +6,7 @@
  */
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { ImiLogo } from './ImiLogo';
 import { useI18n } from '../../stores/i18n.store';
 
 export function AppFooter({ children }: { children?: ReactNode }) {
@@ -18,14 +19,9 @@ export function AppFooter({ children }: { children?: ReactNode }) {
         rel="noopener noreferrer"
         style={{ display: 'inline-flex', alignItems: 'center' }}
       >
-        <img
-          src="/logos/IMI-Logo-grad-eng.png"
-          alt="IMI"
-          // Size via inline style, not the height attr — Tailwind preflight's
-          // `img { height: auto }` overrides the attribute and the wide logo
-          // would otherwise fill the footer width.
-          style={{ display: 'block', height: '16px', width: 'auto', opacity: 0.7 }}
-        />
+        {/* Height via inline style: Tailwind preflight's `img { height: auto }`
+            would otherwise let the wide logo fill the footer width. */}
+        <ImiLogo alt="IMI" style={{ height: '28px', opacity: 0.85 }} />
       </a>
       <span>{t('footerAffiliation')}</span>
       <span aria-hidden="true" className="hidden text-[color:var(--text-muted)] sm:inline">

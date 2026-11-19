@@ -27,6 +27,7 @@ import { useAllowListFreshness } from '../../hooks/useAllowListFreshness';
 import { useCanvasStore } from '../../stores/canvas.store';
 import { useI18n } from '../../stores/i18n.store';
 import { useThemeStore } from '../../stores/theme.store';
+import { ImiLogo } from './ImiLogo';
 
 export function TopBar({
   onDownload,
@@ -50,7 +51,14 @@ export function TopBar({
 
   return (
     <div className="glass-chrome relative z-40 flex h-14 flex-shrink-0 items-center justify-between gap-3 px-4 xl:px-6">
-      <div className="min-w-0" />
+      <a
+        href="https://www.medizin.uni-muenster.de/imi/das-institut.html"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex min-w-0 flex-shrink-0 items-center rounded-small max-[420px]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus-ring)]"
+      >
+        <ImiLogo className="h-9 sm:h-11" />
+      </a>
 
       {showInstanceActions && (
         <div className="hidden lg:block">

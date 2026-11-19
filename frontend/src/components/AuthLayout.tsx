@@ -15,6 +15,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../stores/i18n.store';
+import { ImiLogo } from './layout/ImiLogo';
 import { AuthAmbient } from './auth/AuthAmbient';
 import { AuthHero } from './auth/AuthHero';
 import { AuthSuccess } from './auth/AuthSuccess';
@@ -134,11 +135,7 @@ export function AuthLayout({ children, title, subtitle, step = 0, success }: Aut
             rel="noopener noreferrer"
             className={LINK_FOCUS}
           >
-            <img
-              src="/logos/IMI-Logo-grad-eng.png"
-              alt="Institute of Medical Informatics"
-              className="block h-9 opacity-90 transition-opacity duration-short ease-standard hover:opacity-100"
-            />
+            <ImiLogo className="h-14 opacity-90 transition-opacity duration-short ease-standard hover:opacity-100" />
           </a>
           <img
             src="/logos/Logo UKM Münster.PNG"
