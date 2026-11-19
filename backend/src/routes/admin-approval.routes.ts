@@ -1,7 +1,7 @@
 /**
  * admin-approval.routes.ts – Admin-only approval management endpoints
  * Mounted at /api/v1/admin/approval
- * Dependencies: approval.service, stepUp.middleware, auth.middleware, admin.middleware, rateLimit.middleware
+ * Dependencies: approval.service, request-risk.service, stepUp.middleware, auth.middleware, admin.middleware, rateLimit.middleware
  *
  * approve/reject are rate-limited per-user via stepUpTotpRateLimit, matching
  * the other admin routers' step-up guards. The IP-keyed otpRateLimit (meant
@@ -15,6 +15,8 @@ import { requireStepUp } from '../middleware/stepUp.middleware';
 import * as svc from '../services/approval.service';
 import { stepUpTotpRateLimit } from '../middleware/rateLimit.middleware';
 import { writeAuditLog } from '../services/audit.service';
+import { assessPendingRequests } from '../services/request-risk.service';
+import { logger } from '../lib/logger';
 
 export const adminApprovalRouter = Router();
 
@@ -28,9 +30,15 @@ adminApprovalRouter.get(
     try {
       const requests = await svc.getPendingApprovals();
       const sigsByRequest = await svc.getSignaturesForRequests(requests.map((r: any) => r.id));
+      // The risk hint is advisory: if it cannot be computed the list still loads (risk: null).
+      const risks = await assessPendingRequests(requests).catch((err) => {
+        logger.error({ err }, '[ApprovalRisk] assessment failed');
+        return null;
+      });
       const enriched = requests.map((r: any) => ({
         ...r,
         signatures: sigsByRequest.get(r.id) ?? [],
+        risk: risks?.get(r.id) ?? null,
       }));
       res.json({ data: enriched });
     } catch (e) {
