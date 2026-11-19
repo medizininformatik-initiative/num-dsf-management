@@ -139,7 +139,7 @@ describe('EndpointModal', () => {
       target: { value: 'https://dsf-fhir.hospital.de/fhir' },
     });
     fireEvent.click(screen.getByRole('button', { name: /add ip address/i }));
-    fireEvent.change(screen.getByPlaceholderText(/128\.176\.232\.132/), {
+    fireEvent.change(screen.getByPlaceholderText(/192\.0\.2\.10/), {
       target: { value: '192.0.2.10' },
     });
     fireEvent.click(screen.getByRole('button', { name: /add endpoint/i }));
