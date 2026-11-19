@@ -1,6 +1,7 @@
 /**
  * snapshotCompare.ts – Pure comparison of two approval snapshots (current data vs. the last approved one).
- * Ignores volatile timestamps and array order, so only real data changes count.
+ * Ignores volatile timestamps, system/admin-managed fields and array order, so only real data
+ * changes count.
  * Dependencies: none
  */
 
@@ -10,7 +11,14 @@ const VOLATILE_KEYS = new Set([
   'updated_at',
   'submitted_at',
   'resolved_at',
+  // Set by the system or an admin, not part of what the site submits for approval.
+  'email_validated',
+  'client_cert_thumbprint',
+  'client_cert_fingerprint',
 ]);
+
+/** Keys a snapshot only carries since a later version; compared only when both sides have them. */
+const OPTIONAL_KEYS = ['editableDigest'];
 
 /** Canonical form: volatile keys dropped, object keys sorted, arrays ordered by their JSON string. */
 function canonicalize(value: unknown): unknown {
@@ -52,5 +60,13 @@ export function snapshotsDiffer(current: unknown, approved: unknown): boolean | 
   const a = normalize(current);
   const b = normalize(approved);
   if (a === undefined || b === undefined) return null;
+  for (const key of OPTIONAL_KEYS) {
+    const ra = a as Record<string, unknown>;
+    const rb = b as Record<string, unknown>;
+    if (!(key in ra) || !(key in rb)) {
+      delete ra[key];
+      delete rb[key];
+    }
+  }
   return JSON.stringify(a) !== JSON.stringify(b);
 }

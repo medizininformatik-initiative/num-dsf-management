@@ -6,6 +6,7 @@
  *               (loadMembers), approved-snapshot.service (types), lib/approvalState,
  *               login-certificate-sync.service, lib/approvedIps, lib/snapshotCompare
  */
+import crypto from 'crypto';
 import { Knex } from 'knex';
 import { db } from '../db/connection';
 import { writeAuditLog } from './audit.service';
@@ -34,6 +35,25 @@ const SILENT_CONSENT_DAYS = Math.max(
   parseInt(process.env.APPROVAL_SILENT_CONSENT_DAYS || '7', 10) || 7,
 );
 
+/** SHA-256 over the site-editable fields the snapshot does not store itself. */
+function editableFieldsDigest(
+  orgEmail: string,
+  contacts: Array<{
+    id: string;
+    email: string | null;
+    address_line: string | null;
+    postal_code: string | null;
+  }>,
+): string {
+  const sorted = [...contacts]
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .map((c) => [c.id, c.email ?? null, c.address_line ?? null, c.postal_code ?? null]);
+  return crypto
+    .createHash('sha256')
+    .update(JSON.stringify([orgEmail ?? null, sorted]))
+    .digest('hex');
+}
+
 async function buildSnapshot(instanceId: string, trx: Knex | Knex.Transaction = db) {
   const org: OrganizationRow | undefined = await trx('organizations')
     .where({ instance_id: instanceId })
@@ -55,7 +75,14 @@ async function buildSnapshot(instanceId: string, trx: Knex | Knex.Transaction = 
   const memberships = await trx('memberships')
     .where({ organization_id: org.identifier })
     .whereNull('deleted_at');
-  const { email: _email, ...orgSafe } = org;
+  const { email: orgEmail, ...orgSafe } = org;
+  // Contact e-mails and addresses and the organization e-mail are editable by the site but
+  // are not stored in the snapshot (internal data minimisation); a digest keeps them
+  // comparable for changedSinceApproval.
+  const contactPrivate = await trx('contacts')
+    .where({ organization_id: org.identifier })
+    .select('id', 'email', 'address_line', 'postal_code');
+  const editableDigest = editableFieldsDigest(orgEmail, contactPrivate);
   // What the allow list publishes for this site once the request is approved:
   // thumbprints only, never the certificate PEMs.
   const [member] = await loadMembers([{ identifier: org.identifier, name: org.name }], trx);
@@ -70,6 +97,7 @@ async function buildSnapshot(instanceId: string, trx: Knex | Knex.Transaction = 
     certificates,
     memberships,
     allowList,
+    editableDigest,
     snapshotAt: new Date().toISOString(),
   };
 }

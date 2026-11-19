@@ -52,6 +52,23 @@ describe('snapshotsDiffer', () => {
     b.certificates[0].thumbprint = 'BB';
     expect(snapshotsDiffer(base(), b)).toBe(true);
   });
+  it('ignores system- and admin-managed fields', () => {
+    const a = {
+      contacts: [{ id: '1', email_validated: 0 }],
+      organization: { client_cert_thumbprint: 'x' },
+    };
+    const b = {
+      contacts: [{ id: '1', email_validated: 1 }],
+      organization: { client_cert_thumbprint: 'y' },
+    };
+    expect(snapshotsDiffer(a, b)).toBe(false);
+  });
+  it('compares the editable digest only when both snapshots carry it', () => {
+    expect(snapshotsDiffer({ ...base(), editableDigest: 'a' }, base())).toBe(false);
+    expect(
+      snapshotsDiffer({ ...base(), editableDigest: 'a' }, { ...base(), editableDigest: 'b' }),
+    ).toBe(true);
+  });
   it('accepts a JSON string on either side', () => {
     expect(snapshotsDiffer(base(), JSON.stringify(base()))).toBe(false);
     expect(snapshotsDiffer(JSON.stringify(base()), base())).toBe(false);
