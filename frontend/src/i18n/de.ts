@@ -2894,4 +2894,53 @@ export const de: Record<TranslationKey, string> = {
     'Importieren Sie danach die aktuelle Allow List erneut, damit die Kommunikation wieder funktioniert.',
   purgeCopyUrl: 'Purge-URL',
   purgeCopyCurl: 'Purge-curl-Befehl',
+
+  // Lifting the certificate blocks of a false alarm with two admins
+  incidentEventBLOCK_LIFT_REQUESTED: 'Aufhebung der Zertifikatssperren beantragt',
+  incidentEventBLOCKS_LIFTED: 'Zertifikatssperren aufgehoben',
+  incidentErrorNOT_FALSE_ALARM: 'Sperren können nur bei einem Fehlalarm aufgehoben werden.',
+  incidentErrorNOTHING_TO_LIFT:
+    'Es gibt keine aktive Zertifikatssperre, die aufgehoben werden könnte.',
+  incidentErrorLIFT_ALREADY_PENDING:
+    'Für diesen Vorfall liegt bereits ein Antrag auf Aufhebung der Sperren vor.',
+  incidentErrorLIFT_NOT_PENDING: 'Dieser Antrag ist nicht mehr offen.',
+  incidentErrorSELF_CONFIRM:
+    'Sie haben diese Aufhebung beantragt; ein anderer Admin muss bestätigen.',
+  incidentErrorSAME_SITE:
+    'Der bestätigende Admin muss eine andere E-Mail-Domain haben als der Antragsteller.',
+  incidentErrorNOT_REQUESTER: 'Nur der Antragsteller kann diesen Antrag zurückziehen.',
+  incidentErrorREASON_REQUIRED: 'Eine Begründung ist erforderlich.',
+  blockLiftTitle: 'Zertifikatssperren',
+  blockLiftIntro:
+    'Der Vorfall hat diese Zertifikats-Fingerprints gesperrt. Sie bleiben gesperrt, bis zwei Admins mit unterschiedlichen E-Mail-Domains die Sperren dieses Fehlalarms aufheben. Die Aufhebung stellt den Allow-List-Eintrag und den Login des Standorts wieder her.',
+  blockLiftNone: 'Dieser Vorfall hat kein Zertifikat gesperrt.',
+  blockLiftBlocked: 'Gesperrt',
+  blockLiftLifted: 'Aufgehoben',
+  blockLiftLiftedBy: 'Aufgehoben von {who} · {when}',
+  blockLiftBlockedBy: 'Gesperrt von {who} · {when}',
+  blockLiftRequest: 'Aufhebung der Sperren beantragen',
+  blockLiftRequestTitle: 'Aufhebung der Sperren beantragen',
+  blockLiftRequestBody:
+    'Ein zweiter Admin mit anderer E-Mail-Domain muss bestätigen, bevor eine Sperre aufgehoben wird.',
+  blockLiftReason: 'Begründung',
+  blockLiftReasonPlaceholder: 'Warum war es ein Fehlalarm und die Zertifikate sind sicher?',
+  blockLiftRequestedToast:
+    'Antrag erstellt. Ein zweiter Admin einer anderen Domain muss bestätigen.',
+  blockLiftPendingTitle: 'Antrag auf Aufhebung der Sperren',
+  blockLiftPendingMeta: 'Beantragt von {who} · {when}',
+  blockLiftReasonLine: 'Begründung: {reason}',
+  blockLiftConfirm: 'Aufhebung bestätigen',
+  blockLiftConfirmTitle: 'Aufhebung der Sperren bestätigen',
+  blockLiftConfirmBody:
+    'Alle gesperrten Fingerprints dieses Vorfalls sind wieder nutzbar: Sie kehren in die Allow List zurück und der Login des Standorts wird wiederhergestellt. Eine neue Allow-List-Version wird veröffentlicht.',
+  blockLiftCancel: 'Antrag zurückziehen',
+  blockLiftCancelTitle: 'Aufhebungsantrag zurückziehen',
+  blockLiftCancelBody: 'Der Antrag wird zurückgezogen; die Sperren bleiben.',
+  blockLiftOwnHint: 'Sie haben diese Aufhebung beantragt; ein anderer Admin muss bestätigen.',
+  blockLiftSameSiteHint:
+    'Der bestätigende Admin muss eine andere E-Mail-Domain haben als der Antragsteller.',
+  blockLiftConfirmedToast: 'Sperren aufgehoben ({n}). Allow-List-Version {version} veröffentlicht.',
+  blockLiftConfirmedNoVersionToast:
+    'Sperren aufgehoben ({n}), aber die Veröffentlichung ist fehlgeschlagen. Bitte manuell eine neue Allow-List-Version erzeugen.',
+  blockLiftCancelledToast: 'Antrag zurückgezogen.',
 };

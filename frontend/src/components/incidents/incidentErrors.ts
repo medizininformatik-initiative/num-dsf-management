@@ -23,6 +23,14 @@ const CODE_KEY: Record<string, TranslationKey> = {
   STAGE_NOT_DUE: 'incidentErrorSTAGE_NOT_DUE',
   NIS2_FIELDS_INCOMPLETE: 'incidentErrorNIS2_FIELDS_INCOMPLETE',
   NIS2_STAGE_WITHOUT_FIELDS: 'incidentErrorNIS2_STAGE_WITHOUT_FIELDS',
+  NOT_FALSE_ALARM: 'incidentErrorNOT_FALSE_ALARM',
+  NOTHING_TO_LIFT: 'incidentErrorNOTHING_TO_LIFT',
+  LIFT_ALREADY_PENDING: 'incidentErrorLIFT_ALREADY_PENDING',
+  LIFT_NOT_PENDING: 'incidentErrorLIFT_NOT_PENDING',
+  SELF_CONFIRM: 'incidentErrorSELF_CONFIRM',
+  SAME_SITE: 'incidentErrorSAME_SITE',
+  NOT_REQUESTER: 'incidentErrorNOT_REQUESTER',
+  REASON_REQUIRED: 'incidentErrorREASON_REQUIRED',
 };
 
 export function incidentErrorMessage(err: unknown, fallback: string, t: T): string {

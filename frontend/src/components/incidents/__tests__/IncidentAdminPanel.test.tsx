@@ -12,7 +12,9 @@ import type { Incident, IncidentDetail } from '../../../api/incidents.api';
 
 vi.mock('../../../api/incidents.api', async (orig) => ({
   ...(await orig<typeof import('../../../api/incidents.api')>()),
-  incidentsApi: {},
+  incidentsApi: {
+    blockLifts: vi.fn().mockResolvedValue({ data: { data: { blocks: [], request: null } } }),
+  },
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -107,6 +109,23 @@ describe('IncidentAdminPanel', () => {
     renderWithProviders(<IncidentAdminPanel detail={detail({ status: 'FALSE_ALARM' })} />);
     await user.click(actions().getByRole('button', { name: 'Archive' }));
     expect(await screen.findByRole('heading', { name: 'Archive incident' })).toBeInTheDocument();
+  });
+
+  it('shows the certificate blocks only for a false alarm without an active suspension', () => {
+    const { unmount } = renderWithProviders(
+      <IncidentAdminPanel detail={detail({ status: 'FALSE_ALARM' })} />,
+    );
+    expect(screen.getByTestId('block-lift-panel')).toBeInTheDocument();
+    unmount();
+    const closed = renderWithProviders(
+      <IncidentAdminPanel detail={detail({ status: 'CLOSED' })} />,
+    );
+    expect(screen.queryByTestId('block-lift-panel')).toBeNull();
+    closed.unmount();
+    renderWithProviders(
+      <IncidentAdminPanel detail={detail({ status: 'FALSE_ALARM', organization: null })} />,
+    );
+    expect(screen.queryByTestId('block-lift-panel')).toBeNull();
   });
 
   it('offers no Archive while open or once archived', () => {

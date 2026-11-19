@@ -40,7 +40,9 @@ export type IncidentEventType =
   | 'CLOSED'
   | 'FALSE_ALARM'
   | 'UPDATED'
-  | 'ARCHIVED';
+  | 'ARCHIVED'
+  | 'BLOCK_LIFT_REQUESTED'
+  | 'BLOCKS_LIFTED';
 
 export const NIS2_STAGES: readonly Nis2Stage[] = [
   'EARLY_WARNING',
@@ -173,6 +175,44 @@ export interface LiftSuspensionBody {
   note: string;
 }
 
+/** A certificate thumbprint an incident blocked; `lifted` once two admins lifted the block. */
+export interface BlockedThumbprint {
+  fingerprint: string;
+  blockedAt: string;
+  blockedBy: string;
+  lifted: boolean;
+  liftedAt: string | null;
+  liftedBy: string | null;
+}
+
+export type BlockLiftStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+
+/** A four-eyes request to lift the certificate blocks of a false-alarm incident. */
+export interface BlockLiftRequest {
+  id: string;
+  incidentId: string;
+  reason: string;
+  requestedBy: string;
+  requestedAt: string;
+  status: BlockLiftStatus;
+  decidedBy: string | null;
+  decidedAt: string | null;
+}
+
+export interface BlockLiftState {
+  blocks: BlockedThumbprint[];
+  /** The pending request, if any. */
+  request: BlockLiftRequest | null;
+}
+
+export interface BlockLiftResult {
+  request: BlockLiftRequest;
+  lifted: number;
+  /** New allow-list version; null when publishing failed (create one by hand). */
+  versionNumber: number | null;
+  published: boolean;
+}
+
 export type CloseOutcome = 'CLOSED' | 'FALSE_ALARM';
 export type ExportFormat = 'json' | 'csv';
 
@@ -244,6 +284,26 @@ export const incidentsApi = {
     axios.post<{ data: Incident }>(`${ADMIN}/${id}/archive`, withCode({}, totpCode), {
       headers: authHeader(),
     }),
+  blockLifts: (id: string) =>
+    axios.get<{ data: BlockLiftState }>(`${ADMIN}/${id}/block-lifts`, { headers: authHeader() }),
+  requestBlockLift: (id: string, reason: string, totpCode?: string) =>
+    axios.post<{ data: BlockLiftRequest }>(
+      `${ADMIN}/${id}/block-lifts`,
+      withCode({ reason }, totpCode),
+      { headers: authHeader() },
+    ),
+  confirmBlockLift: (id: string, requestId: string, totpCode?: string) =>
+    axios.post<{ data: BlockLiftResult }>(
+      `${ADMIN}/${id}/block-lifts/${requestId}/confirm`,
+      withCode({}, totpCode),
+      { headers: authHeader() },
+    ),
+  cancelBlockLift: (id: string, requestId: string, totpCode?: string) =>
+    axios.post<{ data: BlockLiftRequest }>(
+      `${ADMIN}/${id}/block-lifts/${requestId}/cancel`,
+      withCode({}, totpCode),
+      { headers: authHeader() },
+    ),
   comment: (id: string, text: string) =>
     axios.post<{ data: IncidentEvent }>(
       `${ADMIN}/${id}/comment`,

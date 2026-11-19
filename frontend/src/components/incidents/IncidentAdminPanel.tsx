@@ -6,8 +6,9 @@
  * 2 or 3 an unsuspended open incident with a known site gets a callout that
  * offers the suspension right away, and raising the level to 2 or 3 opens
  * the suspend dialog at once. Closing is blocked while the site is suspended;
- * a closed incident offers Archive (step-up dialog) and the export.
- * Dependencies: SuspendSiteDialog, LiftSuspensionDialog, CloseIncidentDialog,
+ * a closed incident offers Archive (step-up dialog) and the export. A false alarm without an
+ * active suspension also shows its certificate blocks and the four-eyes lift (BlockLiftPanel).
+ * Dependencies: BlockLiftPanel, SuspendSiteDialog, LiftSuspensionDialog, CloseIncidentDialog,
  * IncidentSettingsForm, IncidentCommentForm, IncidentExportButtons,
  * incidentLabels, Button, Icon, i18n store.
  */
@@ -17,6 +18,7 @@ import { useI18n } from '../../stores/i18n.store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { ArchiveIncidentDialog } from './ArchiveIncidentDialog';
+import { BlockLiftPanel } from './BlockLiftPanel';
 import { CloseIncidentDialog } from './CloseIncidentDialog';
 import { IncidentCommentForm } from './IncidentCommentForm';
 import { IncidentExportButtons } from './IncidentExportButtons';
@@ -132,6 +134,10 @@ export function IncidentAdminPanel({ detail }: { detail: IncidentDetail }) {
         {!open && <Hint icon="lock">{t('incidentClosedHint')}</Hint>}
         {incident.archivedAt && <Hint icon="inventory_2">{t('incidentArchivedHint')}</Hint>}
       </section>
+
+      {incident.status === 'FALSE_ALARM' && !incident.suspended && hasSite && (
+        <BlockLiftPanel incident={incident} />
+      )}
 
       {open && (
         <IncidentSettingsForm

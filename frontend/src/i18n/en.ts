@@ -2827,6 +2827,52 @@ export const en = {
   purgeAfter: 'Afterwards import the current allow list again to restore communication.',
   purgeCopyUrl: 'purge URL',
   purgeCopyCurl: 'purge curl command',
+
+  // Lifting the certificate blocks of a false alarm with two admins
+  incidentEventBLOCK_LIFT_REQUESTED: 'Lift of certificate blocks requested',
+  incidentEventBLOCKS_LIFTED: 'Certificate blocks lifted',
+  incidentErrorNOT_FALSE_ALARM: 'Blocks can only be lifted for a false alarm.',
+  incidentErrorNOTHING_TO_LIFT: 'There is no active certificate block to lift.',
+  incidentErrorLIFT_ALREADY_PENDING:
+    'A request to lift the blocks of this incident is already pending.',
+  incidentErrorLIFT_NOT_PENDING: 'This request is no longer pending.',
+  incidentErrorSELF_CONFIRM: 'You requested this lift; another admin has to confirm.',
+  incidentErrorSAME_SITE:
+    'The confirming admin must belong to a different e-mail domain than the requester.',
+  incidentErrorNOT_REQUESTER: 'Only the requester can cancel this request.',
+  incidentErrorREASON_REQUIRED: 'A reason is required.',
+  blockLiftTitle: 'Certificate blocks',
+  blockLiftIntro:
+    'The incident blocked these certificate thumbprints. They stay blocked until two admins from different e-mail domains lift the blocks of this false alarm. Lifting restores the published allow list entry and the login of the site.',
+  blockLiftNone: 'No certificate was blocked by this incident.',
+  blockLiftBlocked: 'Blocked',
+  blockLiftLifted: 'Lifted',
+  blockLiftLiftedBy: 'Lifted by {who} · {when}',
+  blockLiftBlockedBy: 'Blocked by {who} · {when}',
+  blockLiftRequest: 'Request lifting the blocks',
+  blockLiftRequestTitle: 'Request lifting of the blocks',
+  blockLiftRequestBody:
+    'A second admin from another e-mail domain has to confirm before any block is lifted.',
+  blockLiftReason: 'Reason',
+  blockLiftReasonPlaceholder: 'Why was this a false alarm and the certificates are safe?',
+  blockLiftRequestedToast: 'Request created. A second admin from another domain must confirm.',
+  blockLiftPendingTitle: 'Request to lift the blocks',
+  blockLiftPendingMeta: 'Requested by {who} · {when}',
+  blockLiftReasonLine: 'Reason: {reason}',
+  blockLiftConfirm: 'Confirm lifting',
+  blockLiftConfirmTitle: 'Confirm lifting of the blocks',
+  blockLiftConfirmBody:
+    "All blocked thumbprints of this incident become usable again: they return to the allow list and the site's login is restored. A new allow list version is published.",
+  blockLiftCancel: 'Cancel request',
+  blockLiftCancelTitle: 'Cancel the lift request',
+  blockLiftCancelBody: 'The request is withdrawn; the blocks stay.',
+  blockLiftOwnHint: 'You requested this lift; another admin has to confirm.',
+  blockLiftSameSiteHint:
+    'The confirming admin must belong to a different e-mail domain than the requester.',
+  blockLiftConfirmedToast: 'Blocks lifted ({n}). Allow list version {version} published.',
+  blockLiftConfirmedNoVersionToast:
+    'Blocks lifted ({n}), but publishing failed. Create a new allow list version manually.',
+  blockLiftCancelledToast: 'Request cancelled.',
 } as const;
 
 export type TranslationKey = keyof typeof en;

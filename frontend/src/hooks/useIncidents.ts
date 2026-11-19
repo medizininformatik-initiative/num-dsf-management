@@ -14,6 +14,7 @@ export const INCIDENTS_KEY = ['incidents'] as const;
 /** The admin list including archived incidents. */
 export const INCIDENTS_WITH_ARCHIVED_KEY = ['incidents', 'with-archived'] as const;
 export const incidentKey = (id: string) => ['incidents', 'detail', id] as const;
+export const blockLiftsKey = (id: string) => ['incidents', 'block-lifts', id] as const;
 export const INCIDENT_SITES_KEY = ['incidents', 'organizations'] as const;
 
 export function useIncidents(includeArchived = false) {
@@ -36,6 +37,15 @@ export function useIncident(id: string | null) {
     queryKey: incidentKey(id ?? ''),
     queryFn: () => incidentsApi.get(id!).then((r) => r.data.data),
     enabled: !!id,
+  });
+}
+
+/** Blocked thumbprints of an incident with their lifted state, and the pending lift request. */
+export function useBlockLifts(id: string | null, enabled = true) {
+  return useQuery({
+    queryKey: blockLiftsKey(id ?? ''),
+    queryFn: () => incidentsApi.blockLifts(id!).then((r) => r.data.data),
+    enabled: !!id && enabled,
   });
 }
 

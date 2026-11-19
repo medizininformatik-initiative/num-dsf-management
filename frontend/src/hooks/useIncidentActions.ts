@@ -21,7 +21,12 @@ import {
   type SuspendMeasure,
   type UpdateIncidentBody,
 } from '../api/incidents.api';
-import { INCIDENTS_KEY, INCIDENTS_WITH_ARCHIVED_KEY, incidentKey } from './useIncidents';
+import {
+  INCIDENTS_KEY,
+  INCIDENTS_WITH_ARCHIVED_KEY,
+  blockLiftsKey,
+  incidentKey,
+} from './useIncidents';
 
 function refresh(qc: QueryClient, id?: string) {
   qc.invalidateQueries({ queryKey: INCIDENTS_KEY, exact: true });
@@ -125,6 +130,33 @@ export function useArchiveIncident(id: string) {
       incidentsApi.archive(id, totpCode).then((r) => r.data.data),
     onSuccess: () => refresh(qc, id),
   });
+}
+
+/** Request, confirm or cancel the four-eyes lift of an incident's certificate blocks. */
+export function useBlockLiftActions(id: string) {
+  const qc = useQueryClient();
+  const done = () => {
+    refresh(qc, id);
+    qc.invalidateQueries({ queryKey: blockLiftsKey(id) });
+    qc.invalidateQueries({ queryKey: ['network', 'map'] });
+  };
+  return {
+    request: useMutation({
+      mutationFn: (vars: { reason: string; totpCode?: string }) =>
+        incidentsApi.requestBlockLift(id, vars.reason, vars.totpCode).then((r) => r.data.data),
+      onSuccess: done,
+    }),
+    confirm: useMutation({
+      mutationFn: (vars: { requestId: string; totpCode?: string }) =>
+        incidentsApi.confirmBlockLift(id, vars.requestId, vars.totpCode).then((r) => r.data.data),
+      onSuccess: done,
+    }),
+    cancel: useMutation({
+      mutationFn: (vars: { requestId: string; totpCode?: string }) =>
+        incidentsApi.cancelBlockLift(id, vars.requestId, vars.totpCode).then((r) => r.data.data),
+      onSuccess: done,
+    }),
+  };
 }
 
 export function useCommentIncident(id: string) {

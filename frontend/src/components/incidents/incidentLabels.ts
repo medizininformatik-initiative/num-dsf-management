@@ -57,6 +57,8 @@ export const EVENT_KEY: Record<IncidentEventType, TranslationKey> = {
   FALSE_ALARM: 'incidentEventFALSE_ALARM',
   UPDATED: 'incidentEventUPDATED',
   ARCHIVED: 'incidentEventARCHIVED',
+  BLOCK_LIFT_REQUESTED: 'incidentEventBLOCK_LIFT_REQUESTED',
+  BLOCKS_LIFTED: 'incidentEventBLOCKS_LIFTED',
 };
 
 export const EVENT_ICON: Record<IncidentEventType, string> = {
@@ -70,6 +72,8 @@ export const EVENT_ICON: Record<IncidentEventType, string> = {
   FALSE_ALARM: 'do_not_disturb_on',
   UPDATED: 'edit',
   ARCHIVED: 'inventory_2',
+  BLOCK_LIFT_REQUESTED: 'hourglass_top',
+  BLOCKS_LIFTED: 'lock_open',
 };
 
 export const MEASURE_KEY: Record<SuspendMeasure, TranslationKey> = {
