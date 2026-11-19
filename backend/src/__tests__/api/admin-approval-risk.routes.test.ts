@@ -20,6 +20,7 @@ import { db } from '../../db/connection';
 import { getTestToken } from '../helpers/auth';
 import { signGrant } from '../../lib/adminGrants';
 import { submitApproval } from '../../services/approval.service';
+import { writeAuditLog } from '../../services/audit.service';
 import { removeSites, seedSite, type Site } from '../helpers/allowListSites';
 
 const SUFFIX = uuidv4().slice(0, 8);
@@ -70,6 +71,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await db('audit_logs').whereIn('resource_id', requestIds).del();
+  await db('audit_logs').where({ user_email: site.email }).del();
   await db('approval_requests').whereIn('id', requestIds).del();
   await removeSites([site]);
   await db('admin_grants').where({ email: ADMIN_EMAIL }).del();
@@ -92,9 +94,28 @@ describe('GET /api/v1/admin/approval/pending risk', () => {
   });
 
   it('compares a resubmission with the last approved snapshot', async () => {
+    const DAY = 86400_000;
     await db('approval_requests')
       .where({ id: requestIds[0] })
-      .update({ status: 'APPROVED', resolved_at: new Date() });
+      .update({ status: 'APPROVED', resolved_at: new Date(Date.now() - 2 * DAY) });
+    // The site was seen from another address before that approval ...
+    await db('audit_logs').insert({
+      id: uuidv4(),
+      timestamp: new Date(Date.now() - 5 * DAY),
+      user_email: site.email,
+      instance_id: site.instanceId,
+      resource_type: 'AUTH',
+      operation: 'LOGIN',
+      ip_address: '198.51.100.1',
+    });
+    // ... and logs in from the new address right before submitting.
+    await writeAuditLog({
+      userEmail: site.email,
+      instanceId: site.instanceId,
+      resourceType: 'AUTH',
+      operation: 'LOGIN',
+      ipAddress: '203.0.113.99',
+    });
     await db('organizations').where({ identifier: site.orgId }).update({ name: 'Renamed Site' });
     const req = await submitApproval(site.instanceId, site.email, '203.0.113.99');
     requestIds.push(req.id);
@@ -102,12 +123,12 @@ describe('GET /api/v1/admin/approval/pending risk', () => {
     expect(risk.firstRequest).toBe(false);
     const rename = risk.findings.find((f) => f.code === 'ORG_NAME_CHANGED');
     expect(rename?.params).toMatchObject({ to: 'Renamed Site' });
-    // Submitted from an IP that never appeared before for this instance.
+    // The login just before the submit must not make the new address look familiar.
     expect(risk.findings.map((f) => f.code)).toContain('NEW_SUBMIT_IP');
     expect(risk.findings.map((f) => f.code)).not.toContain('CERT_CA_NOT_WHITELISTED');
   });
 
-  it('does not fail the list for a request with an unreadable snapshot', async () => {
+  it('reports an unreadable snapshot as one high finding instead of failing the list', async () => {
     await db('approval_requests')
       .where({ id: requestIds[1] })
       .update({ status: 'REJECTED', resolved_at: new Date() });
@@ -122,8 +143,17 @@ describe('GET /api/v1/admin/approval/pending risk', () => {
     });
     requestIds.push(id);
     const risk = await pendingRisk(id);
-    expect(['LOW', 'MEDIUM', 'HIGH']).toContain(risk.level);
-    // One rejection in the last 30 days is part of the context.
+    expect(risk.findings.map((f) => f.code)).toEqual(['SNAPSHOT_UNREADABLE']);
+    expect(risk.level).toBe('HIGH');
+    await db('approval_requests')
+      .where({ id })
+      .update({ status: 'WITHDRAWN', resolved_at: new Date() });
+  });
+
+  it('counts a rejection of the last 30 days as context', async () => {
+    const req = await submitApproval(site.instanceId, site.email, '203.0.113.99');
+    requestIds.push(req.id);
+    const risk = await pendingRisk(req.id);
     expect(risk.findings.map((f) => f.code)).toContain('RECENT_REJECTIONS');
   });
 });

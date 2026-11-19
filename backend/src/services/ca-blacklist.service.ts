@@ -62,6 +62,14 @@ export async function isCaBlacklisted(args: {
   return false;
 }
 
+/** Which of the given issuer DNs are on the blacklist, with a single read of the list. */
+export async function blacklistedIssuers(issuerDns: string[]): Promise<Set<string>> {
+  if (issuerDns.length === 0) return new Set();
+  const rows: Array<{ subject_dn: string }> = await db('ca_blacklist').select('subject_dn');
+  const listed = new Set(rows.map((r) => normalizeDn(r.subject_dn)));
+  return new Set(issuerDns.filter((dn) => listed.has(normalizeDn(dn))));
+}
+
 export async function listBlacklist(): Promise<CaBlacklistRow[]> {
   return db<CaBlacklistRow>('ca_blacklist').orderBy('added_at', 'desc');
 }

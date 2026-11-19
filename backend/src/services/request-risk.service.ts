@@ -1,13 +1,20 @@
 /**
  * request-risk.service.ts – Gathers everything lib/requestRisk needs for a batch of pending
- * approval requests (previous approved snapshot, parsed certificates, CA list status, request
- * history, submit IPs, shared IPs) in a fixed number of queries per batch (plus one lookup
- * of the previous snapshot per instance) and returns one assessment per request.
- * Dependencies: db/connection, lib/requestRisk, ca-whitelist.service, ca-blacklist.service,
- *               node:crypto
+ * approval requests and returns one assessment per request. The number of queries does not grow
+ * with the number of requests: previous approved snapshots (the latest two per instance) in one
+ * windowed query, certificates, request history, submit IPs, shared IPs and the owners in one
+ * query each, the CA lists once.
+ *
+ * Known submit IPs (NEW_SUBMIT_IP): logins and submits of the instance or its owner up to the
+ * moment the previous request was approved (plus a second of slack, as stored timestamps lose
+ * their fraction); without a previous approval, up to 24 h before the submit. The submitter's
+ * own login right before the submit therefore never makes its IP look familiar.
+ *
+ * Dependencies: db/connection, lib/requestRisk, lib/certDescribe, ca-whitelist.service,
+ *               ca-blacklist.service
  */
-import crypto from 'crypto';
 import { db } from '../db/connection';
+import { describeCertificate } from '../lib/certDescribe';
 import {
   assessRequest,
   type CaStatus,
@@ -15,12 +22,16 @@ import {
   type RiskAssessment,
   type RiskContext,
 } from '../lib/requestRisk';
+import { blacklistedIssuers } from './ca-blacklist.service';
 import { whitelistedIssuers } from './ca-whitelist.service';
-import { isCaBlacklisted } from './ca-blacklist.service';
 
-const WINDOW_MS = 30 * 86400_000;
-// approval_requests.submitted_at is stored without fractional seconds, audit timestamps may not be.
+const DAY_MS = 86400_000;
+const WINDOW_MS = 30 * DAY_MS;
+// approval_requests.submitted_at / resolved_at are stored without fractional seconds, audit
+// timestamps may not be.
 const TIMESTAMP_SLACK_MS = 1000;
+// Without a previous approval, logins this close to the submit do not count as "known".
+const SUBMIT_WINDOW_MS = DAY_MS;
 
 export interface PendingRequestRow {
   id: string;
@@ -30,33 +41,33 @@ export interface PendingRequestRow {
   snapshot_json: unknown;
 }
 
-function parse(raw: unknown): Record<string, unknown> | null {
+type Snapshot = Record<string, unknown>;
+
+function parse(raw: unknown): Snapshot | null {
   try {
     const v: unknown = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+    return v && typeof v === 'object' && !Array.isArray(v) ? (v as Snapshot) : null;
   } catch {
     return null;
   }
 }
 
-function certIds(snapshot: Record<string, unknown> | null): string[] {
+function certEntries(snapshot: Snapshot | null): Array<Record<string, unknown>> {
   const certs = snapshot?.certificates;
   if (!Array.isArray(certs)) return [];
-  return certs
-    .map((c) => (c && typeof c === 'object' ? (c as { id?: unknown }).id : undefined))
-    .filter((id): id is string => typeof id === 'string');
+  return certs.filter((c): c is Record<string, unknown> => !!c && typeof c === 'object');
 }
 
-function ipsOf(snapshot: Record<string, unknown> | null): string[] {
+function ipsOf(snapshot: Snapshot | null): string[] {
   const endpoints = snapshot?.endpoints;
   if (!Array.isArray(endpoints)) return [];
   const out: string[] = [];
   for (const e of endpoints) {
-    const list = (e as { ipAddresses?: unknown; ips?: unknown } | null) ?? {};
-    const entries = Array.isArray(list.ipAddresses)
-      ? list.ipAddresses
-      : Array.isArray(list.ips)
-        ? list.ips
+    const rec = (e as { ipAddresses?: unknown; ips?: unknown } | null) ?? {};
+    const entries = Array.isArray(rec.ipAddresses)
+      ? rec.ipAddresses
+      : Array.isArray(rec.ips)
+        ? rec.ips
         : [];
     for (const entry of entries) {
       const ip = (entry as { ip?: unknown } | null)?.ip;
@@ -64,26 +75,6 @@ function ipsOf(snapshot: Record<string, unknown> | null): string[] {
     }
   }
   return out;
-}
-
-/** Issuer, subject, DNS names and expiry of a stored PEM; null when it cannot be parsed. */
-function describeCertificate(pem: string): CertInfo | null {
-  try {
-    const cert = new crypto.X509Certificate(pem);
-    const sanDns = (cert.subjectAltName ?? '')
-      .split(',')
-      .map((part) => part.trim())
-      .filter((part) => part.startsWith('DNS:'))
-      .map((part) => part.slice(4));
-    return {
-      issuerDn: cert.issuer.split('\n').join(','),
-      subjectDn: cert.subject.split('\n').join(','),
-      sanDns,
-      notAfter: new Date(cert.validTo).toISOString(),
-    };
-  } catch {
-    return null;
-  }
 }
 
 async function loadCertInfo(ids: string[]): Promise<Record<string, CertInfo>> {
@@ -100,15 +91,50 @@ async function loadCertInfo(ids: string[]): Promise<Record<string, CertInfo>> {
 }
 
 async function loadCaStatus(issuerDns: string[]): Promise<Record<string, CaStatus>> {
-  const out: Record<string, CaStatus> = {};
   const unique = [...new Set(issuerDns)];
+  const out: Record<string, CaStatus> = {};
   if (unique.length === 0) return out;
-  const whitelisted = await whitelistedIssuers(unique);
+  const [whitelisted, blacklisted] = await Promise.all([
+    whitelistedIssuers(unique),
+    blacklistedIssuers(unique),
+  ]);
   for (const dn of unique) {
-    if (await isCaBlacklisted({ subjectDn: dn })) out[dn] = 'blacklisted';
-    else out[dn] = whitelisted.has(dn) ? 'whitelisted' : 'unknown';
+    out[dn] = blacklisted.has(dn) ? 'blacklisted' : whitelisted.has(dn) ? 'whitelisted' : 'unknown';
   }
   return out;
+}
+
+interface Approved {
+  snapshot: Snapshot | null;
+  resolvedAt: Date;
+}
+
+/** The latest two APPROVED snapshots per instance (newest first), in one query. */
+async function loadApproved(instanceIds: string[]): Promise<Map<string, Approved[]>> {
+  const ranked = db('approval_requests')
+    .select('instance_id', 'snapshot_json')
+    .select(db.raw('COALESCE(resolved_at, created_at) AS at'))
+    .select(
+      db.raw(
+        'ROW_NUMBER() OVER (PARTITION BY instance_id ORDER BY COALESCE(resolved_at, created_at) DESC, id DESC) AS rn',
+      ),
+    )
+    .where({ status: 'APPROVED' })
+    .whereIn('instance_id', instanceIds)
+    .as('t');
+  const rows: Array<{
+    instance_id: string;
+    snapshot_json: unknown;
+    at: Date;
+    rn: number | string;
+  }> = await db.select('*').from(ranked).where('rn', '<=', 2).orderBy('rn', 'asc');
+  const map = new Map<string, Approved[]>();
+  for (const r of rows) {
+    const list = map.get(r.instance_id) ?? [];
+    list.push({ snapshot: parse(r.snapshot_json), resolvedAt: new Date(r.at) });
+    map.set(r.instance_id, list);
+  }
+  return map;
 }
 
 /** Status counts (REJECTED / WITHDRAWN) of the last 30 days, per instance. */
@@ -153,8 +179,15 @@ interface SeenIp {
   firstSeen: Date;
 }
 
-/** Distinct (IP, instance, user) triples of earlier logins and submits, excluding these requests. */
-async function loadSeenIps(requestIds: string[]): Promise<SeenIp[]> {
+/**
+ * Distinct (IP, instance, user) triples of logins and submits of these instances or their
+ * owners (both columns are indexed), excluding the pending requests' own submits.
+ */
+async function loadSeenIps(
+  requestIds: string[],
+  instanceIds: string[],
+  ownerEmails: string[],
+): Promise<SeenIp[]> {
   const rows: Array<{
     ip_address: string;
     instance_id: string | null;
@@ -162,6 +195,7 @@ async function loadSeenIps(requestIds: string[]): Promise<SeenIp[]> {
     first_seen: Date;
   }> = await db('audit_logs')
     .whereNotNull('ip_address')
+    .where((q) => q.whereIn('instance_id', instanceIds).orWhereIn('user_email', ownerEmails))
     .where((q) =>
       q
         .where('operation', 'LOGIN')
@@ -179,8 +213,8 @@ async function loadSeenIps(requestIds: string[]): Promise<SeenIp[]> {
   }));
 }
 
-/** IP → other organizations (not the site's own) that have the same address on an endpoint. */
-async function loadOtherOrgsByIp(ips: string[]): Promise<Map<string, string[]>> {
+/** IP → organizations that have the same address on an endpoint. */
+async function loadOrgsByIp(ips: string[]): Promise<Map<string, string[]>> {
   const map = new Map<string, string[]>();
   if (ips.length === 0) return map;
   const rows: Array<{ ip: string; organization_id: string }> = await db('endpoint_ips as i')
@@ -195,10 +229,7 @@ async function loadOtherOrgsByIp(ips: string[]): Promise<Map<string, string[]>> 
   return map;
 }
 
-/**
- * Risk assessment per pending request id. Never throws for one unreadable snapshot: that
- * request is assessed as a first request with whatever could be read.
- */
+/** Risk assessment per pending request id. */
 export async function assessPendingRequests(
   requests: PendingRequestRow[],
   now: Date = new Date(),
@@ -208,61 +239,66 @@ export async function assessPendingRequests(
   const instanceIds = [...new Set(requests.map((r) => r.instance_id))];
   const requestIds = requests.map((r) => r.id);
 
-  const previousRows = await Promise.all(
-    instanceIds.map(async (id) => ({
-      id,
-      row: await db('approval_requests')
-        .where({ instance_id: id, status: 'APPROVED' })
-        .orderByRaw('COALESCE(resolved_at, created_at) DESC')
-        .first('snapshot_json'),
-    })),
-  );
-  const previousByInstance = new Map(
-    previousRows.map(({ id, row }) => [id, row ? parse(row.snapshot_json) : null]),
-  );
-  const currentById = new Map(requests.map((r) => [r.id, parse(r.snapshot_json)]));
-
-  const allCertIds = new Set<string>();
-  const allIps = new Set<string>();
-  for (const snap of [...currentById.values(), ...previousByInstance.values()]) {
-    certIds(snap).forEach((id) => allCertIds.add(id));
-  }
-  for (const snap of currentById.values()) ipsOf(snap).forEach((ip) => allIps.add(ip));
-
-  const certInfo = await loadCertInfo([...allCertIds]);
-  const caStatus = await loadCaStatus(Object.values(certInfo).map((c) => c.issuerDn));
-  const [history, submitterIps, seen, otherOrgs, owners] = await Promise.all([
+  const [approved, history, submitterIps, owners] = await Promise.all([
+    loadApproved(instanceIds),
     loadHistoryCounts(instanceIds, now),
     loadSubmitterIps(requestIds),
-    loadSeenIps(requestIds),
-    loadOtherOrgsByIp([...allIps]),
     db('instances as i')
       .join('users as u', 'u.id', 'i.user_id')
       .whereIn('i.id', instanceIds)
       .select('i.id as id', 'u.email as email') as Promise<Array<{ id: string; email: string }>>,
   ]);
   const ownerEmail = new Map(owners.map((o) => [o.id, o.email]));
+  const currentById = new Map(requests.map((r) => [r.id, parse(r.snapshot_json)]));
+
+  const snapshots = [
+    ...currentById.values(),
+    ...[...approved.values()].flatMap((l) => l.map((a) => a.snapshot)),
+  ];
+  const certIds = new Set<string>();
+  const issuerDns = new Set<string>();
+  for (const snap of snapshots) {
+    for (const c of certEntries(snap)) {
+      if (typeof c.id === 'string') certIds.add(c.id);
+      if (typeof c.issuerDn === 'string') issuerDns.add(c.issuerDn);
+    }
+  }
+  const allIps = new Set<string>();
+  for (const snap of currentById.values()) ipsOf(snap).forEach((ip) => allIps.add(ip));
+
+  const [certInfo, seen, orgsByIp] = await Promise.all([
+    loadCertInfo([...certIds]),
+    loadSeenIps(requestIds, instanceIds, [...new Set(owners.map((o) => o.email))]),
+    loadOrgsByIp([...allIps]),
+  ]);
+  Object.values(certInfo).forEach((c) => issuerDns.add(c.issuerDn));
+  const caStatus = await loadCaStatus([...issuerDns]);
 
   for (const req of requests) {
     const submitted = new Date(req.submitted_at ?? req.created_at ?? now);
     const current = currentById.get(req.id) ?? null;
+    const [previous, beforePrevious] = approved.get(req.instance_id) ?? [];
+    const cutoff = previous
+      ? previous.resolvedAt.getTime() + TIMESTAMP_SLACK_MS
+      : submitted.getTime() - SUBMIT_WINDOW_MS;
     const known = new Set(
       seen
         .filter(
           (s) =>
-            s.firstSeen.getTime() <= submitted.getTime() + TIMESTAMP_SLACK_MS &&
+            s.firstSeen.getTime() <= cutoff &&
             (s.instanceId === req.instance_id ||
               (!!s.email && s.email === ownerEmail.get(req.instance_id))),
         )
         .map((s) => s.ip),
     );
+    const org = current?.organization;
     const ownOrg =
-      current && typeof current.organization === 'object' && current.organization
-        ? String((current.organization as { identifier?: unknown }).identifier ?? '')
+      org && typeof org === 'object'
+        ? String((org as { identifier?: unknown }).identifier ?? '')
         : '';
     const otherOrgsByIp: Record<string, string[]> = {};
     for (const ip of ipsOf(current)) {
-      const others = (otherOrgs.get(ip) ?? []).filter((o) => o !== ownOrg);
+      const others = (orgsByIp.get(ip) ?? []).filter((o) => o !== ownOrg);
       if (others.length > 0) otherOrgsByIp[ip] = others;
     }
     const counts = history.get(req.instance_id) ?? { rejected: 0, withdrawn: 0 };
@@ -278,7 +314,9 @@ export async function assessPendingRequests(
       req.id,
       assessRequest({
         current: current ?? {},
-        previous: previousByInstance.get(req.instance_id) ?? null,
+        previous: previous?.snapshot ?? null,
+        previousResolvedAt: previous?.resolvedAt ?? null,
+        beforePrevious: beforePrevious?.snapshot ?? null,
         certInfo,
         caStatus,
         context,
