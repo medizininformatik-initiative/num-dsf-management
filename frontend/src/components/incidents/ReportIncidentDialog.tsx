@@ -133,11 +133,7 @@ function ReportForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <FormField label={t('incidentFieldSite')} error={errors.organizationId?.message}>
-        <Select
-          {...register('organizationId')}
-
-          data-testid="incident-site-select"
-        >
+        <Select {...register('organizationId')} data-testid="incident-site-select">
           <option value="">{t('incidentSiteUnknown')}</option>
           {sites.data?.map((s) => (
             <option key={s.identifier} value={s.identifier}>

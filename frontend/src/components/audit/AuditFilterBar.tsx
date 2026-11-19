@@ -86,7 +86,6 @@ export function AuditFilterBar({ value, onChange, sites, exporting, onExport }: 
           </label>
           <Select
             id="audit-site"
-
             value={value.instanceId}
             onChange={(e) => set('instanceId', e.target.value)}
           >
@@ -105,7 +104,6 @@ export function AuditFilterBar({ value, onChange, sites, exporting, onExport }: 
           </label>
           <Select
             id="audit-resource"
-
             value={value.resource}
             onChange={(e) => set('resource', e.target.value)}
           >
@@ -123,7 +121,6 @@ export function AuditFilterBar({ value, onChange, sites, exporting, onExport }: 
           </label>
           <Select
             id="audit-operation"
-
             value={value.operation}
             onChange={(e) => set('operation', e.target.value)}
           >
