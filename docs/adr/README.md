@@ -12,6 +12,7 @@ and **Consequences** sections.
 | [003](003-four-eyes-silent-consent.md) | Four-eyes approval with silent consent | Accepted |
 | [004](004-mtls-bundle-download.md) | mTLS client-certificate auth for bundle download | Accepted |
 | [005](005-audit-log-immutability.md) | Append-only audit log enforced by DB triggers | Accepted |
+| [005](005-cert-auth-deployment-mode.md) | Certificate-auth deployment mode (login-screen-free); shares number 005, which source comments still cite | Accepted, partly superseded |
 | [006](006-passwordless-auth.md) | Passwordless authentication (allow-list + OTP + TOTP) | Accepted |
 | [007](007-dsf-read-access-tag-and-profile.md) | DSF read-access tag and meta.profile on every resource | Accepted |
 | [008](008-fqdn-immutability.md) | Immutable organization and endpoint FQDN identifiers | Accepted |
