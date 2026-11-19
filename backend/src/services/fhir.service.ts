@@ -344,6 +344,34 @@ export async function withIncidentBlocks(
   return applyIncidentBlocks(input, suspended, blocked);
 }
 
+/**
+ * A stored input with everything that has happened since applied: the incident register's
+ * suspensions and blocks, and the removal of sites (their members become withdrawals). Use it for
+ * every stored input that is published again, e.g. a restored version.
+ */
+export async function applyCurrentOverrides(
+  input: StoredAllowListInput,
+): Promise<StoredAllowListInput> {
+  const removedOrgs = new Set<string>(
+    await db('organizations as o')
+      .join('instances as i', 'i.id', 'o.instance_id')
+      .whereNotNull('i.removed_at')
+      .pluck('o.identifier'),
+  );
+  const members: AllowListMember[] = [];
+  const removed = [...input.removed];
+  const alreadyRemoved = new Set(removed.map((r) => r.identifier));
+  for (const member of input.members) {
+    if (!removedOrgs.has(member.identifier)) {
+      members.push(member);
+    } else if (!alreadyRemoved.has(member.identifier)) {
+      removed.push(toRemoval(member));
+      alreadyRemoved.add(member.identifier);
+    }
+  }
+  return withIncidentBlocks({ ...input, members, removed });
+}
+
 /** Network-wide allow list rendered from a stored or live input. */
 export function renderFullBundle(input: StoredAllowListInput): AllowListBundle {
   return buildAllowListBundle(fullViewInput(input));
