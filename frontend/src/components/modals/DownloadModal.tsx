@@ -219,10 +219,11 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
   const uploadTarget = selectedAddress
     ? `${selectedAddress.replace(/[/]+$/, '')}/`
     : t('downloadGuideManualPlaceholder');
+  const shellQuote = (v: string): string => `'${v.replace(/'/g, "'\\''")}'`;
   const uploadCommand =
     'curl --cert client_certificate.pem --key client_certificate_private_key.pem ' +
     '-H "Accept: application/fhir+json" -H "Content-Type: application/fhir+json" ' +
-    `--data-binary @${commandFile} ${uploadTarget}`;
+    `--data-binary @${shellQuote(commandFile)} ${shellQuote(uploadTarget)}`;
 
   return (
     <Modal open={open} onClose={onClose} title={t('downloadModalTitle')} width="max-w-2xl">

@@ -277,7 +277,7 @@ describe('DownloadModal – guide, IP list and gate', () => {
     expect(cmd).toHaveTextContent('-H "Content-Type: application/fhir+json"');
     expect(cmd).not.toHaveTextContent('xml');
     expect(cmd).toHaveTextContent(
-      '--data-binary @dsf-allow-list.json https://YOUR_DSF_FHIR_HOST/fhir/',
+      "--data-binary @'dsf-allow-list.json' 'https://YOUR_DSF_FHIR_HOST/fhir/'",
     );
   });
 
@@ -286,7 +286,7 @@ describe('DownloadModal – guide, IP list and gate', () => {
     const cmd = screen.getByText(/^curl --cert client_certificate[.]pem/);
     expect(
       cmd.textContent?.endsWith(
-        '--data-binary @dsf-allow-list-v3.json https://fhir.klinik.example.de/fhir/',
+        "--data-binary @'dsf-allow-list-v3.json' 'https://fhir.klinik.example.de/fhir/'",
       ),
     ).toBe(true);
   });
@@ -296,7 +296,7 @@ describe('DownloadModal – guide, IP list and gate', () => {
     renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
     await user.selectOptions(screen.getByLabelText('Endpoint'), 'broken.example.de');
     expect(
-      screen.getByText(/^curl --cert/).textContent?.endsWith(' ftp://broken.example.de/'),
+      screen.getByText(/^curl --cert/).textContent?.endsWith(" 'ftp://broken.example.de/'"),
     ).toBe(true);
   });
 
