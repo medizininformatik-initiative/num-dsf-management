@@ -51,10 +51,14 @@ flowchart TB
     backend -->|SMTP| mail
 ```
 
-Health endpoints: `/health/live` (always 200) drives the compose healthcheck;
-`/health/ready` probes MySQL (`SELECT 1`) and Redis (`PING`) and returns 503 if
-either is down; it answers loopback callers only (the compose healthcheck) and
-is a 404 from outside.
+Health endpoints: `/health` and `/health/live` are public and always answer 200
+(liveness). `/health/ready` probes MySQL (`SELECT 1`) and Redis (`PING`) and
+returns 503 if either is down; it answers loopback callers only (the container
+healthcheck) and is a 404 from outside, the proxy included.
+
+The production stacks (`docker-compose.prod.yml`, `docker-compose.cert-auth.yml`,
+host Apache in front) differ in ingress and port publishing; see
+[Deployment](../DEPLOYMENT.md).
 
 ## 2. Request lifecycle
 
@@ -62,8 +66,9 @@ A normal authenticated API call traverses a fixed middleware chain in
 [`backend/src/app.ts`](../../backend/src/app.ts):
 
 1. **nginx** terminates TLS, applies its own rate limits and security headers,
-   forwards to the backend with `X-Request-Id` and the real client IP
-   (`trust proxy = 1`).
+   forwards to the backend with `X-Request-Id`, the real client IP
+   (`trust proxy = 1`) and, in certificate mode, the verified client certificate
+   plus the `X-Proxy-Auth` secret.
 2. **helmet** sets CSP, HSTS (2 y, preload), `frameguard: deny`, `noSniff`,
    referrer policy, and COOP.
 3. **cors** allows only `FRONTEND_URL` with credentials; methods limited to
@@ -133,8 +138,22 @@ Notes:
 - `revokeAllSessions` SCANs `refresh:*` to invalidate every session for a user
   when an admin locks / demotes / removes them.
 - Two alternate entry points: `/auth/client-cert-login` (registered client-cert
-  thumbprint) and `/auth/dev-login` (only mounted when
+  fingerprint) and `/auth/dev-login` (only mounted when
   `NODE_ENV!=production && DEV_AUTO_LOGIN=true`).
+- Client-certificate headers (`X-Client-Verify`, `X-Client-Cert`) are trusted
+  only from the front proxy: it proves itself with the shared secret
+  `CLIENT_CERT_PROXY_SECRET` sent as `X-Proxy-Auth`, optionally also restricted
+  to the peers in `CLIENT_CERT_TRUSTED_PROXIES`
+  ([`certProxyTrust.ts`](../../backend/src/lib/certProxyTrust.ts)). Certificate
+  headers without a valid `X-Proxy-Auth` answer `401 PROXY_NOT_TRUSTED` (proxy
+  misconfigured); no certificate at all answers `401 NO_CLIENT_CERT`. With
+  `AUTH_MODE=cert` in production the backend refuses to start without a secret
+  of 32+ characters; in other non-development setups without it, certificate
+  login and FHIR access are off. See [Security](Security.md) and
+  [Deployment](../DEPLOYMENT.md).
+- With `AUTH_MODE=cert`, `/auth/logout` revokes the refresh token only when the
+  request carries the certificate the session belongs to; the cookie is cleared
+  either way.
 
 ## 4. Approval & bundle lifecycle
 
@@ -187,8 +206,14 @@ Notes:
 - Each `bundle_versions` row stores the full bundle JSON (~50 KB), an RS256 JWT
   signature with a `kid` derived from the public-key fingerprint, and a SHA-256
   `content_hash`. `diffVersions` produces added/removed/changed entry buckets.
-- Bundles emit `DELETE` only on `OrganizationAffiliation` (federation safety);
-  `Organization` / `Endpoint` are never deleted from a peer's local FHIR server.
+- Bundles emit `DELETE` for removed memberships (`OrganizationAffiliation`), for
+  endpoints removed from a site that stays listed, and for withdrawn sites
+  (their Organization, Endpoints and affiliations; a site removed by two admins
+  or suspended by an incident counts as withdrawn). Never for the receiving site
+  itself and never for anything the same bundle still publishes.
+- `GET /fhir/Bundle/:endpointId/purge` returns the opposite: a transaction of only
+  conditional DELETEs that removes the whole allow list from a DSF server again
+  (rate limited per client certificate, audited).
 - `rejectRequest` records a REJECT signature, sets `REJECTED`, and queues a
   rejection mail; no snapshot is taken.
 
@@ -224,7 +249,7 @@ controls visible in the codebase:
 - Redis-backed rate limiting on `/auth/*` and `/api/*`.
 - All DB access via Knex prepared statements — no string concatenation.
 - Append-only `audit_logs` (no UPDATE/DELETE at the DB role; enforced by
-  triggers in migrations 013/015); audit writes are non-blocking.
+  triggers in migration 013); audit writes are non-blocking.
 - PEM upload rejects `PRIVATE KEY` material at the route layer
   (`PRIVATE_KEY_REJECTED → 400`); PEM contents are never logged.
 - FHIR bundles are RS256-signed with a content hash; DSF BPE access is
