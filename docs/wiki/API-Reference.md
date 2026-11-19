@@ -29,8 +29,8 @@ Mounted at `/auth`. All endpoints are `public` and Redis-rate-limited (5 req / 1
 | POST | /auth/confirm-totp | public | Confirm TOTP after setup, create session, return access token + backup codes. |
 | POST | /auth/verify-totp | public | Verify TOTP on subsequent logins, create session. |
 | POST | /auth/refresh | public | Exchange refresh-token cookie for a new access token. |
-| POST | /auth/client-cert-login | mTLS | Authenticate by registered client-certificate thumbprint, create session. |
-| POST | /auth/logout | public | Revoke refresh token (Redis) and clear cookie. |
+| POST | /auth/client-cert-login | mTLS | Authenticate by registered client-certificate fingerprint, create session. `401 NO_CLIENT_CERT` without a certificate, `401 PROXY_NOT_TRUSTED` when certificate headers arrive without a valid `X-Proxy-Auth` (proxy misconfigured). |
+| POST | /auth/logout | public | Revoke refresh token (Redis) and clear cookie. With `AUTH_MODE=cert` the token is revoked only when the request carries the session's own certificate. |
 | POST | /auth/dev-login | public | Dev/CI only — registered solely when `NODE_ENV != production` and `DEV_AUTO_LOGIN=true`; otherwise 404. |
 | GET | /auth/me | requireAuth | Return `{ email, isAdmin }` of the current user. |
 
@@ -145,7 +145,7 @@ Mounted at `/api/v1/instances/:instanceId/approval`. All endpoints `requireOwner
 | POST | /api/v1/instances/:instanceId/approval/submit | requireOwner | Submit the instance for approval. |
 | POST | /api/v1/instances/:instanceId/approval/withdraw | requireOwner | Withdraw the PENDING request (status `WITHDRAWN`, audit `WITHDRAW`). `409 NOT_PENDING` when no request is pending or an admin decision won the race. Partial four-eyes approvals on it never count later. |
 | GET | /api/v1/instances/:instanceId/approval/status | requireOwner | Current approval status. |
-| GET | /api/v1/instances/:instanceId/approval/history | requireOwner | Approval-request history. |
+| GET | /api/v1/instances/:instanceId/approval/history | requireOwner | Approval-request history (last 20) with `decisions: [{ admin_email, decision, signed_at }]` per request, i.e. the deciding admins. |
 
 ### Allow-list freshness
 
@@ -335,6 +335,7 @@ Mounted at `/api/v1/admin/marketplace`. All `requireAdmin`; writes also `require
 |--------|------|------|---------|
 | POST | /api/v1/admin/marketplace | requireAdmin + requireTotp | Add an entry. Body `{ gitUrl, status?, totpCode }` (201, 409 on duplicate). |
 | PATCH | /api/v1/admin/marketplace/:id | requireAdmin + requireTotp | Update status. Body `{ status, totpCode }`. |
+| PATCH | /api/v1/admin/marketplace/:id/meta | requireAdmin + step-up | Update verification, advisory (`advisoryText`, `advisorySeverity`), `supersededBy`, status and the DSF manifest fields; each optional. |
 | DELETE | /api/v1/admin/marketplace/:id | requireAdmin + requireTotp | Remove an entry. Body `{ totpCode }` → `{ deleted: true }`. |
 
 `gitUrl` must be `https://github.com/owner/repo`; `status` ∈ `APPROVED|EXPERIMENTAL|DEPRECATED`.
@@ -353,6 +354,7 @@ certificate in a certificate session).
 | POST | /api/v1/admin/incidents/:id/suspend | requireAdmin + requireTotp | Body `{ measures: [BLOCK_CERTIFICATES, REMOVE_LOGINS, WITHDRAW, MAIL_SITES], confirm?, totpCode }`. BLOCK_CERTIFICATES and/or WITHDRAW publish one new allow-list version; WITHDRAW on a suspended site publishes again (retry). |
 | POST | /api/v1/admin/incidents/:id/lift-suspension | requireAdmin + requireTotp | Restart checklist `{ causeFixed: true, fixTested: true, releasedByTechBoard: true, note, totpCode }`; publishes a new version, blocked thumbprints stay blocked. |
 | POST | /api/v1/admin/incidents/:id/close | requireAdmin + requireTotp | `{ outcome: CLOSED or FALSE_ALARM, note, totpCode }`; refused while suspended. |
+| POST | /api/v1/admin/incidents/:id/archive | requireAdmin + step-up | Archive (soft delete) a CLOSED or FALSE_ALARM incident that no longer suspends a site; `409 NOT_ARCHIVABLE` / `ALREADY_ARCHIVED`. Archived incidents are listed only for admins with `GET /api/v1/incidents?includeArchived=true`. |
 | POST | /api/v1/admin/incidents/:id/comment | requireAdmin | `{ text }` (201), e.g. a measure taken outside the portal. |
 | PATCH | /api/v1/admin/incidents/:id | requireAdmin (+ requireTotp when `detectedAt` or `zulipUrl` is sent) | `{ escalationLevel?, detectedAt?, zulipUrl?, totpCode? }`; each change is a timeline event. |
 | GET | /api/v1/admin/incidents/:id/export?format=json\|csv | requireAdmin | Download one incident with its full timeline and hash chain, plus the NIS2 stages in the order of BSIG 32 with due date, `provisional` marker and report fields as a filling aid for the BSI form (JSON `bsiFormAid`; CSV `nis2_<stage>_*` lines; the awareness time is `became_aware_at`). |
@@ -461,7 +463,7 @@ Mounted at `/fhir`. Machine-to-machine; authenticated by client-certificate thum
 | GET | /fhir/Bundle/:endpointId | mTLS | The current allow list for one endpoint owned by the calling cert's org: receiver view of the latest bundle version. `Bundle.meta.versionId` / `lastUpdated`, `ETag: W/"<version>"`, `Last-Modified`; 304 on a matching `If-None-Match`. Falls back to the approved state (computed on the fly) while no version has a stored input. |
 | GET | /fhir/Bundle/:endpointId/_history | mTLS | FHIR `Bundle` of type `history`, newest first, one entry per version (`fullUrl`, `request`, `response.etag`, `response.lastModified`, no resource). `?_count=` (default 50, max 200). |
 | GET | /fhir/Bundle/:endpointId/_history/:vid | mTLS | Receiver view of one version. 404 for an unknown version or one without stored input. |
-| GET | /fhir/Bundle/:endpointId/purge | mTLS | Purge bundle: a transaction of ONLY conditional DELETEs (same URL format as the withdrawn-organization DELETEs) for every Organization, Endpoint and OrganizationAffiliation any stored version ever mentioned, except the caller's own Organization and own Endpoints (its own affiliations are deleted). Same auth and endpoint scoping as the allow list (another organization's endpoint: 404). No version headers, `Cache-Control: no-store`, not recorded as an obtained version; every fetch is audited (`DOWNLOAD`, `diff_json.action = allow_list_purge`, entry count). Not available for `/Bundle/mine`. |
+| GET | /fhir/Bundle/:endpointId/purge | mTLS | Purge bundle: a transaction of ONLY conditional DELETEs (same URL format as the withdrawn-organization DELETEs) for every Organization, Endpoint and OrganizationAffiliation any stored version ever mentioned, except the caller's own Organization and own Endpoints (its own affiliations are deleted). Same auth and endpoint scoping as the allow list (another organization's endpoint: 404). Rate limited per client certificate (default 10 per 15 minutes, `RATE_LIMIT_PURGE_MAX`; answers a 429 OperationOutcome). No version headers, `Cache-Control: no-store`, not recorded as an obtained version; every fetch is audited (`DOWNLOAD`, `diff_json.action = allow_list_purge`, entry count). Not available for `/Bundle/mine`. |
 | GET | /fhir/Bundle | mTLS | Network-wide bundle of the current version. |
 
 Missing cert → 401; cert not registered → 403; unknown endpoint/org/version → 404 (an endpoint of another organization counts as unknown).
