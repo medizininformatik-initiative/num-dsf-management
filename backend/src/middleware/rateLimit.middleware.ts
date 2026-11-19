@@ -144,6 +144,34 @@ export const incidentReportRateLimit = rateLimit({
   message: { error: { code: 'RATE_LIMITED', message: 'Too many incident reports. Please wait.' } },
 });
 
+// The purge bundle is rebuilt from every stored allow-list version on each fetch; cap it per
+// client certificate (SHA-512 fingerprint, proxy-verified), falling back to the IP. A real site
+// fetches it a handful of times at most. Answers a FHIR OperationOutcome like the rest of /fhir.
+export const purgeRateLimit = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_PURGE_WINDOW_MS || '900000'),
+  max: parseInt(process.env.RATE_LIMIT_PURGE_MAX || '10'),
+  store: createRedisStore('fhir-purge'),
+  keyGenerator: (req) => {
+    const fp = extractClientCert(req)?.fingerprint;
+    return fp ? `cert:${fp}` : req.ip || 'unknown';
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    res
+      .status(429)
+      .type('application/fhir+json')
+      .send(
+        JSON.stringify({
+          resourceType: 'OperationOutcome',
+          issue: [
+            { severity: 'error', code: 'throttled', diagnostics: 'Too many purge requests.' },
+          ],
+        }),
+      );
+  },
+});
+
 export const apiRateLimit = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_API_WINDOW_MS || '60000'),
   max: parseInt(process.env.RATE_LIMIT_API_MAX || '100'),

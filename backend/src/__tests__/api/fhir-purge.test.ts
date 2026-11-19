@@ -162,4 +162,22 @@ describe('GET /fhir/Bundle/:endpointId/purge', () => {
     const after = await db('audit_logs').where({ instance_id: self.instanceId }).count({ n: '*' });
     expect(Number(after[0].n)).toBeGreaterThan(Number(before[0].n));
   });
+
+  it('is rate limited per client certificate: the 11th fetch in the window answers 429', async () => {
+    const limited = await seedSite({ label: 'purge-limited', memberships: [] });
+    sites.push(limited);
+    const fetchPurge = () =>
+      request(app)
+        .get(`/fhir/Bundle/${limited.endpointIds[0]}/purge`)
+        .set(mtlsHeaders(limited.certPem!));
+    for (let i = 0; i < 10; i++) expect((await fetchPurge()).status).toBe(200);
+    const res = await fetchPurge();
+    expect(res.status).toBe(429);
+    expect(res.body.resourceType).toBe('OperationOutcome');
+    // Another certificate has its own bucket.
+    const res2 = await request(app)
+      .get(`/fhir/Bundle/${self.endpointIds[0]}/purge`)
+      .set(mtlsHeaders(self.certPem!));
+    expect(res2.status).toBe(200);
+  });
 });

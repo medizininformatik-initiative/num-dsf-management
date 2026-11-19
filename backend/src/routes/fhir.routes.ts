@@ -32,6 +32,7 @@ import {
   getPublishedReceiverBundle,
   listReceiverHistory,
 } from '../services/bundle-versions.service';
+import { purgeRateLimit } from '../middleware/rateLimit.middleware';
 import { writeAuditLog } from '../services/audit.service';
 import { recordAllowListFetchSafe } from '../services/allowlist-freshness.service';
 import { extractClientCert, type ClientCertInfo } from '../lib/clientCert';
@@ -256,7 +257,7 @@ fhirRouter.get('/Bundle/:endpointId', async (req: Request, res: Response) => {
 // auth and endpoint scoping as the allow list itself (another organization's endpoint: 404); not
 // a version of the allow list, so no version headers and no freshness record. Every fetch is
 // audited with the entry count.
-fhirRouter.get('/Bundle/:endpointId/purge', async (req: Request, res: Response) => {
+fhirRouter.get('/Bundle/:endpointId/purge', purgeRateLimit, async (req: Request, res: Response) => {
   try {
     const resolved = await authenticate(req, res);
     if (!resolved) return;
