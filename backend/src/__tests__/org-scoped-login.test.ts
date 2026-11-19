@@ -88,6 +88,14 @@ beforeAll(async () => {
     created_at: new Date(),
     created_by: 'test',
   });
+  // An unscoped admin certificate session must have TOTP enrolled, otherwise only the
+  // enrolment endpoints are reachable (TOTP_ENROLMENT_REQUIRED).
+  await db('users').insert({
+    id: uuidv4(),
+    email: adminEmail,
+    totp_enabled: true,
+    totp_secret: 'placeholder',
+  });
   await grantAdmin(adminEmail);
   await writeAuditLog({
     userEmail: 'x@example.de',
