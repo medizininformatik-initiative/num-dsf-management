@@ -4,7 +4,8 @@
  * PENDING → WITHDRAWN (the site takes its own request back)
  * Dependencies: db/connection, audit.service, approval-reminder.service, fhir.service
  *               (loadMembers), approved-snapshot.service (types), lib/approvalState,
- *               login-certificate-sync.service, lib/approvedIps, lib/snapshotCompare
+ *               login-certificate-sync.service, lib/approvedIps, lib/snapshotCompare,
+ *               lib/certDescribe
  */
 import crypto from 'crypto';
 import { Knex } from 'knex';
@@ -20,6 +21,7 @@ import { siteOfEmail, validateApproval, deriveStatus, ApprovalSig } from '../lib
 import { loadMembers } from './fhir.service';
 import { extractApprovedIps } from '../lib/approvedIps';
 import { snapshotsDiffer } from '../lib/snapshotCompare';
+import { describeCertificate } from '../lib/certDescribe';
 import { syncLoginCertificatesAfterApproval } from './login-certificate-sync.service';
 import type { AllowListSection } from './approved-snapshot.service';
 import { errCode } from '../lib/errMessage';
@@ -69,9 +71,21 @@ async function buildSnapshot(instanceId: string, trx: Knex | Knex.Transaction = 
     'endpoint_id',
     endpoints.map((e) => e.identifier),
   );
-  const certificates = await trx('certificates')
+  const certRows: Array<{
+    id: string;
+    subject: string;
+    thumbprint: string;
+    valid_until: Date | string | null;
+    pem: string;
+  }> = await trx('certificates')
     .where({ organization_id: org.identifier })
-    .select('id', 'subject', 'thumbprint', 'valid_until');
+    .select('id', 'subject', 'thumbprint', 'valid_until', 'pem');
+  // Issuer / subject DN, DNS names and expiry are stored with the snapshot so a later request can
+  // still be compared with a certificate whose row was deleted on renewal. Never the PEM itself.
+  const certificates = certRows.map(({ pem, ...cert }) => ({
+    ...cert,
+    ...describeCertificate(pem),
+  }));
   const memberships = await trx('memberships')
     .where({ organization_id: org.identifier })
     .whereNull('deleted_at');

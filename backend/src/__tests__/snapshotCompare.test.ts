@@ -78,4 +78,13 @@ describe('snapshotsDiffer', () => {
     expect(snapshotsDiffer(base(), null)).toBeNull();
     expect(snapshotsDiffer(undefined, base())).toBeNull();
   });
+  it('ignores facts derived from a certificate PEM', () => {
+    const withFacts = {
+      certificates: [
+        { thumbprint: 'T', issuerDn: 'CN=CA', subjectDn: 'CN=a', sanDns: ['a'], notAfter: 'x' },
+      ],
+    };
+    expect(snapshotsDiffer(withFacts, { certificates: [{ thumbprint: 'T' }] })).toBe(false);
+    expect(snapshotsDiffer(withFacts, { certificates: [{ thumbprint: 'U' }] })).toBe(true);
+  });
 });

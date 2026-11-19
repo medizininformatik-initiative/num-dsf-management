@@ -106,4 +106,25 @@ describe('changedSinceApproval', () => {
     expect(await changed()).toBe(false);
     await db('contacts').where({ id: contactId }).update({ email: 'contact@example.de' });
   });
+
+  it('embeds the certificate facts (no PEM) and ignores them against a legacy snapshot', async () => {
+    const approved = await db('approval_requests')
+      .where({ instance_id: site.instanceId, status: 'APPROVED' })
+      .first('id', 'snapshot_json');
+    const snapshot =
+      typeof approved.snapshot_json === 'string'
+        ? JSON.parse(approved.snapshot_json)
+        : approved.snapshot_json;
+    const cert = snapshot.certificates[0];
+    expect(cert.issuerDn).toEqual(expect.any(String));
+    expect(cert.subjectDn).toEqual(expect.any(String));
+    expect(cert.notAfter).toEqual(expect.any(String));
+    expect(Array.isArray(cert.sanDns)).toBe(true);
+    expect(JSON.stringify(snapshot)).not.toContain('BEGIN CERTIFICATE');
+    for (const key of ['issuerDn', 'subjectDn', 'sanDns', 'notAfter']) delete cert[key];
+    await db('approval_requests')
+      .where({ id: approved.id })
+      .update({ snapshot_json: JSON.stringify(snapshot) });
+    expect(await changed()).toBe(false);
+  });
 });

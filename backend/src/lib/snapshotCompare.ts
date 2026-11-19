@@ -15,6 +15,12 @@ const VOLATILE_KEYS = new Set([
   'email_validated',
   'client_cert_thumbprint',
   'client_cert_fingerprint',
+  // Facts derived from a certificate's PEM; the thumbprint already identifies the certificate and
+  // snapshots approved before these were stored must not read as changed.
+  'issuerDn',
+  'subjectDn',
+  'sanDns',
+  'notAfter',
 ]);
 
 /** Keys a snapshot only carries since a later version; compared only when both sides have them. */
