@@ -1,11 +1,18 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dsf-dark.svg">
-  <img src="docs/logo-dsf-light.svg" alt="dsf." height="56" />
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dsf-management-dark.svg">
+  <img src="docs/logo-dsf-management-light.svg" alt="DSF Management Tool" height="40" />
 </picture>
 
-# DSF Management Portal
+# DSF Management Tool
 
-Web application for managing the participants of the [Data Sharing Framework](https://dsf.dev) (DSF) in the German Medical Informatics Initiative (MII) and the Network University Medicine (NUM). Sites maintain their organization, endpoints, certificates and memberships; administrators approve changes; the portal publishes the result as the signed DSF allow list.
+Management platform for the [Data Sharing Framework](https://dsf.dev) (DSF) networks of the German Medical Informatics Initiative (MII) and the Network University Medicine (NUM). Sites maintain their organization, endpoints, certificates and memberships; administrators review and approve changes and publish them as the signed DSF allow list. Around the allow list the tool covers certificate lifecycle and CA policy, security incidents with NIS2 reporting, a marketplace for DSF process plugins, a network map, audit and backups, and an API for automated certificate renewal.
+
+<a href="https://www.medizin.uni-muenster.de/imi/das-institut.html">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="frontend/public/logos/IMI-Logo-grad-eng-dark.png">
+    <img src="frontend/public/logos/IMI-Logo-grad-eng.png" alt="Institute of Medical Informatics, University of Münster" height="48" />
+  </picture>
+</a>
 
 Operated by the [Institute of Medical Informatics](https://www.medizin.uni-muenster.de/imi/das-institut.html), University of Münster.
 
@@ -16,8 +23,14 @@ Operated by the [Institute of Medical Informatics](https://www.medizin.uni-muens
 - **Versioned allow list.** Every published version is kept, with diff, signed download and a four-eyes restore.
 - **FHIR bundle for the DSF.** The BPE process `downloadAllowList` fetches the RS256-signed bundle over mTLS.
 - **Sign-in.** Client certificate, or e-mail one-time code plus TOTP. The DSF certificate of a site becomes its login once it is on the approved allow list.
-- **Administration.** Users and admin roles, CA white- and blacklist, bulk onboarding from CSV/XLSX, scheduled backups, audit log with export.
+- **Request review.** Each pending request carries a risk assessment (certificate, CA, endpoint, contact and network changes) summarised for the reviewing admins.
+- **Certificates.** Per certificate a site decides whether it is published in the allow list, used for login, or both; uploads are checked against the CA white- and blacklist.
+- **Security incidents.** Report, confirm, suspend a site and block its certificates, NIS2 reporting stages, false alarms with two-admin lifting of blocks, hash-chained incident log.
+- **Site lifecycle.** Bulk onboarding from CSV/XLSX and removal of a whole site with two admin confirmations; the next allow-list version deletes it at every DSF instance.
+- **Marketplace** of DSF process plugins, synchronised with their GitHub repositories.
+- **Administration.** Users and admin roles, statistics, scheduled backups, audit log with export.
 - **Network map** of all sites and their networks.
+- **Automation API.** Sites can renew client certificates via the API, see below.
 
 <table>
 <tr>
