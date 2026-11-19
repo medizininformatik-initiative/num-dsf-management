@@ -129,16 +129,18 @@ upsert_ruleset "main protection" '{
   ]
 }'
 
+# Release tags are immutable: release-please (GITHUB_TOKEN) may create them,
+# nobody but admins may move or delete them. The GitHub Actions app cannot be
+# a bypass actor outside its own organization, so creation stays open.
 upsert_ruleset "release tags" '{
   "name": "release tags",
   "target": "tag",
   "enforcement": "active",
   "conditions": {"ref_name": {"include": ["refs/tags/v*"], "exclude": []}},
   "bypass_actors": [
-    {"actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always"},
-    {"actor_id": 15368, "actor_type": "Integration", "bypass_mode": "always"}
+    {"actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always"}
   ],
-  "rules": [{"type": "creation"}, {"type": "update"}, {"type": "deletion"}]
+  "rules": [{"type": "update"}, {"type": "deletion"}]
 }'
 
 # ---- production environment ----------------------------------------------
