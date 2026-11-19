@@ -2,7 +2,7 @@
  * IncidentAdminPanel.test.tsx — which admin actions an incident offers: a
  * reported incident gets Confirm, level 2/3 the immediate suspension callout,
  * a suspended one Lift with Close and False alarm blocked, an incident without
- * a site no suspension, a closed one only the export. incidents.api is mocked.
+ * a site no suspension, a closed one the export and Archive. incidents.api is mocked.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, within } from '@testing-library/react';
@@ -102,13 +102,33 @@ describe('IncidentAdminPanel', () => {
     ).toBeInTheDocument();
   });
 
-  it('only exports a closed incident', () => {
+  it('offers Archive for a finished incident and opens the step-up dialog', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<IncidentAdminPanel detail={detail({ status: 'FALSE_ALARM' })} />);
+    await user.click(actions().getByRole('button', { name: 'Archive' }));
+    expect(await screen.findByRole('heading', { name: 'Archive incident' })).toBeInTheDocument();
+  });
+
+  it('offers no Archive while open or once archived', () => {
+    const { unmount } = renderWithProviders(<IncidentAdminPanel detail={detail({})} />);
+    expect(actions().queryByRole('button', { name: 'Archive' })).not.toBeInTheDocument();
+    unmount();
+    renderWithProviders(
+      <IncidentAdminPanel
+        detail={detail({ status: 'CLOSED', archivedAt: '2026-11-11T08:00:00Z' })}
+      />,
+    );
+    expect(actions().queryByRole('button', { name: 'Archive' })).not.toBeInTheDocument();
+    expect(actions().getByText('This incident is archived.')).toBeInTheDocument();
+  });
+
+  it('exports and archives a closed incident', () => {
     renderWithProviders(
       <IncidentAdminPanel
         detail={detail({ status: 'CLOSED', closedAt: '2026-11-10T08:00:00Z' })}
       />,
     );
-    expect(actions().getAllByRole('button')).toHaveLength(2);
+    expect(actions().getAllByRole('button')).toHaveLength(3);
     expect(actions().getByRole('button', { name: 'Export JSON' })).toBeInTheDocument();
     expect(actions().getByRole('button', { name: 'Export CSV' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Classification' })).not.toBeInTheDocument();

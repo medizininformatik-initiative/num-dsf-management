@@ -10,7 +10,7 @@
  * Dependencies: useIncidents, AdminPageHeader, IncidentList, IncidentDetail,
  * IncidentFlowSection, lib/incidentFlow, Icon, i18n store, react-router.
  */
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { IncidentDetail as IncidentDetailData } from '../../api/incidents.api';
 import { useIncident, useIncidents } from '../../hooks/useIncidents';
@@ -41,7 +41,9 @@ export function IncidentWorkspace({
   const { t } = useI18n();
   const [params, setParams] = useSearchParams();
   const selectedId = params.get('id');
-  const { data, isLoading, isError } = useIncidents();
+  const [showArchived, setShowArchived] = useState(false);
+  // Only admins (renderAdmin) can list archived incidents.
+  const { data, isLoading, isError } = useIncidents(renderAdmin !== undefined && showArchived);
   const { data: selected } = useIncident(selectedId);
   const activeStep = selected
     ? currentFlowStep(
@@ -62,6 +64,16 @@ export function IncidentWorkspace({
       </div>
       <div className="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-[minmax(16rem,22rem)_1fr]">
         <div className={selectedId ? 'hidden lg:block' : ''}>
+          {renderAdmin && (
+            <label className="mb-3 flex items-center gap-2 text-sm text-[color:var(--text-secondary)]">
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+              />
+              {t('incidentsShowArchived')}
+            </label>
+          )}
           <IncidentList
             incidents={data ?? []}
             isLoading={isLoading}

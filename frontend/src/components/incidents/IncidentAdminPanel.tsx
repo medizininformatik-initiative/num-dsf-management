@@ -6,7 +6,7 @@
  * 2 or 3 an unsuspended open incident with a known site gets a callout that
  * offers the suspension right away, and raising the level to 2 or 3 opens
  * the suspend dialog at once. Closing is blocked while the site is suspended;
- * a closed incident only offers the export.
+ * a closed incident offers Archive (step-up dialog) and the export.
  * Dependencies: SuspendSiteDialog, LiftSuspensionDialog, CloseIncidentDialog,
  * IncidentSettingsForm, IncidentCommentForm, IncidentExportButtons,
  * incidentLabels, Button, Icon, i18n store.
@@ -16,6 +16,7 @@ import type { CloseOutcome, IncidentDetail } from '../../api/incidents.api';
 import { useI18n } from '../../stores/i18n.store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
+import { ArchiveIncidentDialog } from './ArchiveIncidentDialog';
 import { CloseIncidentDialog } from './CloseIncidentDialog';
 import { IncidentCommentForm } from './IncidentCommentForm';
 import { IncidentExportButtons } from './IncidentExportButtons';
@@ -24,7 +25,7 @@ import { LiftSuspensionDialog } from './LiftSuspensionDialog';
 import { SuspendSiteDialog } from './SuspendSiteDialog';
 import { isOpen } from './incidentLabels';
 
-type Dialog = 'suspend' | 'lift' | CloseOutcome | null;
+type Dialog = 'suspend' | 'lift' | 'archive' | CloseOutcome | null;
 
 function Hint({ icon, children }: { icon: string; children: string }) {
   return (
@@ -115,6 +116,12 @@ export function IncidentAdminPanel({ detail }: { detail: IncidentDetail }) {
               </Button>
             </>
           )}
+          {!open && !incident.suspended && !incident.archivedAt && (
+            <Button variant="secondary" size="sm" onClick={() => setDialog('archive')}>
+              <Icon name="inventory_2" size={16} />
+              {t('incidentActionArchive')}
+            </Button>
+          )}
           <span className="flex flex-wrap gap-2 sm:ml-auto">
             <IncidentExportButtons incidentId={incident.id} />
           </span>
@@ -123,6 +130,7 @@ export function IncidentAdminPanel({ detail }: { detail: IncidentDetail }) {
         {open && incident.suspended && <Hint icon="info">{t('incidentStillSuspendedHint')}</Hint>}
         {open && !hasSite && <Hint icon="info">{t('incidentNoSiteHint')}</Hint>}
         {!open && <Hint icon="lock">{t('incidentClosedHint')}</Hint>}
+        {incident.archivedAt && <Hint icon="inventory_2">{t('incidentArchivedHint')}</Hint>}
       </section>
 
       {open && (
@@ -142,6 +150,7 @@ export function IncidentAdminPanel({ detail }: { detail: IncidentDetail }) {
         onClose={close}
       />
       <LiftSuspensionDialog incident={incident} open={dialog === 'lift'} onClose={close} />
+      <ArchiveIncidentDialog incident={incident} open={dialog === 'archive'} onClose={close} />
       <CloseIncidentDialog
         incident={incident}
         outcome={dialog === 'FALSE_ALARM' ? 'FALSE_ALARM' : 'CLOSED'}

@@ -5,7 +5,7 @@
  * /app/incidents with the same ?id=. incidents.api and useMe are mocked.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router-dom';
 import { renderWithProviders } from '../../test/renderWithProviders';
@@ -91,6 +91,15 @@ describe('AdminIncidentsPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'Report a security incident' }),
     ).toBeInTheDocument();
+  });
+
+  it('lists archived incidents only after the toggle', async () => {
+    const user = userEvent.setup();
+    renderAt('/app/admin/incidents');
+    await screen.findByText('Phishing wave');
+    expect(listMock).toHaveBeenLastCalledWith(false);
+    await user.click(screen.getByRole('checkbox', { name: 'Show archived' }));
+    await waitFor(() => expect(listMock).toHaveBeenLastCalledWith(true));
   });
 
   it('sends a non-admin to the user page with the same incident', async () => {

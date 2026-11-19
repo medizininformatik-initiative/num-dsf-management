@@ -90,6 +90,14 @@ export function IncidentList({
                 <span>
                   {t('incidentReportedOn', { date: formatDate(incident.reportedAt, lang) })}
                 </span>
+                {incident.archivedAt && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="font-medium text-[color:var(--text-secondary)]">
+                      {t('incidentArchivedBadge')}
+                    </span>
+                  </>
+                )}
                 {incident.isMine && (
                   <>
                     <span aria-hidden="true">·</span>
