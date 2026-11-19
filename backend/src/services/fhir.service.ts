@@ -383,14 +383,19 @@ export function renderReceiverBundle(
 /**
  * Resolve the endpoint among the endpoints of an instance's organization.
  * Ownership rule shared by every receiver read: an endpoint of another
- * organization is not found.
+ * organization is not found; neither is anything of a removed site.
  * @throws ORGANIZATION_NOT_FOUND / ENDPOINT_NOT_FOUND
  */
 export async function resolveReceiver(
   instanceId: string,
   endpointId: string,
 ): Promise<{ organization: string; endpoint: string }> {
-  const org = await db('organizations').where({ instance_id: instanceId }).first();
+  const org = await db('organizations as o')
+    .join('instances as i', 'i.id', 'o.instance_id')
+    .where('o.instance_id', instanceId)
+    .whereNull('i.removed_at')
+    .select('o.*')
+    .first();
   if (!org) throw new Error('ORGANIZATION_NOT_FOUND');
   const endpoint = await db('endpoints')
     .where({ identifier: endpointId, organization_id: org.identifier })

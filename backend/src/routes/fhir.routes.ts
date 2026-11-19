@@ -64,11 +64,18 @@ function sendOutcome(res: Response, status: number, code: string, diagnostics: s
     );
 }
 
+/** Organizations of sites that were not removed; a removed site never authenticates. */
+function activeOrganizations() {
+  return db('organizations as o')
+    .join('instances as i', 'i.id', 'o.instance_id')
+    .whereNull('i.removed_at');
+}
+
 async function findOrgByClientCert(cert: ClientCertInfo): Promise<ResolvedOrg | null> {
   // Blocks are kept by SHA-512; without it a block could not be checked, and
   // the SHA-256 lookups below must not let a blocked certificate through.
   if (!cert.fingerprint || (await isFingerprintBlocked(cert.fingerprint))) return null;
-  const byFingerprint = await db('organizations as o')
+  const byFingerprint = await activeOrganizations()
     .join('org_login_certificates as l', 'l.organization_id', 'o.identifier')
     .where('l.fingerprint', cert.fingerprint)
     .select('o.*')
@@ -77,16 +84,20 @@ async function findOrgByClientCert(cert: ClientCertInfo): Promise<ResolvedOrg | 
   // parseCertificate stores the SHA-256 in upper case, extractClientCert
   // computes it in lower case; match both instead of relying on collation.
   const thumbprints = [cert.thumbprint, cert.thumbprint.toUpperCase()];
-  const owners: Array<{ organization_id: string }> = await db('certificates')
-    .whereIn('thumbprint', thumbprints)
-    .distinct('organization_id');
+  const owners: Array<{ organization_id: string }> = await db('certificates as c')
+    .join('organizations as o', 'o.identifier', 'c.organization_id')
+    .join('instances as i', 'i.id', 'o.instance_id')
+    .whereNull('i.removed_at')
+    .whereIn('c.thumbprint', thumbprints)
+    .distinct('c.organization_id');
 
   // client_cert_thumbprint is tenant-editable and not unique: identify the
   // site by it only when exactly one organization claims the thumbprint and no
   // OTHER organization registered the certificate. Otherwise (ambiguous, or a
   // claim on another site's certificate) fall through to the certificate list.
-  const byThumbprint = await db('organizations')
-    .whereIn('client_cert_thumbprint', thumbprints)
+  const byThumbprint = await activeOrganizations()
+    .whereIn('o.client_cert_thumbprint', thumbprints)
+    .select('o.*')
     .limit(2);
   if (
     byThumbprint.length === 1 &&
@@ -99,8 +110,9 @@ async function findOrgByClientCert(cert: ClientCertInfo): Promise<ResolvedOrg | 
   // usually not the certificate used for the browser login. Accept it when
   // exactly one organization registered it; an ambiguous match is refused.
   if (owners.length !== 1) return null;
-  const byCertificate = await db('organizations')
-    .where({ identifier: owners[0].organization_id })
+  const byCertificate = await activeOrganizations()
+    .where('o.identifier', owners[0].organization_id)
+    .select('o.*')
     .first();
   return byCertificate ? { org: byCertificate, match: 'certificate' } : null;
 }
