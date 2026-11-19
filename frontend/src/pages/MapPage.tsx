@@ -2,7 +2,7 @@
  * MapPage.tsx – Interactive P2P allow-list network map (role-aware, i18n).
  * A calm full-bleed map canvas with floating glass chrome: the filter toolbar
  * on top, the organization list as a collapsible sidebar (bottom sheet below
- * 1024px), zoom controls and legend on the map, and the details sheet. The
+ * 1024px), zoom controls on the map, the legend strip below it, and the details sheet. The
  * map viewport insets itself beside the open list and sheet (easing with the
  * sheets), so focusing a selection centres it in the visible area. The
  * details sheet always docks on the right (bottom below 1024px); selecting a
@@ -28,6 +28,7 @@ import { GeoMap } from '../components/map/GeoMap';
 import { MapOrgList } from '../components/map/MapOrgList';
 import { NodeDetailsPanel, type SheetSide } from '../components/map/NodeDetailsPanel';
 import { MapFilters, MapFilterState } from '../components/map/MapFilters';
+import { MapLegend } from '../components/map/MapLegend';
 import { VerbundPills } from '../components/map/VerbundPills';
 import { useOwnHoverStore } from '../components/map/hoverStore';
 import { clusterGroupFor, isOnMap } from '../components/map/mapGeometry';
@@ -274,6 +275,7 @@ export function MapPage() {
             />
           )}
         </div>
+        <MapLegend />
       </div>
 
       <NodeDetailsPanel

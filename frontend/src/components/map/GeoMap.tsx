@@ -1,7 +1,7 @@
 /**
  * GeoMap.tsx – The network map canvas: a zoomable, pannable SVG of Germany
  * with organization pins, city clusters and peer edges, plus floating zoom
- * controls and a legend.
+ * controls.
  * - Placement: cities with one site render a GeoMapPin, cities with several a
  *   GeoMapCluster; selecting a cluster (or one of its members) fans the
  *   members out around it with a short staggered spring.
@@ -29,7 +29,7 @@ import { GermanyOutline } from './GermanyOutline';
 import { GeoMapPin } from './GeoMapPin';
 import { GeoMapCluster } from './GeoMapCluster';
 import { GeoMapEdges } from './GeoMapEdges';
-import { MapLegend, MapZoomControls } from './MapControls';
+import { MapZoomControls } from './MapControls';
 import { MapTooltip } from './MapTooltip';
 import {
   FOCUS_ZOOM,
@@ -423,10 +423,7 @@ export function GeoMap({
       <p id={hintId} className="sr-only">
         {t('mapKeyboardHint')}
       </p>
-      <div className="pointer-events-none absolute inset-x-3 bottom-3 flex items-end justify-between gap-3">
-        <div className="pointer-events-auto">
-          <MapLegend />
-        </div>
+      <div className="pointer-events-none absolute inset-x-3 bottom-3 flex items-end justify-end gap-3">
         <div className="pointer-events-auto">
           <MapZoomControls
             k={k}
