@@ -1,7 +1,7 @@
 /**
  * audit.middleware.test.ts – Unit tests for the audit-writing middleware path.
  *
- * NOTE ON TARGET: the project layout in CLAUDE.md lists a planned
+ * NOTE ON TARGET: the original project layout lists a planned
  * `middleware/audit.middleware.ts`, but no such file exists. Audit writes are
  * implemented in `services/audit.service.ts` (`writeAuditLog`) and the ONLY
  * middleware that drives an audit write off a mutating request is

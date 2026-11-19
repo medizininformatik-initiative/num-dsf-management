@@ -9,7 +9,7 @@
  * normalization matches lib/certFingerprint.ts (SHA-512 login fingerprint).
  * On top of that, every domain is additionally required to end in
  * `.example.de` — this tool only ever seeds fictional hackathon data (see
- * seed-testdata.ts and the project's fictional-data policy in CLAUDE.md),
+ * seed-testdata.ts and the project's fictional-data policy),
  * so a manifest naming a real organization is rejected outright rather than
  * silently seeded.
  *
