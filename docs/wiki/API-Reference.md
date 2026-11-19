@@ -175,7 +175,7 @@ Mounted at `/api/v1/admin/approval`.
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | /api/v1/admin/approval/pending | requireAdmin | List pending requests, enriched with collected signatures and a `risk` assessment: `{ level: "LOW"\|"MEDIUM"\|"HIGH", score, firstRequest, findings: [{ code, severity: "info"\|"low"\|"medium"\|"high", weight, params }] }` (findings sorted by severity, highest first; rules in the Admin Guide). `risk` is `null` if the assessment could not be computed. |
+| GET | /api/v1/admin/approval/pending | requireAdmin | List pending requests, enriched with collected signatures and a `risk` assessment: `{ level: "LOW"\|"MEDIUM"\|"HIGH", score, firstRequest, findings: [{ code, severity: "info"\|"low"\|"medium"\|"high", weight, params }] }` (findings sorted by severity, highest first; rules in the Admin Guide). `risk` is `null` if the assessment could not be computed; an unreadable snapshot yields the single finding `SNAPSHOT_UNREADABLE`. |
 | POST | /api/v1/admin/approval/:rid/approve | requireAdmin + requireTotp | Approve a request (4-eyes; same-site/double-decision guarded). Body `{ totpCode }`. |
 | POST | /api/v1/admin/approval/:rid/reject | requireAdmin + requireTotp | Reject a request. Body `{ totpCode, comment? }`. |
 

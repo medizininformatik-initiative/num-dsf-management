@@ -57,51 +57,71 @@ snapshot.
 Pills: **Unauffällig / Low risk** (green), **Prüfen / Review** (amber), **Auffällig / Suspicious**
 (red), **Erstantrag / First request** (grey; shown next to the level when that is not low).
 
-Level: HIGH if any finding is high or the score is 6 or more; MEDIUM if any finding is medium or
-the score is 3 or more; otherwise LOW. A routine certificate renewal (score -1) is always LOW.
+Level: HIGH if any finding is high or the positive weights add up to 6 or more; MEDIUM if any finding
+is medium or they add up to 3 or more; otherwise LOW. A routine certificate renewal (-1) is the only
+mitigating finding: it never lowers the level, and it counts as 0 as soon as the request also has a
+medium or high finding or comes from a new IP address.
 
 | Code | Meaning | Weight |
 |------|---------|--------|
 | `CERT_RENEWAL` | Certificate replaced by one with the same subject and issuer, old one expires within 60 days or is expired | -1 |
 | `CERT_EARLY_REPLACE` | Certificate replaced while the old one is valid for more than 60 days | +2 |
 | `CERT_ISSUER_CHANGED` | New certificate comes from a different CA than the replaced or previous ones | +2 |
+| `CERT_SUBJECT_CHANGED` | A certificate was replaced by one with a different subject | +2 |
+| `CERT_NOT_COMPARABLE` | Issuer or old expiry of a replaced certificate is unknown (snapshot from before issuer facts were stored, row deleted): never rated a renewal | +1 |
 | `CERT_CA_NOT_WHITELISTED` | Issuing CA of a new certificate is not on the CA whitelist | +4 |
 | `CERT_CA_BLACKLISTED` | Issuing CA of a new certificate is on the CA blacklist | +6 |
 | `CERT_SUBJECT_MISMATCH` | No CN/SAN name of a new certificate belongs to the organization or an endpoint domain | +2 |
 | `CERT_ADDED` | More certificates than before, without a replacement | +1 |
-| `CERT_ALL_REPLACED` | All previous certificates (more than one) are gone | +2 |
-| `CERT_SHORT_VALIDITY` | New certificate expires within 30 days (info) | 0 |
+| `CERT_ALL_REPLACED` | All previous certificates (more than one) are gone and not all were routine renewals | +2 |
+| `CERT_EXPIRED` | A new certificate is already expired | +2 |
+| `CERT_SHORT_VALIDITY` | A new certificate expires within 30 days | +1 |
 | `ENDPOINT_ADDRESS_CHANGED` | Host of an existing endpoint changed | +2 |
+| `ENDPOINT_SCHEME_DOWNGRADE` | Endpoint address changed from https to http | +2 |
+| `ENDPOINT_URL_CHANGED` | Port or path of an endpoint address changed (same host) | +1 |
+| `ENDPOINT_ADDRESS_UNREADABLE` | A new or changed endpoint address is not a readable http(s) URL | +2 |
 | `ENDPOINT_FOREIGN_DOMAIN` | New endpoint host is on a domain that is neither the organization's nor a previously approved one | +4 |
 | `ENDPOINT_ADDED` | Endpoint added | +1 |
 | `ENDPOINT_REMOVED` | Endpoint removed; receivers lose it and its memberships | +2 |
-| `IP_ADDED` | IP added to an existing endpoint | +1 |
+| `IP_ADDED` | IP added to an existing endpoint (also when it had none) | +1 |
 | `IP_REPLACED_ALL` | None of the previously approved IPs remains | +2 |
-| `IP_PRIVATE` | New IP is private (RFC1918, loopback, link-local, CGNAT, 0.0.0.0/8, IPv6 ULA / link-local / loopback) | +2 |
-| `IP_SHARED` | New IP is also used by another organization | +2 |
+| `IP_PRIVATE` | New IP is private or special-purpose (RFC1918, loopback, link-local, CGNAT, 0.0.0.0/8, documentation and benchmarking ranges, multicast, reserved, IPv6 ULA / link-local / site-local, IPv4-mapped and NAT64 forms of those) | +2 |
+| `IP_SHARED` | New IPs are also used by other organizations (one finding, with the count and up to three organizations) | +2 |
 | `ORG_NAME_CHANGED` | Organization name changed | +2 |
 | `ORG_DEACTIVATED` | Organization set to inactive | +1 |
 | `CONTACT_DATA_CHANGED` | Organization or contact e-mail or address changed | +2 |
+| `CONTACT_DATA_NOT_COMPARABLE` | One snapshot has no editable-fields digest, so contact data could not be compared (info) | 0 |
 | `CONTACTS_ALL_REPLACED` | No previous contact remains | +2 |
 | `CONTACT_UNVALIDATED` | New DSF admin contact whose e-mail is not confirmed | +1 |
-| `MEMBERSHIP_NEW_PARENT` | Joins a parent organization it was not in | +2 |
+| `CONTACT_ROLE_CHANGED` | An existing contact became DSF admin | +1 |
+| `MEMBERSHIP_NEW_PARENT` | Joins a parent organization it was not in (parents compared case-insensitively) | +2 |
 | `MEMBERSHIP_ROLE_ADDED` | Role added in an existing membership | +1 |
 | `MEMBERSHIP_REMOVED` | Membership of a parent organization removed | +1 |
-| `FIRST_REQUEST` | No earlier approval: everything must be reviewed; only the CA, subject, private-IP, shared-IP and foreign-domain checks run (info) | 0 |
-| `RECENT_REJECTIONS` | At least one rejected request in the last 30 days | +2 |
+| `FIRST_REQUEST` | No earlier approval: everything must be reviewed; only the CA, subject, expiry, private-IP, shared-IP and foreign-domain checks run (info) | 0 |
+| `RECENT_REJECTIONS` | At least one rejected request in the last 30 days | +1 |
 | `RECENT_WITHDRAWALS` | Two or more withdrawn requests in the last 30 days | +1 |
-| `NEW_SUBMIT_IP` | Submitted from an IP not seen before in this site's logins and submits | +1 |
-| `TAKEOVER_PATTERN` | Certificate change that is not a pure renewal, together with changed contact data or a changed endpoint address or host | +4 |
+| `NEW_SUBMIT_IP` | Submitted from an IP not seen in this site's logins and submits up to the previous approval | +1 |
+| `TAKEOVER_PATTERN` | A certificate change that is not a routine renewal together with changed contact data, all contacts replaced, or a changed endpoint address or host; or the same certificate change (or a renewal from a new IP) within 30 days after an approved request that changed the contact data or an endpoint address | +4 |
+| `SNAPSHOT_UNREADABLE` | The request snapshot is empty or unreadable; it is the only finding | +4 |
 | `NOTHING_CHANGED` | No difference to the last approval (info) | 0 |
 
 Notes on how the rules are applied:
 
-- A "domain" is compared by its last two labels (`dsf.ukm.de` is `ukm.de`); there is no public
-  suffix list, so names under `co.uk`-style suffixes are judged too strictly.
-- Certificates are matched by thumbprint. A replaced certificate whose database row is gone is
-  judged by the subject and expiry stored in the snapshot; its issuer cannot be compared.
+- A "domain" is compared by its registrable domain: the last two labels (`dsf.ukm.de` is `ukm.de`),
+  three under a built-in list of common second-level suffixes (`ac.uk`, `co.uk`, `gv.at`, `com.au`,
+  ...). There is no full public-suffix list, so rare suffixes are judged as two labels.
+- Certificates are matched by thumbprint. Since this version the snapshot stores each certificate's
+  issuer DN, subject DN, DNS names and expiry (never the PEM), so a renewal that deleted the old
+  certificate row can still be compared. Replacements are paired by subject first, whatever the order
+  in the snapshot. A previous snapshot without these facts or without thumbprints is not comparable.
+- Endpoint addresses are compared normalised (case, trailing dot and slash ignored).
+- IPs are compared in canonical form (IPv6 compressed, IPv4-mapped written as IPv4).
+- "Known" submit IPs are logins and submits of the site up to the moment the previous request was
+  approved (without a previous approval: up to 24 hours before the submit), so a login right before
+  submitting never makes a new address look familiar.
 - `CONTACT_DATA_CHANGED` needs the editable-fields digest in both snapshots.
-- Unreadable or missing data never blocks the list: the risk is simply computed from what exists.
+- The text under the pill shows at most the five most severe findings, then "+n more"; names taken
+  from the site's data are shortened to 40 characters and stripped of control characters.
 
 ## Email Whitelist
 
