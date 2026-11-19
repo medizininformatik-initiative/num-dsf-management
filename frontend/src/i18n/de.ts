@@ -223,7 +223,7 @@ export const de: Record<TranslationKey, string> = {
   riskLeadHigh: 'Auffällig',
   riskLeadMedium: 'Prüfen',
   riskLeadLow: 'Hinweise',
-  riskNoChange: 'Keine risikorelevanten Änderungen gegenüber der letzten Freigabe.',
+  riskNoChange: 'Änderungen ohne Risikobezug.',
   riskDaysOneDat: '1 Tag',
   riskDaysManyDat: '{n} Tagen',
   riskDaysOneNom: '1 Tag',
@@ -250,7 +250,7 @@ export const de: Record<TranslationKey, string> = {
   riskIpAdded: '{n} IP-Adresse(n) hinzugefügt',
   riskIpReplacedAll: 'alle IP-Adressen ausgetauscht',
   riskIpPrivate: 'private oder interne IP-Adresse {ips}',
-  riskIpShared: 'IP {ip} wird auch von {org} genutzt',
+  riskIpShared: '{n} IP-Adresse(n) werden auch von {orgs} genutzt',
   riskOrgNameChanged: 'Organisationsname von „{from}“ auf „{to}“ geändert',
   riskOrgDeactivated: 'Organisation deaktiviert',
   riskContactDataChanged: 'Kontakt-E-Mail oder -Adresse geändert',
@@ -264,6 +264,26 @@ export const de: Record<TranslationKey, string> = {
   riskNewSubmitIp: 'Einreichung von einer bisher unbekannten IP-Adresse',
   riskTakeoverPattern:
     'Zertifikatswechsel zusammen mit geänderten Kontaktdaten oder geänderter Endpunkt-Adresse (Übernahme-Muster)',
+  riskMore: '+{n} weitere',
+  riskUnknownFinding: 'weitere Auffälligkeit ({code})',
+  riskCertRenewalToday:
+    'Routine-Verlängerung von {cn}, altes Zertifikat läuft heute ab, gleiche CA',
+  riskCertExpired: 'neues Zertifikat {cn} ist seit {days} abgelaufen',
+  riskCertSubjectChanged: 'Zertifikat von {from} auf {to} gewechselt',
+  riskCertNotComparable:
+    'Zertifikat {cn} nicht mit der letzten Freigabe vergleichbar (Aussteller oder Ablauf unbekannt)',
+  riskCertNotComparableAll: 'Zertifikate nicht mit der letzten Freigabe vergleichbar',
+  riskEndpointSchemeDowngrade: 'Endpunkt {host} von https auf http herabgestuft',
+  riskEndpointUrlChanged: 'Endpunkt-Port oder -Pfad geändert ({from} → {to})',
+  riskEndpointAddressUnreadable: 'Adresse von Endpunkt {identifier} nicht lesbar',
+  riskContactDataNotComparable:
+    'Kontaktdaten nicht vergleichbar (keine Prüfsumme in der letzten Freigabe)',
+  riskContactRoleChanged: '{n} Kontakt(e) neu als DSF-Admin',
+  riskSnapshotUnreadable: 'Antrag nicht lesbar, Daten manuell prüfen',
+  riskTakeoverSplitContact:
+    'Zertifikatswechsel innerhalb von 30 Tagen nach Kontaktänderung (Übernahme-Muster)',
+  riskTakeoverSplitEndpoint:
+    'Zertifikatswechsel innerhalb von 30 Tagen nach Endpunkt-Änderung (Übernahme-Muster)',
   requestCardFieldId: 'ID',
   requestCardSectionEndpoints: 'Endpunkte ({n})',
   requestCardSectionCertificates: 'Zertifikate ({n})',

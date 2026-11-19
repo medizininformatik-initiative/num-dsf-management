@@ -106,19 +106,85 @@ describe('buildRiskSummary (de)', () => {
     expect(text).toBe('Erstantrag ohne frühere Freigabe, alle Angaben vollständig prüfen.');
   });
 
-  it('says so when nothing risk-relevant changed', () => {
-    expect(buildRiskSummary(risk('LOW', []), t())).toBe(
-      'Keine risikorelevanten Änderungen gegenüber der letzten Freigabe.',
-    );
+  it('never says nothing changed when the data did change without a finding', () => {
+    expect(buildRiskSummary(risk('LOW', []), t())).toBe('Änderungen ohne Risikobezug.');
     expect(buildRiskSummary(risk('LOW', [f('NOTHING_CHANGED')]), t())).toBe(
       'Keine Änderung gegenüber der letzten Freigabe.',
     );
   });
 
-  it('ignores finding codes it does not know', () => {
+  it('shows a code it does not know generically instead of skipping it', () => {
     const unknown: RiskFinding = { code: 'FUTURE_RULE', severity: 'high', weight: 9, params: {} };
     expect(buildRiskSummary(risk('HIGH', [unknown, f('CONTACT_DATA_CHANGED')]), t())).toBe(
-      'Auffällig: Kontakt-E-Mail oder -Adresse geändert.',
+      'Auffällig: weitere Auffälligkeit (FUTURE_RULE); Kontakt-E-Mail oder -Adresse geändert.',
+    );
+  });
+
+  it('strips control characters, collapses blanks and truncates site-supplied text', () => {
+    const name = ['Evil', String.fromCharCode(0x202e, 0), '  Klinik ', 'x'.repeat(80)].join('');
+    const text = buildRiskSummary(
+      risk('MEDIUM', [f('ORG_NAME_CHANGED', { from: 'Alt', to: name })]),
+      t(),
+    );
+    expect([...text].some((ch) => ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 0x202e)).toBe(
+      false,
+    );
+    expect(text).toContain('„Evil Klinik ');
+    expect(text).toContain('…“');
+    expect(text.length).toBeLessThan(160);
+  });
+
+  it('caps the risk sentence at five findings and counts the rest', () => {
+    const many = Array.from({ length: 8 }, (_, i) =>
+      f('ORG_NAME_CHANGED', { from: `a${i}`, to: `b${i}` }),
+    );
+    const text = buildRiskSummary(risk('MEDIUM', many), t());
+    expect(text.match(/Organisationsname/g)).toHaveLength(5);
+    expect(text.endsWith('; +3 weitere.')).toBe(true);
+    expect(sentenceCount(text)).toBe(1);
+  });
+
+  it('words the day edge cases: expiring today, already expired, short validity', () => {
+    const today = buildRiskSummary(risk('LOW', [f('CERT_RENEWAL', { cn: 'a.de', days: 0 })]), t());
+    expect(today).toContain('läuft heute ab');
+    const expiredShort: RiskFinding = {
+      code: 'CERT_SHORT_VALIDITY',
+      severity: 'low',
+      weight: 1,
+      params: { cn: 'a.de', days: -4 },
+    };
+    expect(buildRiskSummary(risk('LOW', [expiredShort]), t())).toBe(
+      'Hinweise: neues Zertifikat a.de ist seit 4 Tagen abgelaufen.',
+    );
+  });
+
+  it('words the split takeover and the new rules', () => {
+    const split: RiskFinding = {
+      code: 'TAKEOVER_PATTERN',
+      severity: 'high',
+      weight: 4,
+      params: { after: 'contact', days: 10 },
+    };
+    expect(buildRiskSummary(risk('HIGH', [split]), t())).toBe(
+      'Auffällig: Zertifikatswechsel innerhalb von 30 Tagen nach Kontaktänderung (Übernahme-Muster).',
+    );
+    const shared: RiskFinding = {
+      code: 'IP_SHARED',
+      severity: 'medium',
+      weight: 2,
+      params: { n: 2, orgs: 'a.de, b.de' },
+    };
+    expect(buildRiskSummary(risk('MEDIUM', [shared]), t())).toBe(
+      'Prüfen: 2 IP-Adresse(n) werden auch von a.de, b.de genutzt.',
+    );
+    const legacy: RiskFinding = {
+      code: 'CERT_NOT_COMPARABLE',
+      severity: 'low',
+      weight: 1,
+      params: { cn: '' },
+    };
+    expect(buildRiskSummary(risk('LOW', [legacy]), t())).toContain(
+      'Zertifikate nicht mit der letzten Freigabe vergleichbar',
     );
   });
 });
