@@ -321,3 +321,49 @@ describe('certificate purpose rules (migration 040)', () => {
     expect(r.findings[0]).toMatchObject({ severity: 'low', weight: 1 });
   });
 });
+
+describe('CERT_NO_LOGIN', () => {
+  const noLogin = { id: 'old', days: 300, publish: true, login: false };
+  const withLogin = { id: 'old', days: 300, publish: true, login: true };
+
+  it('fires when no certificate is for login and the site has no other login entry', () => {
+    const r = run({
+      current: { certs: [noLogin] },
+      previous: { certs: [withLogin] },
+      context: { hasLoginOutsideApproval: false },
+    });
+    expect(codes(r)).toContain('CERT_NO_LOGIN');
+    const finding = r.findings.find((f) => f.code === 'CERT_NO_LOGIN');
+    expect(finding).toMatchObject({ severity: 'medium', weight: 2 });
+    expect(r.level).toBe('MEDIUM');
+  });
+
+  it('stays quiet when the site keeps an onboarding, admin or migrated login entry', () => {
+    const r = run({
+      current: { certs: [noLogin] },
+      previous: { certs: [withLogin] },
+      context: { hasLoginOutsideApproval: true },
+    });
+    expect(codes(r)).not.toContain('CERT_NO_LOGIN');
+  });
+
+  it('stays quiet when a certificate is for login, or when the context does not know', () => {
+    const marked = run({
+      current: { certs: [withLogin] },
+      previous: { certs: [withLogin] },
+      context: { hasLoginOutsideApproval: false },
+    });
+    expect(codes(marked)).not.toContain('CERT_NO_LOGIN');
+    const unknown = run({ current: { certs: [noLogin] }, previous: { certs: [withLogin] } });
+    expect(codes(unknown)).not.toContain('CERT_NO_LOGIN');
+  });
+
+  it('stays quiet for a site without any certificate', () => {
+    const r = run({
+      current: { certs: [] },
+      previous: null,
+      context: { hasLoginOutsideApproval: false },
+    });
+    expect(codes(r)).not.toContain('CERT_NO_LOGIN');
+  });
+});

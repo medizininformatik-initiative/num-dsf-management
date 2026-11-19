@@ -229,6 +229,16 @@ async function loadOrgsByIp(ips: string[]): Promise<Map<string, string[]>> {
   return map;
 }
 
+/** Instances whose organization has a login entry that does not come from an approval. */
+async function loadOrgsWithOtherLogin(instanceIds: string[]): Promise<Set<string>> {
+  const rows: Array<{ instance_id: string }> = await db('org_login_certificates as l')
+    .join('organizations as o', 'o.identifier', 'l.organization_id')
+    .whereIn('o.instance_id', instanceIds)
+    .whereNot('l.source', 'APPROVAL')
+    .distinct('o.instance_id');
+  return new Set(rows.map((r) => r.instance_id));
+}
+
 /** Risk assessment per pending request id. */
 export async function assessPendingRequests(
   requests: PendingRequestRow[],
@@ -266,10 +276,11 @@ export async function assessPendingRequests(
   const allIps = new Set<string>();
   for (const snap of currentById.values()) ipsOf(snap).forEach((ip) => allIps.add(ip));
 
-  const [certInfo, seen, orgsByIp] = await Promise.all([
+  const [certInfo, seen, orgsByIp, outsideLogins] = await Promise.all([
     loadCertInfo([...certIds]),
     loadSeenIps(requestIds, instanceIds, [...new Set(owners.map((o) => o.email))]),
     loadOrgsByIp([...allIps]),
+    loadOrgsWithOtherLogin(instanceIds),
   ]);
   Object.values(certInfo).forEach((c) => issuerDns.add(c.issuerDn));
   const caStatus = await loadCaStatus([...issuerDns]);
@@ -308,6 +319,7 @@ export async function assessPendingRequests(
       submitterIp: submitterIps.get(req.id) ?? null,
       knownSubmitIps: [...known],
       otherOrgsByIp,
+      hasLoginOutsideApproval: outsideLogins.has(req.instance_id),
       now,
     };
     result.set(

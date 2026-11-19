@@ -49,6 +49,11 @@ export interface RiskContext {
   knownSubmitIps: string[];
   /** IP address → identifiers of the OTHER organizations that use it. */
   otherOrgsByIp: Record<string, string[]>;
+  /**
+   * The site has a login entry that does not come from an approval (onboarding, admin or
+   * migrated). Left out when unknown: CERT_NO_LOGIN is then not raised.
+   */
+  hasLoginOutsideApproval?: boolean;
   now: Date;
 }
 
@@ -89,6 +94,7 @@ export const RISK_RULES: Record<string, Rule> = {
   CERT_SHORT_VALIDITY: { severity: 'low', weight: 1 },
   CERT_LOGIN_ONLY: { severity: 'medium', weight: 2 },
   CERT_UNPUBLISHED: { severity: 'low', weight: 1 },
+  CERT_NO_LOGIN: { severity: 'medium', weight: 2 },
   ENDPOINT_ADDRESS_CHANGED: { severity: 'medium', weight: 2 },
   ENDPOINT_SCHEME_DOWNGRADE: { severity: 'medium', weight: 2 },
   ENDPOINT_URL_CHANGED: { severity: 'low', weight: 1 },
@@ -159,6 +165,14 @@ export function assessRequest(input: RiskInput): RiskAssessment {
     allowedDomains: allowedCertDomains(cur),
   });
   addAll(certs.findings);
+  // Nothing marked for login and no other way in: after approval the site could not log in.
+  if (
+    context.hasLoginOutsideApproval === false &&
+    cur.certs.length > 0 &&
+    cur.certs.every((c) => !c.login)
+  ) {
+    add('CERT_NO_LOGIN');
+  }
   addAll(analyzeEndpoints({ cur, prev, otherOrgsByIp: context.otherOrgsByIp }));
 
   // Organization, contacts, memberships.

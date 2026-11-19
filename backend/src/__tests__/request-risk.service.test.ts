@@ -89,4 +89,25 @@ describe('assessPendingRequests', () => {
     const codes = [...result.values()][0].findings.map((f) => f.code);
     expect(codes).toContain('CERT_CA_BLACKLISTED');
   });
+
+  it('raises CERT_NO_LOGIN only when the site has no other login entry', async () => {
+    const lonely = await seedSite({ label: 'risk-nologin', approval: null });
+    const covered = await seedSite({ label: 'risk-nologin-ok', approval: null, loginCert: true });
+    sites.push(lonely, covered);
+    const batch: PendingRequestRow[] = [];
+    for (const site of [lonely, covered]) {
+      await db('certificates').where({ organization_id: site.orgId }).update({ use_for_login: 0 });
+      const req = (await submitApproval(
+        site.instanceId,
+        site.email,
+        '203.0.113.5',
+      )) as PendingRequestRow;
+      requests.push(req);
+      batch.push(req);
+    }
+    const result = await assessPendingRequests(batch);
+    const codesOf = (id: string) => result.get(id)?.findings.map((f) => f.code) ?? [];
+    expect(codesOf(batch[0].id)).toContain('CERT_NO_LOGIN');
+    expect(codesOf(batch[1].id)).not.toContain('CERT_NO_LOGIN');
+  });
 });
