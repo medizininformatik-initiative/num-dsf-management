@@ -12,10 +12,12 @@ export const createContactSchema = z.object({
   phone: z
     .string()
     .max(50)
-    // optional leading +, digits, spaces and - ( ) / . ; at least 6 digits (extensions allowed)
-    .regex(/^(?=(?:\D*\d){6})\+?[\d\s\-()/.]+$/, 'Invalid phone format')
-    .optional()
-    .or(z.literal('')),
+    // optional leading +, digits, regular spaces (no tab/newline) and - ( ) / . ;
+    // at least 6 digits (extensions allowed)
+    .regex(/^(?=(?:\D*\d){6})\+?[\d \-()/.]+$/, 'Invalid phone format')
+    .or(z.literal(''))
+    .nullish()
+    .transform((v) => v ?? ''),
   addressLine: z.string().max(255).optional().default(''),
   city: z.string().max(100).optional().default(''),
   postalCode: z.string().max(20).optional().default(''),

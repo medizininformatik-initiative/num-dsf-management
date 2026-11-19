@@ -43,6 +43,19 @@ describe('createContactSchema', () => {
     expect(ok('1'.repeat(51))).toBe(false);
   });
 
+  it('rejects tabs and newlines inside a phone number', () => {
+    const ok = (phone: string) => createContactSchema.safeParse({ ...base, phone }).success;
+    expect(ok('+49 251\n83 5000')).toBe(false);
+    expect(ok('+49\t251 83 5000')).toBe(false);
+    expect(ok('+49 251 83 5000')).toBe(true);
+  });
+
+  it('treats a null phone like an empty one', () => {
+    const parsed = createContactSchema.safeParse({ ...base, phone: null });
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.phone).toBe('');
+  });
+
   it('rejects letters and numbers with fewer than 6 digits', () => {
     const ok = (phone: string) => createContactSchema.safeParse({ ...base, phone }).success;
     expect(ok('+49 251 83x')).toBe(false);
