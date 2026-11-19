@@ -25,4 +25,7 @@ paths = [
   '\.env\.example$',
   'docs/security-review-.+\.md$',
   'docs/superpowers/.*',
+  # Tests that prove private keys are rejected carry stub PEM headers
+  # ("-----BEGIN PRIVATE KEY-----\nAAAA..."), never real keys.
+  '(^|/)__tests__/.+\.test\.tsx?$',
 ]
