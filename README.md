@@ -21,19 +21,27 @@ Around the allow list it covers certificate lifecycle and CA policy, security in
 
 ## Features
 
+### Allow list and approvals
+
 - **Site data on one page.** Organization, contacts, endpoints, certificates and memberships of a DSF instance, with their relations.
 - **Four-eyes approval.** A change reaches the allow list only after two administrators from different sites approve it, or one approves and nobody objects for seven days.
+- **Request review.** Each pending request carries a risk assessment (certificate, CA, endpoint, contact and network changes) summarised for the reviewing admins.
 - **Versioned allow list.** Every published version is kept, with diff, signed download and a four-eyes restore.
 - **FHIR bundle for the DSF.** The BPE process `downloadAllowList` fetches the RS256-signed bundle over mTLS.
-- **Sign-in.** Client certificate, or e-mail one-time code plus TOTP. The DSF certificate of a site becomes its login once it is on the approved allow list.
-- **Request review.** Each pending request carries a risk assessment (certificate, CA, endpoint, contact and network changes) summarised for the reviewing admins.
-- **Certificates.** Per certificate a site decides whether it is published in the allow list, used for login, or both; uploads are checked against the CA white- and blacklist.
-- **Security incidents.** Report, confirm, suspend a site and block its certificates, NIS2 reporting stages, false alarms with two-admin lifting of blocks, hash-chained incident log.
 - **Site lifecycle.** Bulk onboarding from CSV/XLSX and removal of a whole site with two admin confirmations; the next allow-list version deletes it at every DSF instance.
-- **Marketplace** of DSF process plugins, synchronised with their GitHub repositories.
-- **Administration.** Users and admin roles, statistics, scheduled backups, audit log with export.
-- **Network map** of all sites and their networks.
+
+### Certificates and sign-in
+
+- **Sign-in.** Client certificate, or e-mail one-time code plus TOTP. The DSF certificate of a site becomes its login once it is on the approved allow list.
+- **Certificates.** Per certificate a site decides whether it is published in the allow list, used for login, or both; uploads are checked against the CA white- and blacklist.
 - **Automation API.** Sites can renew client certificates via the API, see below.
+
+### Security and operations
+
+- **Security incidents.** Report, confirm, suspend a site and block its certificates, NIS2 reporting stages, false alarms with two-admin lifting of blocks, hash-chained incident log.
+- **Administration.** Users and admin roles, statistics, scheduled backups, audit log with export.
+- **Marketplace** of DSF process plugins, synchronised with their GitHub repositories.
+- **Network map** of all sites and their networks.
 
 <table>
 <tr>
