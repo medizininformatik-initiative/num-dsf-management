@@ -1,14 +1,23 @@
 <div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dsf-management-dark.svg">
-    <img src="docs/logo-dsf-management-light.svg" alt="DSF Management Tool" height="40" />
-  </picture>
+  <img src="docs/logo-dsf-management.svg" alt="" width="96" height="96" />
   <h1>DSF Management Tool</h1>
+  <p>Allow list, certificates and security operations for <a href="https://dsf.dev">Data Sharing Framework</a> networks.</p>
+  <p>
+    <a href="#quick-start">Quick start</a> ·
+    <a href="#documentation">Documentation</a> ·
+    <a href="docs/automation.md">Automation API</a> ·
+    <a href="docs/DEPLOYMENT.md">Deployment</a> ·
+    <a href="SECURITY.md">Security</a>
+  </p>
+  <p>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-3287ba" alt="License: Apache 2.0" /></a>
+    <a href="https://dsf.dev"><img src="https://img.shields.io/badge/DSF-2.x-675fa8" alt="DSF 2.x" /></a>
+  </p>
 </div>
 
-Management platform for the [Data Sharing Framework](https://dsf.dev) (DSF) networks of the German Medical Informatics Initiative (MII) and the Network University Medicine (NUM). Sites maintain their organization, endpoints, certificates and memberships; administrators review and approve changes and publish them as the signed DSF allow list. Around the allow list the tool covers certificate lifecycle and CA policy, security incidents with NIS2 reporting, a marketplace for DSF process plugins, a network map, audit and backups, and an API for automated certificate renewal.
+The DSF Management Tool is the management platform for the DSF networks of the German Medical Informatics Initiative (MII) and the Network University Medicine (NUM). Sites maintain their organization, endpoints, certificates and memberships; administrators review and approve changes and publish them as the signed DSF allow list.
 
-Operated by the [Institute of Medical Informatics](https://www.medizin.uni-muenster.de/imi/das-institut.html), University of Münster.
+Around the allow list it covers certificate lifecycle and CA policy, security incidents with NIS2 reporting, a marketplace for DSF process plugins, a network map, audit and backups, and an API for automated certificate renewal. It is operated by the [Institute of Medical Informatics](https://www.medizin.uni-muenster.de/imi/das-institut.html), University of Münster.
 
 ## Features
 
