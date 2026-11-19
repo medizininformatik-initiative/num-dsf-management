@@ -12,6 +12,7 @@
  * uses the per-endpoint URL). That is
  * always the CURRENT bundle version (Bundle.meta.versionId, ETag, Last-Modified);
  * _history lists all versions and _history/{vid} reads an old one.
+ * /Bundle/{endpoint}/purge is the opposite: only DELETEs, to remove the whole allow list again.
  *
  * Authentication is mTLS only (no JWT). The certificate is resolved to an
  * organization by, in order: the SHA-512 login certificate (org_login_certificates), the legacy
@@ -27,6 +28,7 @@ import { db } from '../db/connection';
 import { resolveReceiver } from '../services/fhir.service';
 import {
   getPublishedFullBundle,
+  getPurgeBundle,
   getPublishedReceiverBundle,
   listReceiverHistory,
 } from '../services/bundle-versions.service';
@@ -230,6 +232,41 @@ fhirRouter.get('/Bundle/:endpointId', async (req: Request, res: Response) => {
     // the site holds this (current) version.
     res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
     recordAllowListFetchSafe(resolved.org.instance_id, version?.number, 'DSF');
+    return;
+  } catch (err: unknown) {
+    return handleError(res, err);
+  }
+});
+
+// GET /fhir/Bundle/:endpointId/purge — a transaction of ONLY conditional DELETEs that removes
+// every Organization, Endpoint and OrganizationAffiliation any version of the allow list ever
+// published from the caller's own DSF server (not its own Organization and Endpoints). Same mTLS
+// auth and endpoint scoping as the allow list itself (another organization's endpoint: 404); not
+// a version of the allow list, so no version headers and no freshness record. Every fetch is
+// audited with the entry count.
+fhirRouter.get('/Bundle/:endpointId/purge', async (req: Request, res: Response) => {
+  try {
+    const resolved = await authenticate(req, res);
+    if (!resolved) return;
+    const bundle = await getPurgeBundle(resolved.org.instance_id, req.params.endpointId);
+    const cert = extractClientCert(req)!;
+    await writeAuditLog({
+      instanceId: resolved.org.instance_id,
+      resourceType: 'CERTIFICATE',
+      resourceId: req.params.endpointId,
+      operation: 'DOWNLOAD',
+      diffJson: {
+        action: 'allow_list_purge',
+        authMethod: 'client_cert',
+        match: resolved.match,
+        idPrefix: (cert.fingerprint ?? cert.thumbprint).slice(0, 16),
+        endpoint: req.params.endpointId,
+        entries: bundle.entry?.length ?? 0,
+      },
+      ipAddress: req.ip || 'unknown',
+    });
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).type(FHIR_JSON).send(JSON.stringify(bundle));
     return;
   } catch (err: unknown) {
     return handleError(res, err);

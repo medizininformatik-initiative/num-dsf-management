@@ -40,6 +40,7 @@ import {
   withRetiredAffiliations,
   type AffiliationTriple,
 } from '../lib/allowListHistory';
+import { buildPurgeBundle } from '../lib/allowListPurge';
 import { signBundle } from './bundle-signing.service';
 import { writeAuditLog } from './audit.service';
 
@@ -261,6 +262,37 @@ export async function listReceiverHistory(opts: {
     notes: (r.notes as string | null) ?? null,
     isCurrent: r.version_number === current,
   }));
+}
+
+/** Stored bundles of every version, oldest first, loaded in small batches. */
+async function* storedBundles(): AsyncGenerator<string> {
+  const ids: string[] = await db('bundle_versions').orderBy('version_number', 'asc').pluck('id');
+  const BATCH = 25;
+  for (let i = 0; i < ids.length; i += BATCH) {
+    const rows: Array<{ bundle_json: string }> = await db('bundle_versions')
+      .whereIn('id', ids.slice(i, i + BATCH))
+      .select('bundle_json');
+    for (const row of rows) yield row.bundle_json;
+  }
+}
+
+/**
+ * The purge bundle of one endpoint's site: conditional DELETEs for every Organization, Endpoint
+ * and OrganizationAffiliation any stored version ever published, except the site's own
+ * Organization and Endpoints (lib/allowListPurge). Not a version of the allow list.
+ * @throws ORGANIZATION_NOT_FOUND / ENDPOINT_NOT_FOUND
+ */
+export async function getPurgeBundle(
+  instanceId: string,
+  endpointId: string,
+): Promise<AllowListBundle> {
+  const { organization } = await resolveReceiver(instanceId, endpointId);
+  const endpoints: string[] = await db('endpoints')
+    .where({ organization_id: organization })
+    .pluck('identifier');
+  const bundles: string[] = [];
+  for await (const json of storedBundles()) bundles.push(json);
+  return buildPurgeBundle(bundles, { organization, endpoints });
 }
 
 /** Signed network-wide bundle of the current version, or of the live state as fallback. */
