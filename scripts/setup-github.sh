@@ -142,8 +142,10 @@ upsert_ruleset "release tags" '{
 }'
 
 # ---- production environment ----------------------------------------------
+# Reviewer of production deployments: REVIEWER=<login>, else the signed-in user
+# (the repository owner may be an organization, which cannot review).
 owner_id=""
-[ "$DRY" = 0 ] && owner_id=$(gh api "users/$OWNER" --jq .id 2>/dev/null)
+[ "$DRY" = 0 ] && owner_id=$(gh api "users/${REVIEWER:-$(gh api user --jq .login)}" --jq .id 2>/dev/null)
 api_try "environment production" PUT "repos/$REPO/environments/production" '{
   "reviewers": [{"type": "User", "id": '"${owner_id:-0}"'}],
   "deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true}
