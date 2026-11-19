@@ -173,6 +173,7 @@ export async function recordSystemLoginChange(
  * @throws ORGANIZATION_NOT_FOUND / CERTIFICATE_NOT_FOUND / INVALID_CERTIFICATE
  * @throws NOT_CLINIC_UPLOADED unless the clinic itself uploaded the certificate
  *   (an admin upload, or an upload of unknown origin, never qualifies).
+ * @throws NOT_FOR_LOGIN if the site marked the certificate as not for login.
  * @throws ADMIN_CERTIFICATE if the fingerprint is an admin certificate.
  * @throws FINGERPRINT_IN_USE if another organization already uses it.
  * @throws CERT_BLOCKED if an incident blocked the certificate.
@@ -189,6 +190,8 @@ export async function enable(
     .first();
   if (!cert) throw new Error('CERTIFICATE_NOT_FOUND');
   if (cert.uploaded_by_admin !== 0) throw new Error('NOT_CLINIC_UPLOADED');
+  // The site excluded this certificate from login (migration 040).
+  if (!cert.use_for_login) throw new Error('NOT_FOR_LOGIN');
   let fingerprint: string;
   try {
     fingerprint = sha512FingerprintFromPem(String(cert.pem));

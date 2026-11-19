@@ -4,7 +4,9 @@
  *
  * At a site the DSF certificate usually is the login certificate. Once a
  * request is APPROVED (four-eyes or silent consent), every SHA-512 thumbprint
- * of its allow-list snapshot may log in as the organization (source APPROVAL);
+ * of its allow-list snapshot that the site marked for login (certificates.use_for_login,
+ * migration 040; older snapshots: every published one) may log in as the
+ * organization (source APPROVAL);
  * an APPROVAL entry whose thumbprint a later approved snapshot no longer lists
  * is removed. Entries from onboarding, the migration or an admin are never
  * removed here. Admin certificates and thumbprints that already log in for
@@ -36,6 +38,8 @@ export const APPROVAL_ACTOR = 'SYSTEM:allow-list-approval';
 interface SnapshotAllowList {
   active?: boolean;
   member?: { identifier?: string; thumbprints?: unknown };
+  /** Thumbprints marked for login (migration 040); absent in older snapshots. */
+  loginThumbprints?: unknown;
 }
 
 interface CertRow {
@@ -87,7 +91,12 @@ export async function syncLoginCertificatesFromApproval(
   const blocked = await blockedFingerprints();
   const approved = [
     ...new Set(
-      (section.member.thumbprints as unknown[])
+      // Only certificates marked for login; older snapshots fall back to the published ones.
+      (
+        (Array.isArray(section.loginThumbprints)
+          ? section.loginThumbprints
+          : section.member.thumbprints) as unknown[]
+      )
         .filter((t): t is string => typeof t === 'string')
         .map((t) => t.toLowerCase())
         .filter((t) => !blocked.has(t)),

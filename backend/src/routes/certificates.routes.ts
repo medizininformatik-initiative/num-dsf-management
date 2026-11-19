@@ -9,7 +9,11 @@ import { Router, type Request } from 'express';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireInstanceOwnership } from '../middleware/instance.middleware';
 import { validate } from '../middleware/validate.middleware';
-import { createCertificateSchema, renewCertificateSchema } from '../schemas/certificate.schema';
+import {
+  certificatePurposeSchema,
+  createCertificateSchema,
+  renewCertificateSchema,
+} from '../schemas/certificate.schema';
 import * as svc from '../services/certificate.service';
 import { listForInstance as listLoginCertificates } from '../services/org-login-certificates.service';
 import { db } from '../db/connection';
@@ -118,6 +122,24 @@ certificatesRouter.post('/preview', validate(createCertificateSchema), async (re
     res.status(400).json({ error: sanitizeError(err) });
   }
 });
+
+// Per certificate: publish in the allow list and/or use for login (takes effect with the next
+// approved request). A site login (certificate session) may change it like the owner.
+certificatesRouter.patch(
+  '/:cid/purpose',
+  validate(certificatePurposeSchema),
+  asyncHandler(async (req, res) => {
+    res.json({
+      data: await svc.updateCertificatePurpose(
+        req.instance!.id,
+        req.params.cid,
+        req.body,
+        req.user!.email,
+        req.ip || 'unknown',
+      ),
+    });
+  }),
+);
 
 certificatesRouter.delete(
   '/:cid',

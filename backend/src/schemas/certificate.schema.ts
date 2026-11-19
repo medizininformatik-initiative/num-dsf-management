@@ -25,3 +25,13 @@ export const createCertificateSchema = z.object({
 export const renewCertificateSchema = z.object({
   pem: pemField,
 });
+
+// What a certificate is used for (migration 040): at least one field is required.
+export const certificatePurposeSchema = z
+  .object({
+    publishInAllowlist: z.boolean().optional(),
+    useForLogin: z.boolean().optional(),
+  })
+  .refine((v) => v.publishInAllowlist !== undefined || v.useForLogin !== undefined, {
+    message: 'publishInAllowlist or useForLogin required',
+  });

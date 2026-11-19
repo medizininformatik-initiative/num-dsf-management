@@ -18,7 +18,7 @@ import {
   notifyImiOnFirstApproval,
 } from './approval-reminder.service';
 import { siteOfEmail, validateApproval, deriveStatus, ApprovalSig } from '../lib/approvalState';
-import { loadMembers } from './fhir.service';
+import { dsfThumbprint, loadMembers } from './fhir.service';
 import { extractApprovedIps } from '../lib/approvedIps';
 import { snapshotsDiffer } from '../lib/snapshotCompare';
 import { describeCertificate } from '../lib/certDescribe';
@@ -77,15 +77,32 @@ async function buildSnapshot(instanceId: string, trx: Knex | Knex.Transaction = 
     thumbprint: string;
     valid_until: Date | string | null;
     pem: string;
+    publish_in_allowlist: number | boolean;
+    use_for_login: number | boolean;
   }> = await trx('certificates')
     .where({ organization_id: org.identifier })
-    .select('id', 'subject', 'thumbprint', 'valid_until', 'pem');
+    .select(
+      'id',
+      'subject',
+      'thumbprint',
+      'valid_until',
+      'pem',
+      'publish_in_allowlist',
+      'use_for_login',
+    );
   // Issuer / subject DN, DNS names and expiry are stored with the snapshot so a later request can
   // still be compared with a certificate whose row was deleted on renewal. Never the PEM itself.
+  // The two purpose flags (migration 040) are part of the snapshot, so changing one is a change
+  // that needs a new approval.
   const certificates = certRows.map(({ pem, ...cert }) => ({
     ...cert,
+    publish_in_allowlist: !!cert.publish_in_allowlist,
+    use_for_login: !!cert.use_for_login,
     ...describeCertificate(pem),
   }));
+  // SHA-512 thumbprints of the certificates marked for login: the login sync reads these, the
+  // allow list only publishes member.thumbprints (published certificates).
+  const loginThumbprints = certRows.filter((c) => c.use_for_login).map((c) => dsfThumbprint(c));
   const memberships = await trx('memberships')
     .where({ organization_id: org.identifier })
     .whereNull('deleted_at');
@@ -100,7 +117,12 @@ async function buildSnapshot(instanceId: string, trx: Knex | Knex.Transaction = 
   // What the allow list publishes for this site once the request is approved:
   // thumbprints only, never the certificate PEMs.
   const [member] = await loadMembers([{ identifier: org.identifier, name: org.name }], trx);
-  const allowList: AllowListSection = { version: 1, active: !!org.active, member };
+  const allowList: AllowListSection = {
+    version: 1,
+    active: !!org.active,
+    member,
+    loginThumbprints,
+  };
   return {
     organization: orgSafe,
     contacts,
@@ -123,6 +145,8 @@ async function buildSnapshot(instanceId: string, trx: Knex | Knex.Transaction = 
  * @throws APPROVAL_ALREADY_PENDING if a PENDING request already exists.
  * @throws ORGANIZATION_NOT_FOUND if the instance has no organization to snapshot.
  * @throws INSTANCE_REMOVED if two admins removed the site.
+ * @throws NO_PUBLISHED_CERTIFICATE if the site has certificates but published none of them
+ *   (DSF needs at least one thumbprint).
  */
 export async function submitApproval(instanceId: string, userEmail: string, ipAddress: string) {
   return db.transaction(async (trx) => {
@@ -139,6 +163,14 @@ export async function submitApproval(instanceId: string, userEmail: string, ipAd
     if (pending) throw new Error('APPROVAL_ALREADY_PENDING');
     const snapshot = await buildSnapshot(instanceId, trx);
     if (!snapshot) throw new Error('ORGANIZATION_NOT_FOUND');
+    // DSF needs one published thumbprint: certificates exist, but none is published.
+    if (
+      snapshot.organization.active &&
+      snapshot.certificates.length > 0 &&
+      !snapshot.certificates.some((c) => c.publish_in_allowlist)
+    ) {
+      throw new Error('NO_PUBLISHED_CERTIFICATE');
+    }
     const id = uuidv4();
     const now = new Date();
     await trx('approval_requests').insert({

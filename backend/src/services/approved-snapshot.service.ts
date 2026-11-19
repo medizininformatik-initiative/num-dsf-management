@@ -20,6 +20,11 @@ export interface AllowListSection {
   version: 1;
   active: boolean;
   member: AllowListMember;
+  /**
+   * SHA-512 thumbprints of the certificates the site marked for login (migration 040).
+   * Absent in older snapshots: then every published thumbprint may log in.
+   */
+  loginThumbprints?: string[];
 }
 
 type Json = Record<string, unknown>;

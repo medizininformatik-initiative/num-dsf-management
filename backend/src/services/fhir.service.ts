@@ -102,8 +102,10 @@ export async function loadMembers(
     conn('endpoints')
       .whereIn('organization_id', ids)
       .select('identifier', 'organization_id', 'name', 'address'),
+    // Only certificates the site chose to publish (migration 040); login-only ones never reach a bundle.
     conn('certificates')
       .whereIn('organization_id', ids)
+      .where('publish_in_allowlist', 1)
       .select('id', 'organization_id', 'pem')
       .orderBy([{ column: 'created_at' }, { column: 'id' }]),
     conn('memberships')

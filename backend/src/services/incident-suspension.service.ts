@@ -100,8 +100,13 @@ async function snapshotFingerprints(instanceId: string | null | undefined): Prom
   const certIds: string[] = [];
   for (const snapshot of snapshots) {
     const section = allowListSection(snapshot);
-    if (section) fps.push(...section.member.thumbprints.filter((t) => typeof t === 'string'));
-    else certIds.push(...(snapshotCertificateIds(snapshot) ?? []));
+    if (section) {
+      fps.push(
+        ...[...section.member.thumbprints, ...(section.loginThumbprints ?? [])].filter(
+          (t) => typeof t === 'string',
+        ),
+      );
+    } else certIds.push(...(snapshotCertificateIds(snapshot) ?? []));
   }
   if (certIds.length > 0) {
     const pems: string[] = await db('certificates').whereIn('id', certIds).pluck('pem');

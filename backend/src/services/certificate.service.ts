@@ -32,6 +32,20 @@ import { v4 as uuidv4 } from 'uuid';
 // pem-to-thumbprintSha512 projection in toApiCertificates() below. A
 // concrete interface (rather than Knex's implicit `any`) keeps that
 // projection's result properly typed instead of collapsing to `any`.
+/** Columns of a certificate row the API shape is derived from. */
+const CERTIFICATE_COLUMNS = [
+  'id',
+  'organization_id',
+  'subject',
+  'thumbprint',
+  'valid_until',
+  'created_at',
+  'pem',
+  'uploaded_by_admin',
+  'publish_in_allowlist',
+  'use_for_login',
+] as const;
+
 interface CertificateRow {
   id: string;
   organization_id: string;
@@ -41,6 +55,8 @@ interface CertificateRow {
   created_at: Date | string;
   pem: string;
   uploaded_by_admin?: number | null;
+  publish_in_allowlist?: number | boolean;
+  use_for_login?: number | boolean;
 }
 
 /**
@@ -109,11 +125,22 @@ function issuerOf(pem: string): string {
  * production (CA whitelist), are derived from the stored PEM; the PEM itself
  * is stripped, the certificates API never returns raw PEM content.
  */
-async function toApiCertificates<T extends { pem: string; uploaded_by_admin?: number | null }>(
+async function toApiCertificates<
+  T extends {
+    pem: string;
+    uploaded_by_admin?: number | null;
+    publish_in_allowlist?: number | boolean;
+    use_for_login?: number | boolean;
+  },
+>(
   rows: T[],
 ): Promise<
   Array<
-    Omit<T, 'pem' | 'uploaded_by_admin'> & {
+    Omit<T, 'pem' | 'uploaded_by_admin' | 'publish_in_allowlist' | 'use_for_login'> & {
+      /** Published in the allow list (migration 040). */
+      publishInAllowlist: boolean;
+      /** May log in as the organization once approved (migration 040). */
+      useForLogin: boolean;
       thumbprintSha512: string;
       issuerDn: string;
       issuerTrusted: boolean;
@@ -123,17 +150,22 @@ async function toApiCertificates<T extends { pem: string; uploaded_by_admin?: nu
 > {
   const issuers = rows.map((r) => issuerOf(r.pem));
   const trusted = await whitelistedIssuers(issuers.filter(Boolean));
-  return rows.map(({ pem, uploaded_by_admin, ...rest }, i) => ({
-    ...rest,
-    // Only a certificate the clinic itself uploaded may become a login
-    // certificate; unknown (NULL) counts as not uploaded by the clinic.
-    uploadedByClinic: uploaded_by_admin === 0,
-    // One unreadable row must not take the whole list down; the allow-list
-    // bundle still refuses it (CERTIFICATE_PEM_INVALID).
-    thumbprintSha512: thumbprintOf(pem),
-    issuerDn: issuers[i],
-    issuerTrusted: trusted.has(issuers[i]),
-  }));
+  return rows.map(
+    ({ pem, uploaded_by_admin, publish_in_allowlist, use_for_login, ...rest }, i) => ({
+      ...rest,
+      // Rows from before migration 040 count as both.
+      publishInAllowlist: publish_in_allowlist === undefined || !!publish_in_allowlist,
+      useForLogin: use_for_login === undefined || !!use_for_login,
+      // Only a certificate the clinic itself uploaded may become a login
+      // certificate; unknown (NULL) counts as not uploaded by the clinic.
+      uploadedByClinic: uploaded_by_admin === 0,
+      // One unreadable row must not take the whole list down; the allow-list
+      // bundle still refuses it (CERTIFICATE_PEM_INVALID).
+      thumbprintSha512: thumbprintOf(pem),
+      issuerDn: issuers[i],
+      issuerTrusted: trusted.has(issuers[i]),
+    }),
+  );
 }
 
 /**
@@ -195,16 +227,7 @@ export async function getCertificates(instanceId: string) {
   if (!org) return [];
   const rows: CertificateRow[] = await db('certificates')
     .where({ organization_id: org.identifier })
-    .select(
-      'id',
-      'organization_id',
-      'subject',
-      'thumbprint',
-      'valid_until',
-      'created_at',
-      'pem',
-      'uploaded_by_admin',
-    )
+    .select(...CERTIFICATE_COLUMNS)
     .orderBy('created_at', 'desc');
   return toApiCertificates(rows);
 }
@@ -347,16 +370,7 @@ export async function createCertificate(
   });
   const row: CertificateRow = await db('certificates')
     .where({ id })
-    .select(
-      'id',
-      'organization_id',
-      'subject',
-      'thumbprint',
-      'valid_until',
-      'created_at',
-      'pem',
-      'uploaded_by_admin',
-    )
+    .select(...CERTIFICATE_COLUMNS)
     .first();
   return (await toApiCertificates([row]))[0];
 }
@@ -443,6 +457,9 @@ export async function renewCertificate(
       created_at: new Date(),
       uploaded_by: userEmail,
       uploaded_by_admin: uploadedByAdmin ? 1 : 0,
+      // The successor keeps what the replaced certificate was used for.
+      publish_in_allowlist: oldCert.publish_in_allowlist,
+      use_for_login: oldCert.use_for_login,
     });
 
     // Delete old cert; its login entry stays until the old certificate expires
@@ -472,18 +489,64 @@ export async function renewCertificate(
 
     const row: CertificateRow = await trx('certificates')
       .where({ id: newId })
-      .select(
-        'id',
-        'organization_id',
-        'subject',
-        'thumbprint',
-        'valid_until',
-        'created_at',
-        'pem',
-        'uploaded_by_admin',
-      )
+      .select(...CERTIFICATE_COLUMNS)
       .first();
     return row;
   });
   return (await toApiCertificates([renewed]))[0];
+}
+
+export interface CertificatePurposePatch {
+  publishInAllowlist?: boolean;
+  useForLogin?: boolean;
+}
+
+/**
+ * Set what a certificate is used for: published in the allow list and/or
+ * usable for login. The change only takes effect with the next approved
+ * request (the approval snapshot carries both flags).
+ * Side-effects: writes an UPDATE audit log with the old and new values.
+ * @throws ORGANIZATION_NOT_FOUND / CERTIFICATE_NOT_FOUND
+ */
+export async function updateCertificatePurpose(
+  instanceId: string,
+  certId: string,
+  patch: CertificatePurposePatch,
+  userEmail: string,
+  ipAddress: string,
+) {
+  const org = await db('organizations').where({ instance_id: instanceId }).first();
+  if (!org) throw new Error('ORGANIZATION_NOT_FOUND');
+  const cert = await db('certificates')
+    .where({ id: certId, organization_id: org.identifier })
+    .first();
+  if (!cert) throw new Error('CERTIFICATE_NOT_FOUND');
+  const next = {
+    publish_in_allowlist:
+      patch.publishInAllowlist === undefined
+        ? cert.publish_in_allowlist
+        : patch.publishInAllowlist
+          ? 1
+          : 0,
+    use_for_login: patch.useForLogin === undefined ? cert.use_for_login : patch.useForLogin ? 1 : 0,
+  };
+  await db('certificates').where({ id: certId }).update(next);
+  await writeAuditLog({
+    userEmail,
+    instanceId,
+    resourceType: 'CERTIFICATE',
+    resourceId: certId,
+    operation: 'UPDATE',
+    diffJson: {
+      action: 'certificate_purpose',
+      publishInAllowlist: [!!cert.publish_in_allowlist, !!next.publish_in_allowlist],
+      useForLogin: [!!cert.use_for_login, !!next.use_for_login],
+    },
+    ipAddress,
+  });
+  const row: CertificateRow = await db('certificates')
+    .where({ id: certId })
+    .select(...CERTIFICATE_COLUMNS)
+    .first();
+  return (await toApiCertificates([row]))[0];
 }

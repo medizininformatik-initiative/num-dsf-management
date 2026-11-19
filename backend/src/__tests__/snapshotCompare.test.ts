@@ -88,3 +88,29 @@ describe('snapshotsDiffer', () => {
     expect(snapshotsDiffer(withFacts, { certificates: [{ thumbprint: 'U' }] })).toBe(true);
   });
 });
+
+describe('snapshotsDiffer and the certificate purpose flags (migration 040)', () => {
+  const withFlags = (publish: boolean, login: boolean) => ({
+    ...base(),
+    certificates: [
+      { id: 'c', thumbprint: 'AA', publish_in_allowlist: publish, use_for_login: login },
+    ],
+  });
+
+  it('a snapshot without the flags equals one where both are set', () => {
+    expect(snapshotsDiffer(withFlags(true, true), base())).toBe(false);
+    expect(snapshotsDiffer(base(), withFlags(true, true))).toBe(false);
+  });
+
+  it('changing either flag counts as a change', () => {
+    expect(snapshotsDiffer(withFlags(false, true), base())).toBe(true);
+    expect(snapshotsDiffer(withFlags(true, false), base())).toBe(true);
+    expect(snapshotsDiffer(withFlags(false, true), withFlags(true, true))).toBe(true);
+  });
+
+  it('loginThumbprints alone is not a change (derived from the certificates)', () => {
+    const a = { ...base(), allowList: { version: 1, loginThumbprints: ['x'] } };
+    const b = { ...base(), allowList: { version: 1 } };
+    expect(snapshotsDiffer(a, b)).toBe(false);
+  });
+});

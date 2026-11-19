@@ -21,6 +21,9 @@ const VOLATILE_KEYS = new Set([
   'subjectDn',
   'sanDns',
   'notAfter',
+  // Derived from the certificates and their use_for_login flag, which are compared themselves;
+  // snapshots approved before migration 040 do not have it.
+  'loginThumbprints',
 ]);
 
 /** Keys a snapshot only carries since a later version; compared only when both sides have them. */
@@ -46,13 +49,32 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 
+/**
+ * Snapshots from before migration 040 carry no purpose flags on their certificates; both count as
+ * set (the behaviour then), so they do not read as changed.
+ */
+function withCertificateDefaults(snapshot: unknown): unknown {
+  const certs = (snapshot as { certificates?: unknown } | null)?.certificates;
+  if (!Array.isArray(certs)) return snapshot;
+  return {
+    ...(snapshot as Record<string, unknown>),
+    certificates: certs.map((c) =>
+      c && typeof c === 'object'
+        ? { publish_in_allowlist: true, use_for_login: true, ...(c as Record<string, unknown>) }
+        : c,
+    ),
+  };
+}
+
 /** Parse a snapshot given as JSON string or object; undefined when unreadable. */
 function normalize(raw: unknown): unknown | undefined {
   try {
     const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
     if (text === undefined) return undefined;
     const parsed: unknown = JSON.parse(text);
-    return parsed && typeof parsed === 'object' ? canonicalize(parsed) : undefined;
+    return parsed && typeof parsed === 'object'
+      ? canonicalize(withCertificateDefaults(parsed))
+      : undefined;
   } catch {
     return undefined;
   }
