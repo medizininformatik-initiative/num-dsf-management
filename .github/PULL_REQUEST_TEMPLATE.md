@@ -36,7 +36,7 @@
 
 ## Linked issue
 
-<!-- e.g. "Closes #123" or "Refs #45" -->
+<!-- Closes #123 (or Refs #45). The PR title must be a conventional commit, e.g. `fix(auth): ...` -->
 
 ## Screenshots / videos (UI changes only)
 
