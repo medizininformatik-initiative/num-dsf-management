@@ -41,7 +41,11 @@ incidentsRouter.get(
 incidentsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    res.json({ data: await svc.listIncidents(await caller(req)) });
+    res.json({
+      data: await svc.listIncidents(await caller(req), {
+        includeArchived: req.query.includeArchived === 'true',
+      }),
+    });
   }),
 );
 

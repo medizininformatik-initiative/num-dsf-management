@@ -1,7 +1,7 @@
 /**
  * admin-incidents.routes.ts – Admin actions on incidents
- * (/api/v1/admin/incidents). One admin acts alone; confirm, suspend, lift and
- * close need the fresh step-up (TOTP code or re-presented client
+ * (/api/v1/admin/incidents). One admin acts alone; confirm, suspend, lift,
+ * close and archive need the fresh step-up (TOTP code or re-presented client
  * certificate), and so does a field update that changes the detection time
  * (it moves the NIS2 deadlines) or the Zulip link (shown to every site);
  * the escalation level and comments do not. Export downloads one
@@ -119,6 +119,15 @@ adminIncidentsRouter.post(
     await act(res, 200, async () =>
       svc.closeIncident(req.params.id, req.body.outcome, req.body.note, await caller(req)),
     );
+  }),
+);
+
+adminIncidentsRouter.post(
+  '/:id/archive',
+  ...stepUp,
+  validate(incidentStepUpSchema),
+  asyncHandler(async (req, res) => {
+    await act(res, 200, async () => svc.archiveIncident(req.params.id, await caller(req)));
   }),
 );
 
