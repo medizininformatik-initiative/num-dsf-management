@@ -22,15 +22,15 @@ export function MapHeader() {
   const isAdmin: boolean | undefined = map ? map.isAdmin : me?.isAdmin;
   const known = isAdmin !== undefined;
   return (
-    <header className="glass-chrome px-6 py-4 sm:px-8">
+    <header className="glass-chrome px-6 py-2 sm:px-8">
       <Breadcrumbs />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="min-w-[min(100%,16rem)] flex-1">
-          <h1 className="m-0 text-xl font-bold leading-tight text-[color:var(--text-primary)]">
+        <div className="flex min-w-[min(100%,16rem)] flex-1 flex-wrap items-baseline gap-x-3">
+          <h1 className="m-0 text-lg font-bold leading-tight text-[color:var(--text-primary)]">
             {t('networkMap')}
           </h1>
           {known && (
-            <p className="mt-0.5 text-sm text-[color:var(--text-muted)]">
+            <p className="m-0 text-sm text-[color:var(--text-muted)]">
               {isAdmin ? t('mapAdminViewSubtitle') : t('mapMemberViewSubtitle')}
             </p>
           )}
