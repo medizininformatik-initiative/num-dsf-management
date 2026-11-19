@@ -21,8 +21,13 @@ beforeAll(async () => {
     // safe — they get re-created on the next migration run in real envs.
     await db.raw('DROP TRIGGER IF EXISTS audit_logs_no_update');
     await db.raw('DROP TRIGGER IF EXISTS audit_logs_no_delete');
-    // Same for the incident timeline and thumbprint blocks (migration 035).
-    for (const table of ['incident_events', 'blocked_certificate_thumbprints']) {
+    // Same for the incident timeline and thumbprint blocks (migration 035) and
+    // the block lifts (migration 041).
+    for (const table of [
+      'incident_events',
+      'blocked_certificate_thumbprints',
+      'certificate_block_lifts',
+    ]) {
       await db.raw(`DROP TRIGGER IF EXISTS ${table}_no_update`);
       await db.raw(`DROP TRIGGER IF EXISTS ${table}_no_delete`);
     }
