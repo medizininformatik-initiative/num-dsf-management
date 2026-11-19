@@ -573,20 +573,52 @@ Append-only timeline of an incident (035): UPDATE/DELETE blocked by triggers, li
 | seq | INT | no | — | 1, 2, 3 … per incident; unique (incident_id, seq) |
 | at | DATETIME(3) | no | — | |
 | actor_email | VARCHAR(255) | no | — | |
-| type | ENUM | no | — | REPORTED, CONFIRMED, SUSPENDED, MEASURE, COMMENT, SUSPENSION_LIFTED, CLOSED, FALSE_ALARM, UPDATED |
+| type | ENUM | no | — | REPORTED, CONFIRMED, SUSPENDED, MEASURE, COMMENT, SUSPENSION_LIFTED, CLOSED, FALSE_ALARM, UPDATED, ARCHIVED, BLOCK_LIFT_REQUESTED, BLOCKS_LIFTED |
 | details | JSON | yes | NULL | Measure results, restart checklist, review note, field changes |
 | prev_hash | CHAR(64) | no | — | Hash of the previous event |
 | hash | CHAR(64) | no | — | Hash of this event |
 
 ## blocked_certificate_thumbprints
 
-SHA-512 thumbprints blocked by an incident (035), for good: such a certificate is refused on upload and renewal for every organization (`CERT_BLOCKED`), never enabled or synced as a login certificate, never logs in, and is left out of every published allow list. A site whose every thumbprint is blocked is published as withdrawn until a new certificate is approved. Rows are never deleted (UPDATE/DELETE blocked by triggers). No personal data besides the acting admin.
+SHA-512 thumbprints blocked by an incident (035). A block is effective until two admins lifted it for a false alarm (see `certificate_block_lifts`, 041); the row itself stays for good: such a certificate is refused on upload and renewal for every organization (`CERT_BLOCKED`), never enabled or synced as a login certificate, never logs in, and is left out of every published allow list. A site whose every thumbprint is blocked is published as withdrawn until a new certificate is approved. Rows are never deleted (UPDATE/DELETE blocked by triggers). No personal data besides the acting admin.
 
 | Column | Type | Null | Default | Notes |
 |--------|------|------|---------|-------|
-| fingerprint | CHAR(128) | no | — | PK; SHA-512, lower-case hex, as in `org_login_certificates.fingerprint` |
-| incident_id | CHAR(36) | no | — | FK → incidents.id |
+| fingerprint | CHAR(128) | no | — | PK (with incident_id since 041); SHA-512, lower-case hex, as in `org_login_certificates.fingerprint` |
+| incident_id | CHAR(36) | no | — | PK (with fingerprint since 041); FK → incidents.id |
 | created_by | VARCHAR(255) | no | — | |
 | created_at | DATETIME(3) | no | — | |
 
 `audit_logs.resource_type` gains `'INCIDENT'` in 035 (appended to the ENUM as it stands in the live database).
+
+## certificate_block_lift_requests
+
+Four-eyes requests to lift the certificate blocks of a false-alarm incident (041). Admin A requests with a reason, an admin of another e-mail domain confirms; the requester may cancel while PENDING.
+
+| Column | Type | Null | Default | Notes |
+|--------|------|------|---------|-------|
+| id | CHAR(36) | no | — | PK |
+| incident_id | CHAR(36) | no | — | FK → incidents.id (collation of incidents.id) |
+| reason | TEXT | no | — | |
+| requested_by | VARCHAR(255) | no | — | |
+| requested_at | DATETIME(3) | no | — | |
+| status | ENUM('PENDING','CONFIRMED','CANCELLED') | no | 'PENDING' | |
+| decided_by | VARCHAR(255) | yes | NULL | |
+| decided_at | DATETIME(3) | yes | NULL | |
+| pending_incident | CHAR(36) | generated | incident_id while PENDING, else NULL | UNIQUE (uq_cblr_one_pending): one pending request per incident |
+
+## certificate_block_lifts
+
+The final, append-only record of a lifted block (041): one row per (fingerprint, incident), written when the second admin confirms. UPDATE/DELETE are blocked by triggers (`certificate_block_lifts_no_update` / `_no_delete`). A block in `blocked_certificate_thumbprints` counts only while no lift row exists for its (fingerprint, incident); the allow list, login, login sync and the upload and admin-certificate guards all read this through `incident-blocks.service.effectiveBlocks`.
+
+| Column | Type | Null | Default | Notes |
+|--------|------|------|---------|-------|
+| id | CHAR(36) | no | — | PK |
+| fingerprint | CHAR(128) | no | — | SHA-512, collation of `blocked_certificate_thumbprints.fingerprint`; UNIQUE with incident_id |
+| incident_id | CHAR(36) | no | — | FK → incidents.id |
+| request_id | CHAR(36) | no | — | The confirmed request |
+| requested_by | VARCHAR(255) | no | — | |
+| requested_at | DATETIME(3) | no | — | |
+| confirmed_by | VARCHAR(255) | no | — | Admin of another e-mail domain than requested_by |
+| confirmed_at | DATETIME(3) | no | — | |
+| reason | TEXT | no | — | |

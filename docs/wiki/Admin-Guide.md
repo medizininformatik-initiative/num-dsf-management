@@ -218,6 +218,19 @@ no waiting period.
    derived from it, or as FALSE_ALARM with the reason. Lift any suspension
    first. Incidents are never deleted.
 
+   **Lifting the certificate blocks of a false alarm.** The blocks of the
+   thumbprints stay after a suspension is lifted. If the incident ends as
+   FALSE_ALARM, two admins of different e-mail domains can lift them (panel
+   "Zertifikatssperren" on the incident): admin A requests with a reason, admin
+   B confirms, A may cancel while it is open, nobody confirms their own request.
+   The block rows stay in the database; an append-only lift record per
+   thumbprint names both admins and the reason, and a block counts only while
+   no lift exists. Login, the allow list, the login sync and the upload and
+   admin-certificate checks follow at once. A confirmed lift restores the
+   site's approval-based logins (unless the site was removed or another
+   incident still suspends it) and publishes a new allow-list version. A
+   later incident can block the same thumbprint again.
+
 NIS2 deadlines follow § 32 BSIG. The time the site **became aware** of the
 incident ("Kenntnis erlangt am") starts them: early warning after 24 h,
 notification after 72 h. The final report is due **one calendar month after

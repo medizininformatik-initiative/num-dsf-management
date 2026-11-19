@@ -267,6 +267,19 @@ Mounted at `/api/v1/admin/instance-removals`. All `requireAdmin`; writes need th
 
 `GET /api/v1/admin/instances` now carries `removed_at`. A removed instance answers `403` on every `/api/v1/instances/:id/...` route for non-admins and is left out of their instance list.
 
+### Incident certificate blocks (4-eyes lift)
+
+Mounted under `/api/v1/admin/incidents`. All `requireAdmin`; writes need the step-up (TOTP code, or the re-presented client certificate in certificate sessions). Only for a `FALSE_ALARM` incident that does not suspend its site.
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/admin/incidents/:id/block-lifts | requireAdmin | `{ blocks: [{ fingerprint, blockedAt, blockedBy, lifted, liftedAt, liftedBy }], request }` (`request` is the pending lift request or null). |
+| POST | /api/v1/admin/incidents/:id/block-lifts | requireAdmin + step-up | Request lifting all blocks of the incident. Body `{ reason, totpCode? }` → 201. `409 NOT_FALSE_ALARM` / `STILL_SUSPENDED` / `NOTHING_TO_LIFT` / `LIFT_ALREADY_PENDING`. |
+| POST | /api/v1/admin/incidents/:id/block-lifts/:rid/confirm | requireAdmin + step-up | An admin of another e-mail domain than the requester confirms → `{ request, lifted, versionNumber, published }` (`published` false when the new allow-list version could not be created). `403 SELF_CONFIRM` / `SAME_SITE`, `409 LIFT_NOT_PENDING` (first decision wins). |
+| POST | /api/v1/admin/incidents/:id/block-lifts/:rid/cancel | requireAdmin + step-up | The requester withdraws the pending request (`403 NOT_REQUESTER`). |
+
+A lift appends the events `BLOCK_LIFT_REQUESTED` and `BLOCKS_LIFTED` to the incident timeline and is audited (`INCIDENT`, `diff_json.action` `incident_block_lift_*`).
+
 ### Bundle Versions
 
 Mounted at `/api/v1/admin/bundle-versions`. All `requireAdmin`.
