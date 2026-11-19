@@ -99,7 +99,7 @@ export function EndpointsCard({ instanceId }: { instanceId: string }) {
           : bound === 1
             ? t('endpointCardDeleteMembershipsOne')
             : t('endpointCardDeleteMembershipsMany', { n: bound })
-      } ${t('endpointChangeWarning')}`,
+      } ${t('endpointDeleteWarning')}`,
       confirmLabel: t('delete'),
       remove: () => deleteMut.mutateAsync(ep.identifier),
     });

@@ -525,6 +525,8 @@ export const de: Record<TranslationKey, string> = {
   ipDiffRemoved: 'Entfernte IP-Adressen',
   endpointChangeWarning:
     'Achtung: Diese Änderung betrifft alle Standorte im Netz. Nach der Freigabe importieren die anderen DSF-Instanzen den neuen Stand. Bis dahin ist Ihr Standort unter dem alten Endpoint eingetragen; Prozesse können in dieser Zeit fehlschlagen. Ändern Sie Endpoints nur, wenn Ihr DSF unter der neuen Adresse bereits läuft, und informieren Sie das Netzwerk-Team.',
+  endpointDeleteWarning:
+    'Achtung: Sobald die neue Allow-List-Version veröffentlicht ist, löschen alle Teilnehmer diesen Endpunkt und seine Mitgliedschaften. Löschen Sie ihn erst, wenn er wirklich nicht mehr betrieben wird.',
   endpointCardDeleteTitle: 'Endpunkt löschen?',
   endpointCardDeleteMessage: '{name} wird aus der Allow-Liste entfernt.',
   endpointCardDeleteConsequence:
