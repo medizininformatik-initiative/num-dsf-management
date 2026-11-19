@@ -111,6 +111,8 @@ Endpoints, error codes, rate limits and the stability promise: [`docs/automation
 | Getting started, admin guide, FAQ | [`docs/wiki/`](docs/wiki/) |
 | API reference | [`docs/wiki/API-Reference.md`](docs/wiki/API-Reference.md) |
 | Architecture and decisions | [`docs/wiki/Architecture.md`](docs/wiki/Architecture.md), [`docs/adr/`](docs/adr/) |
+| Deployment and operation | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), [`docs/RUN-FROM-IMAGE.md`](docs/RUN-FROM-IMAGE.md) |
+| Site automation | [`docs/automation.md`](docs/automation.md) |
 | Database schema and migrations | [`docs/database/`](docs/database/) |
 | Security policy | [`SECURITY.md`](SECURITY.md) |
 

@@ -62,6 +62,7 @@ To find the row of your current certificate, compare `thumbprintSha512` with the
 | Code | HTTP | Meaning |
 |------|------|---------|
 | `NO_CLIENT_CERT` | 401 | No client certificate reached the portal (TLS or proxy setup). |
+| `PROXY_NOT_TRUSTED` | 401 | Certificate headers arrived without the proxy secret (`X-Proxy-Auth`): the operator's proxy configuration is incomplete. |
 | `CERT_NOT_REGISTERED` | 401 | The certificate is not an approved login certificate. |
 | `RATE_LIMITED` | 429 | Too many requests; wait and retry (see below). |
 | `PRIVATE_KEY_REJECTED` | 400 | The PEM contains a private key. Send the certificate only. |
