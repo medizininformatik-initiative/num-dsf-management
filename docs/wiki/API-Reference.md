@@ -52,6 +52,9 @@ Mounted at `/api/v1/instances`. All endpoints `requireAuth`.
 | POST | /api/v1/instances | requireAuth | Create a new instance (201). |
 | GET | /api/v1/instances/:id | requireAuth | Fetch a single instance (404 if not visible). |
 | PUT | /api/v1/instances/:id/label | requireAuth | Rename instance. Body `{ label }` (1–255 chars); 403 if not owner. |
+| PUT | /api/v1/instances/:id/archive | requireAuth (owner session) | Archive the instance. 403 for a site login or a non-owner. |
+| PUT | /api/v1/instances/:id/unarchive | requireAuth (owner session) | Restore an archived instance. |
+| DELETE | /api/v1/instances/:id | requireAuth (owner session) + step-up | Delete an instance that was never approved or published → `{ deleted: true }`; otherwise `409 INSTANCE_HAS_HISTORY` (archive it instead). |
 
 ---
 
@@ -108,6 +111,7 @@ Mounted at `/api/v1/instances/:instanceId/certificates`. All endpoints `requireO
 |--------|------|------|---------|
 | GET | /api/v1/instances/:instanceId/certificates | requireOwner | List certificates. |
 | GET | /api/v1/instances/:instanceId/certificates/expiring | requireOwner | Certificates expiring within 90 days. |
+| POST | /api/v1/instances/:instanceId/certificates/preview | requireOwner | Parse a PEM without storing it (subject, expiry, DSF fingerprint, issuer checks). |
 | POST | /api/v1/instances/:instanceId/certificates | requireOwner | Upload a PEM certificate (201). |
 | DELETE | /api/v1/instances/:instanceId/certificates/:cid | requireOwner | Delete a certificate → `{ deleted: true }`. |
 | POST | /api/v1/instances/:instanceId/certificates/:cid/renew | requireOwner | Replace/renew a certificate's PEM. |
@@ -236,6 +240,13 @@ Mounted at `/api/v1/admin/organizations`. All `requireAdmin`; writes need the st
 | POST | /api/v1/admin/organizations/:identifier/login-certificates | requireAdmin + step-up | Enable an uploaded certificate of the organization as login certificate. Body `{ certificateId, totpCode? }` (SHA-512 computed server-side) → 201. `409 NOT_CLINIC_UPLOADED` unless the clinic itself uploaded the certificate (an admin upload or unknown origin never qualifies), `409 ADMIN_CERTIFICATE` for an admin certificate, `409 FINGERPRINT_IN_USE` if another organization uses it, `404` for an unknown organization or certificate. |
 | DELETE | /api/v1/admin/organizations/:identifier/login-certificates/:fingerprint | requireAdmin + step-up | Remove a login entry (also fingerprint-only entries from onboarding) → `{ deleted: true }`. |
 | POST | /api/v1/admin/users/:email/certificates | requireAdmin + step-up | Four-eyes: REQUEST an admin certificate for a colleague. Body `{ pem, label?, totpCode? }` → 201 `{ id, status: "PENDING" }`; nothing becomes active. Same validation as an upload plus `409 REQUEST_ALREADY_PENDING`. |
+| GET | /api/v1/admin/me/certificates | requireAdmin | The caller's admin certificates; `current` marks the one presented on this request. |
+| POST | /api/v1/admin/me/certificates/preview | requireAdmin | Parse a PEM without storing it. Body `{ pem }`. |
+| POST | /api/v1/admin/me/certificates | requireAdmin + fresh TOTP | Add an own admin certificate. Body `{ pem, label?, totpCode }` (201). |
+| PATCH | /api/v1/admin/me/certificates/:id | requireAdmin | Set or clear the label. Body `{ label }`. |
+| DELETE | /api/v1/admin/me/certificates/:id | requireAdmin + fresh TOTP | Remove an own admin certificate → `{ deleted: true }`. |
+| GET | /api/v1/admin/admin-certificates | requireAdmin | All admin certificates. |
+| DELETE | /api/v1/admin/users/:email/certificates/:id | requireAdmin + fresh TOTP | Remove another admin's certificate at once (not your own: `USE_SELF_SERVICE`); the affected and all other admins are mailed. |
 | GET | /api/v1/admin/admin-cert-requests | requireAdmin | Pending and recently decided certificate requests (never the PEM). |
 | POST | /api/v1/admin/admin-cert-requests/:id/approve | requireAdmin + step-up | Third admin from a different site than the requester activates the certificate. `403 SELF_APPROVE` / `TARGET_APPROVE` / `SAME_SITE`, `409 NOT_PENDING` (first decision wins), validation errors if the certificate went stale. |
 | POST | /api/v1/admin/admin-cert-requests/:id/reject | requireAdmin + step-up | Body `{ comment, totpCode? }`. |
@@ -317,7 +328,29 @@ certificate in a certificate session).
 | POST | /api/v1/admin/incidents/:id/close | requireAdmin + requireTotp | `{ outcome: CLOSED or FALSE_ALARM, note, totpCode }`; refused while suspended. |
 | POST | /api/v1/admin/incidents/:id/comment | requireAdmin | `{ text }` (201), e.g. a measure taken outside the portal. |
 | PATCH | /api/v1/admin/incidents/:id | requireAdmin (+ requireTotp when `detectedAt` or `zulipUrl` is sent) | `{ escalationLevel?, detectedAt?, zulipUrl?, totpCode? }`; each change is a timeline event. |
-| GET | /api/v1/admin/incidents/:id/export?format=json|csv | requireAdmin | Download one incident with its full timeline and hash chain, plus the NIS2 stages in the order of BSIG 32 with due date, `provisional` marker and report fields as a filling aid for the BSI form (JSON `bsiFormAid`; CSV `nis2_<stage>_*` lines; the awareness time is `became_aware_at`). |\|csv | requireAdmin | Download one incident with its full timeline and hash chain. |
+| GET | /api/v1/admin/incidents/:id/export?format=json\|csv | requireAdmin | Download one incident with its full timeline and hash chain, plus the NIS2 stages in the order of BSIG 32 with due date, `provisional` marker and report fields as a filling aid for the BSI form (JSON `bsiFormAid`; CSV `nis2_<stage>_*` lines; the awareness time is `became_aware_at`). |
+
+### Onboarding (admin bulk import)
+
+Mounted at `/api/v1/admin/onboarding`, `requireAdmin`. Uploads are read as raw bytes (CSV, JSON or XLSX) with file-level size, row and PEM checks.
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/admin/onboarding/template.csv | requireAdmin | CSV template. |
+| GET | /api/v1/admin/onboarding/template.xlsx | requireAdmin | XLSX template. |
+| POST | /api/v1/admin/onboarding/parse | requireAdmin | Parse and validate a file without touching the database → `{ rows, parseErrors }`. |
+| POST | /api/v1/admin/onboarding/import | requireAdmin + step-up, rate-limited | Import the rows site by site. `?dryRun=true` only reports what would happen and skips step-up and rate limit. For an OTP session the TOTP code goes in the `X-Totp-Code` header. |
+
+## Own TOTP (`/api/v1/me/totp`)
+
+For the signed-in user, mainly an admin signed in by client certificate who has to enrol TOTP. Not available to organization-scoped site sessions (403).
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | /api/v1/me/totp/status | requireAuth | `{ enabled, remainingTans, enrolmentRequired }`. |
+| POST | /api/v1/me/totp/setup | requireAuth | Start enrolment → `{ qrCodeUrl, secret }`. Once enrolled it needs a valid TOTP code or backup code in `code`. `restart: true` discards a pending secret. |
+| POST | /api/v1/me/totp/confirm | requireAuth | Body `{ code }` → `{ backupCodes }`, shown once. |
+| POST | /api/v1/me/totp/backup-codes | requireAuth + step-up | Body `{ totpCode }` → new `{ backupCodes }`; the old list stops working. |
 
 ## Marketplace (read)
 
