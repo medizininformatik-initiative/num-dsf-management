@@ -31,6 +31,33 @@ async function readStats(token: string): Promise<AdminStats> {
   return res.body.data as AdminStats;
 }
 
+/** OTP/TOTP logins carry the user's e-mail but no instance. */
+async function sessionLogin(email: string, at: Date): Promise<void> {
+  await db('audit_logs').insert({
+    id: uuidv4(),
+    timestamp: at,
+    user_email: email,
+    instance_id: null,
+    resource_type: 'AUTH',
+    resource_id: null,
+    operation: 'LOGIN',
+  });
+}
+
+/** What instance.middleware writes when an admin opens a site. */
+async function adminAccess(instanceId: string, at: Date): Promise<void> {
+  await db('audit_logs').insert({
+    id: uuidv4(),
+    timestamp: at,
+    user_email: 'admin@example.de',
+    instance_id: instanceId,
+    resource_type: 'AUTH',
+    resource_id: null,
+    operation: 'LOGIN',
+    diff_json: JSON.stringify({ action: 'admin_instance_access', method: 'GET' }),
+  });
+}
+
 async function login(instanceId: string, at: Date): Promise<void> {
   await db('audit_logs').insert({
     id: uuidv4(),
@@ -106,5 +133,29 @@ describe('GET /api/v1/admin/stats', () => {
     if (before.allowList.currentVersion !== null) {
       expect(after.allowList.sitesUpToDate - before.allowList.sitesUpToDate).toBe(1);
     }
+  });
+
+  it('attributes an OTP/TOTP login (no instance on the audit row) to the owner site', async () => {
+    const admin = await seedAdminUser();
+    const token = getTestToken(admin.email, admin.userId);
+    const before = await readStats(token);
+    const otp = await seedSite({ label: 'stats-otp' });
+    sites.push(otp);
+    await sessionLogin(otp.email, new Date());
+    const after = await readStats(token);
+    expect(after.sites.everLoggedIn - before.sites.everLoggedIn).toBe(1);
+    expect(after.sites.loggedInLast24h - before.sites.loggedInLast24h).toBe(1);
+  });
+
+  it('does not count an admin opening a site as a login of that site', async () => {
+    const admin = await seedAdminUser();
+    const token = getTestToken(admin.email, admin.userId);
+    const before = await readStats(token);
+    const viewed = await seedSite({ label: 'stats-view' });
+    sites.push(viewed);
+    await adminAccess(viewed.instanceId, new Date());
+    const after = await readStats(token);
+    expect(after.sites.everLoggedIn - before.sites.everLoggedIn).toBe(0);
+    expect(after.sites.loggedInLast24h - before.sites.loggedInLast24h).toBe(0);
   });
 });

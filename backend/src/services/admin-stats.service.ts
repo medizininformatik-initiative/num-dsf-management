@@ -39,6 +39,32 @@ export interface AdminStats {
   };
 }
 
+/**
+ * Last login per site. A login is the site's own: certificate logins carry the site's
+ * instance, OTP/TOTP logins only the owner's e-mail. An admin opening a site
+ * (admin_instance_access, also written as LOGIN) is no login of that site.
+ */
+function siteLogins() {
+  const withInstance = db('audit_logs as a')
+    .join('organizations as o', 'o.instance_id', 'a.instance_id')
+    .where('a.operation', 'LOGIN')
+    .whereRaw(
+      "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(a.diff_json, '$.action')), '') <> 'admin_instance_access'",
+    )
+    .select('o.identifier', 'a.timestamp as ts');
+  const byOwner = db('audit_logs as a')
+    .join('users as u', 'u.email', 'a.user_email')
+    .join('instances as i', 'i.user_id', 'u.id')
+    .join('organizations as o', 'o.instance_id', 'i.id')
+    .where('a.operation', 'LOGIN')
+    .whereNull('a.instance_id')
+    .select('o.identifier', 'a.timestamp as ts');
+  return db
+    .from(withInstance.unionAll([byOwner]).as('l'))
+    .groupBy('identifier')
+    .select('identifier', db.raw('MAX(ts) AS last_login'));
+}
+
 type CountRow = { n: number | string } | undefined;
 const num = (row: CountRow): number => Number(row?.n ?? 0);
 
@@ -62,12 +88,7 @@ export async function getAdminStats(now: Date = new Date()): Promise<AdminStats>
       .select(db.raw('COUNT(*) AS total'), db.raw('COALESCE(SUM(active = 1), 0) AS active'))
       .first(),
     db('org_login_certificates').countDistinct({ n: 'organization_id' }).first(),
-    // One LOGIN scan: instances with any login, and those with one inside the window.
-    db('audit_logs as a')
-      .join('organizations as o', 'o.instance_id', 'a.instance_id')
-      .where('a.operation', 'LOGIN')
-      .groupBy('o.identifier')
-      .select('o.identifier', db.raw('MAX(a.timestamp) AS last_login')),
+    siteLogins(),
     db('approval_requests as r')
       .join('organizations as o', 'o.instance_id', 'r.instance_id')
       .where('r.status', 'APPROVED')
