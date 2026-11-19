@@ -49,11 +49,12 @@ import { logger } from './lib/logger';
 import { NOT_FOUND_CODES } from './lib/notFoundCodes';
 import { installProcessHandlers } from './lib/processHandlers';
 import { isLoopbackAddress } from './lib/loopback';
-import { assertCertProxyConfig } from './lib/certProxyTrust';
+import { assertCertProxyConfig, warnIfProxySecretMissing } from './lib/certProxyTrust';
 
 installProcessHandlers();
 // Cert mode in production must not trust X-Client-* from arbitrary peers.
 assertCertProxyConfig();
+warnIfProxySecretMissing(logger);
 
 const app = express();
 

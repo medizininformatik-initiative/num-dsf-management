@@ -9,7 +9,7 @@
  */
 import type { Request } from 'express';
 import { extractClientCert } from '../lib/clientCert';
-import { assertCertProxyConfig } from '../lib/certProxyTrust';
+import { assertCertProxyConfig, warnIfProxySecretMissing } from '../lib/certProxyTrust';
 
 const SAMPLE_PEM = `-----BEGIN CERTIFICATE-----
 MIIBkTCB+wIJALRiMLAh2wLSMA0GCSqGSIb3DQEBCwUAMBExDzANBgNVBAMMBnRl
@@ -138,5 +138,73 @@ describe('assertCertProxyConfig', () => {
     } catch (e) {
       expect((e as Error).message).not.toContain('tooshort-secret');
     }
+  });
+});
+
+describe('trusted proxy list – malformed entries fail closed', () => {
+  afterEach(() => {
+    delete process.env.CLIENT_CERT_TRUSTED_PROXIES;
+  });
+
+  it.each(['172.28.71.1/', '::/', '172.28.71.1/1e1', '172.28.71.1/33', '172.28.71.1/ 8', '/8'])(
+    'entry %s trusts nobody',
+    (entry) => {
+      process.env.CLIENT_CERT_TRUSTED_PROXIES = entry;
+      expect(extractClientCert(reqWith(base, '8.8.8.8'))).toBeNull();
+      expect(extractClientCert(reqWith(base, '2001:db8::1'))).toBeNull();
+      expect(extractClientCert(reqWith(base, '172.28.71.1'))).toBeNull();
+    },
+  );
+
+  it('a valid entry after a malformed one still works and the list follows env changes', () => {
+    process.env.CLIENT_CERT_TRUSTED_PROXIES = '1.2.3.4/, 10.0.0.0/8';
+    expect(extractClientCert(reqWith(base, '10.1.1.1'))).not.toBeNull();
+    expect(extractClientCert(reqWith(base, '1.2.3.4'))).toBeNull();
+    process.env.CLIENT_CERT_TRUSTED_PROXIES = '192.168.0.0/16';
+    expect(extractClientCert(reqWith(base, '10.1.1.1'))).toBeNull();
+    expect(extractClientCert(reqWith(base, '192.168.5.5'))).not.toBeNull();
+  });
+});
+
+describe('fail closed outside development/test without a secret', () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  it.each(['production', undefined])('NODE_ENV=%s: no secret means no client cert', (env) => {
+    delete process.env.CLIENT_CERT_PROXY_SECRET;
+    if (env) process.env.NODE_ENV = env;
+    else delete process.env.NODE_ENV;
+    expect(extractClientCert(reqWith(base))).toBeNull();
+  });
+
+  it('production with the matching secret works, and the secret is trimmed', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.CLIENT_CERT_PROXY_SECRET = `${SECRET}
+`;
+    expect(extractClientCert(reqWith({ ...base, 'x-proxy-auth': SECRET }))).not.toBeNull();
+  });
+
+  it('a blank secret is no secret', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.CLIENT_CERT_PROXY_SECRET = '   ';
+    expect(extractClientCert(reqWith(base))).toBeNull();
+  });
+
+  it('warns once-worthy text without the secret outside cert mode, stays quiet otherwise', () => {
+    const warn = jest.fn();
+    process.env.NODE_ENV = 'production';
+    delete process.env.AUTH_MODE;
+    delete process.env.CLIENT_CERT_PROXY_SECRET;
+    warnIfProxySecretMissing({ warn });
+    expect(warn).toHaveBeenCalledTimes(1);
+    process.env.CLIENT_CERT_PROXY_SECRET = SECRET;
+    warnIfProxySecretMissing({ warn });
+    process.env.NODE_ENV = 'test';
+    delete process.env.CLIENT_CERT_PROXY_SECRET;
+    warnIfProxySecretMissing({ warn });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).not.toContain(SECRET);
   });
 });
