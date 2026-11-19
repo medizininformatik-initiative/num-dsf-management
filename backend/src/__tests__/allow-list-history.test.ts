@@ -110,9 +110,36 @@ describe('withRetiredAffiliations', () => {
     expect(methodsAndUrls(current).some((u) => u.startsWith('DELETE'))).toBe(false);
   });
 
-  it('endpoint still exists but the affiliation was dropped: not this mechanism', () => {
+  it('in-place edit e1 -> e2 while the member keeps e1: DELETE the old affiliation, keep the endpoint', () => {
     const current = input([member('m.example.de', 'new.m.example.de', ['old.m.example.de'])]);
-    expect(withRetiredAffiliations(current, previous)).toBe(current);
+    const urls = methodsAndUrls(withRetiredAffiliations(current, previous));
+    expect(urls).toContain(`DELETE ${oldUrl}`);
+    expect(urls).toContain(`PUT ${newUrl}`);
+    expect(urls).not.toContain(`DELETE ${endpointUrl('old.m.example.de')}`);
+    expect(urls).toContain(`PUT ${endpointUrl('old.m.example.de')}`);
+  });
+
+  it('in-place parent change hub -> hub2 on the same endpoint: DELETE the old triple only', () => {
+    const m = member('m.example.de', 'old.m.example.de');
+    m.affiliations = [{ parent: 'hub2.example.de', endpoint: 'old.m.example.de', roles: ['DIC'] }];
+    const urls = methodsAndUrls(withRetiredAffiliations(input([m]), previous));
+    const hub2Url = affiliationUrl('hub2.example.de', 'm.example.de', 'old.m.example.de');
+    expect(urls).toContain(`DELETE ${oldUrl}`);
+    expect(urls).toContain(`PUT ${hub2Url}`);
+    expect(urls).not.toContain(`DELETE ${endpointUrl('old.m.example.de')}`);
+  });
+
+  it('an endpoint now owned by another organization is not deleted', () => {
+    const other = member('o.example.de', 'old.m.example.de');
+    const stored = withRetiredAffiliations(
+      input([member('m.example.de', 'new.m.example.de'), other]),
+      previous,
+    );
+    const urls = methodsAndUrls(stored);
+    expect(urls).toContain(`DELETE ${oldUrl}`);
+    expect(urls).not.toContain(`DELETE ${endpointUrl('old.m.example.de')}`);
+    const m = stored.members.find((x) => x.identifier === 'm.example.de')!;
+    expect(m.removedEndpoints ?? []).toEqual([]);
   });
 
   it('keeps the DELETE in later versions that build on a stored version', () => {
@@ -131,15 +158,6 @@ describe('withRetiredAffiliations', () => {
     const [retired] = withRetiredAffiliations(input([m]), previous).members;
     expect(retired.removedAffiliations).toHaveLength(1);
     expect(retired.removedEndpoints).toEqual(['old.m.example.de']);
-  });
-
-  it('a withdrawn member gets nothing from this mechanism', () => {
-    const removed = [
-      { identifier: 'm.example.de', endpoints: ['new.m.example.de'], affiliations: [] },
-    ];
-    const current = input([], removed);
-    expect(withRetiredAffiliations(current, previous)).toBe(current);
-    expect(methodsAndUrls(current)).not.toContain(`DELETE ${oldUrl}`);
   });
 
   it('a member temporarily absent from the input gets no DELETE', () => {
