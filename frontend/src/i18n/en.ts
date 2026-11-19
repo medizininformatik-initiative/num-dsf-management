@@ -2820,6 +2820,10 @@ export const en = {
   certPurposeBadgeNoLogin: 'No login',
   riskCertLoginOnly: 'certificate {cn} is used for login only and not published in the allow list',
   riskCertUnpublished: 'certificate {cn} is no longer published in the allow list',
+  riskCertNoLogin:
+    'no certificate is marked for login and the site has no other login entry, so it could not sign in by certificate afterwards',
+  certNoLoginWarning:
+    'No certificate is marked for login. You will no longer be able to sign in with a certificate after this request is approved.',
   loginCertErrNotForLogin: 'The site excluded this certificate from login (Use for login is off).',
 
   // Purge link: delete the whole allow list locally

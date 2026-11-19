@@ -87,6 +87,7 @@ medium or high finding or comes from a new IP address.
 | `CERT_SHORT_VALIDITY` | A new certificate expires within 30 days | +1 |
 | `CERT_LOGIN_ONLY` | A certificate is used for login only (not published) and is new or was published before | +2 |
 | `CERT_UNPUBLISHED` | A previously published certificate is no longer published (and not login-only) | +1 |
+| `CERT_NO_LOGIN` | The site has certificates but none is marked for login, and it has no onboarding, admin or migrated login entry: after approval it could not sign in by certificate | +2 |
 | `ENDPOINT_ADDRESS_CHANGED` | Host of an existing endpoint changed | +2 |
 | `ENDPOINT_SCHEME_DOWNGRADE` | Endpoint address changed from https to http | +2 |
 | `ENDPOINT_URL_CHANGED` | Port or path of an endpoint address changed (same host) | +1 |

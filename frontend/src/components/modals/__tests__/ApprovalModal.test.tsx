@@ -17,6 +17,9 @@ vi.mock('../../../hooks/useContacts', () => ({
 vi.mock('../../../hooks/useEndpoints', () => ({
   useEndpoints: () => ({ data: [], isLoading: false }),
 }));
+vi.mock('../../../hooks/useLoginCertificates', () => ({
+  useLoginCertificates: () => ({ data: [] }),
+}));
 vi.mock('../../../hooks/useCertificates', () => ({
   useCertificates: () => ({ data: [], isLoading: false }),
   useUpdateCertificatePurpose: () => ({ mutate: vi.fn(), isPending: false }),

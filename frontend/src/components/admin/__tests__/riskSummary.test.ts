@@ -18,6 +18,7 @@ const RULES: Record<string, Pick<RiskFinding, 'severity' | 'weight'>> = {
   FIRST_REQUEST: { severity: 'info', weight: 0 },
   NOTHING_CHANGED: { severity: 'info', weight: 0 },
   CERT_CA_BLACKLISTED: { severity: 'high', weight: 6 },
+  CERT_NO_LOGIN: { severity: 'medium', weight: 2 },
 };
 
 function f(code: string, params: Record<string, string | number> = {}): RiskFinding {
@@ -111,6 +112,12 @@ describe('buildRiskSummary (de)', () => {
     expect(buildRiskSummary(risk('LOW', [f('NOTHING_CHANGED')]), t())).toBe(
       'Keine Änderung gegenüber der letzten Freigabe.',
     );
+  });
+
+  it('explains CERT_NO_LOGIN instead of showing it generically', () => {
+    const text = buildRiskSummary(risk('MEDIUM', [f('CERT_NO_LOGIN')]), t());
+    expect(text).toContain('Anmeldung per Zertifikat');
+    expect(text).not.toContain('CERT_NO_LOGIN');
   });
 
   it('shows a code it does not know generically instead of skipping it', () => {

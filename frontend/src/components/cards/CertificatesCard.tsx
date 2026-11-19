@@ -25,6 +25,8 @@ import { CertificatePurposeControls } from './CertificatePurposeControls';
 import { FkLink } from './FkLink';
 import { Details, DetailsToggle } from './CardDetails';
 import { useCardDetails } from '../../hooks/useCardDetails';
+import { Callout } from '../modals/Callout';
+import { wouldLoseCertificateLogin } from '../../lib/loginLockout';
 import { CertificateFingerprint, CERTTOOL_COMMAND } from './CertificateFingerprint';
 import { useModals } from '../../hooks/useModals';
 import { formatDate } from '../../lib/dateUtils';
@@ -102,7 +104,8 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
   const certs: CertRow[] = data ?? [];
   const { data: org } = useOrganization(instanceId);
   const isAdmin = useMe().data?.isAdmin === true;
-  const loginEntries: LoginCertificate[] = useLoginCertificates(instanceId).data ?? [];
+  const loginData: LoginCertificate[] | undefined = useLoginCertificates(instanceId).data;
+  const loginEntries: LoginCertificate[] = loginData ?? [];
   const loginActions = useLoginCertificateActions(instanceId, org?.identifier);
   const loginOf = (cert: CertRow) =>
     loginEntries.find(
@@ -183,6 +186,14 @@ export function CertificatesCard({ instanceId }: { instanceId: string }) {
           targetEntity="organization"
           value={org.identifier}
         />
+      )}
+
+      {wouldLoseCertificateLogin(certs, loginData) && (
+        <div className="mt-3">
+          <Callout tone="warning" icon="lock_open">
+            <p>{t('certNoLoginWarning')}</p>
+          </Callout>
+        </div>
       )}
 
       {certs.length > 0 ? (

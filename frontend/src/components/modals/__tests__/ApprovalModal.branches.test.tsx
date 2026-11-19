@@ -30,6 +30,7 @@ const data = vi.hoisted(() => ({
   memberships: [] as Record<string, unknown>[],
   approval: null as Record<string, unknown> | null,
   history: [] as Record<string, unknown>[],
+  logins: [] as Array<{ source: string }>,
 }));
 
 vi.mock('../../../hooks/useApproval', () => ({
@@ -37,6 +38,9 @@ vi.mock('../../../hooks/useApproval', () => ({
   useApprovalStatus: () => ({ data: data.approval, isLoading: false }),
   useWithdrawApproval: () => ({ mutateAsync: withdrawAsync, isPending: false }),
   useApprovalHistory: () => ({ data: data.history, isLoading: false }),
+}));
+vi.mock('../../../hooks/useLoginCertificates', () => ({
+  useLoginCertificates: () => ({ data: data.logins }),
 }));
 vi.mock('../../../hooks/useOrganization', () => ({
   useOrganization: () => ({ data: data.org, isLoading: false }),
@@ -93,6 +97,7 @@ function seedEmptyData() {
   data.memberships = [];
   data.approval = null;
   data.history = [];
+  data.logins = [];
 }
 
 beforeEach(() => {
@@ -213,6 +218,26 @@ describe('ApprovalModal — shared readiness rule', () => {
     expect(screen.getByText(t('certPurposeNonePublished'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Missing Valid certificate/ })).toBeInTheDocument();
     expect(submitButton()).toBeDisabled();
+  });
+
+  it('warns that the site could not sign in by certificate when none is marked for login', () => {
+    seedPassingData();
+    data.certs = [
+      { id: 'cert-1', subject: 'CN=ukm.de', valid_until: '2099-01-01', useForLogin: false },
+    ];
+    data.logins = [];
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+    expect(screen.getByText(t('certNoLoginWarning'))).toBeInTheDocument();
+  });
+
+  it('does not warn about the certificate login while the site keeps another login entry', () => {
+    seedPassingData();
+    data.certs = [
+      { id: 'cert-1', subject: 'CN=ukm.de', valid_until: '2099-01-01', useForLogin: false },
+    ];
+    data.logins = [{ source: 'ADMIN' }];
+    renderWithProviders(<ApprovalModal open onClose={vi.fn()} instanceId="i1" />);
+    expect(screen.queryByText(t('certNoLoginWarning'))).not.toBeInTheDocument();
   });
 
   it('lets a deactivated organization request its withdrawal', async () => {

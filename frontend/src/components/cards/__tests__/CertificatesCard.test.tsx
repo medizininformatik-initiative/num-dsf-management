@@ -23,6 +23,7 @@ interface Row {
   issuerDn: string;
   issuerTrusted: boolean;
   uploadedByClinic?: boolean;
+  useForLogin?: boolean;
 }
 
 const deleteCertificate = vi.hoisted(() => vi.fn());
@@ -81,6 +82,32 @@ beforeEach(() => {
 });
 
 describe('CertificatesCard', () => {
+  it('warns when no certificate is marked for login and no other login entry exists', () => {
+    rows = [{ ...cert, useForLogin: false }];
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.getByText(/No certificate is marked for login/)).toBeInTheDocument();
+  });
+
+  it('does not warn while an admin-added login entry exists or a certificate is for login', () => {
+    rows = [{ ...cert, useForLogin: false }];
+    loginEntries = [
+      {
+        fingerprint: 'f'.repeat(128),
+        certificateId: null,
+        source: 'ADMIN',
+        createdBy: null,
+        createdAt: '2026-01-01',
+      },
+    ];
+    const first = renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.queryByText(/No certificate is marked for login/)).not.toBeInTheDocument();
+    first.unmount();
+    loginEntries = [];
+    rows = [{ ...cert, useForLogin: true }];
+    renderWithProviders(<CertificatesCard instanceId="i1" />);
+    expect(screen.queryByText(/No certificate is marked for login/)).not.toBeInTheDocument();
+  });
+
   it('renders a certificate row with its subject', () => {
     renderWithProviders(<CertificatesCard instanceId="i1" />);
     expect(screen.getByText('CN=ukm.de')).toBeInTheDocument();

@@ -2885,6 +2885,10 @@ export const de: Record<TranslationKey, string> = {
   riskCertLoginOnly:
     'Zertifikat {cn} dient nur dem Login und ist nicht in der Allow List veröffentlicht',
   riskCertUnpublished: 'Zertifikat {cn} ist nicht mehr in der Allow List veröffentlicht',
+  riskCertNoLogin:
+    'kein Zertifikat ist für den Login freigegeben und der Standort hat keinen anderen Login-Eintrag, danach wäre keine Anmeldung per Zertifikat mehr möglich',
+  certNoLoginWarning:
+    'Kein Zertifikat ist für den Login freigegeben. Sie können sich danach nicht mehr per Zertifikat anmelden.',
   loginCertErrNotForLogin:
     'Der Standort hat dieses Zertifikat vom Login ausgeschlossen (Für Login verwenden ist aus).',
 

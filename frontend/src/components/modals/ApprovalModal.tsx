@@ -31,6 +31,8 @@ import { useOrganization } from '../../hooks/useOrganization';
 import { useContacts } from '../../hooks/useContacts';
 import { useEndpoints } from '../../hooks/useEndpoints';
 import { useCertificates } from '../../hooks/useCertificates';
+import { useLoginCertificates } from '../../hooks/useLoginCertificates';
+import { wouldLoseCertificateLogin } from '../../lib/loginLockout';
 import { useMemberships } from '../../hooks/useMemberships';
 import { useCrossUserGuard } from '../../hooks/useCrossUserGuard';
 import { useI18n } from '../../stores/i18n.store';
@@ -146,6 +148,7 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
   const { data: endpointData } = useEndpoints(instanceId);
   const { data: certData } = useCertificates(instanceId);
   const { data: membershipData } = useMemberships(instanceId);
+  const { data: loginEntries } = useLoginCertificates(instanceId);
   const contacts: ContactRow[] = Array.isArray(contactData) ? contactData : [];
   const endpoints: EndpointRow[] = Array.isArray(endpointData) ? endpointData : [];
   const certs: CertificateRow[] = Array.isArray(certData) ? certData : [];
@@ -371,6 +374,11 @@ export function ApprovalModal({ open, onClose, instanceId }: Props) {
           </Section>
           <Section title={t('requestCardSectionCertificates', { n: certs.length })}>
             {certs.length === 0 && <p className={muted}>{t('approvalModalNoCerts')}</p>}
+            {wouldLoseCertificateLogin(certs, loginEntries) && (
+              <Callout tone="warning" icon="lock_open" title={t('readinessCertificates')}>
+                <p>{t('certNoLoginWarning')}</p>
+              </Callout>
+            )}
             {noneValidPublished && (
               <Callout tone="warning" icon="verified_user" title={t('readinessCertificates')}>
                 <p>{t('certPurposeNonePublished')}</p>
