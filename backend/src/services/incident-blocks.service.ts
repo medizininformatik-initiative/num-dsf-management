@@ -50,7 +50,9 @@ export function effectiveBlocks(conn: Knex | Knex.Transaction = db) {
 
 /** Every effectively blocked SHA-512 thumbprint (lower-case hex). */
 export async function blockedFingerprints(): Promise<Set<string>> {
-  const fps: string[] = await effectiveBlocks().distinct('b.fingerprint').pluck('b.fingerprint');
+  // No DISTINCT here: with it MySQL sometimes drops the NOT EXISTS (lift) condition's effect and
+  // loses a block; the Set de-duplicates.
+  const fps: string[] = await effectiveBlocks().pluck('b.fingerprint');
   return new Set(fps.map((f) => f.toLowerCase()));
 }
 
@@ -65,9 +67,10 @@ export async function isFingerprintBlocked(
 }
 
 /**
- * Block thumbprints for an incident; ones that are already effectively blocked stay as they are
- * (a thumbprint whose earlier block was lifted is blocked again by the new incident). Returns the
- * newly blocked count.
+ * Block thumbprints for an incident. Every thumbprint gets its own (fingerprint, incident) row,
+ * also when another incident already blocks it: lifting the first incident's false-alarm blocks
+ * must not unblock what this incident still blocks. Returns the count of thumbprints that were
+ * not effectively blocked before.
  */
 export async function blockFingerprints(
   conn: Knex | Knex.Transaction,
@@ -83,11 +86,10 @@ export async function blockFingerprints(
     ),
   );
   const fresh = unique.filter((f) => !existing.has(f));
-  if (fresh.length === 0) return 0;
   const now = new Date();
   await conn('blocked_certificate_thumbprints')
     .insert(
-      fresh.map((fingerprint) => ({
+      unique.map((fingerprint) => ({
         fingerprint,
         incident_id: incidentId,
         created_by: actorEmail,

@@ -286,6 +286,45 @@ describe('confirming', () => {
   });
 });
 
+describe('overlapping incidents', () => {
+  it('keeps a thumbprint blocked by incident B when incident A is lifted as a false alarm', async () => {
+    const s = await falseAlarm('lift-overlap');
+    const { site, fp } = s;
+    // Incident B blocks the same thumbprint while A's block is still effective.
+    const second = await incidents.reportIncident(
+      { organizationId: site.orgId, title: 'Second', description: 'd', escalationLevel: 1 },
+      caller('a'),
+    );
+    incidentIds.push(second.id);
+    await db.transaction((trx) => blockFingerprints(trx, [fp], second.id, admins.a.email));
+    const rows = await db('blocked_certificate_thumbprints').where({ fingerprint: fp });
+    expect(rows).toHaveLength(2);
+
+    const rid = (await requestLift('a', s.incidentId)).body.data.id as string;
+    expect((await decide('b', s.incidentId, rid, 'confirm')).status).toBe(200);
+
+    expect(await isFingerprintBlocked(fp)).toBe(true);
+    expect(await resolveCertLogin(fp)).toBeNull();
+    expect(
+      (
+        await request(app)
+          .get(`/fhir/Bundle/${site.endpointIds[0]}`)
+          .set(mtlsHeaders(site.certPem!))
+      ).status,
+    ).toBe(403);
+    expect((await loadAllowListInput()).members.some((m) => m.identifier === site.orgId)).toBe(
+      false,
+    );
+    expect(await syncLoginCertificatesFromApproval(s.requestId)).toEqual({
+      added: [],
+      removed: [],
+    });
+    await expect(
+      createCertificate(site.instanceId, site.certPem!, site.email, '127.0.0.1', false),
+    ).rejects.toThrow('CERT_BLOCKED');
+  });
+});
+
 describe('a confirmed lift', () => {
   it('is respected by login, mTLS fetch, allow list, sync and the upload and admin guards', async () => {
     const s = await falseAlarm('lift-effect');
