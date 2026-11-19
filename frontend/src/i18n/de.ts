@@ -643,6 +643,8 @@ export const de: Record<TranslationKey, string> = {
 
   // ApprovalCard
   approvalCardRequestNum: 'Anfrage #{n}',
+  approvalDecidedApprovedBy: 'Genehmigt von {names}',
+  approvalDecidedRejectedBy: 'Abgelehnt von {names}',
 
   // OrganizationModal
   orgModalTitle: 'Organisation bearbeiten',

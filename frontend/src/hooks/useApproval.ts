@@ -22,6 +22,14 @@ export interface ApprovalRequest {
   comment: string | null;
   /** Sorted IPs of the request's snapshot; null when the snapshot is unreadable. */
   approved_ips?: string[] | null;
+  /** Individual admin decisions (IMI operator e-mails), oldest first. */
+  decisions?: ApprovalDecision[];
+}
+
+export interface ApprovalDecision {
+  admin_email: string;
+  decision: 'APPROVE' | 'REJECT';
+  signed_at: string;
 }
 
 /** Four-eyes progress of the latest request. */

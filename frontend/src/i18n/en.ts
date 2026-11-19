@@ -630,6 +630,8 @@ export const en = {
 
   // ApprovalCard
   approvalCardRequestNum: 'Request #{n}',
+  approvalDecidedApprovedBy: 'Approved by {names}',
+  approvalDecidedRejectedBy: 'Rejected by {names}',
 
   // OrganizationModal
   orgModalTitle: 'Edit Organization',
