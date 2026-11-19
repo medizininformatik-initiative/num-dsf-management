@@ -37,6 +37,19 @@ describe('contactSchema', () => {
     expect(contactSchema.safeParse({ ...base, phone: 'call me' }).success).toBe(false);
   });
 
+  it('treats null and undefined like an empty phone', () => {
+    expect(contactSchema.safeParse({ ...base, phone: null }).success).toBe(true);
+    expect(contactSchema.safeParse({ ...base, phone: undefined }).success).toBe(true);
+  });
+
+  it('accepts only regular spaces, not tabs, newlines or non-breaking spaces', () => {
+    const ok = (phone: string) => contactSchema.safeParse({ ...base, phone }).success;
+    expect(ok('0251 83 12345')).toBe(true);
+    expect(ok('0251\t83 12345')).toBe(false);
+    expect(ok('0251\n83 12345')).toBe(false);
+    expect(ok('0251\u00a083 12345')).toBe(false);
+  });
+
   it('accepts numbers with extension, separators and up to 50 characters', () => {
     const ok = (phone: string) => contactSchema.safeParse({ ...base, phone }).success;
     expect(ok('+49 (0) 251 83-12345 / 6789')).toBe(true);

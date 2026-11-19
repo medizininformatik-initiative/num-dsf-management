@@ -2137,7 +2137,8 @@ export const en = {
 
   // Schema validation — contact
   contactTypesRequired: 'Select at least one type',
-  contactPhoneInvalid: 'Invalid phone format (7 to 50 characters, e.g. +49 251 83-12345 / 6789)',
+  contactPhoneInvalid:
+    'Invalid phone format (at least 6 digits, at most 50 characters, e.g. +49 251 83-12345 / 6789)',
 
   // Schema validation — endpoint
   endpointIdentifierTooShort: 'Identifier must be at least 3 characters',

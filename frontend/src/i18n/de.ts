@@ -2182,7 +2182,8 @@ export const de: Record<TranslationKey, string> = {
 
   // Schema validation — contact
   contactTypesRequired: 'Mindestens einen Typ auswählen',
-  contactPhoneInvalid: 'Ungültiges Telefonformat (7 bis 50 Zeichen, z.B. +49 251 83-12345 / 6789)',
+  contactPhoneInvalid:
+    'Ungültiges Telefonformat (mindestens 6 Ziffern, höchstens 50 Zeichen, z.B. +49 251 83-12345 / 6789)',
 
   // Schema validation — endpoint
   endpointIdentifierTooShort: 'Bezeichner muss mindestens 3 Zeichen lang sein',

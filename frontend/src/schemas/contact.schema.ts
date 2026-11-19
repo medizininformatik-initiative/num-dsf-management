@@ -13,10 +13,10 @@ export const contactSchema = z.object({
   phone: z
     .string()
     .max(50, 'contactPhoneInvalid')
-    // optional leading +, digits, spaces and - ( ) / . ; at least 6 digits (extensions allowed)
-    .regex(/^(?=(?:\D*\d){6})\+?[\d\s\-()/.]+$/, 'contactPhoneInvalid')
-    .optional()
-    .or(z.literal('')),
+    // optional leading +, digits, regular spaces and - ( ) / . ; at least 6 digits (extensions allowed)
+    .regex(/^(?=(?:\D*\d){6})\+?[\d \-()/.]+$/, 'contactPhoneInvalid')
+    .or(z.literal(''))
+    .nullish(),
   addressLine: z.string().optional(),
   city: z.string().optional(),
   postalCode: z.string().optional(),
