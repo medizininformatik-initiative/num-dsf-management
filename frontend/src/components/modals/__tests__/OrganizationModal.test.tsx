@@ -1,11 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../../test/renderWithProviders';
 
+const mutateAsync = vi.hoisted(() => vi.fn());
 vi.mock('../../../hooks/useOrganization', () => ({
-  useUpdateOrganization: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useUpdateOrganization: () => ({ mutate: vi.fn(), mutateAsync, isPending: false }),
 }));
+vi.mock('../../../lib/authMode', () => ({ needsTotpStepUp: () => true }));
 
 import { OrganizationModal } from '../OrganizationModal';
 
@@ -61,5 +63,23 @@ describe('OrganizationModal', () => {
     expect(identifier).toBeDisabled();
     expect(identifier).toHaveAccessibleDescription(/other allowlist tools reference/i);
     expect(screen.getByText(/immutable in federated mode/i)).toBeInTheDocument();
+  });
+});
+
+describe('OrganizationModal step-up code', () => {
+  it('omits totpCode when the thumbprint is unchanged', async () => {
+    const user = userEvent.setup();
+    mutateAsync.mockResolvedValue({});
+    renderWithProviders(
+      <OrganizationModal
+        open
+        onClose={() => {}}
+        instanceId="i1"
+        defaultValues={{ identifier: 'klinik.example.de', name: 'Klinik', email: 'a@b.de' }}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /save organization/i }));
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalled());
+    expect(mutateAsync.mock.calls[0][0]).not.toHaveProperty('totpCode');
   });
 });

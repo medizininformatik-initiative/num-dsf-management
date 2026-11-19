@@ -57,7 +57,8 @@ export function OrganizationModal({ open, onClose, instanceId, defaultValues }: 
       await new Promise<void>((resolve, reject) => {
         guard(async () => {
           try {
-            const payload = needsTotpStepUp() ? { ...data, totpCode } : data;
+            // The code is only asked for (and needed) when the thumbprint changes.
+            const payload = needsTotpStepUp() && totpCode ? { ...data, totpCode } : data;
             await mutateAsync(payload);
             resolve();
           } catch (e) {
