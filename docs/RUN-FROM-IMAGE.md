@@ -1,25 +1,21 @@
 # Run from a prebuilt image bundle
 
-Run the whole DSF Allow-List portal from **prebuilt Docker images** — no source
-checkout, no build step. This is the same procedure used on the production VM and
-for a quick local smoke-test.
-
-For the full operations reference (env vars, migrations, backups, rotation) see
-[DEPLOYMENT.md](DEPLOYMENT.md). This page is the short, self-contained walkthrough.
-
----
+Run the portal from prebuilt Docker images, without a source checkout or build
+step. For the full operations reference (environment variables, migrations,
+backups, key rotation) see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Where the bundle comes from
 
 | Source | What you get | Retention |
 |---|---|---|
-| **CI artifact** — every push to `main` | `dsf-allowlist-images-<sha>.tar.gz` (+ `.sha256`), downloaded as a `.zip` from the run's **Summary** page → *Artifacts* | 30 days |
+| **CI artifact** — every push to `main` | `dsf-allowlist-images-<sha>.tar.gz` (+ `.sha256`), downloaded as a `.zip` from the run's **Summary** page → *Artifacts* | 7 days |
 | **GitHub Release** — every tag | the same bundle **plus** a **run-kit** (`dsf-allowlist-runkit-<tag>.tar.gz`) with the compose file, nginx config, `.env.prod.example`, `db/migrations/` and a preset `.image.env` | permanent |
 
 The **image bundle** is only the two container images. To run them you also need
-the **run-kit files**: `docker-compose.release.yml`, `nginx/nginx.prod.conf` and
-`db/migrations/`. A Release ships them in the run-kit; if you have a repo checkout
-you already have them in place.
+the **run-kit files**: `docker-compose.release.yml`, `nginx.prod.conf` (in the
+repository: `nginx/nginx.prod.conf`) and `db/migrations/`. A Release ships them in
+the run-kit. From a repo checkout, copy `nginx/nginx.prod.conf` next to the
+compose file, because the compose file mounts `./nginx.prod.conf`.
 
 ---
 
@@ -60,7 +56,7 @@ docker pull ghcr.io/mukeyii/dsf-allowlist-frontend:<tag>
 printf 'IMAGE_OWNER=mukeyii\nIMAGE_TAG=<tag>\n' > .image.env
 ```
 
-The Release run-kit already includes this file with the correct values.
+The Release run-kit already includes this file.
 
 ### 3. Configure secrets (`.env.prod`)
 
@@ -79,7 +75,8 @@ rm jwt_priv.pem jwt_pub.pem
 
 Then edit `.env.prod` and set the remaining values:
 `DB_ROOT_PASSWORD`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `REDIS_PASSWORD`,
-`SMTP_*`, `MAIL_FROM`, `IMI_ADMIN_EMAILS`, `DSF_ENVIRONMENT`.
+`SMTP_*`, `MAIL_FROM`, `IMI_ADMIN_EMAILS`, `DSF_ENVIRONMENT`. The full list is in
+[DEPLOYMENT.md](DEPLOYMENT.md#environment-variables).
 
 ### 4. TLS certificates
 
