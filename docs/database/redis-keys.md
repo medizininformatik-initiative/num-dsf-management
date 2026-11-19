@@ -13,5 +13,4 @@ Connection via `REDIS_URL` (`backend/src/services/redis.service.ts`). All keys a
 | `activity:` | `activity:{userId}` | Last-activity heartbeat for idle-timeout enforcement | `IDLE_TIMEOUT_MS` (default 1 800 000 ms = 30 min) | middleware/auth.middleware.ts, services/auth.service.ts |
 
 Notes:
-- The `redis.service.ts` header comments `totp_used` as TTL 60 s, but the implementation in `totp.service.ts` uses `EX 120` (120 s). The code value is authoritative.
 - The `activity:` TTL is refreshed on each authenticated request by the auth middleware.

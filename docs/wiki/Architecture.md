@@ -1,9 +1,9 @@
 # Architecture
 
-Technical reference for the DSF Management Portal. Covers the runtime
-topology, request handling, authentication, the approval-to-bundle lifecycle,
-scheduled work, and the Redis keyspace. The entity data model is documented in
-[`README.md`](../../README.md#entity-model); it is not duplicated here.
+Runtime topology, request handling, authentication, the approval-to-bundle
+lifecycle and scheduled work. The data model is in
+[`../database/`](../database/) (schema, ERD, Redis keys); decisions are in
+[`../adr/`](../adr/).
 
 ## Tech stack
 
@@ -196,30 +196,22 @@ Notes:
 
 Six cron jobs registered in
 [`scheduler.service.ts`](../../backend/src/services/scheduler.service.ts), all in
-UTC. Each is wrapped in try/catch so a failure is logged and does not abort the
-scheduler.
+UTC, plus the backup scheduler (a per-minute tick that checks the configured
+backup schedule). Each job is wrapped in try/catch so a failure is logged and
+does not abort the scheduler.
 
 | Cron | Job | Action |
 |------|-----|--------|
 | `*/5 * * * *` | `flushPendingNotifications` | Deliver due `pending_notifications` rows (site emails after approve/reject). |
 | `0 6 * * *` | `runApprovalReminders` | Email reminders for still-pending approval requests. |
 | `0 7 * * *` | `runSilentConsentSweep` | Auto-approve requests pending past the silent-consent window (default 7 d). |
-| `0 8 * * *` | `runCertExpiryCheck` | Detect certificates nearing expiry and notify. |
+| `0 8 * * *` | `runCertExpiryCheck` and related | Notify about certificates nearing expiry, clean up expired certificates, warn about expiring admin certificates, expire stale admin certificate requests. |
 | `0 9 * * *` | `runMembershipCleanup` | Hard-delete soft-deleted memberships older than the retention window (default 90 d). |
 | `0 10 * * *` | `syncMarketplaceAll` | Sync marketplace GitHub repository metadata. |
 
-## 6. Redis key registry
+## 6. Redis keys
 
-Prefixes documented in
-[`redis.service.ts`](../../backend/src/services/redis.service.ts).
-
-| Key prefix | Purpose | TTL |
-|------------|---------|-----|
-| `otp:{email}` | Pending SHA-256-hashed OTP code | 10 min |
-| `refresh:{tokenHash}` | Active refresh token (value = userId) | 7 d |
-| `ratelimit:{ip\|key}` | express-rate-limit Redis store buckets | per limiter window |
-| `totp_used:{sha256}` | Anti-replay marker for a consumed TOTP code | 120 s |
-| `activity:{userId}` | Last-activity heartbeat for idle-timeout | idle window (`IDLE_TIMEOUT_MS`, default 30 min) |
+Key prefixes, forms and TTLs are listed in [`../database/redis-keys.md`](../database/redis-keys.md).
 
 ## 7. Security posture
 
