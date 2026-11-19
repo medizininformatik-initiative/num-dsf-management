@@ -300,9 +300,9 @@ describe('DownloadModal – guide, IP list and gate', () => {
     ).toBe(true);
   });
 
-  it('hides the IP address list from non-admins', () => {
+  it('shows the IP address list to non-admins too', () => {
     renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
-    expect(screen.queryByTestId('download-ip-btn')).toBeNull();
+    expect(screen.getByTestId('download-ip-btn')).toBeInTheDocument();
   });
 
   it('offers the IP address list to admins, without a gate', async () => {

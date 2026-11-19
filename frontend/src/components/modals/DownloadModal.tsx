@@ -5,7 +5,7 @@
  * endpoint (fetched by DSF with the site's client certificate). Then
  * lists the published versions with their DSF
  * history link and a signed GUI download, and keeps the network-wide bundle,
- * the IP address list (IMI admins only) and the content preview under a
+ * the IP address list (every signed-in user) and the content preview under a
  * disclosure. Downloads are always available; the verification disclaimer is a
  * calm note with the full text behind a disclosure. A finished
  * download shows its content hash (compared with the SHA-256 the browser
@@ -14,7 +14,7 @@
  * A calm banner at the top says whether the site's DSF obtained the current
  * version (useAllowListFreshness); a download refreshes it.
  * Dependencies: Modal, FormField (field classes, ModalFooter), useEndpoints, useBundleHistory,
- * useAllowListFreshness, useMe, entities API, DownloadVersionList, BundlePreview, lib/fingerprint,
+ * useAllowListFreshness, entities API, DownloadVersionList, BundlePreview, lib/fingerprint,
  * i18n store, sonner.
  */
 import { useId, useState, type ReactNode } from 'react';
@@ -27,7 +27,6 @@ import {
   useAllowListFreshness,
   useRefreshAllowListFreshness,
 } from '../../hooks/useAllowListFreshness';
-import { useMe } from '../../hooks/useMe';
 import { api, downloadFullAllowListBundle } from '../../api/entities.api';
 import { fingerprintGroups } from '../../lib/fingerprint';
 
@@ -126,8 +125,6 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
   const { t } = useI18n();
   const uid = useId();
   const { data: endpoints = [] } = useEndpoints(instanceId);
-  const { data: me } = useMe();
-  const isAdmin = me?.isAdmin === true;
   const [selectedEndpoint, setSelectedEndpoint] = useState('');
   const [busy, setBusy] = useState(false);
   const [busyVersion, setBusyVersion] = useState<number | null>(null);
@@ -454,21 +451,19 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
                 {busy ? t('downloadModalDownloading') : t('downloadModalDownloadBundle')}
               </Button>
             </div>
-            {isAdmin && (
-              <div className="space-y-2">
-                <h3 className={sectionTitle}>{t('downloadModalIpTitle')}</h3>
-                <p className={helpText}>{t('downloadModalIpDesc')}</p>
-                <Button
-                  variant="secondary"
-                  onClick={downloadIpList}
-                  disabled={busy}
-                  data-testid="download-ip-btn"
-                  className="w-full"
-                >
-                  {busy ? t('downloadModalDownloading') : t('downloadModalDownloadIp')}
-                </Button>
-              </div>
-            )}
+            <div className="space-y-2">
+              <h3 className={sectionTitle}>{t('downloadModalIpTitle')}</h3>
+              <p className={helpText}>{t('downloadModalIpDesc')}</p>
+              <Button
+                variant="secondary"
+                onClick={downloadIpList}
+                disabled={busy}
+                data-testid="download-ip-btn"
+                className="w-full"
+              >
+                {busy ? t('downloadModalDownloading') : t('downloadModalDownloadIp')}
+              </Button>
+            </div>
             <BundlePreview instanceId={instanceId} />
           </div>
         </details>
