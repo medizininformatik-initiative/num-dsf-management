@@ -82,5 +82,22 @@ describe('Organization API', () => {
       expect(res.status).toBe(200);
       expect(res.body.data.name).toBe('Updated Hospital');
     });
+
+    it('should accept an empty step-up code when the thumbprint is unchanged', async () => {
+      await seedOrganization();
+      const res = await request(app)
+        .put(`/api/v1/instances/${TEST_INSTANCE_ID}/organization`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          identifier: 'test-hospital.de',
+          name: 'Test Hospital',
+          email: 'admin@test-hospital.de',
+          active: true,
+          countryCode: 'DE',
+          addressLine: 'Neue Strasse 1',
+          totpCode: '',
+        });
+      expect(res.status).toBe(200);
+    });
   });
 });

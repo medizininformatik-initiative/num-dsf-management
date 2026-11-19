@@ -7,4 +7,9 @@
  */
 import { z } from 'zod';
 
-export const stepUpCode = z.string().min(6).max(10).optional();
+// An empty or whitespace-only value counts as absent: clients that always send
+// the field (even when step-up is not needed) must not fail validation.
+export const stepUpCode = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+  z.string().min(6).max(10).optional(),
+);
