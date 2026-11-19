@@ -331,13 +331,14 @@ info() { # info NAME REASON
 
 # ─── Step 1: reachability ──────────────────────────────────────────────────
 
-curl_json GET "$BASE_URL/health/ready"
-DB_OK="$(json_get "$RESP_FILE" db)"
-REDIS_OK="$(json_get "$RESP_FILE" redis)"
-if [ "$HTTP_STATUS" = "200" ] && [ "$DB_OK" = "ok" ] && [ "$REDIS_OK" = "ok" ]; then
-  pass "1-health-ready" "$HTTP_STATUS" "db=ok redis=ok"
+# /health/ready answers loopback callers only (404 from outside), so the public
+# liveness endpoint is checked here; DB/Redis are exercised by the later steps.
+curl_json GET "$BASE_URL/health"
+HEALTH_STATUS="$(json_get "$RESP_FILE" status)"
+if [ "$HTTP_STATUS" = "200" ] && [ "$HEALTH_STATUS" = "ok" ]; then
+  pass "1-health-ready" "$HTTP_STATUS" "status=ok"
 else
-  fail "1-health-ready" "$HTTP_STATUS" "expected 200 db=ok redis=ok, got db=$DB_OK redis=$REDIS_OK"
+  fail "1-health-ready" "$HTTP_STATUS" "expected 200 status=ok, got status=$HEALTH_STATUS"
 fi
 
 # ─── Rate-limit reset ──────────────────────────────────────────────────────

@@ -53,7 +53,8 @@ flowchart TB
 
 Health endpoints: `/health/live` (always 200) drives the compose healthcheck;
 `/health/ready` probes MySQL (`SELECT 1`) and Redis (`PING`) and returns 503 if
-either is down.
+either is down; it answers loopback callers only (the compose healthcheck) and
+is a 404 from outside.
 
 ## 2. Request lifecycle
 

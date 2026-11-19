@@ -413,4 +413,4 @@ Missing cert → 401; cert not registered → 403; unknown endpoint/org/version 
 |--------|------|------|---------|
 | GET | /health | public | Liveness — always `{ status: "ok" }`. |
 | GET | /health/live | public | Liveness alias. |
-| GET | /health/ready | public | Readiness — checks DB + Redis; 503 if degraded. |
+| GET | /health/ready | loopback only | Readiness — checks DB + Redis; 503 if degraded. 404 for any non-loopback caller. |

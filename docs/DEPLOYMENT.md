@@ -513,7 +513,7 @@ Every check prints `PASS`/`FAIL`/`INFO` with the HTTP status and a one-line reas
 
 **What each step proves, and what a FAIL there usually means:**
 
-1. **Reachability** (`GET /health/ready`). The stack is up and the backend can reach MySQL and Redis. A FAIL here is almost always infrastructure, not this feature: containers not started, `.env`/`.env.prod` missing a DB or Redis value, or (on the plain dev nginx config) `/health` not proxied to the backend.
+1. **Reachability** (`GET /health`). The stack is up and the backend answers through the proxy (`/health/ready`, which also probes MySQL and Redis, answers loopback callers only, so it is not used from outside). A FAIL here is almost always infrastructure, not this feature: containers not started, `.env`/`.env.prod` missing a DB or Redis value, or (on the plain dev nginx config) `/health` not proxied to the backend.
 2. **Cert login** for hack1/hack2/hack3 (`POST /auth/client-cert-login`). Proves the reverse proxy performs the mTLS handshake and forwards `X-Client-Cert`/`X-Client-Verify`, and that the backend resolves the SHA-512 fingerprint to the right admin. A FAIL usually means the reverse proxy in front of `BASE_URL` is not reproducing `nginx/nginx.cert-auth.conf` (see "Fronting the app with your own Apache2" above), or the hackathon certs were regenerated after the DB was last seeded.
 3. **Identity and instance scoping** (`GET /auth/me`, `GET /api/v1/instances`, `GET /api/v1/instances/:id/organization`). Proves the JWT carries the right identity and admin flag, and that the seeded organization is reachable. Every hackathon user is an IMI admin, and `instances.service.ts`'s `listForUser()` gives admins cross-tenant visibility (see its own comment), so this checks the list *contains* the user's own instance, not that it is the only one; a FAIL here on a fresh stack usually means the seed did not run or ran against a different database than `BASE_URL` is pointed at.
 4. **Negative auth checks.** No certificate presented must fail login; a valid bearer token with the certificate NOT re-presented must fail a step-up-gated write with `CERT_STEP_UP_FAILED` (`backend/src/middleware/stepUp.middleware.ts`) - this is the check that proves a stolen access token cannot forge the cert step-up. `POST /auth/request-otp` returning `403` proves the OTP entry surface is closed on a cert-auth deployment; on the standard OTP/TOTP stack it is expected to stay open, so that case is only an `INFO`, never a `FAIL`.
@@ -779,6 +779,8 @@ Das Skript liest die gesamte Datei in den Speicher; bei sehr großen `audit_logs
 ```bash
 curl https://allowlist.imi.uni-muenster.de/health
 ```
+
+`/health/ready` (MySQL and Redis probe) answers only callers on the loopback address, i.e. the compose healthcheck inside the container; from outside it is a 404. Check it with `docker compose exec -T backend wget -qO- http://localhost:3000/health/ready`.
 
 ## Production security checklist
 
