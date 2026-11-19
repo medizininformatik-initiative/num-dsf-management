@@ -29,6 +29,22 @@ describe('CertStatusPage', () => {
     expect(screen.queryByText(/No client certificate was presented/)).not.toBeInTheDocument();
   });
 
+  it('offers the collapsible certificate import help for NO_CLIENT_CERT only', () => {
+    const first = renderWithProviders(<CertStatusPage code="NO_CLIENT_CERT" />);
+    const help = screen.getByTestId('cert-import-help');
+    expect(help.tagName).toBe('DETAILS');
+    expect(help).not.toHaveAttribute('open');
+    expect(screen.getByText('No certificate in your browser?')).toBeInTheDocument();
+    expect(help).toHaveTextContent('openssl pkcs12 -export -legacy');
+    expect(screen.getByRole('button', { name: 'Copy command' })).toBeInTheDocument();
+    first.unmount();
+    for (const code of ['CERT_NOT_REGISTERED', 'PROXY_NOT_TRUSTED', 'WHATEVER', null]) {
+      const view = renderWithProviders(<CertStatusPage code={code} />);
+      expect(screen.queryByTestId('cert-import-help')).not.toBeInTheDocument();
+      view.unmount();
+    }
+  });
+
   it('shows the checking state when code is null', () => {
     renderWithProviders(<CertStatusPage code={null} />);
     expect(screen.getByRole('status')).toHaveTextContent(/checking your certificate/i);

@@ -14,6 +14,7 @@ import { reauthRedirect } from '../lib/authMode';
 import { AuthLayout } from '../components/AuthLayout';
 import { Button } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
+import { CertImportHelp } from '../components/CertImportHelp';
 
 const CODE_KEY: Record<string, TranslationKey> = {
   NO_CLIENT_CERT: 'certStatusNoCert',
@@ -63,6 +64,7 @@ export function CertStatusPage({ code }: { code: string | null }) {
             {t('certStatusCheckingHint')}
           </p>
         )}
+        {code === 'NO_CLIENT_CERT' && <CertImportHelp />}
         {!checking && (
           <Button className="w-full" onClick={() => reauthRedirect()}>
             <Icon name="refresh" size={16} />

@@ -1965,6 +1965,24 @@ export const de: Record<TranslationKey, string> = {
   certStatusChecking: 'Zertifikat wird geprüft…',
   certStatusNoCert:
     'Es wurde kein Client-Zertifikat vorgelegt. Installieren Sie Ihr Zertifikat im Browser und laden Sie die Seite neu.',
+  certHelpSummary: 'Kein Zertifikat im Browser?',
+  certHelpCreate:
+    'Erstellen Sie aus Ihrem DSF-Client-Zertifikat und dem privaten Schlüssel eine .p12-Datei. Beides bleibt auf Ihrem Rechner; laden Sie den Schlüssel nie in das Portal hoch.',
+  certHelpCopyCommand: 'Befehl kopieren',
+  certHelpCommandCopied: 'Befehl kopiert',
+  certHelpLegacyNote:
+    '-legacy hält die Datei unter Windows und macOS importierbar (OpenSSL 3). Wählen Sie ein Export-Passwort.',
+  certHelpImportTitle: 'In den Browser importieren',
+  certHelpWindows:
+    'Windows (Edge/Chrome): .p12 doppelklicken, "Aktueller Benutzer" und den Speicher "Eigene Zertifikate" wählen.',
+  certHelpMac:
+    'macOS (Safari/Chrome/Edge): .p12 doppelklicken und die Schlüsselbund-Option "login" wählen.',
+  certHelpFirefox:
+    'Firefox (alle Systeme): Einstellungen, Datenschutz & Sicherheit, Zertifikate, Zertifikate anzeigen, Ihre Zertifikate, Importieren.',
+  certHelpLinux:
+    'Linux Chrome: Einstellungen, Datenschutz und Sicherheit, Sicherheit, Zertifikate verwalten, Ihre Zertifikate, Importieren.',
+  certHelpRestart:
+    'Danach den Browser vollständig schließen (alle Fenster; Edge läuft unter Windows teils im Hintergrund weiter) oder ein privates Fenster öffnen, diese Seite neu laden und das Zertifikat auswählen.',
   certStatusProxyNotTrusted:
     'Der Server hat Ihr Zertifikat erhalten, aber seine Proxy-Konfiguration ist unvollständig. Bitte wenden Sie sich an den IMI-Betreiber.',
   certStatusNotRegistered:

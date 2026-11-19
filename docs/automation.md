@@ -9,6 +9,23 @@ Sites can renew their login certificate without clicking through the portal, for
 - Network access to the portal. The reverse proxy applies an IP allow list; your script must run from an allowed address.
 - `curl`, `jq` and `openssl`, or the ready-made script `scripts/site-cert-renew.sh`.
 
+## No certificate in your browser?
+
+For the web UI the browser needs your DSF client certificate. Build a `.p12` from the certificate and its private key; both stay on your machine and the key is never uploaded to the portal:
+
+```sh
+openssl pkcs12 -export -legacy -in client.crt -inkey client.key -certfile ca-chain.pem -name "DSF client" -out dsf-client.p12
+```
+
+`-legacy` keeps the file importable on Windows and macOS (OpenSSL 3). Choose an export password. Import it:
+
+- Windows (Edge/Chrome): double-click the file, Current User, store "Personal".
+- macOS (Safari/Chrome/Edge): double-click the file, keychain "login".
+- Firefox (all systems): Settings, Privacy & Security, Certificates, View Certificates, Your Certificates, Import.
+- Linux Chrome: Settings, Privacy and security, Security, Manage certificates, Your certificates, Import.
+
+Then close the browser completely (all windows; Edge may keep running in the background) or open a private window, reload and pick the certificate when asked. The sign-in page shows the same help.
+
 ## Authentication
 
 Production runs behind mTLS. Present the client certificate on every request, not only on login.

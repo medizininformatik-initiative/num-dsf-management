@@ -1925,6 +1925,23 @@ export const en = {
   certStatusChecking: 'Checking your certificate…',
   certStatusNoCert:
     'No client certificate was presented. Install your certificate in the browser and reload.',
+  certHelpSummary: 'No certificate in your browser?',
+  certHelpCreate:
+    'Create a .p12 file from your DSF client certificate and its private key. Both stay on your machine; never upload the key to the portal.',
+  certHelpCopyCommand: 'Copy command',
+  certHelpCommandCopied: 'Command copied',
+  certHelpLegacyNote:
+    '-legacy keeps the file importable on Windows and macOS (OpenSSL 3). Choose an export password.',
+  certHelpImportTitle: 'Import it into your browser',
+  certHelpWindows:
+    'Windows (Edge/Chrome): double-click the .p12, choose Current User and the store "Personal".',
+  certHelpMac: 'macOS (Safari/Chrome/Edge): double-click the .p12 and choose the keychain "login".',
+  certHelpFirefox:
+    'Firefox (all systems): Settings, Privacy & Security, Certificates, View Certificates, Your Certificates, Import.',
+  certHelpLinux:
+    'Linux Chrome: Settings, Privacy and security, Security, Manage certificates, Your certificates, Import.',
+  certHelpRestart:
+    'Then close the browser completely (all windows; Edge may keep running in the background) or open a private window, reload this page and pick the certificate when asked.',
   certStatusProxyNotTrusted:
     'The server received your certificate but its proxy configuration is incomplete. Please contact the IMI operator.',
   certStatusNotRegistered:

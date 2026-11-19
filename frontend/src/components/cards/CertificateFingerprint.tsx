@@ -88,7 +88,7 @@ export function CertificateFingerprint({
   );
 }
 
-function CopyButton({
+export function CopyButton({
   value,
   label,
   copiedMessage,
