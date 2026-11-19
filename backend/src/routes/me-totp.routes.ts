@@ -80,10 +80,13 @@ const CONFIRM_FAILURES: Record<
 };
 
 async function isEnabled(userId: string): Promise<boolean> {
-  const row = (await db('users').where({ id: userId }).select('totp_enabled').first()) as
-    | { totp_enabled: boolean | number }
-    | undefined;
-  return !!row?.totp_enabled;
+  const row = (await db('users')
+    .where({ id: userId })
+    .select('totp_enabled', 'totp_secret')
+    .first()) as { totp_enabled: boolean | number; totp_secret: string | null } | undefined;
+  // No secret means nothing to verify a code against: treat as not enrolled so
+  // the setup can start without a current code.
+  return !!row?.totp_enabled && !!row.totp_secret;
 }
 
 meTotpRouter.get(

@@ -411,7 +411,9 @@ export async function resolveCertLogin(fingerprint: string): Promise<{
     // Never (re-)create the whitelist row here: a removed or locked admin
     // stays out; the caller's whitelist check refuses the login.
     await db('users')
-      .insert({ id: uuidv4(), email, totp_enabled: true, created_at: new Date() })
+      // Not enrolled yet: the admin sets up TOTP after this first login. (A true
+      // here with no secret could never be enrolled or verified.)
+      .insert({ id: uuidv4(), email, totp_enabled: false, created_at: new Date() })
       .onConflict('email')
       .ignore();
     const user = await db('users').where({ email }).first();

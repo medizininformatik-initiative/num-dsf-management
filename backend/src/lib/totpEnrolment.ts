@@ -20,9 +20,11 @@ export interface SessionUser {
 export async function isTotpEnrolmentRequired(user: SessionUser): Promise<boolean> {
   if (user.authMethod !== 'cert' || user.scopeInstanceId) return false;
   if (isDevTotpBypassActive()) return false;
-  const row = (await db('users').where({ id: user.id }).select('totp_enabled').first()) as
-    | { totp_enabled: boolean | number }
-    | undefined;
-  if (row?.totp_enabled) return false;
+  const row = (await db('users')
+    .where({ id: user.id })
+    .select('totp_enabled', 'totp_secret')
+    .first()) as { totp_enabled: boolean | number; totp_secret: string | null } | undefined;
+  // Enabled without a persisted secret (an older broken row) is not enrolled.
+  if (row?.totp_enabled && row.totp_secret) return false;
   return isAdminCaller(user);
 }
