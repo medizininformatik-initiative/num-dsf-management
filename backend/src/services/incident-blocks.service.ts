@@ -5,7 +5,10 @@
  * - organizations suspended by an incident (incidents.suspended = 1) are
  *   published as withdrawn;
  * - SHA-512 thumbprints in blocked_certificate_thumbprints are never
- *   uploaded again, never published and never log in. Blocks are permanent.
+ *   uploaded again, never published and never log in. A block row stays for good; it is
+ *   effective until two admins lifted it for a false alarm (certificate_block_lifts, migration
+ *   041, see incident-block-lifts.service). Every consumer goes through effectiveBlocks, so a
+ *   lift is respected everywhere at once.
  * Only plain reads and the block insert live here, so the allow-list and
  * certificate services can use it without importing the incident workflow.
  * Dependencies: db/connection
@@ -33,9 +36,21 @@ export async function suspendedOrganizations(
   return set;
 }
 
-/** Every blocked SHA-512 thumbprint (lower-case hex). */
+/**
+ * The block rows that are still effective: those without a lift record for their (fingerprint,
+ * incident). Rows are aliased `b`; add conditions on b.fingerprint / b.incident_id.
+ */
+export function effectiveBlocks(conn: Knex | Knex.Transaction = db) {
+  return conn('blocked_certificate_thumbprints as b').whereNotExists(
+    conn('certificate_block_lifts as l')
+      .whereRaw('l.fingerprint = b.fingerprint')
+      .whereRaw('l.incident_id = b.incident_id'),
+  );
+}
+
+/** Every effectively blocked SHA-512 thumbprint (lower-case hex). */
 export async function blockedFingerprints(): Promise<Set<string>> {
-  const fps: string[] = await db('blocked_certificate_thumbprints').pluck('fingerprint');
+  const fps: string[] = await effectiveBlocks().distinct('b.fingerprint').pluck('b.fingerprint');
   return new Set(fps.map((f) => f.toLowerCase()));
 }
 
@@ -43,13 +58,17 @@ export async function isFingerprintBlocked(
   fingerprint: string,
   conn: Knex | Knex.Transaction = db,
 ): Promise<boolean> {
-  const row = await conn('blocked_certificate_thumbprints')
-    .where({ fingerprint: fingerprint.toLowerCase() })
-    .first('fingerprint');
+  const row = await effectiveBlocks(conn)
+    .where('b.fingerprint', fingerprint.toLowerCase())
+    .first('b.fingerprint');
   return !!row;
 }
 
-/** Block thumbprints for an incident; already blocked ones stay as they are. Returns the newly blocked count. */
+/**
+ * Block thumbprints for an incident; ones that are already effectively blocked stay as they are
+ * (a thumbprint whose earlier block was lifted is blocked again by the new incident). Returns the
+ * newly blocked count.
+ */
 export async function blockFingerprints(
   conn: Knex | Knex.Transaction,
   fingerprints: string[],
@@ -59,9 +78,9 @@ export async function blockFingerprints(
   const unique = [...new Set(fingerprints.map((f) => f.toLowerCase()))];
   if (unique.length === 0) return 0;
   const existing = new Set<string>(
-    await conn('blocked_certificate_thumbprints')
-      .whereIn('fingerprint', unique)
-      .pluck('fingerprint'),
+    (await effectiveBlocks(conn).whereIn('b.fingerprint', unique).pluck('b.fingerprint')).map(
+      (f: string) => f.toLowerCase(),
+    ),
   );
   const fresh = unique.filter((f) => !existing.has(f));
   if (fresh.length === 0) return 0;
@@ -75,7 +94,7 @@ export async function blockFingerprints(
         created_at: now,
       })),
     )
-    .onConflict('fingerprint')
+    .onConflict(['fingerprint', 'incident_id'])
     .ignore();
   return fresh.length;
 }

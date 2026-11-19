@@ -8,6 +8,7 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { db } from '../db/connection';
+import { effectiveBlocks } from './incident-blocks.service';
 import { v4 as uuidv4 } from 'uuid';
 import { createAndStoreOtp, verifyOtp } from './otp.service';
 import { verifyTotpCode, verifyBackupCode, generateBackupCodes } from './totp.service';
@@ -447,12 +448,10 @@ async function resolveOrgLogin(fingerprint: string): Promise<{
     .where('l.fingerprint', fingerprint)
     // A site removed by two admins (migration 039) cannot log in.
     .whereNull('i.removed_at')
-    // A thumbprint blocked by an incident never logs in, whatever re-added it.
-    // Compared with the bound value, not column to column: the two tables may
-    // carry different collations in older databases (see migration 031).
-    .whereNotExists(
-      db('blocked_certificate_thumbprints').where('fingerprint', fingerprint.toLowerCase()),
-    )
+    // A thumbprint blocked by an incident never logs in, whatever re-added it (until two admins
+    // lifted the block for a false alarm). Compared with the bound value, not column to column:
+    // the tables may carry different collations in older databases (see migration 031).
+    .whereNotExists(effectiveBlocks(db).where('b.fingerprint', fingerprint.toLowerCase()))
     .select('i.id as instance_id', 'u.id as user_id', 'u.email as user_email')
     .first();
   if (!row) return null;

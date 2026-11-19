@@ -31,6 +31,8 @@ export const INCIDENT_EVENT_TYPES = [
   'FALSE_ALARM',
   'UPDATED',
   'ARCHIVED',
+  'BLOCK_LIFT_REQUESTED',
+  'BLOCKS_LIFTED',
 ] as const;
 export type IncidentEventType = (typeof INCIDENT_EVENT_TYPES)[number];
 
