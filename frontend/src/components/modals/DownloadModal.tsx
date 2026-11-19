@@ -11,9 +11,11 @@
  * download shows its content hash (compared with the SHA-256 the browser
  * computes of the received bytes) and signature, followed by a three-step guide
  * to verify and import it with the DSF process downloadAllowList.
+ * The last block is the purge "danger zone" (PurgeAllowListSection), shown for a selected
+ * endpoint.
  * A calm banner at the top says whether the site's DSF obtained the current
  * version (useAllowListFreshness); a download refreshes it.
- * Dependencies: Modal, FormField (field classes, ModalFooter), useEndpoints, useBundleHistory,
+ * Dependencies: Modal, FormField (field classes, ModalFooter), PurgeAllowListSection, useEndpoints, useBundleHistory,
  * useAllowListFreshness, entities API, DownloadVersionList, BundlePreview, lib/fingerprint,
  * i18n store, sonner.
  */
@@ -34,6 +36,7 @@ import { saveBlob, toBlob, headerValue, sha256Hex } from '../../lib/downloadBlob
 import { BundlePreview } from './BundlePreview';
 import { DownloadVersionList } from './DownloadVersionList';
 import { DsfTaskStart } from './DsfTaskStart';
+import { PurgeAllowListSection } from './PurgeAllowListSection';
 import { FreshnessBanner } from './FreshnessBanner';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
@@ -468,6 +471,15 @@ export function DownloadModal({ open, onClose, instanceId }: Props) {
             <BundlePreview instanceId={instanceId} />
           </div>
         </details>
+
+        {selectedEndpoint && (
+          <PurgeAllowListSection
+            key={selectedEndpoint}
+            endpointId={selectedEndpoint}
+            purgeUrl={`${bundleBase}/purge`}
+            onCopy={(text) => void copy(text)}
+          />
+        )}
       </div>
       <ModalFooter onCancel={onClose} cancelLabel={t('downloadModalClose')} hideSubmit />
     </Modal>

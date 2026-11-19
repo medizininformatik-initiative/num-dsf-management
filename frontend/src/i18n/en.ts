@@ -2816,6 +2816,17 @@ export const en = {
   riskCertLoginOnly: 'certificate {cn} is used for login only and not published in the allow list',
   riskCertUnpublished: 'certificate {cn} is no longer published in the allow list',
   loginCertErrNotForLogin: 'The site excluded this certificate from login (Use for login is off).',
+
+  // Purge link: delete the whole allow list locally
+  purgeTitle: 'Danger zone: delete the allow list from your DSF server',
+  purgeBody:
+    'The purge removes every organization, endpoint and affiliation this portal ever published from your own DSF FHIR server, including entries with the same identifiers that came from other sources. Your own organization and endpoints stay. Communication with all other sites stops until you import the normal allow list again.',
+  purgeConfirmLabel: 'Type {phrase} to show the purge link',
+  purgeUrlLabel: 'Purge URL (use it like the allow list URL in the DSF download task)',
+  purgeCurlLabel: 'Or download the purge bundle with curl',
+  purgeAfter: 'Afterwards import the current allow list again to restore communication.',
+  purgeCopyUrl: 'purge URL',
+  purgeCopyCurl: 'purge curl command',
 } as const;
 
 export type TranslationKey = keyof typeof en;

@@ -122,6 +122,17 @@ afterEach(() => {
 });
 
 describe('DownloadModal – DSF link and history', () => {
+  it('shows the purge danger zone only for a selected endpoint, link locked behind the identifier', async () => {
+    renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
+    expect(screen.queryByTestId('purge-section')).toBeNull();
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText('Endpoint'), 'dsf.klinik.example.de');
+    expect(screen.getByTestId('purge-section')).toBeInTheDocument();
+    expect(screen.queryByTestId('purge-unlocked')).toBeNull();
+    await user.type(screen.getByLabelText(/to show the purge link/), 'dsf.klinik.example.de');
+    expect(screen.getByTestId('purge-unlocked')).toHaveTextContent(`${BASE}/purge`);
+  });
+
   it('asks for an endpoint before showing a link', () => {
     renderWithProviders(<DownloadModal open onClose={() => {}} instanceId="i1" />);
     expect(screen.getByText(/select an endpoint to get the task link/i)).toBeInTheDocument();

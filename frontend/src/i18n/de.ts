@@ -2882,4 +2882,16 @@ export const de: Record<TranslationKey, string> = {
   riskCertUnpublished: 'Zertifikat {cn} ist nicht mehr in der Allow List veröffentlicht',
   loginCertErrNotForLogin:
     'Der Standort hat dieses Zertifikat vom Login ausgeschlossen (Für Login verwenden ist aus).',
+
+  // Purge link: delete the whole allow list locally
+  purgeTitle: 'Gefahrenbereich: Allow List vom DSF-Server löschen',
+  purgeBody:
+    'Der Purge entfernt alle Organisationen, Endpunkte und Affiliations, die dieses Portal je veröffentlicht hat, von Ihrem eigenen DSF-FHIR-Server, auch Einträge mit denselben Identifiern aus anderen Quellen. Ihre eigene Organisation und Ihre Endpunkte bleiben bestehen. Die Kommunikation mit allen anderen Standorten ruht, bis Sie die normale Allow List wieder importieren.',
+  purgeConfirmLabel: 'Geben Sie {phrase} ein, um den Purge-Link anzuzeigen',
+  purgeUrlLabel: 'Purge-URL (wie die Allow-List-URL im DSF-Download-Task verwenden)',
+  purgeCurlLabel: 'Oder das Purge-Bundle mit curl herunterladen',
+  purgeAfter:
+    'Importieren Sie danach die aktuelle Allow List erneut, damit die Kommunikation wieder funktioniert.',
+  purgeCopyUrl: 'Purge-URL',
+  purgeCopyCurl: 'Purge-curl-Befehl',
 };
