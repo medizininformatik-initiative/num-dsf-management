@@ -72,6 +72,8 @@ function incident(): ApiIncident {
     dpoInformed: null,
     canAcknowledge: true,
     isMine: false,
+    archivedAt: null,
+    archivedBy: null,
   };
 }
 
