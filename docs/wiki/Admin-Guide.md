@@ -12,7 +12,7 @@ ways a row gets there:
   initial admins exist.
 
   ```
-  IMI_ADMIN_EMAILS=admin1@example.com,admin2@example.com
+  IMI_ADMIN_EMAILS=admin1@example.org,admin2@example.org
   ```
 
 - **Ongoing (4-eyes promotion):** an existing admin requests a promotion for a
@@ -31,8 +31,11 @@ writes):
 | Approval Review | `/app/admin` | Action pending approval requests |
 | User Management | `/app/admin/users` | Whitelist + lock/unlock/demote/remove |
 | Promotions | `/app/admin/promotions` | Approve/reject admin-promotion requests |
-| CA Blacklist | `/app/admin/ca-blacklist` | Distrusted CA issuer DNs/fingerprints |
-| Bundle Versions | `/app/admin/bundle-versions` | Federation bundle history, diff, download |
+| Admin Certificates | `/app/admin/certificates` | Client certificates of admins: add, label, remove, request one for a colleague |
+| CA Lists | `/app/admin/ca-blacklist` | CA blacklist (distrusted issuers) and CA whitelist (CAs the DSF accepts) |
+| Bundle Versions | `/app/admin/bundle-versions` | Allow-list history, diff, download, four-eyes restore |
+| Onboarding | `/app/admin/onboarding` | Bulk import of sites from CSV/XLSX |
+| Backups | `/app/admin/backups` | Backup schedule, runs, download |
 | Incidents | `/app/admin/incidents` | Security incidents: confirm, suspend a site, close |
 | Audit Log | `/app/audit` | Append-only operations history |
 
@@ -47,7 +50,7 @@ writes):
 7. Admins are notified immediately of the decision
 8. Site contacts receive notification after 30 minutes (gives time to reverse)
 
-### Auffälligkeits-Bewertung / request risk
+### Request risk assessment
 
 Every pending request opens with a pill and one or two sentences that say how suspicious it looks.
 The portal compares the request with the last approved snapshot of the same site and adds up
@@ -110,7 +113,7 @@ Notes on how the rules are applied:
 - A "domain" is compared by its registrable domain: the last two labels (`dsf.ukm.de` is `ukm.de`),
   three under a built-in list of common second-level suffixes (`ac.uk`, `co.uk`, `gv.at`, `com.au`,
   ...). There is no full public-suffix list, so rare suffixes are judged as two labels.
-- Certificates are matched by thumbprint. Since this version the snapshot stores each certificate's
+- Certificates are matched by thumbprint. The snapshot stores each certificate's
   issuer DN, subject DN, DNS names and expiry (never the PEM), so a renewal that deleted the old
   certificate row can still be compared. Replacements are paired by subject first, whatever the order
   in the snapshot. A previous snapshot without these facts or without thumbprints is not comparable.
@@ -237,6 +240,5 @@ When a certificate is expiring:
 
 ## Monitoring
 
-- **Audit Log** — `/app/audit` shows all changes with filters
-- **Status Dashboard** — `/app/status` shows entity counts and expiry warnings
-- **Activity Feed** — floating button shows recent changes in real-time
+- **Audit Log** — `/app/audit` shows all changes with filters and export.
+- **Activity feed** — the "Recent activity" button in the footer of the canvas lists recent changes.
