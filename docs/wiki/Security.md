@@ -24,7 +24,9 @@ The production deployment signs users in by client certificate only. With `AUTH_
 - **Refresh needs the certificate** — `/auth/refresh` fails without the matching certificate (the token is not consumed, so a thief cannot burn the real session)
 - **Downloads** — the GUI bundle downloads need such a session (plus instance ownership or admin for the per-site bundle); `/fhir/**` needs a registered certificate on every request. The network-wide bundle is open to every registered site by design, because `/fhir/Bundle` already serves the same document to any registered DSF certificate; the Excel IP list (organization names, endpoint URLs and IPs, no contact data) is open to every signed-in user, because sites need it for their firewalls
 - **Admin actions** — every admin route requires a signed admin grant plus a step-up, which here is the certificate presented again and matched to the same user. Promotions need two admins from different sites, no self-approval; `admin_grants` rows are only written by the signed approval path
-- **Proxy duty** — the front proxy must reset `X-Client-Cert` and `X-Client-Verify` and be the only ingress, see [Deployment](../DEPLOYMENT.md)
+- **Logout** — `/auth/logout` revokes the refresh token only for the certificate the session belongs to, so a stolen cookie cannot end the real session
+- **Proxy duty** — the front proxy must reset `X-Client-Cert` and `X-Client-Verify`, be the only ingress, and prove itself with the shared secret `CLIENT_CERT_PROXY_SECRET` sent as `X-Proxy-Auth` (compared in constant time). The backend refuses to start in production without a secret of 32+ characters; outside cert mode, without it, certificate login and `/fhir/**` stay off. `CLIENT_CERT_TRUSTED_PROXIES` (IPs or CIDRs) additionally restricts the TCP peer. Certificate headers without a valid secret answer `401 PROXY_NOT_TRUSTED` (proxy misconfigured, distinct from `401 NO_CLIENT_CERT`, no certificate presented). See [Deployment](../DEPLOYMENT.md)
+- **Health** — `/health` and `/health/live` are public liveness checks; `/health/ready` (database and Redis state) answers loopback callers only and is a 404 for everyone else
 
 ## Transport Security
 
@@ -41,8 +43,12 @@ The production deployment signs users in by client certificate only. With `AUTH_
 ## Hardening
 
 - **Audit immutability** — `audit_logs` is append-only at the database level via `BEFORE UPDATE`/`BEFORE DELETE` triggers (migration 013), not just by convention
-- **CA blacklist** — Certificate uploads issued by a distrusted CA (subject DN / fingerprint) are rejected with `CA_BLACKLISTED`
-- **CA whitelist**: The CAs the DSF accepts in production are seeded at init (migration 022); certificates from other issuers are flagged, and rejected with `CA_NOT_WHITELISTED` when `CA_WHITELIST_ENFORCE=true`
+- **CA blacklist** — Certificate uploads and renewals issued by a distrusted CA (subject DN / fingerprint) are rejected with `CA_BLACKLISTED`
+- **CA whitelist** — The CAs the DSF accepts in production are seeded at init (migration 022); certificates from other issuers are flagged, and uploads and renewals are rejected with `CA_NOT_WHITELISTED` when `CA_WHITELIST_ENFORCE=true`
+- **Request risk assessment** — every approval request is scored against the last approved state (certificate, endpoint, contact and membership changes, takeover patterns); a review hint for the two admins, see the [Admin Guide](Admin-Guide.md#request-risk-assessment)
+- **Per-certificate purpose** — each certificate is published in the allow list and/or used for login (`publish_in_allowlist`, `use_for_login`); a login-only certificate never appears in a bundle
+- **Four-eyes everywhere it matters** — approvals, admin promotions, admin certificates, bundle restores, site removal and lifting incident certificate blocks each need two admins of different sites (e-mail domains)
+- **Incident blocks** — a site incident blocks the site's certificate thumbprints for good; only two admins can lift the blocks of a false alarm
 - **PEM size cap** — Uploaded PEM is capped (20 KB) so oversized input cannot tie up the parser
 - **Redis fail-soft** — The idle-timeout check distinguishes a missing activity key from Redis being unreachable, so a transient Redis blip does not log every user out
 - **Bundle key id** — Bundle signatures carry a `kid` header so consumers can verify offline and keys can rotate
