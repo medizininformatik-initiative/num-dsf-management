@@ -17,6 +17,7 @@ import { useI18n } from '../stores/i18n.store';
 import { RequestCard, type RequestCardProps } from '../components/admin/RequestCard';
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { AdminStatsSection } from '../components/admin/AdminStatsSection';
+import { SiteRemovalSection } from '../components/admin/SiteRemovalSection';
 import { Icon } from '../components/ui/Icon';
 
 export function AdminPage() {
@@ -116,6 +117,8 @@ export function AdminPage() {
             </ul>
           </div>
         )}
+
+        <SiteRemovalSection meEmail={me?.email ?? null} />
       </div>
     </div>
   );

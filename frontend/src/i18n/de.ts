@@ -2825,4 +2825,42 @@ export const de: Record<TranslationKey, string> = {
   introS10_b2: 'Stack: React, TypeScript, Node.js, Express, MySQL, Redis, Docker',
   introS10_b3: 'Betrieb: IMI Münster',
   introS10_b4: 'Oberfläche in Deutsch und Englisch',
+
+  // Removing a whole site with two admins
+  siteRemovalTitle: 'Standort entfernen',
+  siteRemovalIntro:
+    'Beim Entfernen wird ein Standort aus der Allow List des gesamten Netzwerks genommen und alle seine Logins enden. Zwei Admins mit unterschiedlichen E-Mail-Domains müssen zustimmen. In der Datenbank wird nichts gelöscht.',
+  siteRemovalWarning:
+    'Die nächste Allow-List-Version löscht Organisation, Endpunkte und Affiliations auf jedem DSF-Server. Der Standort kann sich nicht mehr anmelden und nicht mehr ausgewählt werden; das Portal kann das nicht rückgängig machen.',
+  siteRemovalPick: 'Standort',
+  siteRemovalPickPlaceholder: 'Standort auswählen…',
+  siteRemovalNoSites: 'Kein Standort verfügbar.',
+  siteRemovalReason: 'Begründung',
+  siteRemovalReasonPlaceholder: 'Warum wird dieser Standort entfernt?',
+  siteRemovalRequest: 'Entfernung beantragen',
+  siteRemovalRequestTitle: 'Entfernung des Standorts beantragen',
+  siteRemovalRequestBody:
+    'Ein zweiter Admin mit anderer E-Mail-Domain muss bestätigen, bevor sich etwas ändert.',
+  siteRemovalRequestedToast:
+    'Entfernung beantragt. Ein zweiter Admin einer anderen Domain muss bestätigen.',
+  siteRemovalAlreadyPending: 'Für diesen Standort liegt bereits ein Antrag auf Entfernung vor.',
+  siteRemovalPendingTitle: 'Offene Standort-Entfernungen',
+  siteRemovalDoneTitle: 'Entfernte Standorte',
+  siteRemovalMeta: 'Beantragt von {who} · {when}',
+  siteRemovalDoneMeta: 'Entfernt von {who} · {when}',
+  siteRemovalReasonLine: 'Begründung: {reason}',
+  siteRemovalConfirm: 'Entfernung bestätigen',
+  siteRemovalConfirmTitle: 'Entfernung des Standorts bestätigen',
+  siteRemovalConfirmBody:
+    'Der Standort wird sofort entfernt: Er wird aus der Allow List genommen, seine Logins enden und eine neue Allow-List-Version wird veröffentlicht.',
+  siteRemovalCancel: 'Antrag zurückziehen',
+  siteRemovalCancelTitle: 'Entfernungsantrag zurückziehen',
+  siteRemovalCancelBody: 'Der Antrag wird zurückgezogen; der Standort bleibt unverändert.',
+  siteRemovalOwnHint: 'Sie haben diese Entfernung beantragt; ein anderer Admin muss bestätigen.',
+  siteRemovalSameSiteHint:
+    'Der bestätigende Admin muss eine andere E-Mail-Domain haben als der Antragsteller.',
+  siteRemovalConfirmedToast: 'Standort entfernt. Allow-List-Version {version} veröffentlicht.',
+  siteRemovalConfirmedNoVersionToast:
+    'Standort entfernt, aber die Veröffentlichung ist fehlgeschlagen. Bitte manuell eine neue Allow-List-Version erzeugen.',
+  siteRemovalCancelledToast: 'Antrag zurückgezogen.',
 };

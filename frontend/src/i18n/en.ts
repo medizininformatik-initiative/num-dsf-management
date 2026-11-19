@@ -2763,6 +2763,43 @@ export const en = {
   introS10_b2: 'Stack: React, TypeScript, Node.js, Express, MySQL, Redis, Docker',
   introS10_b3: 'Operated by IMI Münster',
   introS10_b4: 'Interface in German and English',
+
+  // Removing a whole site with two admins
+  siteRemovalTitle: 'Remove a site',
+  siteRemovalIntro:
+    'Removing a site withdraws it from the allow list of the whole network and ends all of its logins. Two admins from different e-mail domains must agree. Nothing is deleted from the database.',
+  siteRemovalWarning:
+    'The next allow list version deletes the organization, its endpoints and its affiliations on every DSF server. The site can no longer log in or be selected, and the portal cannot undo this.',
+  siteRemovalPick: 'Site',
+  siteRemovalPickPlaceholder: 'Select a site…',
+  siteRemovalNoSites: 'No site available.',
+  siteRemovalReason: 'Reason',
+  siteRemovalReasonPlaceholder: 'Why is this site removed?',
+  siteRemovalRequest: 'Request removal',
+  siteRemovalRequestTitle: 'Request site removal',
+  siteRemovalRequestBody:
+    'A second admin from another e-mail domain has to confirm before anything changes.',
+  siteRemovalRequestedToast: 'Removal requested. A second admin from another domain must confirm.',
+  siteRemovalAlreadyPending: 'A removal request for this site is already pending.',
+  siteRemovalPendingTitle: 'Pending site removals',
+  siteRemovalDoneTitle: 'Removed sites',
+  siteRemovalMeta: 'Requested by {who} · {when}',
+  siteRemovalDoneMeta: 'Removed by {who} · {when}',
+  siteRemovalReasonLine: 'Reason: {reason}',
+  siteRemovalConfirm: 'Confirm removal',
+  siteRemovalConfirmTitle: 'Confirm site removal',
+  siteRemovalConfirmBody:
+    'The site is removed right away: it is withdrawn from the allow list, its logins stop and a new allow list version is published.',
+  siteRemovalCancel: 'Cancel request',
+  siteRemovalCancelTitle: 'Cancel removal request',
+  siteRemovalCancelBody: 'The request is withdrawn; the site stays as it is.',
+  siteRemovalOwnHint: 'You requested this removal; another admin has to confirm.',
+  siteRemovalSameSiteHint:
+    'The confirming admin must belong to a different e-mail domain than the requester.',
+  siteRemovalConfirmedToast: 'Site removed. Allow list version {version} published.',
+  siteRemovalConfirmedNoVersionToast:
+    'Site removed, but publishing failed. Create a new allow list version manually.',
+  siteRemovalCancelledToast: 'Request cancelled.',
 } as const;
 
 export type TranslationKey = keyof typeof en;
