@@ -26,7 +26,7 @@ bash scripts/generate-keys.sh
 ## Authentication
 
 ### "I lost my TOTP device"
-Use one of your 10 backup codes. Each code works once. If all are used, you need a database reset by an admin.
+Use one of your 10 backup codes. Each code works once. If all are used, an operator has to reset your TOTP on the server (for admins see `scripts/admin-cert.sh totp-reset` in the [Deployment guide](../DEPLOYMENT.md)).
 
 ### "OTP code expired"
 Codes expire after 10 minutes. Request a new one.

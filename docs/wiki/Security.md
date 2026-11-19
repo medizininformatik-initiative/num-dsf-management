@@ -24,7 +24,7 @@ The production deployment signs users in by client certificate only. With `AUTH_
 - **Refresh needs the certificate** — `/auth/refresh` fails without the matching certificate (the token is not consumed, so a thief cannot burn the real session)
 - **Downloads** — the GUI bundle downloads need such a session (plus instance ownership or admin for the per-site bundle); `/fhir/**` needs a registered certificate on every request. The network-wide bundle is open to every registered site by design, because `/fhir/Bundle` already serves the same document to any registered DSF certificate; the Excel IP list (organization names, endpoint URLs and IPs, no contact data) is open to every signed-in user, because sites need it for their firewalls
 - **Admin actions** — every admin route requires a signed admin grant plus a step-up, which here is the certificate presented again and matched to the same user. Promotions need two admins from different sites, no self-approval; `admin_grants` rows are only written by the signed approval path
-- **Proxy duty** — the front proxy must reset `X-Client-Cert` and `X-Client-Verify` and be the only ingress, see [Deployment](https://github.com/Mukeyii/num-dsf-allowlist/blob/main/docs/DEPLOYMENT.md)
+- **Proxy duty** — the front proxy must reset `X-Client-Cert` and `X-Client-Verify` and be the only ingress, see [Deployment](../DEPLOYMENT.md)
 
 ## Transport Security
 
@@ -56,4 +56,4 @@ The production deployment signs users in by client certificate only. With `AUTH_
 
 ---
 
-For the full threat model see the root [`SECURITY.md`](https://github.com/Mukeyii/num-dsf-allowlist/blob/main/SECURITY.md); for the rationale behind these choices see the [ADRs](https://github.com/Mukeyii/num-dsf-allowlist/tree/main/docs/adr).
+For the reporting process and scope see the root [`SECURITY.md`](../../SECURITY.md); for the rationale behind these choices see the [ADRs](../adr/).

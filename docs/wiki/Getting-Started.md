@@ -32,7 +32,7 @@ This starts 6 containers: nginx (port 80), frontend (Vite), backend (Express), M
 ### 4. Seed admin email
 
 ```bash
-docker compose exec backend npx ts-node src/db/seed-whitelist.ts your@email.com
+docker compose exec backend npx ts-node src/db/seed-whitelist.ts admin@example.org
 ```
 
 ### 5. (Optional) Seed test data
@@ -54,7 +54,7 @@ Creates 30 fictional organizations with contacts, endpoints, certificates, and m
 
 1. Enter your email at http://localhost
 2. Open Mailhog (http://localhost:8025) to get the 6-digit OTP code
-3. First login: scan QR code with an authenticator app (Google Authenticator, Authy)
+3. First login: scan QR code with an authenticator app (for example Google Authenticator)
 4. Enter the 6-digit TOTP code
 5. Save your backup codes
 
@@ -64,12 +64,11 @@ To seed the **first** admin on a fresh database, add your email to `.env` before
 the initial backend start:
 
 ```
-IMI_ADMIN_EMAILS=your@email.com
+IMI_ADMIN_EMAILS=admin@example.org
 ```
 
 Then start (or restart) the backend: `docker compose restart backend`
 
 `IMI_ADMIN_EMAILS` is consumed only while `admin_grants` is empty; once the first
 admins exist the env var is ignored. Additional admins are then added via the
-4-eyes promotion flow at `/app/admin/promotions` (a second admin approves). See
-the [Admin Guide](Admin-Guide.md).
+4-eyes promotion flow at `/app/admin/promotions` (a second admin approves). See the [Admin Guide](Admin-Guide.md).
