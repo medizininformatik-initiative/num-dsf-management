@@ -98,6 +98,68 @@ describe('POST /auth/logout in cert mode', () => {
     expect(await getRefreshToken(hashOf(rt))).toBe(ownerId);
   });
 
+  it("does not let site A's certificate end site B's session of the same owner", async () => {
+    const siteUser = uuidv4();
+    const siteEmail = `logout-cm-site-${sfx}@example.de`;
+    const orgs = [`a-${sfx}.example.de`, `b-${sfx}.example.de`];
+    const instances = [uuidv4(), uuidv4()];
+    const pems = [makeCert(`site-a-${sfx}`), makeCert(`site-b-${sfx}`)];
+    await db('users').insert({
+      id: siteUser,
+      email: siteEmail,
+      totp_enabled: false,
+      created_at: new Date(),
+    });
+    for (let i = 0; i < 2; i++) {
+      await db('instances').insert({
+        id: instances[i],
+        user_id: siteUser,
+        label: 'L',
+        created_at: new Date(),
+      });
+      await db('organizations').insert({
+        identifier: orgs[i],
+        instance_id: instances[i],
+        name: orgs[i],
+        email: 'a@b.de',
+        active: true,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+      await db('org_login_certificates').insert({
+        fingerprint: sha512FingerprintFromPem(pems[i]),
+        organization_id: orgs[i],
+        certificate_id: null,
+        source: 'ADMIN',
+        created_by: 'test',
+        created_at: new Date(),
+      });
+    }
+    try {
+      const mintB = async () =>
+        (
+          await createTokenPair({
+            id: siteUser,
+            email: siteEmail,
+            totpEnabled: false,
+            authMethod: 'cert',
+            scopeInstanceId: instances[1],
+          })
+        ).refreshToken;
+      const rt = await mintB();
+      await request(app).post('/auth/logout').set('Cookie', `refreshToken=${rt}`).set(hdr(pems[0]));
+      expect(await getRefreshToken(hashOf(rt))).toBe(siteUser);
+      await request(app).post('/auth/logout').set('Cookie', `refreshToken=${rt}`).set(hdr(pems[1]));
+      expect(await getRefreshToken(hashOf(rt))).toBeNull();
+    } finally {
+      await db('org_login_certificates').whereIn('organization_id', orgs).del();
+      await db('organizations').whereIn('identifier', orgs).del();
+      await db('instances').whereIn('id', instances).del();
+      await db('audit_logs').where({ user_email: siteEmail }).del();
+      await db('users').where({ id: siteUser }).del();
+    }
+  });
+
   it('revokes with the owning certificate', async () => {
     const rt = await mint();
     const res = await request(app)

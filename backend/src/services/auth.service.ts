@@ -15,7 +15,6 @@ import { sendOtpEmail } from './mail.service';
 import {
   setRefreshToken,
   deleteRefreshToken,
-  getRefreshToken,
   getRefreshRecord,
   parseRefreshValue,
   redis,
@@ -499,15 +498,21 @@ export async function logout(
   opts?: { certFingerprint?: string | null },
 ): Promise<void> {
   const hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-  const userId = await getRefreshToken(hash);
+  const record = await getRefreshRecord(hash);
+  const userId = record?.userId ?? null;
   // Certificate-only deployment: a stolen refresh cookie alone must not be
   // able to end the real user's session. Revoke only for the certificate the
-  // session belongs to; otherwise leave the token untouched (the caller still
-  // clears its own cookie and answers success).
-  if (isCertAuthMode() && userId) {
+  // session belongs to, with the same user AND scope check as refresh (an org
+  // certificate of site A must not end site B's session, even for one owner);
+  // otherwise leave the token untouched (the caller still clears its own
+  // cookie and answers success). Read-only: no user row is created here.
+  if (isCertAuthMode() && record) {
     const fp = opts?.certFingerprint;
-    const resolved = fp && isValidSha512Fingerprint(fp) ? await resolveCertLogin(fp) : null;
-    if (!resolved || resolved.user.id !== userId) return;
+    const binding = fp && isValidSha512Fingerprint(fp) ? await findCertBinding(fp) : null;
+    const sameScope = record.scopeInstanceId
+      ? binding?.kind === 'org' && binding.instanceId === record.scopeInstanceId
+      : binding?.kind === 'admin';
+    if (!binding || binding.userId !== record.userId || !sameScope) return;
   }
   await deleteRefreshToken(hash);
   if (!userId) return;
