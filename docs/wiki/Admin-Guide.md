@@ -154,6 +154,21 @@ version on the Bundle Versions page. Nothing is deleted from the database
 (soft removal); hard deletion is not part of the portal. Request, confirm and
 cancel are audited (`AUTH`, `diff_json.action` `instance_removal_*`).
 
+**Removal is permanent for now.** There is no route or button to undo it, the
+organization and endpoint identifiers stay occupied (nobody can register them
+again) and the removed site's data stays in the database. If a site was removed
+by mistake, an operator has to undo it by hand in the database:
+
+```sql
+UPDATE instances SET removed_at = NULL, removed_by = NULL WHERE id = '<instance-id>';
+```
+
+Then the site submits a new approval request and two admins approve it: the next
+allow-list version publishes the site again and the approval restores its
+approval-based login certificates. The login certificates that were removed
+with the site (including onboarding and admin-added ones) are not brought back;
+add them again on the site's certificate page or in the Admin area.
+
 ## Email Whitelist
 
 Manage who can log in:
