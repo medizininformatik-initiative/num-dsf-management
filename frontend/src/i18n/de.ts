@@ -719,7 +719,7 @@ export const de: Record<TranslationKey, string> = {
   endpointModalIpHint:
     'Geben Sie ausgehende IP-Adressen an, damit andere Organisationen ihre Firewalls konfigurieren können.',
   endpointModalAddIp: 'IP-Adresse hinzufügen',
-  endpointModalIpPlaceholder: 'z.B. 128.176.232.132',
+  endpointModalIpPlaceholder: 'z.B. 192.0.2.10',
   endpointModalFhirLabel: 'FHIR',
   endpointModalFhirDesc: 'ausgehende IP des FHIR-Servers',
   endpointModalBpeLabel: 'BPE',

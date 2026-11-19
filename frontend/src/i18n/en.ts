@@ -707,7 +707,7 @@ export const en = {
   endpointModalIpHint:
     'Specify outgoing IP addresses so other organizations can configure their firewalls.',
   endpointModalAddIp: 'Add IP address',
-  endpointModalIpPlaceholder: 'e.g. 128.176.232.132',
+  endpointModalIpPlaceholder: 'e.g. 192.0.2.10',
   endpointModalFhirLabel: 'FHIR',
   endpointModalFhirDesc: 'outgoing IP of FHIR server',
   endpointModalBpeLabel: 'BPE',

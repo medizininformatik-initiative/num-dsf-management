@@ -140,7 +140,7 @@ describe('EndpointModal', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /add ip address/i }));
     fireEvent.change(screen.getByPlaceholderText(/128\.176\.232\.132/), {
-      target: { value: '128.176.232.132' },
+      target: { value: '192.0.2.10' },
     });
     fireEvent.click(screen.getByRole('button', { name: /add endpoint/i }));
 
@@ -149,7 +149,7 @@ describe('EndpointModal', () => {
       expect.objectContaining({
         identifier: 'dsf-fhir.hospital.de',
         address: 'https://dsf-fhir.hospital.de/fhir',
-        ipAddresses: [expect.objectContaining({ ip: '128.176.232.132' })],
+        ipAddresses: [expect.objectContaining({ ip: '192.0.2.10' })],
       }),
     );
     expect(endpointUpdate).not.toHaveBeenCalled();
