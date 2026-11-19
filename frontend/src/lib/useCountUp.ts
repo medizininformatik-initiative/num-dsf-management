@@ -23,7 +23,8 @@ const easeOut = (x: number): number => 1 - Math.pow(1 - x, 3);
 
 /** Counts from 0 (and on later changes from the shown value) to `value`. */
 export function useCountUp(value: number, durationMs = 600): number {
-  const enabled = motionEnabled();
+  // A zero or negative duration has nothing to animate (and would divide by 0).
+  const enabled = motionEnabled() && durationMs > 0;
   const [display, setDisplay] = useState(enabled ? 0 : value);
   const shown = useRef(display);
 
@@ -32,7 +33,7 @@ export function useCountUp(value: number, durationMs = 600): number {
     const from = shown.current;
     const start = performance.now();
     let raf = requestAnimationFrame(function step(now: number) {
-      const p = Math.min(1, (now - start) / durationMs);
+      const p = Math.min(1, Math.max(0, (now - start) / durationMs));
       shown.current = Math.round(from + (value - from) * easeOut(p));
       setDisplay(shown.current);
       if (p < 1) raf = requestAnimationFrame(step);
