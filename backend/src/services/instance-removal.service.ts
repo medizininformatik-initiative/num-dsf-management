@@ -204,6 +204,9 @@ export async function confirmRemoval(
 
   const now = new Date();
   await db.transaction(async (trx) => {
+    // Lock the instance row first: a submit (which locks it too) either finished before, so its
+    // request is withdrawn below, or waits and then sees the removal.
+    await trx('instances').where({ id: row.instance_id }).forUpdate().first('id');
     // First decision wins: only a still-PENDING row can be flipped.
     const won = await trx('instance_removal_requests')
       .where({ id, status: 'PENDING' })

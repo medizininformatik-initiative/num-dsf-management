@@ -86,6 +86,8 @@ adminApprovalRouter.post(
         return res.status(409).json({ error: { code, message: 'Request was already approved.' } });
       if (code === 'REQUEST_FINALIZED')
         return res.status(409).json({ error: { code, message: 'Request is no longer pending.' } });
+      if (code === 'INSTANCE_REMOVED')
+        return res.status(409).json({ error: { code, message: 'The site was removed.' } });
       if (code === 'INVALID_ADMIN_EMAIL')
         return res.status(400).json({ error: { code, message: 'Invalid admin email.' } });
       if (code === 'REQUEST_NOT_FOUND')

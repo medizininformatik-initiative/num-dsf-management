@@ -150,12 +150,14 @@ async function buildSnapshot(instanceId: string, trx: Knex | Knex.Transaction = 
  */
 export async function submitApproval(instanceId: string, userEmail: string, ipAddress: string) {
   return db.transaction(async (trx) => {
-    // A removed site (migration 039) can never be approved again.
-    const removed = await trx('instances')
+    // A removed site (migration 039) can never be approved again. The instance row is locked
+    // so a removal that is being confirmed (it locks the same row) cannot slip between this
+    // check and the insert of the request.
+    const instance = await trx('instances')
       .where({ id: instanceId })
-      .whereNotNull('removed_at')
-      .first('id');
-    if (removed) throw new Error('INSTANCE_REMOVED');
+      .forUpdate()
+      .first('id', 'removed_at');
+    if (instance?.removed_at) throw new Error('INSTANCE_REMOVED');
     const pending = await trx('approval_requests')
       .where({ instance_id: instanceId, status: 'PENDING' })
       .forUpdate()
@@ -345,6 +347,7 @@ export async function getSignaturesForRequests(
  * commit.
  * @throws INVALID_ADMIN_EMAIL if the approver's email maps to no site.
  * @throws REQUEST_NOT_FOUND / REQUEST_FINALIZED if the request is missing or already resolved.
+ * @throws INSTANCE_REMOVED if the site was removed.
  * @throws ALREADY_DECIDED if this admin already signed the request.
  */
 export async function approveRequest(
@@ -365,6 +368,12 @@ export async function approveRequest(
     const request = await trx('approval_requests').where({ id: requestId }).forUpdate().first();
     if (!request) throw new Error('REQUEST_NOT_FOUND');
     if (request.status !== 'PENDING') throw new Error('REQUEST_FINALIZED');
+    // A removed site is never approved, also when its removal left this request pending.
+    const removedInstance = await trx('instances')
+      .where({ id: request.instance_id })
+      .whereNotNull('removed_at')
+      .first('id');
+    if (removedInstance) throw new Error('INSTANCE_REMOVED');
 
     const sigs = (await trx('approval_signatures').where({
       approval_request_id: requestId,

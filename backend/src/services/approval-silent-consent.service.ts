@@ -27,9 +27,12 @@ const SILENT_CONSENT_DAYS = Math.max(
 export async function runSilentConsentSweep(now: Date = new Date()): Promise<number> {
   const cutoff = new Date(now.getTime() - SILENT_CONSENT_DAYS * 86400_000);
   // Skip the multi-KB snapshot_json column — the sweep only needs the ids.
-  const pending = await db('approval_requests')
-    .where({ status: 'PENDING' })
-    .select('id', 'instance_id');
+  // A removed site's request is never promoted.
+  const pending = await db('approval_requests as r')
+    .join('instances as i', 'i.id', 'r.instance_id')
+    .whereNull('i.removed_at')
+    .where('r.status', 'PENDING')
+    .select('r.id as id', 'r.instance_id as instance_id');
 
   // One signature query for the whole sweep instead of one per request.
   const sigsByRequest = await getSignaturesForRequests(pending.map((p) => p.id));
