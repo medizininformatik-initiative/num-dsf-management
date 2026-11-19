@@ -1,18 +1,12 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dsf-management-dark.svg">
-  <img src="docs/logo-dsf-management-light.svg" alt="DSF Management Tool" height="40" />
-</picture>
-
-# DSF Management Tool
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dsf-management-dark.svg">
+    <img src="docs/logo-dsf-management-light.svg" alt="DSF Management Tool" height="40" />
+  </picture>
+  <h1>DSF Management Tool</h1>
+</div>
 
 Management platform for the [Data Sharing Framework](https://dsf.dev) (DSF) networks of the German Medical Informatics Initiative (MII) and the Network University Medicine (NUM). Sites maintain their organization, endpoints, certificates and memberships; administrators review and approve changes and publish them as the signed DSF allow list. Around the allow list the tool covers certificate lifecycle and CA policy, security incidents with NIS2 reporting, a marketplace for DSF process plugins, a network map, audit and backups, and an API for automated certificate renewal.
-
-<a href="https://www.medizin.uni-muenster.de/imi/das-institut.html">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="frontend/public/logos/IMI-Logo-grad-eng-dark.png">
-    <img src="frontend/public/logos/IMI-Logo-grad-eng.png" alt="Institute of Medical Informatics, University of Münster" height="48" />
-  </picture>
-</a>
 
 Operated by the [Institute of Medical Informatics](https://www.medizin.uni-muenster.de/imi/das-institut.html), University of Münster.
 
@@ -109,3 +103,14 @@ Sessions use RS256-signed JWTs with revocable refresh tokens. Sensitive admin ac
 ## License
 
 Apache 2.0, see [`LICENSE`](LICENSE). Institute of Medical Informatics, University of Münster.
+
+<br />
+
+<div align="center">
+  <a href="https://www.medizin.uni-muenster.de/imi/das-institut.html">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="frontend/public/logos/IMI-Logo-grad-eng-dark.png">
+      <img src="frontend/public/logos/IMI-Logo-grad-eng.png" alt="Institute of Medical Informatics, University of Münster" height="110" />
+    </picture>
+  </a>
+</div>
