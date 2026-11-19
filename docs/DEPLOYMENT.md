@@ -8,7 +8,7 @@
 
 ## Environment variables
 
-All configuration flows through env vars (no hardcoded secrets). Copy `.env.example` to `.env` and fill in.
+All configuration flows through environment variables. Copy `.env.example` (development) or `.env.prod.example` (production) and fill it in.
 
 **Application:**
 - `NODE_ENV` — `production` in prod
@@ -17,31 +17,33 @@ All configuration flows through env vars (no hardcoded secrets). Copy `.env.exam
 
 **Database:**
 - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+- `DB_ROOT_PASSWORD` — MySQL root password (read by the compose files, not by the backend)
 
 **Redis:**
-- `REDIS_URL`
+- `REDIS_URL`; `REDIS_PASSWORD` in the production compose files
 
 **JWT (RS256, asymmetric):**
 - `JWT_PRIVATE_KEY_BASE64` — base64-encoded RSA private key
 - `JWT_PUBLIC_KEY_BASE64` — base64-encoded RSA public key
-- `JWT_EXPIRES_IN` — e.g. `15m`
-- `REFRESH_TOKEN_EXPIRES_IN` — e.g. `7d`
+- `JWT_EXPIRES_IN` — access-token lifetime, default `15m`. The refresh-token lifetime is fixed at 7 days.
 
 **TOTP encryption:**
 - `TOTP_ENCRYPTION_KEY` — 32-byte hex key for AES-256 encryption of TOTP secrets at rest
 
 **Mail (SMTP):**
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`
+- `OPERATOR_SUPPORT_EMAIL` — contact address shown in site mails (default `noreply@dsf-allowlist.local`)
 
 **DSF environment indicator:**
-- `DSF_ENVIRONMENT` — `TEST` or `PRODUCTION`
-- `DSF_ENV_COLOR` — hex color for the environment badge
+- `DSF_ENVIRONMENT` — `TEST` or `PRODUCTION`. The frontend shows it as the environment label (build argument `VITE_DSF_ENVIRONMENT`).
 
 **Rate limiting (Redis-backed):**
 - `RATE_LIMIT_OTP_MAX` (default 5), `RATE_LIMIT_OTP_WINDOW_MS` (default 900000)
 - `RATE_LIMIT_API_MAX` (default 100), `RATE_LIMIT_API_WINDOW_MS` (default 60000)
 - `RATE_LIMIT_CERT_LOGIN_MAX` (default 120), `RATE_LIMIT_CERT_LOGIN_WINDOW_MS` (default 900000). Limit of `POST /auth/client-cert-login` per presented certificate (SHA-512 fingerprint, the IP when there is none). Separate from the tight OTP bucket because the single-page app logs in on every reload and new tab.
 - `RATE_LIMIT_CERT_LOGIN_FAIL_MAX` (default 30), `RATE_LIMIT_CERT_LOGIN_FAIL_WINDOW_MS` (default 900000). Failed `POST /auth/client-cert-login` attempts per source IP, whichever certificate was presented; successful logins do not count.
+
+- Further per-route limits: `RATE_LIMIT_REFRESH_*` (60 per 15 min), `RATE_LIMIT_STEPUP_*` (20 per 15 min), `RATE_LIMIT_BACKUP_DOWNLOAD_*` (10 per 15 min), `RATE_LIMIT_ONBOARDING_*` (10 per 15 min), `RATE_LIMIT_INCIDENT_REPORT_*` (10 per hour); each has a `_MAX` and a `_WINDOW_MS` variable.
 
 **Admin team:**
 - `IMI_ADMIN_EMAILS` — comma-separated list. Each admin's email **domain** is treated as their "site" for the 4-eyes approval rule.
@@ -55,6 +57,15 @@ All configuration flows through env vars (no hardcoded secrets). Copy `.env.exam
 
 **Session inactivity:**
 - `IDLE_TIMEOUT_MS` — sliding inactivity timeout (default 1800000)
+
+**Certificate-only deployment:**
+- `AUTH_MODE=cert`, `CLIENT_CERT_PROXY_SECRET` and `CLIENT_CERT_TRUSTED_PROXIES`, see "Client-certificate sign-in (mTLS)" below.
+
+**Other:**
+- `ADMIN_GRANT_PRIVATE_KEY_BASE64`, `ADMIN_GRANT_PUBLIC_KEY_BASE64` — signing keys of the admin grants, see "Admin grants & user management".
+- `BACKUP_DIR` (default `/backups`), `BACKUP_ENCRYPTION_KEY` — application backups, see "Backup und Wiederherstellung".
+- `MEMBERSHIP_SOFT_DELETE_RETENTION_DAYS` — days before soft-deleted memberships are removed (default 90).
+- `LOG_LEVEL` — backend log level.
 
 ## First Production Deploy
 
@@ -72,7 +83,7 @@ bash scripts/generate-keys.sh
 
 # 4. Seed admin email
 docker compose -f docker-compose.prod.yml run --rm backend \
-  node dist/db/seed-whitelist.js admin@imi.uni-muenster.de
+  node dist/db/seed-whitelist.js admin@example.org
 
 # 5. Start
 docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
@@ -83,63 +94,11 @@ docker compose -f docker-compose.prod.yml logs -f backend
 
 ## Run from a downloaded image (no build, offline-capable)
 
-> For a step-by-step walkthrough (including a local test on Windows), see
-> [RUN-FROM-IMAGE.md](RUN-FROM-IMAGE.md).
+Every push to `main` produces an image bundle as a CI artifact; each tagged GitHub Release attaches the bundle and a run-kit (`docker-compose.release.yml`, nginx config, `.env.prod.example`, `db/migrations/`, preset `.image.env`). [RUN-FROM-IMAGE.md](RUN-FROM-IMAGE.md) has the step-by-step procedure.
 
-Every push to `main` produces a **downloadable image bundle** as a CI artifact
-(`dsf-allowlist-images-<sha>.tar.gz`, on the workflow run's summary page). Each
-tagged **GitHub Release** additionally attaches that bundle, its `.sha256`, and a
-**run-kit** (`dsf-allowlist-runkit-<tag>.tar.gz`) as downloadable assets. The
-run-kit contains `docker-compose.release.yml`, the nginx configs,
-`.env.prod.example`, `db/migrations/`, and a preset `.image.env`
-(`IMAGE_OWNER`/`IMAGE_TAG`).
+`docker-compose.release.yml` uses `image:` (no `build:`) and the stock unprivileged nginx image with a mounted config. The bundled frontend image is the OTP/TOTP build. The cert-auth variant (`VITE_AUTH_MODE=cert`) is fixed at build time, so it is not part of the bundle; build it with `docker-compose.cert-auth.yml`.
 
-Run it without building anything:
-
-```bash
-# 1. Download the image bundle + run-kit from the Release page, then:
-sha256sum -c dsf-allowlist-images-<tag>.tar.gz.sha256
-docker load < dsf-allowlist-images-<tag>.tar.gz      # loads backend + frontend images
-
-# 2. Unpack the run-kit and configure
-tar xzf dsf-allowlist-runkit-<tag>.tar.gz
-cp .env.prod.example .env.prod
-
-# Generate the required RS256 JWT keypair + TOTP key straight into .env.prod
-# (the backend refuses to start if any of these are empty):
-openssl genrsa -out jwt_priv.pem 2048
-openssl rsa -in jwt_priv.pem -pubout -out jwt_pub.pem
-sed -i "s|^JWT_PRIVATE_KEY_BASE64=.*|JWT_PRIVATE_KEY_BASE64=$(base64 -w0 jwt_priv.pem)|" .env.prod
-sed -i "s|^JWT_PUBLIC_KEY_BASE64=.*|JWT_PUBLIC_KEY_BASE64=$(base64 -w0 jwt_pub.pem)|" .env.prod
-sed -i "s|^TOTP_ENCRYPTION_KEY=.*|TOTP_ENCRYPTION_KEY=$(openssl rand -hex 32)|" .env.prod
-rm jwt_priv.pem jwt_pub.pem
-
-# Then edit .env.prod and set the remaining secrets:
-#   DB_ROOT_PASSWORD, DB_NAME, DB_USER, DB_PASSWORD, REDIS_PASSWORD,
-#   SMTP_*, MAIL_FROM, IMI_ADMIN_EMAILS, DSF_ENVIRONMENT.
-mkdir -p certs                                        # add server.crt/key (+ client-ca.crt)
-
-# 3. Start — .image.env carries IMAGE_OWNER/IMAGE_TAG; .env.prod carries secrets
-docker compose --env-file .env.prod --env-file .image.env -f docker-compose.release.yml up -d
-```
-
-Or pull from the registry instead of loading the file (online):
-
-```bash
-docker pull ghcr.io/<owner>/dsf-allowlist-backend:<tag>
-docker pull ghcr.io/<owner>/dsf-allowlist-frontend:<tag>
-```
-
-`docker-compose.release.yml` uses `image:` (no `build:`), so it runs the loaded or
-pulled images directly; nginx uses the stock unprivileged image with the mounted
-config. The bundled frontend image is the standard OTP/TOTP build; the cert-auth
-variant (`VITE_AUTH_MODE=cert`) is baked at build time, so it is not part of the
-downloadable bundle — build it locally via `docker-compose.cert-auth.yml`.
-
-The frontend build reads `DSF_ENVIRONMENT` (the TEST/PRODUCTION label shown in the UI) as the
-`VITE_DSF_ENVIRONMENT` build argument, so builds must pass `--env-file .env.prod`. The prebuilt
-frontend image of `docker-compose.release.yml` has its environment label fixed at image build
-time; changing `DSF_ENVIRONMENT` in `.env.prod` has no effect on it.
+The frontend build reads `DSF_ENVIRONMENT` as the `VITE_DSF_ENVIRONMENT` build argument, so builds must pass `--env-file .env.prod`. The prebuilt frontend image has its environment label fixed at image build time; changing `DSF_ENVIRONMENT` in `.env.prod` does not affect it.
 
 ## Update Process
 
@@ -154,11 +113,11 @@ For a server with no git that instead unpacks a downloaded zip, see "Updating a 
 
 ### Updating a zip-based deployment (no git on the server)
 
-This server has no git; the operator downloads the `main` branch as a zip, unpacks it next to the running stack, and lets `scripts/update-server.sh` apply it in place. Run the script with `--help` for the full step list and environment overrides.
+For a server without git: download the `main` branch as a zip, unpack it next to the running stack, and let `scripts/update-server.sh` apply it in place. Run the script with `--help` for the full step list and environment overrides.
 
 **1. Get the new tree onto the server**
 
-The repository is private, so download the zip from a browser session that is already logged in to GitHub, or with a personal access token:
+Download the zip in a browser, or, if the repository is private, with a personal access token:
 
 ```bash
 # Browser: https://github.com/Mukeyii/num-dsf-allowlist/archive/refs/heads/main.zip
@@ -182,7 +141,7 @@ scripts/update-server.sh /tmp/dsf-new/num-dsf-allowlist-main
 
 The dry run reports exactly which files rsync would change and which migrations are pending, without touching anything (no copy, no database, no rebuild). Review it before running for real.
 
-**What the script preserves.** `.env.prod`, `.env`, `docker-compose.apache.yml` (the Apache override, which is not part of the repo), `hackathon/`, `.migrations-applied`, `certs/`, `node_modules/` and `.git/` are all excluded from the copy, so a server-local file is never overwritten by the new tree. No `--delete` is ever used, so files removed from the repo are simply left behind on the server.
+**What the script preserves.** `.env.prod`, `.env`, `docker-compose.apache.yml` (a local Apache override, not part of the repo), `hackathon/`, `.migrations-applied`, `certs/`, `node_modules/` and `.git/` are all excluded from the copy, so a server-local file is never overwritten by the new tree. No `--delete` is ever used, so files removed from the repo are simply left behind on the server.
 
 **How `.migrations-applied` works.** This file lists every migration basename already applied to this database, one per line. The first time the script runs against a given server it does not exist yet, so the script infers a baseline from whatever is currently in `db/migrations/` (those were applied at first init) and prints a warning; from then on, each migration the script applies successfully is appended to the file. If a migration is ever applied by hand outside the script (for example while debugging), add its basename to `/opt/dsf-allowlist/.migrations-applied` on its own line afterwards, otherwise the script will try to apply it again on the next update and fail on a duplicate.
 
@@ -190,7 +149,7 @@ The dry run reports exactly which files rsync would change and which migrations 
 
 ## Database migrations
 
-Migrations live at `db/migrations/*.sql` (NOT under `backend/src/`). The dev and cert-auth stacks mount this directory into the MySQL container at `/docker-entrypoint-initdb.d/`, so on a fresh data volume every migration runs once, in filename order, at first init. The `prod` and `release` composes do not auto-mount them; apply them with the command below (the release run-kit ships `db/migrations/` for exactly this).
+Migrations live at `db/migrations/*.sql` (NOT under `backend/src/`). The dev, cert-auth and release stacks mount this directory into the MySQL container at `/docker-entrypoint-initdb.d/`, so on a fresh data volume every migration runs once, in filename order, at first init. `docker-compose.prod.yml` does not mount it; apply migrations there with the command below. On any stack, later migrations are applied by hand.
 
 To apply a NEW migration to a running production DB without restarting:
 
@@ -265,7 +224,7 @@ Apache weist abgelaufene Client-Zertifikate ab; mit einem abgelaufenen Admin-Zer
 2. **Server-CLI.** Sind alle Admins ausgesperrt, hinterlegt der Serverbetreiber ein Zertifikat direkt auf dem Server. Das funktioniert nur für eine E-Mail mit gültiger Admin-Berechtigung; Admin-Rechte zu vergeben bleibt das Vier-Augen-Verfahren im Portal.
 
    ```bash
-   scripts/admin-cert.sh add admin@imi.uni-muenster.de /pfad/neues-zertifikat.pem --label "Notfall"
+   scripts/admin-cert.sh add admin@example.org /pfad/neues-zertifikat.pem --label "Notfall"
    scripts/admin-cert.sh list                 # alle Admin-Zertifikate mit Ablauf
    scripts/admin-cert.sh remove <fingerprint-prefix> --yes
    ```
@@ -295,7 +254,7 @@ Nur Administratoren brauchen eine Authenticator-App, und nur für heikle Aktione
 - **Telefon und TAN-Liste verloren.** Das Vier-Augen-Verfahren aus „Admin-Zertifikat abgelaufen oder verloren“ ersetzt nur Zertifikate; TOTP hängt am Konto und wird dadurch nicht zurückgesetzt. Ein Zurücksetzen im Portal gibt es bewusst nicht (ein einzelner kompromittierter Admin-Zugang soll TOTP nicht umgehen können). Der Serverbetreiber setzt TOTP auf dem Server zurück, danach richtet der Admin bei der nächsten Anmeldung alles neu ein:
 
   ```bash
-  scripts/admin-cert.sh totp-reset admin@imi.uni-muenster.de --yes
+  scripts/admin-cert.sh totp-reset admin@example.org --yes
   ```
 
   Das funktioniert nur für eine E-Mail mit gültiger Admin-Berechtigung, löscht Geheimnis, TANs und das Aktiv-Kennzeichen und schreibt einen Audit-Eintrag (`server-cli`). Eine laufende Sitzung des Admins landet bei der nächsten Anfrage auf der Einrichtungsseite (der Zugriff wird bei jeder Anfrage geprüft).
@@ -328,19 +287,7 @@ chmod 600 certs/server.key
 
 **3. Create `.env.prod`**
 
-```bash
-cp .env.prod.example .env.prod
-# Generate the RS256 JWT keypair + TOTP key straight into .env.prod
-# (the backend refuses to start if any of these are empty):
-openssl genrsa -out jwt_priv.pem 2048
-openssl rsa -in jwt_priv.pem -pubout -out jwt_pub.pem
-sed -i "s|^JWT_PRIVATE_KEY_BASE64=.*|JWT_PRIVATE_KEY_BASE64=$(base64 -w0 jwt_priv.pem)|" .env.prod
-sed -i "s|^JWT_PUBLIC_KEY_BASE64=.*|JWT_PUBLIC_KEY_BASE64=$(base64 -w0 jwt_pub.pem)|" .env.prod
-sed -i "s|^TOTP_ENCRYPTION_KEY=.*|TOTP_ENCRYPTION_KEY=$(openssl rand -hex 32)|" .env.prod
-rm jwt_priv.pem jwt_pub.pem
-```
-
-Then edit `.env.prod` and set at least `DB_ROOT_PASSWORD`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `REDIS_PASSWORD`, `SMTP_*`, `MAIL_FROM`, `DSF_ENVIRONMENT`, and the two admin variables in step 4.
+Copy `.env.prod.example` to `.env.prod` and generate the JWT keypair and TOTP key as in [RUN-FROM-IMAGE.md](RUN-FROM-IMAGE.md#3-configure-secrets-envprod) (the backend refuses to start without them). Then set at least `DB_ROOT_PASSWORD`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `REDIS_PASSWORD`, `SMTP_*`, `MAIL_FROM`, `DSF_ENVIRONMENT` and the two admin variables from step 4.
 
 **4. Bootstrap the first admin by certificate**
 
@@ -349,8 +296,8 @@ The admin needs both variables: `IMI_ADMIN_EMAILS` grants the admin role, `IMI_A
 ```bash
 FP=$(certtool --fingerprint --hash=sha512 --infile=admin-client.pem | tr -d ': \n')
 # Set in .env.prod (same address in both):
-#   IMI_ADMIN_EMAILS=dsf-admin@imi.uni-muenster.de
-#   IMI_ADMIN_CERT_FINGERPRINTS=dsf-admin@imi.uni-muenster.de=$FP
+#   IMI_ADMIN_EMAILS=admin@example.org
+#   IMI_ADMIN_CERT_FINGERPRINTS=admin@example.org=$FP
 ```
 
 **5. Start the stack**
@@ -401,7 +348,7 @@ The bundled nginx already performs the client-cert authentication, and it is the
      and reference it once at **vhost level** (not inside a single `<Location>`), so it covers `/auth`, `/api` and `/fhir`: `Include /etc/apache2/dsf-proxy-auth.conf`. `set` overwrites any value a client sent, so no `unset` is needed. Do not expose the configuration through `mod_info` / `server-info`.
   3. Restart the backend after any change of the secret (`docker compose ... up -d backend`); it is read from the environment at start. Apache needs a reload.
   4. Rollout order: add the Apache include and reload Apache first (the old backend ignores the header), then deploy the backend with the new `.env.prod`. Deploying the backend first makes every certificate login fail, and in production it will not start without the secret.
-  5. Optional: `CLIENT_CERT_TRUSTED_PROXIES` (comma-separated IPs/CIDRs; malformed entries are ignored) additionally requires the TCP peer address to match. Behind host Apache the peer is the `dsf-edge` bridge gateway (e.g. `172.28.71.1`), not an "Apache address"; this only keeps other containers out. The secret is the real control, and `X-Forwarded-For` is never used.
+  5. Optional: `CLIENT_CERT_TRUSTED_PROXIES` (comma-separated IPs/CIDRs; malformed entries are ignored) additionally requires the TCP peer address to match. Behind host Apache the peer is the `dsf-edge` bridge gateway (e.g. `172.20.0.1`), not an "Apache address"; this only keeps other containers out. The secret is the real control, and `X-Forwarded-For` is never used.
   The bundled nginx variants send the header when `certs/proxy-auth.conf` exists (exact name; `.bak`/`.example` copies are not read), containing `proxy_set_header X-Proxy-Auth "<value>";` (`chmod 600`). Never log or commit the secret.
 - **Accepting `FAILED:self-signed` is required, not sloppy.** nginx with `optional_no_ca` skips chain validation entirely and reports `SUCCESS`. Apache still reports the OpenSSL result, and under TLS 1.3 a self-signed client cert arrives as `FAILED:self-signed certificate` rather than `GENEROUS`, so a `SUCCESS|GENEROUS`-only match silently drops every DSF certificate. The pattern above admits exactly the self-signed and unknown-issuer cases that `optional_no_ca` is meant to allow, while still rejecting `FAILED:certificate has expired` and `FAILED:certificate revoked`. The real gate stays the SHA-512 fingerprint match.
 - Return `403` for `/auth/request-otp`, `/auth/verify-otp`, `/auth/verify-totp`, `/auth/setup-totp`, and `/auth/confirm-totp` so the OTP path stays closed.
@@ -479,81 +426,50 @@ How a site obtains its fingerprint: it runs `certtool --fingerprint --hash=sha51
 
 ### Hackathon / demo seed
 
-`scripts/hackathon-prepare.sh` prepares a repeatable demo environment on the cert-auth stack: N fictional users (default 3), each with a freshly generated self-signed client certificate, a complete dummy site (organization, contacts, endpoints with IPs, a certificate, memberships), and a PENDING approval request already waiting for review.
+`scripts/hackathon-prepare.sh [N] [DIR]` prepares a repeatable demo on a running cert-auth stack: N fictional users (default 3), each with a self-signed client certificate (key and `.p12` in `DIR`, default `/opt/dsf-allowlist/hackathon`), a complete dummy site and a PENDING approval request. It runs inside the backend container (`docker compose exec`), writes `manifest.json` (consumed by `backend/src/db/seed-hackathon.ts`) and an `onboarding.csv` for the bulk-import page.
 
-```bash
-scripts/hackathon-prepare.sh              # 3 users, output in /opt/dsf-allowlist/hackathon
-scripts/hackathon-prepare.sh 5 /opt/dsf-allowlist/hackathon-2026
-```
+- Users are `hack<i>@klinik-<i>.example.de` on `.example.de` domains and RFC 5737 test IPs, never real data.
+- Every user is an admin on a different e-mail domain, so any two of them can approve each other's requests (the four-eyes rule compares e-mail domains).
+- The script is idempotent and regenerates all certificates on each run; `.p12` files handed out earlier stop working. A smaller N does not remove users from a larger earlier run.
+- The seed refuses to run when `DSF_ENVIRONMENT=PRODUCTION` unless `HACKATHON_ALLOW_PRODUCTION=1` is set.
 
-The stack must already be running: the seed executes inside the running backend container (`docker compose exec`, manifest on stdin), so no extra container, mount or port is involved.
-
-What it creates, per user:
-
-- `hack<i>@klinik-<i>.example.de` / `klinik-<i>.example.de`, all under the fictional `.example.de` domain and RFC 5737 test IP ranges, never real data.
-- A self-signed client certificate, key, and `.p12` bundle (password printed once in the script's summary unless `HACKATHON_P12_PASSWORD` is set) for importing into a browser.
-- IMI admin rights for every user, each on a different email domain. The 4-eyes approval rule (site identity = email domain, see `lib/approvalState.ts`) is domain-based, so any two hackathon users can approve or reject each other's onboarding requests.
-- A `manifest.json` (consumed by `backend/src/db/seed-hackathon.ts`, the actual database writer) and an `onboarding.csv` as a bonus, ready to upload at `/app/admin/onboarding` if you would rather demo the bulk-import UI with the same data.
-
-The script is idempotent: re-running it regenerates every certificate and key from scratch and re-seeds the database. Any `.p12` already handed out from an earlier run stops working the moment the script re-runs, so redistribute the new files after every run.
-
-Running the script again with a smaller N does not remove the extra users from a larger previous run; delete those manually. To remove a seeded hackathon user, delete its email everywhere it is referenced. `users` cascades to the instance, organization, contacts, endpoints, certificates, memberships, and approval request, so that single delete does most of the work; `admin_grants`, `admin_cert_fingerprints`, and `email_whitelist` are not linked by a foreign key and need their own delete:
-
-```sql
-DELETE FROM admin_grants WHERE email = 'hack1@klinik-1.example.de';
-DELETE FROM admin_cert_fingerprints WHERE email = 'hack1@klinik-1.example.de';
-DELETE FROM email_whitelist WHERE email = 'hack1@klinik-1.example.de';
-DELETE FROM users WHERE email = 'hack1@klinik-1.example.de';
-```
-
-The audit log entries the seed writes are not removed by this (`audit_logs` is append-only, see the Admin grants section below); that is expected and matches how every other mutation in this portal is audited.
+To remove a seeded user, delete the e-mail from `admin_grants`, `admin_cert_fingerprints`, `email_whitelist` and `users` (`users` cascades to the instance, organization, contacts, endpoints, certificates, memberships and approval requests). Audit entries stay, because `audit_logs` is append-only.
 
 ### Hackathon rehearsal
 
-`scripts/hackathon-smoke.sh` is an end-to-end rehearsal for the setup above: run it against a deployed cert-auth stack right after `scripts/hackathon-prepare.sh` to prove cert login, the four-eyes approval workflow, bulk CSV onboarding, and the allow-list bundle all actually work together, not just individually.
+`scripts/hackathon-smoke.sh <BASE_URL> [HACKATHON_DIR] [--keep]` is an end-to-end check against a stack seeded as above. `--keep` leaves the site it onboards in place; `SMOKE_INSECURE=1` adds `curl --insecure` for self-signed TLS. It needs `curl`, `openssl` and `python3` or `jq`, prints `PASS`/`FAIL`/`INFO` per check and stops at the first `FAIL`. Tokens and fingerprints are never printed in full.
 
-```bash
-scripts/hackathon-prepare.sh 3 /opt/dsf-allowlist/hackathon
-scripts/hackathon-smoke.sh https://dsf-management.example.de
-```
+Steps:
 
-Usage: `scripts/hackathon-smoke.sh <BASE_URL> [HACKATHON_DIR] [--keep]`. `HACKATHON_DIR` defaults to `/opt/dsf-allowlist/hackathon` and must contain `hack1.crt/.key` through `hack3.crt/.key`. `--keep` leaves the site the script onboards in step 6 in place instead of removing it at the end. `SMOKE_INSECURE=1` adds `curl --insecure`, needed for a self-signed dev TLS certificate (e.g. the plain `docker-compose.yml` stack over `https://localhost`). Requires `curl`, `openssl`, and either `python3`/`python` or `jq`.
+1. **Reachability** (`GET /health`).
+2. **Certificate login** for the three users (`POST /auth/client-cert-login`): the proxy forwards the client certificate and the backend resolves the SHA-512 fingerprint.
+3. **Identity and instance scoping** (`/auth/me`, instances, organization).
+4. **Negative auth checks:** no certificate fails; a valid token without the re-presented certificate fails a step-up write with `CERT_STEP_UP_FAILED`; `POST /auth/request-otp` answers 403 on a cert-auth deployment (only an `INFO` on the OTP stack).
+5. **Four-eyes approval.** Two signatures from two different sites approve a request; a third signer gets `REQUEST_FINALIZED`; the same admin signing twice while PENDING gets `ALREADY_DECIDED`. A failure here usually means `lib/approvalState.ts` changed.
+6. **Bulk CSV onboarding** (`POST /api/v1/admin/onboarding/import`): create, re-upload (must report `updated`), log in with the new certificate; a PEM in the file is rejected (`PEM_NOT_ALLOWED`) and formula cells are reported as parse errors.
+7. **Allow-list bundle** (`GET /fhir/Bundle`): contains the three approved sites and the parent organization, and not the site onboarded in step 6, because onboarding creates no approval request and only approved sites are published.
+8. **GUI downloads** (`/api/v1/download/full-bundle`, `/api/v1/download/ip-address-list`).
+9. **Cleanup:** removes the onboarded site's whitelist entry via `DELETE /api/v1/admin/users/:email`, prints the SQL for the residual rows, and checks that its certificate no longer logs in.
 
-Every check prints `PASS`/`FAIL`/`INFO` with the HTTP status and a one-line reason, and the script stops at the first `FAIL` after printing a summary table. Tokens and fingerprints are never printed in full.
+Known quirks:
 
-**What each step proves, and what a FAIL there usually means:**
-
-1. **Reachability** (`GET /health`). The stack is up and the backend answers through the proxy (`/health/ready`, which also probes MySQL and Redis, answers loopback callers only, so it is not used from outside). A FAIL here is almost always infrastructure, not this feature: containers not started, `.env`/`.env.prod` missing a DB or Redis value, or (on the plain dev nginx config) `/health` not proxied to the backend.
-2. **Cert login** for hack1/hack2/hack3 (`POST /auth/client-cert-login`). Proves the reverse proxy performs the mTLS handshake and forwards `X-Client-Cert`/`X-Client-Verify`, and that the backend resolves the SHA-512 fingerprint to the right admin. A FAIL usually means the reverse proxy in front of `BASE_URL` is not reproducing `nginx/nginx.cert-auth.conf` (see "Fronting the app with your own Apache2" above), or the hackathon certs were regenerated after the DB was last seeded.
-3. **Identity and instance scoping** (`GET /auth/me`, `GET /api/v1/instances`, `GET /api/v1/instances/:id/organization`). Proves the JWT carries the right identity and admin flag, and that the seeded organization is reachable. Every hackathon user is an IMI admin, and `instances.service.ts`'s `listForUser()` gives admins cross-tenant visibility (see its own comment), so this checks the list *contains* the user's own instance, not that it is the only one; a FAIL here on a fresh stack usually means the seed did not run or ran against a different database than `BASE_URL` is pointed at.
-4. **Negative auth checks.** No certificate presented must fail login; a valid bearer token with the certificate NOT re-presented must fail a step-up-gated write with `CERT_STEP_UP_FAILED` (`backend/src/middleware/stepUp.middleware.ts`) - this is the check that proves a stolen access token cannot forge the cert step-up. `POST /auth/request-otp` returning `403` proves the OTP entry surface is closed on a cert-auth deployment; on the standard OTP/TOTP stack it is expected to stay open, so that case is only an `INFO`, never a `FAIL`.
-5. **Four-eyes approval.** This is the step most worth reading before assuming a FAIL is a real bug, because the exact sequence was derived from `backend/src/lib/approvalState.ts` and `backend/src/services/approval.service.ts`, not assumed:
-   - There is no rule against approving your own site's request. `validateApproval()` only tracks which *sites* (email domains) have signed, so hack1 can sign its own pending request; it simply counts as the first of the two signatures needed.
-   - `deriveStatus()` promotes to `APPROVED` as soon as two signatures from two *different* sites exist - two, not three. A third admin who tries afterwards gets `REQUEST_FINALIZED`, because `approveRequest()` checks the request's status before it looks at who is signing.
-   - `ALREADY_DECIDED` only happens when the same admin signs twice while the request is still `PENDING`. Once a request is finalized, any further attempt (a new admin or a repeat one) is `REQUEST_FINALIZED`, never `ALREADY_DECIDED`.
-   - A FAIL in this step almost always means the approval state machine changed; diff `approvalState.ts` against the expectations coded into `scripts/hackathon-smoke.sh`'s step 5 comments.
-6. **Bulk CSV onboarding** (`POST /api/v1/admin/onboarding/import`). Create, then re-upload the same row (must report `updated`, not a duplicate `created`), then log in with the newly onboarded cert. Also checks the two upload-level guards: a PEM anywhere in the file is rejected with `PEM_NOT_ALLOWED` before any row is parsed, and a row whose organization name starts with `=`/`+`/`-`/`@` is reported as a parse error (CSV/Excel formula-injection guard), not imported. A FAIL here usually points at `onboarding.service.ts`'s validation changing shape.
-7. **Allow-list bundle** (`GET /fhir/Bundle`, the endpoint the DSF `UpdateAllowList` process reads). Checks it is a well-formed FHIR Bundle containing all three hackathon sites plus the parent `hackathon-hub.example.de` and at least one `OrganizationAffiliation` - all only true after step 5 actually finished approving them. It also asserts the site onboarded in step 6 is **absent**: bulk onboarding never inserts an `approval_requests` row (see `onboarding.service.ts`), and `generateFullBundle()` only includes an organization whose *latest* approval request is `APPROVED` (`fhir.service.ts`, and the regression test `fhir-bundle-latest-approval.test.ts`) - so a site that was only onboarded, never approved, must never show up here. If it does, onboarding has started bypassing the approval gate, which is a real regression, not a passing coincidence. A request with no client certificate at all must be rejected.
-8. **GUI downloads** (`GET /api/v1/download/full-bundle`, `GET /api/v1/download/ip-address-list`). Confirms the authenticated-user bundle download and the Excel IP list both return a real, non-trivial body.
-9. **Cleanup.** There is no admin API endpoint that deletes an organization outright, so the script uses the closest real mechanism - `DELETE /api/v1/admin/users/:email` - to remove the onboarded site's whitelist entry and revoke its sessions immediately, then prints the exact SQL still needed to remove the residual `organizations`/`instances`/`users` rows (mirroring the teardown SQL documented above for the hackathon seed itself). It then re-checks that the removed site's certificate no longer logs in. Pass `--keep` to skip this and inspect the onboarded site by hand instead.
-
-**Known environment quirks (not bugs in the app):**
-
-- All three nginx configs (`nginx.conf`, `nginx.prod.conf`, `nginx.cert-auth.conf`) split `/auth/` into two per-IP classes as defense in depth next to the backend's Redis-backed limits. The brute-force targets (`request-otp`, `verify-otp`, `verify-totp`, `setup-totp`, `confirm-totp`) get 5 requests/minute (burst 3-5). Everything else under `/auth/` (`refresh`, `logout`, `client-cert-login`, `dev-login`, `me`) gets a separate 60 requests/minute zone (burst 30), because `/auth/refresh` runs on every page load and must never lock users out. `/api/` allows 600 requests/minute per IP (burst 200): a canvas page load fires about 12 parallel requests and several users share one hospital NAT address, so this is only a coarse safety net and the per-user backend limit (`RATE_LIMIT_API_MAX`, default 100/min per user) stays the primary control. Normal use (page load about 12 requests, instance switch about 9, polling 2-3/min and paused in background tabs) stays far below that default; raise `RATE_LIMIT_API_MAX` only if your own measurements say otherwise. The frontend shows a single "Too many requests" toast (with the retry time when the server sends `Retry-After`) and never ends the session on a `429`.
-- On the plain dev stack (`docker-compose.yml`), a long-running `backend` container's `ts-node-dev` process can miss file changes on a Windows Docker Desktop bind mount and keep serving stale compiled code (for example, silently omitting the JWT's `amr` claim). If step 4b fails with `TOTP_REQUIRED` instead of `CERT_STEP_UP_FAILED`, restart the backend container and re-run.
+- All nginx configs split `/auth/` into two per-IP classes next to the backend's Redis-backed limits: the brute-force targets (`request-otp`, `verify-otp`, `verify-totp`, `setup-totp`, `confirm-totp`) get 5 requests/minute, everything else (`refresh`, `logout`, `client-cert-login`, `dev-login`, `me`) 60 requests/minute, because `/auth/refresh` runs on every page load. `/api/` allows 600 requests/minute per IP as a coarse net (several users share one hospital NAT address); the per-user backend limit (`RATE_LIMIT_API_MAX`, default 100/min) is the primary control. The frontend shows one "Too many requests" toast on `429` and never ends the session.
+- On the plain dev stack under Windows Docker Desktop, a long-running `ts-node-dev` backend can miss file changes on the bind mount and serve stale code. If step 4 fails with `TOTP_REQUIRED` instead of `CERT_STEP_UP_FAILED`, restart the backend container and re-run.
 
 ## Scheduled jobs
 
-All UTC, configured in `backend/src/services/scheduler.service.ts`:
+The scheduler starts with the backend (`backend/src/services/scheduler.service.ts`, all times UTC); the full list is in [Architecture](wiki/Architecture.md#5-scheduled-jobs). Operationally relevant:
 
 | When | Job | Purpose |
 |---|---|---|
-| 06:00 daily | `runApprovalReminders` | Re-emails admins for approval requests pending > 3 days |
+| every 5 min | `flushPendingNotifications` | Sends delayed site mails (30 minutes after an approval decision) |
+| 06:00 daily | `runApprovalReminders` | Re-emails admins for approval requests pending more than 3 days |
 | 07:00 daily | `runSilentConsentSweep` | Promotes single-approved requests older than `APPROVAL_SILENT_CONSENT_DAYS` to APPROVED |
-| 08:00 daily | `runCertExpiryCheck` | Emails site contacts when their cert is < 30 days from expiry |
-| 09:00 daily | `runMembershipCleanup` | Hard-deletes soft-deleted memberships older than 90 days |
+| 08:00 daily | certificate checks | Expiry mails for site and admin certificates, removal of certificates 30 days after expiry, expiry of stale admin certificate requests |
+| 09:00 daily | `runMembershipCleanup` | Hard-deletes soft-deleted memberships older than the retention window (90 days) |
+| every minute | backup tick | Runs a backup when the configured schedule is due |
 
-The scheduler starts at backend boot (`backend/src/index.ts`). Jobs swallow individual failures so one bad iteration doesn't kill the runner.
+Jobs swallow individual failures so one bad iteration does not stop the runner.
 
 ## Allow-list bundle download
 
@@ -566,10 +482,10 @@ The portal generates the DSF allow list in the format of the legacy allow-list p
 A site starts the process locally on its own DSF FHIR server (requester `LOCAL_ALL` or a `DSF_ADMIN` practitioner) and sets the Task input `http://dsf.dev/fhir/CodeSystem/allow-list|allow_list` to:
 
 ```
-https://dsf-management.imi.uni-muenster.de/fhir/Bundle/mine
+https://allowlist.example.org/fhir/Bundle/mine
 ```
 
-`/fhir/Bundle/mine` is the same address for every site: the portal derives the endpoint from the organization of the presented DSF client certificate (its only endpoint; with several endpoints the single one whose identifier starts with `fhir.`; otherwise `409` with an `AMBIGUOUS_ENDPOINT` OperationOutcome listing the endpoint identifiers). Sites with several endpoints then use the per-endpoint address `https://dsf-management.imi.uni-muenster.de/fhir/Bundle/<endpoint identifier>`, which returns the same body.
+`/fhir/Bundle/mine` is the same address for every site: the portal derives the endpoint from the organization of the presented DSF client certificate (its only endpoint; with several endpoints the single one whose identifier starts with `fhir.`; otherwise `409` with an `AMBIGUOUS_ENDPOINT` OperationOutcome listing the endpoint identifiers). Sites with several endpoints then use the per-endpoint address `https://allowlist.example.org/fhir/Bundle/<endpoint identifier>`, which returns the same body.
 
 The BPE reads that URL with `GET {base}/Bundle/{id}` and `Accept: application/fhir+json`, using the site's DSF client certificate. It then checks the bundle (`checkAllowList`) and posts it as a transaction to its own FHIR server (`insertAllowList`).
 
@@ -615,7 +531,7 @@ Quick check with a site's DSF certificate (the same read the BPE performs):
 
 ```bash
 curl --cert dsf-client.crt --key dsf-client.key -H 'Accept: application/fhir+json' \
-  https://dsf-management.imi.uni-muenster.de/fhir/Bundle/<endpoint identifier>
+  https://allowlist.example.org/fhir/Bundle/<endpoint identifier>
 ```
 
 ### Network-wide bundle
@@ -787,7 +703,7 @@ Das Skript liest die gesamte Datei in den Speicher; bei sehr großen `audit_logs
 ## Health Check
 
 ```bash
-curl https://allowlist.imi.uni-muenster.de/health
+curl https://allowlist.example.org/health
 ```
 
 `/health/ready` (MySQL and Redis probe) answers only callers on the loopback address, i.e. the compose healthcheck inside the container; from outside it is a 404. Check it with `docker compose exec -T backend wget -qO- http://localhost:3000/health/ready`.
