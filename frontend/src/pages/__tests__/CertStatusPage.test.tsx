@@ -21,6 +21,14 @@ describe('CertStatusPage', () => {
     expect(screen.queryByTestId('cert-checking')).not.toBeInTheDocument();
   });
 
+  it('tells the user the proxy is misconfigured for PROXY_NOT_TRUSTED, not that no certificate was sent', () => {
+    renderWithProviders(<CertStatusPage code="PROXY_NOT_TRUSTED" />);
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /received your certificate.*proxy configuration is incomplete.*IMI operator/i,
+    );
+    expect(screen.queryByText(/No client certificate was presented/)).not.toBeInTheDocument();
+  });
+
   it('shows the checking state when code is null', () => {
     renderWithProviders(<CertStatusPage code={null} />);
     expect(screen.getByRole('status')).toHaveTextContent(/checking your certificate/i);

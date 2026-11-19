@@ -1965,6 +1965,8 @@ export const de: Record<TranslationKey, string> = {
   certStatusChecking: 'Zertifikat wird geprüft…',
   certStatusNoCert:
     'Es wurde kein Client-Zertifikat vorgelegt. Installieren Sie Ihr Zertifikat im Browser und laden Sie die Seite neu.',
+  certStatusProxyNotTrusted:
+    'Der Server hat Ihr Zertifikat erhalten, aber seine Proxy-Konfiguration ist unvollständig. Bitte wenden Sie sich an den IMI-Betreiber.',
   certStatusNotRegistered:
     'Ihr Zertifikat ist für keine Anmeldung freigegeben. Bitten Sie einen IMI-Admin, es in der Zertifikatskarte Ihrer Organisation für den Login freizugeben.',
   certStatusNoInstance:

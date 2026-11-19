@@ -17,6 +17,7 @@ import { Icon } from '../components/ui/Icon';
 
 const CODE_KEY: Record<string, TranslationKey> = {
   NO_CLIENT_CERT: 'certStatusNoCert',
+  PROXY_NOT_TRUSTED: 'certStatusProxyNotTrusted',
   CERT_NOT_REGISTERED: 'certStatusNotRegistered',
   NO_INSTANCE: 'certStatusNoInstance',
   NO_USER: 'certStatusNoInstance',

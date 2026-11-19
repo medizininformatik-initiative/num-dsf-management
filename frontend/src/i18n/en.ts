@@ -1925,6 +1925,8 @@ export const en = {
   certStatusChecking: 'Checking your certificate…',
   certStatusNoCert:
     'No client certificate was presented. Install your certificate in the browser and reload.',
+  certStatusProxyNotTrusted:
+    'The server received your certificate but its proxy configuration is incomplete. Please contact the IMI operator.',
   certStatusNotRegistered:
     'Your certificate is not enabled for sign-in. Ask an IMI admin to allow it for login in the certificates card of your organization.',
   certStatusNoInstance: 'No workspace is linked to this certificate. Contact the IMI operator.',
