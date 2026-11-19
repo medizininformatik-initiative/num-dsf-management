@@ -1,5 +1,5 @@
 /**
- * IntroSlides.tsx – a five-slide intro deck at the top of the help page, used to
+ * IntroSlides.tsx – a ten-slide intro deck at the top of the help page, used to
  * present the tool. One slide shows at a time; the track slides horizontally
  * (transform + opacity only, so Reduce Motion leaves just the opacity crossfade).
  * Navigation: prev/next buttons, clickable dots, ArrowLeft/ArrowRight while the deck
