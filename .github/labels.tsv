@@ -1,0 +1,23 @@
+# name<TAB>color<TAB>description  (applied by scripts/setup-github.sh)
+bug	d73a4a	Something is broken
+feature	0e8a16	New functionality or improvement
+security	b60205	Security-relevant change or finding
+docs	0075ca	Documentation only
+ops	5319e7	Deployment, CI/CD, infrastructure
+dependencies	0366d6	Dependency updates
+refactor	fbca04	Code change without behaviour change
+test	bfd4f2	Test coverage or test tooling
+p1	b60205	Priority 1: fix now
+p2	e99695	Priority 2: next
+p3	f9d0c4	Priority 3: when time allows
+needs-triage	ededed	Not yet reviewed by a maintainer
+blocked	000000	Waiting on something external
+backend	1d76db	Area: Express/TypeScript backend
+frontend	1d76db	Area: React/Vite frontend
+allow-list	1d76db	Area: allow-list bundle and entities
+auth	1d76db	Area: authentication and sessions
+incidents	1d76db	Area: incident reporting
+marketplace	1d76db	Area: marketplace
+infra	1d76db	Area: Docker, nginx, deployment
+autorelease: pending	ededed	release-please: release PR open
+autorelease: tagged	ededed	release-please: release tagged
