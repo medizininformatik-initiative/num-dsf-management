@@ -70,7 +70,7 @@ A daily or weekly renewal check stays far below both. Log in once per run and re
 The new certificate becomes a login certificate only after approval. Until then, and until it expires, the old certificate keeps working. So:
 
 1. Obtain the replacement certificate well before the old one expires, 30 days by default in the script (`--days`).
-2. Run the renewal: register the new certificate with `renew` and submit the approval request.
+2. Run the renewal: register the new certificate with `renew` and submit the approval request. The script first reads the approval status and stops with exit code `3` while a request is pending ("an approval request is pending; ask an admin to decide or withdraw it first"), because submitting again would supersede it.
 3. Wait for two admins to approve. Plan for several working days.
 4. After approval, switch your service over to the new certificate and key.
 
@@ -89,7 +89,7 @@ scripts/site-cert-renew.sh --base-url "$BASE" --cert site.pem --key site.key \
     --new-cert new.pem [--days 30] [--force] [--instance <id>] [--dry-run] [--no-submit]
 ```
 
-It exits `0` on success or when nothing is due, `1` on usage errors, `2` on authentication or network errors, `3` when the API rejects a request, and `4` when the instance is ambiguous or the current certificate is not registered. Tokens and PEM contents are never printed.
+It exits `0` on success or when nothing is due, `1` on usage errors, `2` on authentication or network errors, `3` when the API rejects a request or an approval request is already pending (nothing is renewed then), and `4` when the instance is ambiguous or the current certificate is not registered. Tokens and PEM contents are never printed.
 
 ## Stability
 

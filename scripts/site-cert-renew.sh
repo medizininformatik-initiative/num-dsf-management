@@ -15,7 +15,8 @@
 # Needs: curl, jq, openssl.
 #
 # Exit codes: 0 ok / nothing to do, 1 usage, 2 auth or network error,
-#             3 API rejected the request, 4 ambiguous instance / certificate not found.
+#             3 API rejected the request or an approval request is already pending,
+#             4 ambiguous instance / certificate not found.
 # Neither tokens nor PEM contents are ever printed.
 set -euo pipefail
 
@@ -31,7 +32,7 @@ SUBMIT=1
 
 die() { echo "error: $2" >&2; exit "$1"; }
 
-usage() { sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -114,6 +115,13 @@ api GET "/api/v1/instances/$INSTANCE/certificates"
 [ "$status" = 200 ] || rejected "listing certificates"
 cert_id="$(jq -r --arg fp "$cur_fp" '[.data[] | select(.thumbprintSha512 == $fp)][0].id // empty' "$body")"
 [ -n "$cert_id" ] || die 4 "current certificate is not registered for this instance"
+
+# A pending request would be superseded by the renewal's snapshot: do not renew then.
+api GET "/api/v1/instances/$INSTANCE/approval/status"
+[ "$status" = 200 ] || rejected "approval status"
+if [ "$(jq -r '.data.status // empty' "$body")" = "PENDING" ]; then
+  die 3 "an approval request is pending; ask an admin to decide or withdraw it first"
+fi
 
 new_fp="$(openssl x509 -in "$NEW_CERT" -outform DER 2>/dev/null | openssl dgst -sha512 -r | cut -d' ' -f1)"
 [ -n "$new_fp" ] || die 1 "cannot read --new-cert"
