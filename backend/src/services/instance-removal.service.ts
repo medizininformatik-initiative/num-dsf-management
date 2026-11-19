@@ -226,7 +226,8 @@ export async function confirmRemoval(
   let sessionsRevoked = 0;
   try {
     if (row.organization_id) {
-      removedLogins = (await removeAllForOrganization(row.organization_id, by, ip)).length;
+      removedLogins = (await removeAllForOrganization(row.organization_id, by, ip, 'site_removal'))
+        .length;
     }
     sessionsRevoked = await revokeInstanceSessions(row.instance_id);
   } catch (err) {

@@ -136,6 +136,14 @@ describe('confirming', () => {
     expect(await db('org_login_certificates').where({ organization_id: site.orgId })).toHaveLength(
       0,
     );
+    // The audit entry says why the logins went.
+    const loginAudit = await db('audit_logs')
+      .where({ instance_id: site.instanceId, resource_type: 'ORGANIZATION' })
+      .select('diff_json');
+    const disabled = loginAudit
+      .map((a) => (typeof a.diff_json === 'string' ? JSON.parse(a.diff_json) : a.diff_json))
+      .find((d) => d?.action === 'login_certificate' && d?.change === 'disable');
+    expect(disabled?.reason).toBe('site_removal');
     // Not selectable for the owner; the row is kept (soft removal).
     const owned = await listForUser(site.userId, site.email);
     expect(owned.some((i) => i.id === site.instanceId)).toBe(false);

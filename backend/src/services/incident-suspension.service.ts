@@ -171,6 +171,7 @@ async function removeLogins(row: IncidentRow, caller: IncidentCaller): Promise<M
     row.organization_id as string,
     caller.email,
     caller.ip,
+    'incident',
   );
   const scopedSessionsRevoked = row.org_instance_id
     ? await revokeInstanceSessions(row.org_instance_id)

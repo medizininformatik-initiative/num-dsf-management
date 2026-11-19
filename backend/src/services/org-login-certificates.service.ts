@@ -263,13 +263,15 @@ export async function remove(
 
 /**
  * Remove every login certificate of the organization at once (incident
- * suspension). Audited as one change; the incident mail informs the site.
+ * suspension or site removal). Audited as one change with the reason; the
+ * incident mail informs the site.
  * @returns the removed fingerprints.
  */
 export async function removeAllForOrganization(
   identifier: string,
   actorEmail: string,
   ip: string,
+  reason: 'incident' | 'site_removal',
 ): Promise<string[]> {
   const org = await requireOrg(identifier);
   const fingerprints: string[] = await db('org_login_certificates')
@@ -284,7 +286,7 @@ export async function removeAllForOrganization(
   await audit(org, actorEmail, ip, {
     action: 'login_certificate',
     change: 'disable',
-    reason: 'incident',
+    reason,
     count: fingerprints.length,
   });
   return fingerprints;
