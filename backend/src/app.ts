@@ -48,6 +48,7 @@ import { randomUUID } from 'crypto';
 import { logger } from './lib/logger';
 import { NOT_FOUND_CODES } from './lib/notFoundCodes';
 import { installProcessHandlers } from './lib/processHandlers';
+import { isLoopbackAddress } from './lib/loopback';
 import { assertCertProxyConfig } from './lib/certProxyTrust';
 
 installProcessHandlers();
@@ -190,7 +191,12 @@ app.get('/health/live', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.get('/health/ready', async (_req, res) => {
+app.get('/health/ready', async (req, res) => {
+  // Component status is for the container healthcheck only (loopback);
+  // anyone else, including the proxy, sees a plain 404.
+  if (!isLoopbackAddress(req.socket?.remoteAddress)) {
+    return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
+  }
   const checks: Record<string, string> = { db: 'ok', redis: 'ok' };
   try {
     const { db: knex } = await import('./db/connection');
