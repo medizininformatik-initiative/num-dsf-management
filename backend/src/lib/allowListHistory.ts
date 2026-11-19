@@ -69,6 +69,7 @@ export function withRetiredAffiliations(
   previous: Iterable<AffiliationTriple>,
 ): StoredAllowListInput {
   const members = new Map(input.members.map((m) => [m.identifier, m]));
+  const removals = new Map(input.removed.map((r) => [r.identifier, r]));
   const owner = new Map<string, string>();
   for (const m of input.members) for (const e of m.endpoints) owner.set(e.identifier, m.identifier);
   const key = (t: { parent: string; endpoint: string }) => `${t.parent}|${t.endpoint}`;
@@ -84,6 +85,7 @@ export function withRetiredAffiliations(
     if (seen.has(id)) continue;
     seen.add(id);
     const member = members.get(t.member);
+    const removal = removals.get(t.member);
     const freeEndpoint = !owner.has(t.endpoint) || owner.get(t.endpoint) === t.member;
     if (member) {
       if (member.affiliations.some((a) => key(a) === key(t))) continue;
@@ -92,6 +94,13 @@ export function withRetiredAffiliations(
       }
       const stillHas = member.endpoints.some((e) => e.identifier === t.endpoint);
       if (!stillHas && freeEndpoint && !(member.removedEndpoints ?? []).includes(t.endpoint)) {
+        addedEp.set(t.member, (addedEp.get(t.member) ?? new Set()).add(t.endpoint));
+      }
+    } else if (removal) {
+      if (!removal.affiliations.some((a) => key(a) === key(t))) {
+        add(addedAff, t.member, { parent: t.parent, endpoint: t.endpoint });
+      }
+      if (!owner.has(t.endpoint) && !removal.endpoints.includes(t.endpoint)) {
         addedEp.set(t.member, (addedEp.get(t.member) ?? new Set()).add(t.endpoint));
       }
     }
@@ -109,6 +118,15 @@ export function withRetiredAffiliations(
             ],
           }
         : m,
+    ),
+    removed: input.removed.map((r) =>
+      addedAff.has(r.identifier) || addedEp.has(r.identifier)
+        ? {
+            ...r,
+            endpoints: [...new Set([...r.endpoints, ...(addedEp.get(r.identifier) ?? [])])],
+            affiliations: [...r.affiliations, ...(addedAff.get(r.identifier) ?? [])],
+          }
+        : r,
     ),
   };
 }

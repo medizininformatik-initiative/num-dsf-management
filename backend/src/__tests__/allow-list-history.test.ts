@@ -160,6 +160,37 @@ describe('withRetiredAffiliations', () => {
     expect(retired.removedEndpoints).toEqual(['old.m.example.de']);
   });
 
+  it('a withdrawn member also loses what earlier versions published for it', () => {
+    const removed = [
+      {
+        identifier: 'm.example.de',
+        endpoints: ['new.m.example.de'],
+        affiliations: [{ parent: HUB, endpoint: 'new.m.example.de' }],
+      },
+    ];
+    const urls = methodsAndUrls(withRetiredAffiliations(input([], removed), previous));
+    expect(urls).toContain(`DELETE ${oldUrl}`);
+    expect(urls).toContain(`DELETE ${endpointUrl('old.m.example.de')}`);
+    expect(urls).toContain(`DELETE ${newUrl}`);
+  });
+
+  it('a withdrawn member: an endpoint now owned by another member is kept', () => {
+    const removed = [{ identifier: 'm.example.de', endpoints: [], affiliations: [] }];
+    const stored = withRetiredAffiliations(
+      input([member('o.example.de', 'old.m.example.de')], removed),
+      previous,
+    );
+    const urls = methodsAndUrls(stored);
+    expect(urls).toContain(`DELETE ${oldUrl}`);
+    expect(urls).not.toContain(`DELETE ${endpointUrl('old.m.example.de')}`);
+  });
+
+  it('a withdrawn member: applying twice changes nothing more', () => {
+    const removed = [{ identifier: 'm.example.de', endpoints: [], affiliations: [] }];
+    const once = withRetiredAffiliations(input([], removed), previous);
+    expect(withRetiredAffiliations(once, previous)).toBe(once);
+  });
+
   it('a member temporarily absent from the input gets no DELETE', () => {
     const current = input([member('other.example.de', 'e.other.example.de')]);
     expect(withRetiredAffiliations(current, previous)).toBe(current);
