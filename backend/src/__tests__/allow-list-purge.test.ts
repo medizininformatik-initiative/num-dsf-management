@@ -12,7 +12,7 @@ import {
   organizationUrl,
   type AllowListMember,
 } from '../lib/allowListBundle';
-import { buildPurgeBundle, purgeEntries } from '../lib/allowListPurge';
+import { buildPurgeBundle, createPurgeCollector, purgeEntries } from '../lib/allowListPurge';
 
 const member = (id: string, endpoint = `dsf.${id}`): AllowListMember => ({
   identifier: id,
@@ -114,5 +114,12 @@ describe('purge bundle', () => {
     expect(purgeEntries(['not json', '{}'], self)).toEqual([]);
     const empty = buildPurgeBundle([json([member('self.example.de')])].slice(0, 0), self);
     expect(empty.entry).toBeUndefined();
+  });
+
+  it('collects the bundles one at a time with the same result as the batch builder', () => {
+    const collector = createPurgeCollector(self);
+    const bundles = [v1, json([member('other.example.de')])];
+    for (const bundle of bundles) collector.add(bundle);
+    expect(collector.entries()).toEqual(purgeEntries(bundles, self));
   });
 });

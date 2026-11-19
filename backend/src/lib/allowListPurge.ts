@@ -68,39 +68,50 @@ function entryUrls(bundleJson: string): string[] {
 
 const byText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
-/** The DELETE entries that remove everything the given stored bundles ever mentioned. */
-export function purgeEntries(
-  bundleJsons: Iterable<string>,
-  receiver: PurgeReceiver,
-): AllowListEntry[] {
+/**
+ * Collects the URLs of the stored bundles one at a time: the caller can drop each bundle's JSON
+ * after add(), so the memory use is the set of distinct URLs, not every stored bundle.
+ */
+export function createPurgeCollector(receiver: PurgeReceiver) {
   const ownOrg = receiver.organization.toLowerCase();
   const ownEndpoints = new Set([...receiver.endpoints].map((e) => e.toLowerCase()));
   const affiliations = new Set<string>();
   const endpoints = new Set<string>();
   const organizations = new Set<string>();
-  for (const json of bundleJsons) {
-    for (const url of entryUrls(json)) {
-      const org = parseOrganizationUrl(url);
-      const endpoint = parseEndpointUrl(url);
-      if (org !== null) {
-        if (org.toLowerCase() !== ownOrg) organizations.add(url);
-      } else if (endpoint !== null) {
-        if (!ownEndpoints.has(endpoint.toLowerCase())) endpoints.add(url);
-      } else if (parseAffiliationUrl(url)) {
-        affiliations.add(url);
+  return {
+    add(bundleJson: string): void {
+      for (const url of entryUrls(bundleJson)) {
+        const org = parseOrganizationUrl(url);
+        const endpoint = parseEndpointUrl(url);
+        if (org !== null) {
+          if (org.toLowerCase() !== ownOrg) organizations.add(url);
+        } else if (endpoint !== null) {
+          if (!ownEndpoints.has(endpoint.toLowerCase())) endpoints.add(url);
+        } else if (parseAffiliationUrl(url)) {
+          affiliations.add(url);
+        }
       }
-    }
-  }
-  return [affiliations, endpoints, organizations].flatMap((set) =>
-    [...set].sort(byText).map((url) => ({ request: { method: 'DELETE' as const, url } })),
-  );
+    },
+    entries(): AllowListEntry[] {
+      return [affiliations, endpoints, organizations].flatMap((set) =>
+        [...set].sort(byText).map((url) => ({ request: { method: 'DELETE' as const, url } })),
+      );
+    },
+  };
 }
 
-export function buildPurgeBundle(
+/** The DELETE entries that remove everything the given stored bundles ever mentioned. */
+export function purgeEntries(
   bundleJsons: Iterable<string>,
   receiver: PurgeReceiver,
-): AllowListBundle {
-  const entry = purgeEntries(bundleJsons, receiver);
+): AllowListEntry[] {
+  const collector = createPurgeCollector(receiver);
+  for (const json of bundleJsons) collector.add(json);
+  return collector.entries();
+}
+
+/** The purge bundle for DELETE entries (no entry at all when there are none). */
+export function purgeBundleFromEntries(entry: AllowListEntry[]): AllowListBundle {
   return {
     resourceType: 'Bundle',
     meta: {
@@ -110,4 +121,11 @@ export function buildPurgeBundle(
     // FHIR JSON forbids an empty array: no entry at all when there is nothing to delete.
     ...(entry.length > 0 ? { entry } : {}),
   };
+}
+
+export function buildPurgeBundle(
+  bundleJsons: Iterable<string>,
+  receiver: PurgeReceiver,
+): AllowListBundle {
+  return purgeBundleFromEntries(purgeEntries(bundleJsons, receiver));
 }

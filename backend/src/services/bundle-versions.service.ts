@@ -40,7 +40,7 @@ import {
   withRetiredAffiliations,
   type AffiliationTriple,
 } from '../lib/allowListHistory';
-import { buildPurgeBundle } from '../lib/allowListPurge';
+import { createPurgeCollector, purgeBundleFromEntries } from '../lib/allowListPurge';
 import { signBundle } from './bundle-signing.service';
 import { writeAuditLog } from './audit.service';
 
@@ -290,9 +290,10 @@ export async function getPurgeBundle(
   const endpoints: string[] = await db('endpoints')
     .where({ organization_id: organization })
     .pluck('identifier');
-  const bundles: string[] = [];
-  for await (const json of storedBundles()) bundles.push(json);
-  return buildPurgeBundle(bundles, { organization, endpoints });
+  // One stored bundle at a time: only the distinct URLs are kept, not every bundle's JSON.
+  const collector = createPurgeCollector({ organization, endpoints });
+  for await (const json of storedBundles()) collector.add(json);
+  return purgeBundleFromEntries(collector.entries());
 }
 
 /** Signed network-wide bundle of the current version, or of the live state as fallback. */
