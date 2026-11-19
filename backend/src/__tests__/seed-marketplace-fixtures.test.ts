@@ -16,10 +16,19 @@ describe('marketplace seed fixtures', () => {
     expect(fixtures.map((f) => f.name)).toEqual(
       expect.arrayContaining([
         'dsf-process-allow-list',
-        'dsf-process-feasibility',
+        'mii-process-feasibility',
         'dsf-process-tutorial',
       ]),
     );
+  });
+
+  it('points the feasibility entry at the real MII repository, not a dsf-owned one', () => {
+    const f = fixtures.find((x) => x.name === 'mii-process-feasibility');
+    expect(f?.url).toBe('https://github.com/medizininformatik-initiative/mii-process-feasibility');
+    expect(f?.slug).toBe('medizininformatik-initiative-mii-process-feasibility');
+    expect(f?.homepage).toContain('medizininformatik-initiative/mii-process-feasibility');
+    expect(f?.artifactUrl).toContain('medizininformatik-initiative/mii-process-feasibility');
+    expect(fixtures.some((x) => x.url.includes('dsf-process-feasibility'))).toBe(false);
   });
 
   it.each(fixtures.map((f) => [f.name, f] as const))(

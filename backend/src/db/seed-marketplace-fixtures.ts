@@ -1,5 +1,5 @@
 /**
- * seed-marketplace-fixtures.ts – fictional-but-plausible marketplace entries for
+ * seed-marketplace-fixtures.ts – marketplace entries (real repositories, illustrative metadata) for
  * the dev seed (descriptions, topics, DSF metadata, releases). Pure data, no DB.
  * Dependencies: none
  */
@@ -24,24 +24,30 @@ export interface MarketplaceFixture {
   releases: { tag: string; publishedAt: string }[];
 }
 
-const ORG = 'datasharingframework';
+const DSF_ORG = 'datasharingframework';
+const MII_ORG = 'medizininformatik-initiative';
 
-type FixtureInput = Omit<MarketplaceFixture, 'url' | 'slug' | 'name' | 'homepage' | 'license'>;
+type FixtureInput = Omit<
+  MarketplaceFixture,
+  'url' | 'slug' | 'name' | 'homepage' | 'license' | 'artifactUrl'
+>;
 
-function fixture(repo: string, rest: FixtureInput): MarketplaceFixture {
+/** `owner` is the GitHub organization that hosts the repository. */
+function fixture(owner: string, repo: string, rest: FixtureInput): MarketplaceFixture {
   return {
-    url: `https://github.com/${ORG}/${repo}`,
-    slug: `${ORG}-${repo}`,
+    url: `https://github.com/${owner}/${repo}`,
+    slug: `${owner}-${repo}`,
     name: repo,
-    homepage: `https://github.com/${ORG}/${repo}#readme`,
+    homepage: `https://github.com/${owner}/${repo}#readme`,
     license: 'Apache-2.0',
+    artifactUrl: `https://github.com/${owner}/${repo}/releases/latest`,
     ...rest,
   };
 }
 
 export function buildMarketplaceFixtures(): MarketplaceFixture[] {
   return [
-    fixture('dsf-process-allow-list', {
+    fixture(DSF_ORG, 'dsf-process-allow-list', {
       status: 'APPROVED',
       description:
         'Distributes the central allow list of organizations, endpoints and certificates to all DSF instances of a network.',
@@ -54,14 +60,13 @@ export function buildMarketplaceFixtures(): MarketplaceFixture[] {
       dsfVersionMin: '1.5.0',
       requiredRoles: ['DIC', 'TTP'],
       messageNames: ['downloadAllowList', 'downloadAllowListResponse'],
-      artifactUrl: `https://github.com/${ORG}/dsf-process-allow-list/releases/latest`,
       releases: [
         { tag: 'v1.0.2', publishedAt: '2026-03-18T09:30:00Z' },
         { tag: 'v1.0.1', publishedAt: '2025-11-04T14:05:00Z' },
         { tag: 'v1.0.0', publishedAt: '2025-06-12T08:00:00Z' },
       ],
     }),
-    fixture('dsf-process-feasibility', {
+    fixture(MII_ORG, 'mii-process-feasibility', {
       status: 'APPROVED',
       description:
         'Feasibility queries across the network: a coordinating site distributes a structured query and aggregates the cohort counts of the data integration centers.',
@@ -77,14 +82,13 @@ export function buildMarketplaceFixtures(): MarketplaceFixture[] {
       dsfVersionMin: '1.4.0',
       requiredRoles: ['DIC', 'HRP'],
       messageNames: ['feasibilityRequest', 'feasibilityResult'],
-      artifactUrl: `https://github.com/${ORG}/dsf-process-feasibility/releases/latest`,
       releases: [
         { tag: 'v0.9.1', publishedAt: '2026-01-27T10:15:00Z' },
         { tag: 'v0.9.0', publishedAt: '2025-09-30T12:40:00Z' },
         { tag: 'v0.8.0', publishedAt: '2025-04-08T07:55:00Z' },
       ],
     }),
-    fixture('dsf-process-tutorial', {
+    fixture(DSF_ORG, 'dsf-process-tutorial', {
       status: 'APPROVED',
       description:
         'Step-by-step tutorial process that shows how to build, package and deploy a first own DSF process plugin.',
@@ -97,13 +101,12 @@ export function buildMarketplaceFixtures(): MarketplaceFixture[] {
       dsfVersionMin: '1.3.0',
       requiredRoles: ['DIC', 'COS'],
       messageNames: ['helloCos', 'helloHrp'],
-      artifactUrl: `https://github.com/${ORG}/dsf-process-tutorial/releases/latest`,
       releases: [
         { tag: 'v1.2.0', publishedAt: '2025-12-02T11:20:00Z' },
         { tag: 'v1.1.0', publishedAt: '2025-05-21T09:10:00Z' },
       ],
     }),
-    fixture('dsf-process-hello-world', {
+    fixture(DSF_ORG, 'dsf-process-hello-world', {
       status: 'EXPERIMENTAL',
       description:
         'Minimal hello-world process used to verify that a DSF installation can exchange messages between two organizations.',
@@ -116,10 +119,9 @@ export function buildMarketplaceFixtures(): MarketplaceFixture[] {
       dsfVersionMin: '1.0.0',
       requiredRoles: ['DIC'],
       messageNames: ['helloWorld'],
-      artifactUrl: `https://github.com/${ORG}/dsf-process-hello-world/releases/latest`,
       releases: [{ tag: 'v0.3.0', publishedAt: '2025-08-14T13:00:00Z' }],
     }),
-    fixture('dsf-process-ping-pong', {
+    fixture(DSF_ORG, 'dsf-process-ping-pong', {
       status: 'EXPERIMENTAL',
       description:
         'Connectivity check between DSF endpoints: sends a ping and expects a pong, reporting round-trip status per partner.',
@@ -132,7 +134,6 @@ export function buildMarketplaceFixtures(): MarketplaceFixture[] {
       dsfVersionMin: '1.2.0',
       requiredRoles: ['DIC', 'TTP'],
       messageNames: ['ping', 'pong'],
-      artifactUrl: `https://github.com/${ORG}/dsf-process-ping-pong/releases/latest`,
       releases: [
         { tag: 'v0.5.1', publishedAt: '2026-02-09T16:45:00Z' },
         { tag: 'v0.5.0', publishedAt: '2025-10-17T10:30:00Z' },
