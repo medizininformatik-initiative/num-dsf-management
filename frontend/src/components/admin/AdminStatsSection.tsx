@@ -5,11 +5,13 @@
  *
  * Numbers count up and bars grow in on mount; under reduced motion the final
  * state shows at once. The pending legend item scrolls to the review list when
- * a target id is given. Loading shows a skeleton, a failed request one error
- * line.
+ * a target id is given. Loading shows a skeleton; a failed request shows one
+ * error line, or a non-blocking note above the charts when data is already
+ * loaded (a failed background refetch keeps the last data on screen).
  *
- * Dependencies: useAdminStats, i18n store, dateUtils.formatDate, Icon, stats/*
+ * Dependencies: useAdminStats, lib/motion, i18n store, dateUtils.formatDate, Icon, stats/*
  */
+import { scrollIntoViewSafe } from '../../lib/motion';
 import { useAdminStats } from '../../hooks/useAdmin';
 import { useI18n } from '../../stores/i18n.store';
 import { formatDate } from '../../lib/dateUtils';
@@ -27,7 +29,7 @@ export function AdminStatsSection({ pendingTargetId }: { pendingTargetId?: strin
   const { data, isLoading, error } = useAdminStats();
 
   const scrollToPending = pendingTargetId
-    ? () => document.getElementById(pendingTargetId)?.scrollIntoView({ behavior: 'smooth' })
+    ? () => scrollIntoViewSafe(document.getElementById(pendingTargetId))
     : undefined;
 
   return (
@@ -49,7 +51,7 @@ export function AdminStatsSection({ pendingTargetId }: { pendingTargetId?: strin
         </div>
       )}
 
-      {isLoading && !error && (
+      {isLoading && !data && !error && (
         <div
           role="status"
           aria-label={t('adminStatsLoading')}
@@ -61,7 +63,7 @@ export function AdminStatsSection({ pendingTargetId }: { pendingTargetId?: strin
         </div>
       )}
 
-      {data && !error && (
+      {data && (
         <div className="grid gap-4 lg:grid-cols-2">
           <StatPanel title={t('adminStatsSites')}>
             <FunnelBars

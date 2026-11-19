@@ -95,6 +95,21 @@ describe('AdminStatsSection', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('The overview could not be loaded.');
   });
 
+  it('keeps the loaded charts when a background refetch fails', () => {
+    useAdminStats.mockReturnValue({ data: STATS, isLoading: false, error: new Error('x') });
+    renderWithProviders(<AdminStatsSection />);
+    expect(screen.getByRole('alert')).toHaveTextContent('The overview could not be loaded.');
+    expect(screen.getByText('Open incidents')).toBeInTheDocument();
+  });
+
+  it('hides the animated digits from assistive technology and keeps the real value', () => {
+    useAdminStats.mockReturnValue({ data: STATS, isLoading: false, error: null });
+    renderWithProviders(<AdminStatsSection />);
+    const tile = screen.getByText('Open incidents').previousElementSibling as HTMLElement;
+    expect(tile.querySelector('[aria-hidden="true"]')).toHaveTextContent('2');
+    expect(tile.querySelector('.sr-only')).toHaveTextContent('2');
+  });
+
   it('scrolls to the pending list when the pending legend item is clicked', async () => {
     useAdminStats.mockReturnValue({ data: STATS, isLoading: false, error: null });
     const target = document.createElement('div');
