@@ -47,6 +47,62 @@ writes):
 7. Admins are notified immediately of the decision
 8. Site contacts receive notification after 30 minutes (gives time to reverse)
 
+### Auffälligkeits-Bewertung / request risk
+
+Every pending request opens with a pill and one or two sentences that say how suspicious it looks.
+The portal compares the request with the last approved snapshot of the same site and adds up
+weighted findings. It is a review hint, not a decision: the full data stays in the expandable
+snapshot.
+
+Pills: **Unauffällig / Low risk** (green), **Prüfen / Review** (amber), **Auffällig / Suspicious**
+(red), **Erstantrag / First request** (grey; shown next to the level when that is not low).
+
+Level: HIGH if any finding is high or the score is 6 or more; MEDIUM if any finding is medium or
+the score is 3 or more; otherwise LOW. A routine certificate renewal (score -1) is always LOW.
+
+| Code | Meaning | Weight |
+|------|---------|--------|
+| `CERT_RENEWAL` | Certificate replaced by one with the same subject and issuer, old one expires within 60 days or is expired | -1 |
+| `CERT_EARLY_REPLACE` | Certificate replaced while the old one is valid for more than 60 days | +2 |
+| `CERT_ISSUER_CHANGED` | New certificate comes from a different CA than the replaced or previous ones | +2 |
+| `CERT_CA_NOT_WHITELISTED` | Issuing CA of a new certificate is not on the CA whitelist | +4 |
+| `CERT_CA_BLACKLISTED` | Issuing CA of a new certificate is on the CA blacklist | +6 |
+| `CERT_SUBJECT_MISMATCH` | No CN/SAN name of a new certificate belongs to the organization or an endpoint domain | +2 |
+| `CERT_ADDED` | More certificates than before, without a replacement | +1 |
+| `CERT_ALL_REPLACED` | All previous certificates (more than one) are gone | +2 |
+| `CERT_SHORT_VALIDITY` | New certificate expires within 30 days (info) | 0 |
+| `ENDPOINT_ADDRESS_CHANGED` | Host of an existing endpoint changed | +2 |
+| `ENDPOINT_FOREIGN_DOMAIN` | New endpoint host is on a domain that is neither the organization's nor a previously approved one | +4 |
+| `ENDPOINT_ADDED` | Endpoint added | +1 |
+| `ENDPOINT_REMOVED` | Endpoint removed; receivers lose it and its memberships | +2 |
+| `IP_ADDED` | IP added to an existing endpoint | +1 |
+| `IP_REPLACED_ALL` | None of the previously approved IPs remains | +2 |
+| `IP_PRIVATE` | New IP is private (RFC1918, loopback, link-local, CGNAT, 0.0.0.0/8, IPv6 ULA / link-local / loopback) | +2 |
+| `IP_SHARED` | New IP is also used by another organization | +2 |
+| `ORG_NAME_CHANGED` | Organization name changed | +2 |
+| `ORG_DEACTIVATED` | Organization set to inactive | +1 |
+| `CONTACT_DATA_CHANGED` | Organization or contact e-mail or address changed | +2 |
+| `CONTACTS_ALL_REPLACED` | No previous contact remains | +2 |
+| `CONTACT_UNVALIDATED` | New DSF admin contact whose e-mail is not confirmed | +1 |
+| `MEMBERSHIP_NEW_PARENT` | Joins a parent organization it was not in | +2 |
+| `MEMBERSHIP_ROLE_ADDED` | Role added in an existing membership | +1 |
+| `MEMBERSHIP_REMOVED` | Membership of a parent organization removed | +1 |
+| `FIRST_REQUEST` | No earlier approval: everything must be reviewed; only the CA, subject, private-IP, shared-IP and foreign-domain checks run (info) | 0 |
+| `RECENT_REJECTIONS` | At least one rejected request in the last 30 days | +2 |
+| `RECENT_WITHDRAWALS` | Two or more withdrawn requests in the last 30 days | +1 |
+| `NEW_SUBMIT_IP` | Submitted from an IP not seen before in this site's logins and submits | +1 |
+| `TAKEOVER_PATTERN` | Certificate change that is not a pure renewal, together with changed contact data or a changed endpoint address or host | +4 |
+| `NOTHING_CHANGED` | No difference to the last approval (info) | 0 |
+
+Notes on how the rules are applied:
+
+- A "domain" is compared by its last two labels (`dsf.ukm.de` is `ukm.de`); there is no public
+  suffix list, so names under `co.uk`-style suffixes are judged too strictly.
+- Certificates are matched by thumbprint. A replaced certificate whose database row is gone is
+  judged by the subject and expiry stored in the snapshot; its issuer cannot be compared.
+- `CONTACT_DATA_CHANGED` needs the editable-fields digest in both snapshots.
+- Unreadable or missing data never blocks the list: the risk is simply computed from what exists.
+
 ## Email Whitelist
 
 Manage who can log in:
