@@ -210,10 +210,32 @@ describe('MapPage', () => {
     expect(panel).toHaveAttribute('data-side', 'right');
   });
 
-  it('docks the details sheet on the side of a western site once the list is closed', async () => {
+  it('docks the sheet on the right for a western site too, and restores the list on close', async () => {
     hook.current = loaded(false);
     renderWithProviders(<MapPage />);
+    expect(screen.getByRole('complementary', { name: 'Organizations' })).toBeInTheDocument();
 
+    // Münster lies in the west of Germany.
+    fireEvent.click(
+      screen.getByRole('button', { name: /^Universitätsklinikum Münster, certificate/ }),
+    );
+    const heading = screen.getByRole('heading', { name: 'Universitätsklinikum Münster' });
+    expect(heading.closest('aside')).toHaveAttribute('data-side', 'right');
+    // Selecting a site collapses the org list on wide screens.
+    await waitFor(() =>
+      expect(screen.queryByRole('complementary', { name: 'Organizations' })).toBeNull(),
+    );
+
+    // Closing the sheet brings the list back.
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('complementary', { name: 'Organizations' })).toBeInTheDocument(),
+    );
+  });
+
+  it('keeps the list closed after the sheet closes when the user had closed it', async () => {
+    hook.current = loaded(false);
+    renderWithProviders(<MapPage />);
     const toggle = screen
       .getAllByRole('button', { name: 'Hide organization list' })
       .find((b) => b.hasAttribute('aria-expanded')) as HTMLElement;
@@ -222,13 +244,16 @@ describe('MapPage', () => {
       expect(screen.queryByRole('complementary', { name: 'Organizations' })).toBeNull(),
     );
 
-    // Münster lies in the west of Germany.
     fireEvent.click(
       screen.getByRole('button', { name: /^Universitätsklinikum Münster, certificate/ }),
     );
-    const panel = screen
-      .getByRole('heading', { name: 'Universitätsklinikum Münster' })
-      .closest('aside');
-    expect(panel).toHaveAttribute('data-side', 'left');
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole('complementary', { name: 'Organizations' })).toBeNull();
+    // The toggle still reopens it manually.
+    fireEvent.click(screen.getByRole('button', { name: 'Show organization list' }));
+    await waitFor(() =>
+      expect(screen.getByRole('complementary', { name: 'Organizations' })).toBeInTheDocument(),
+    );
   });
 });

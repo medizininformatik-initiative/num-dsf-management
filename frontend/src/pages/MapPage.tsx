@@ -5,8 +5,8 @@
  * 1024px), zoom controls and legend on the map, and the details sheet. The
  * map viewport insets itself beside the open list and sheet (easing with the
  * sheets), so focusing a selection centres it in the visible area. The
- * details sheet docks on the side of Germany the selected site is on (right
- * whenever the list occupies the left), and keeps that side while open.
+ * details sheet always docks on the right (bottom below 1024px); selecting a
+ * site collapses the list on wide screens and closing the sheet restores it.
  * Hover and selection are shared between list and map; hover lives in a
  * small store (hoverStore) rather than page state, so hovering never
  * re-renders the page, the list or the whole map.
@@ -30,12 +30,11 @@ import { NodeDetailsPanel, type SheetSide } from '../components/map/NodeDetailsP
 import { MapFilters, MapFilterState } from '../components/map/MapFilters';
 import { VerbundPills } from '../components/map/VerbundPills';
 import { useOwnHoverStore } from '../components/map/hoverStore';
-import { WEST_EAST_SPLIT, clusterGroupFor, isOnMap } from '../components/map/mapGeometry';
+import { clusterGroupFor, isOnMap } from '../components/map/mapGeometry';
 import { Icon } from '../components/ui/Icon';
 import { Button } from '../components/ui/Button';
 import { useI18n } from '../stores/i18n.store';
 import type { MapOrganization } from '../api/network.api';
-import { getPinCoord } from '../lib/germanCities';
 import { deriveVerbunds, verbundCounts } from '../lib/peerEdges';
 import '../components/map/map.css';
 
@@ -85,6 +84,8 @@ export function MapPage() {
   const hover = useOwnHoverStore();
   const [listOpen, setListOpen] = useState(wide);
   useEffect(() => setListOpen(wide), [wide]);
+  const listOpenRef = useRef(listOpen);
+  listOpenRef.current = listOpen;
 
   const [filter, setFilter] = useState<MapFilterState>({
     query: '',
@@ -146,38 +147,31 @@ export function MapPage() {
   );
   const isPanelOpen = !!selectedOrg || !!selectedCluster;
 
-  // Dock the sheet on the side of the selected site; lock it while open.
-  const sideLock = useRef<{ open: boolean; listOpen: boolean; side: 'left' | 'right' }>({
-    open: false,
-    listOpen,
-    side: 'right',
-  });
-  if (isPanelOpen && (!sideLock.current.open || sideLock.current.listOpen !== listOpen)) {
-    const anchor: Pick<MapOrganization, 'city' | 'postal_code' | 'country_code'> | null =
-      selectedOrg ?? selectedCluster;
-    const west =
-      !!anchor &&
-      isOnMap(anchor) &&
-      getPinCoord(anchor.city, anchor.postal_code).coord[0] < WEST_EAST_SPLIT;
-    sideLock.current.side = !listOpen && west ? 'left' : 'right';
-  }
-  sideLock.current.open = isPanelOpen;
-  sideLock.current.listOpen = listOpen;
-  const sheetSide: SheetSide = wide ? sideLock.current.side : 'bottom';
+  // On wide screens the sheet takes the list's room: collapse the list while a
+  // site is selected and restore its previous state when the sheet closes.
+  const panelWasOpen = useRef(false);
+  const listBeforePanel = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (wide && isPanelOpen && !panelWasOpen.current) {
+      listBeforePanel.current = listOpenRef.current;
+      setListOpen(false);
+    } else if (!isPanelOpen && panelWasOpen.current && listBeforePanel.current !== null) {
+      setListOpen(listBeforePanel.current);
+    }
+    if (!isPanelOpen) listBeforePanel.current = null;
+    panelWasOpen.current = isPanelOpen;
+  }, [isPanelOpen, wide]);
+
+  // The sheet always docks on the right on wide screens, at the bottom below.
+  const sheetSide: SheetSide = wide ? 'right' : 'bottom';
 
   // Inset the map beside the open list / sheet, as long as enough map remains.
   const listInset = wide && listOpen ? LIST_INSET : 0;
-  const mapWidthBesideSheet =
-    sheetSide === 'left'
-      ? rootWidth - Math.max(listInset, SHEET_INSET)
-      : rootWidth - listInset - SHEET_INSET;
-  const sheetFits = mapWidthBesideSheet >= MIN_MAP_WIDTH;
+  const sheetFits = rootWidth - listInset - SHEET_INSET >= MIN_MAP_WIDTH;
   const sheetInset = wide && isPanelOpen && sheetFits ? SHEET_INSET : 0;
   // Where the sheet floats over the map instead, focus a selection beside it.
-  const focusShiftPx =
-    wide && isPanelOpen && !sheetFits ? (sheetSide === 'left' ? 1 : -1) * (SHEET_INSET / 2) : 0;
-  const insetLeft = sheetSide === 'left' ? Math.max(listInset, sheetInset) : listInset;
-  const insetRight = sheetSide === 'right' ? sheetInset : 0;
+  const focusShiftPx = wide && isPanelOpen && !sheetFits ? -(SHEET_INSET / 2) : 0;
+  const insetRight = sheetInset;
   // Below 1024px the sheet covers the lower half; the map keeps the upper half.
   const insetBottom = !wide && isPanelOpen ? '50%' : 0;
 
@@ -217,7 +211,7 @@ export function MapPage() {
 
       <div
         className="map-viewport absolute top-0 flex flex-col"
-        style={{ left: insetLeft, right: insetRight, bottom: insetBottom }}
+        style={{ left: listInset, right: insetRight, bottom: insetBottom }}
       >
         <div className="relative z-[2] flex shrink-0 flex-col gap-2 p-3 pb-0">
           <MapFilters

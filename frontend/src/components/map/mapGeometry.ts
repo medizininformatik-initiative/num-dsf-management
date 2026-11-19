@@ -16,8 +16,6 @@ export const ZOOM_MIN = 1;
 export const ZOOM_MAX = 6;
 /** Zoom used when focusing a selected organization or cluster. */
 export const FOCUS_ZOOM = 2.2;
-/** Pins west of this x (SVG units) count as the western half of Germany. */
-export const WEST_EAST_SPLIT = 300;
 /** Id of the soft radial shadow under markers (defined once by GeoMap). */
 export const PIN_SHADOW_GRADIENT_ID = 'map-pin-shadow';
 
