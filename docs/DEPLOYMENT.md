@@ -75,7 +75,7 @@ docker compose -f docker-compose.prod.yml run --rm backend \
   node dist/db/seed-whitelist.js admin@imi.uni-muenster.de
 
 # 5. Start
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 
 # 6. Check logs
 docker compose -f docker-compose.prod.yml logs -f backend
@@ -136,11 +136,16 @@ config. The bundled frontend image is the standard OTP/TOTP build; the cert-auth
 variant (`VITE_AUTH_MODE=cert`) is baked at build time, so it is not part of the
 downloadable bundle — build it locally via `docker-compose.cert-auth.yml`.
 
+The frontend build reads `DSF_ENVIRONMENT` (the TEST/PRODUCTION label shown in the UI) as the
+`VITE_DSF_ENVIRONMENT` build argument, so builds must pass `--env-file .env.prod`. The prebuilt
+frontend image of `docker-compose.release.yml` has its environment label fixed at image build
+time; changing `DSF_ENVIRONMENT` in `.env.prod` has no effect on it.
+
 ## Update Process
 
 ```bash
 git pull
-docker compose -f docker-compose.prod.yml up -d --build --no-deps backend frontend
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build --no-deps backend frontend
 ```
 
 For a server with no git that instead unpacks a downloaded zip, see "Updating a zip-based deployment" right below.
