@@ -1,59 +1,26 @@
 /**
  * AdminStatsSection.tsx – "Übersicht" block at the top of the admin page:
- * stat tiles for sites, requests, allow list and incidents.
+ * small animated plots for sites (onboarding funnel), requests (stacked bar),
+ * allow list (donut) and incidents (count tile).
  *
- * A tile is a big number, a small label and an optional secondary line.
- * The pending-requests tile scrolls to the review list when a target id is
- * given. Loading shows skeleton tiles, a failed request a single error line.
+ * Numbers count up and bars grow in on mount; under reduced motion the final
+ * state shows at once. The pending legend item scrolls to the review list when
+ * a target id is given. Loading shows a skeleton, a failed request one error
+ * line.
  *
- * Dependencies: useAdminStats, i18n store, dateUtils.formatDate, Icon
+ * Dependencies: useAdminStats, i18n store, dateUtils.formatDate, Icon, stats/*
  */
-import type { ReactNode } from 'react';
 import { useAdminStats } from '../../hooks/useAdmin';
 import { useI18n } from '../../stores/i18n.store';
 import { formatDate } from '../../lib/dateUtils';
 import { Icon } from '../ui/Icon';
+import { AllowListDonut } from './stats/AllowListDonut';
+import { CountUp } from './stats/CountUp';
+import { FunnelBars } from './stats/FunnelBars';
+import { RequestsBar } from './stats/RequestsBar';
+import { StatPanel } from './stats/StatPanel';
 
-interface TileProps {
-  label: string;
-  value: ReactNode;
-  secondary?: string;
-  onClick?: () => void;
-}
-
-function Tile({ label, value, secondary, onClick }: TileProps) {
-  const body = (
-    <>
-      <div className="text-2xl font-semibold tabular-nums text-[color:var(--text-primary)]">
-        {value}
-      </div>
-      <div className="mt-0.5 text-xs text-[color:var(--text-muted)]">{label}</div>
-      {secondary && <div className="text-xs text-[color:var(--text-muted)]">{secondary}</div>}
-    </>
-  );
-  const cls = 'surface-card block w-full p-3 text-left';
-  if (!onClick) return <div className={cls}>{body}</div>;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`${cls} press-effect focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-ring)]`}
-    >
-      {body}
-    </button>
-  );
-}
-
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
-        {title}
-      </h3>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{children}</div>
-    </div>
-  );
-}
+const CAPTION = 'text-xs text-[color:var(--text-muted)]';
 
 export function AdminStatsSection({ pendingTargetId }: { pendingTargetId?: string }) {
   const { t, lang } = useI18n();
@@ -86,69 +53,110 @@ export function AdminStatsSection({ pendingTargetId }: { pendingTargetId?: strin
         <div
           role="status"
           aria-label={t('adminStatsLoading')}
-          className="grid animate-pulse grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
+          className="grid animate-pulse gap-4 lg:grid-cols-2"
         >
-          {Array.from({ length: 5 }, (_, i) => (
-            <div key={i} className="surface-card h-[76px]" />
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="surface-card h-[140px]" />
           ))}
         </div>
       )}
 
       {data && !error && (
-        <div className="space-y-4">
-          <Group title={t('adminStatsSites')}>
-            <Tile label={t('adminStatsSitesTotal')} value={data.sites.total} />
-            <Tile
-              label={t('adminStatsSitesWithLogin')}
-              value={data.sites.withLoginCertificate}
-              secondary={t('adminStatsOf', { n: data.sites.total })}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <StatPanel title={t('adminStatsSites')}>
+            <FunnelBars
+              total={data.sites.total}
+              rows={[
+                { label: t('adminStatsSitesTotal'), value: data.sites.total },
+                { label: t('adminStatsSitesWithLogin'), value: data.sites.withLoginCertificate },
+                { label: t('adminStatsSitesEverLoggedIn'), value: data.sites.everLoggedIn },
+                { label: t('adminStatsSitesPublished'), value: data.sites.published },
+              ]}
             />
-            <Tile
-              label={t('adminStatsSitesEverLoggedIn')}
-              value={data.sites.everLoggedIn}
-              secondary={t('adminStatsOf', { n: data.sites.total })}
-            />
-            <Tile label={t('adminStatsSitesToday')} value={data.sites.loggedInLast24h} />
-            <Tile
-              label={t('adminStatsSitesPublished')}
-              value={data.sites.published}
-              secondary={t('adminStatsOf', { n: data.sites.total })}
-            />
-          </Group>
+            <p className={CAPTION}>
+              {`${t('adminStatsSitesToday')}: ${data.sites.loggedInLast24h}`}
+            </p>
+          </StatPanel>
 
-          <Group title={t('adminStatsRequests')}>
-            <Tile
-              label={t('adminStatsRequestsPending')}
-              value={data.requests.pending}
-              onClick={scrollToPending}
+          <StatPanel title={t('adminStatsRequests')}>
+            <RequestsBar
+              segments={[
+                {
+                  key: 'pending',
+                  label: t('adminStatsRequestsPending'),
+                  value: data.requests.pending,
+                  color: 'var(--accent)',
+                  onClick: scrollToPending,
+                },
+                {
+                  key: 'approved',
+                  label: t('adminStatsRequestsApproved'),
+                  value: data.requests.approved,
+                  color: 'var(--tone-success-fg)',
+                },
+                {
+                  key: 'rejected',
+                  label: t('adminStatsRequestsRejected'),
+                  value: data.requests.rejected,
+                  color: 'var(--tone-danger-fg)',
+                },
+                {
+                  key: 'withdrawn',
+                  label: t('adminStatsRequestsWithdrawn'),
+                  value: data.requests.withdrawn,
+                  color: 'var(--text-muted)',
+                },
+              ]}
             />
-            <Tile label={t('adminStatsRequestsApproved')} value={data.requests.approved} />
-            <Tile label={t('adminStatsRequestsRejected')} value={data.requests.rejected} />
-            <Tile label={t('adminStatsRequestsWithdrawn')} value={data.requests.withdrawn} />
-            <Tile label={t('adminStatsRequestsToday')} value={data.requests.approvedLast24h} />
-          </Group>
+            <p className={CAPTION}>
+              {`${t('adminStatsRequestsToday')}: ${data.requests.approvedLast24h}`}
+            </p>
+          </StatPanel>
 
-          <Group title={t('adminStatsAllowList')}>
-            <Tile
-              label={t('adminStatsVersion')}
-              value={data.allowList.currentVersion ?? '–'}
-              secondary={
-                data.allowList.currentPublishedAt
-                  ? formatDate(data.allowList.currentPublishedAt, lang)
-                  : t('adminStatsVersionNone')
-              }
-            />
-            <Tile
-              label={t('adminStatsUpToDate')}
+          <StatPanel title={t('adminStatsAllowList')}>
+            <AllowListDonut
               value={data.allowList.sitesUpToDate}
-              secondary={t('adminStatsOf', { n: data.sites.total })}
-            />
-            <Tile label={t('adminStatsNeverFetched')} value={data.allowList.sitesNeverFetched} />
-          </Group>
+              total={data.sites.total}
+              ofLabel={t('adminStatsOf', { n: data.sites.total })}
+              ariaLabel={`${t('adminStatsUpToDate')}: ${data.allowList.sitesUpToDate} ${t('adminStatsOf', { n: data.sites.total })}`}
+            >
+              <div>
+                <div className={CAPTION}>{t('adminStatsVersion')}</div>
+                <div className="text-lg font-semibold tabular-nums text-[color:var(--text-primary)]">
+                  {data.allowList.currentVersion ?? '–'}
+                </div>
+                <div className={CAPTION}>
+                  {data.allowList.currentPublishedAt
+                    ? formatDate(data.allowList.currentPublishedAt, lang)
+                    : t('adminStatsVersionNone')}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-[color:var(--text-secondary)]">
+                <span
+                  aria-hidden="true"
+                  className="h-2 w-2 shrink-0 rounded-full bg-[color:var(--accent)]"
+                />
+                {t('adminStatsUpToDate')}
+              </div>
+              <div className={CAPTION}>
+                {`${t('adminStatsNeverFetched')}: ${data.allowList.sitesNeverFetched}`}
+              </div>
+            </AllowListDonut>
+          </StatPanel>
 
-          <Group title={t('adminStatsIncidents')}>
-            <Tile label={t('adminStatsIncidentsOpen')} value={data.incidents.open} />
-          </Group>
+          <StatPanel
+            title={t('adminStatsIncidents')}
+            className={data.incidents.open > 0 ? '!border-danger-border !bg-danger-surface' : ''}
+          >
+            <div
+              className={`text-3xl font-semibold ${
+                data.incidents.open > 0 ? 'text-danger-fg' : 'text-[color:var(--text-primary)]'
+              }`}
+            >
+              <CountUp value={data.incidents.open} />
+            </div>
+            <div className={CAPTION}>{t('adminStatsIncidentsOpen')}</div>
+          </StatPanel>
         </div>
       )}
     </section>
