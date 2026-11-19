@@ -20,6 +20,10 @@ export interface NCert {
   subjectDn?: string;
   sanDns?: string[];
   notAfter?: string;
+  /** Published in the allow list (migration 040); snapshots without the flag count as true. */
+  publish: boolean;
+  /** May log in as the organization once approved (migration 040); absent counts as true. */
+  login: boolean;
 }
 export interface NEndpoint {
   identifier: string;
@@ -131,6 +135,8 @@ export function normalize(raw: unknown): NSnap {
         subjectDn: optStr(r.subjectDn),
         sanDns: Array.isArray(r.sanDns) ? list(r.sanDns) : undefined,
         notAfter: optStr(r.notAfter),
+        publish: r.publish_in_allowlist !== false && r.publish_in_allowlist !== 0,
+        login: r.use_for_login !== false && r.use_for_login !== 0,
       };
     }),
     memberships,

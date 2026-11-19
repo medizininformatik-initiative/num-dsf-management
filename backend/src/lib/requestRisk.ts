@@ -87,6 +87,8 @@ export const RISK_RULES: Record<string, Rule> = {
   CERT_ALL_REPLACED: { severity: 'medium', weight: 2 },
   CERT_EXPIRED: { severity: 'medium', weight: 2 },
   CERT_SHORT_VALIDITY: { severity: 'low', weight: 1 },
+  CERT_LOGIN_ONLY: { severity: 'medium', weight: 2 },
+  CERT_UNPUBLISHED: { severity: 'low', weight: 1 },
   ENDPOINT_ADDRESS_CHANGED: { severity: 'medium', weight: 2 },
   ENDPOINT_SCHEME_DOWNGRADE: { severity: 'medium', weight: 2 },
   ENDPOINT_URL_CHANGED: { severity: 'low', weight: 1 },

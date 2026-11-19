@@ -163,6 +163,20 @@ export function analyzeCertificates(args: {
     }
   }
 
+  // What a certificate is used for (migration 040): a login-only certificate is a login
+  // credential the allow list never shows, and an unpublished one disappears from the network.
+  const prevByThumb = new Map((comparable && prev ? prev.certs : []).map((c) => [c.thumbprint, c]));
+  for (const c of cur.certs) {
+    const before = prevByThumb.get(c.thumbprint);
+    const wasPublished = before ? before.publish : false;
+    const loginOnly = !c.publish && c.login;
+    if (loginOnly && (!before || wasPublished)) {
+      add('CERT_LOGIN_ONLY', { cn: facts(c).cn });
+    } else if (!c.publish && wasPublished) {
+      add('CERT_UNPUBLISHED', { cn: facts(c).cn });
+    }
+  }
+
   // Facts about every new certificate (all of them when there is nothing to compare with).
   const seenIssuers = new Set<string>();
   for (const c of newCerts) {

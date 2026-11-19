@@ -276,3 +276,48 @@ describe('first request', () => {
     expect(r.firstRequest).toBe(true);
   });
 });
+
+describe('certificate purpose rules (migration 040)', () => {
+  const both = { id: 'old', days: 300 };
+
+  it('a snapshot without the flags (older request) raises nothing', () => {
+    const r = run({ current: { certs: [both] }, previous: { certs: [both] } });
+    expect(codes(r)).toEqual(['NOTHING_CHANGED']);
+  });
+
+  it('a published certificate that becomes login-only is CERT_LOGIN_ONLY', () => {
+    const r = run({
+      current: { certs: [{ ...both, publish: false, login: true }] },
+      previous: { certs: [both] },
+    });
+    expect(codes(r)).toEqual(['CERT_LOGIN_ONLY']);
+    expect(r.findings[0]).toMatchObject({ severity: 'medium', weight: 2 });
+    expect(r.level).toBe('MEDIUM');
+  });
+
+  it('a new login-only certificate is CERT_LOGIN_ONLY', () => {
+    const r = run({
+      current: { certs: [both, { id: 'extra', days: 300, publish: false, login: true }] },
+      previous: { certs: [both] },
+    });
+    expect(codes(r)).toContain('CERT_LOGIN_ONLY');
+  });
+
+  it('an unchanged login-only certificate raises nothing', () => {
+    const lo = { ...both, publish: false, login: true };
+    const r = run({
+      current: { certs: [lo, { id: 'p', days: 300 }] },
+      previous: { certs: [lo, { id: 'p', days: 300 }] },
+    });
+    expect(codes(r)).toEqual(['NOTHING_CHANGED']);
+  });
+
+  it('a published certificate that is unpublished without login is CERT_UNPUBLISHED', () => {
+    const r = run({
+      current: { certs: [{ ...both, publish: false, login: false }] },
+      previous: { certs: [both] },
+    });
+    expect(codes(r)).toEqual(['CERT_UNPUBLISHED']);
+    expect(r.findings[0]).toMatchObject({ severity: 'low', weight: 1 });
+  });
+});

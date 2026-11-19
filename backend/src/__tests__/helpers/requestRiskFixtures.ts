@@ -25,6 +25,9 @@ export interface CertSpec {
   sans?: string[];
   /** Store issuer / subject / SAN / expiry in the snapshot entry (as buildSnapshot does). */
   embed?: boolean;
+  /** Purpose flags (migration 040); left out of the snapshot entry when undefined. */
+  publish?: boolean;
+  login?: boolean;
 }
 
 export function certRow(c: CertSpec) {
@@ -34,6 +37,8 @@ export function certRow(c: CertSpec) {
     subject: cn,
     thumbprint: `T-${c.id}`,
     valid_until: inDays(c.days),
+    ...(c.publish === undefined ? {} : { publish_in_allowlist: c.publish }),
+    ...(c.login === undefined ? {} : { use_for_login: c.login }),
     ...(c.embed
       ? {
           issuerDn: c.issuer ?? GEANT,
