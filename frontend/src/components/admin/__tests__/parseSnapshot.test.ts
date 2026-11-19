@@ -63,6 +63,10 @@ describe('parseSnapshot', () => {
     expect(parseSnapshot('')).toEqual({});
   });
 
+  it.each(['null', '5', '"text"', '[1,2]'])('returns {} for the JSON value %s', (raw) => {
+    expect(parseSnapshot(raw)).toEqual({});
+  });
+
   it('returns {} for malformed JSON without throwing', () => {
     expect(() => parseSnapshot('{ not json')).not.toThrow();
     expect(parseSnapshot('{ not json')).toEqual({});

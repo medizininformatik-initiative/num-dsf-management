@@ -29,7 +29,10 @@ export function parseSnapshot(raw: string | object | null | undefined): Snapshot
   if (!raw) return {};
   if (typeof raw === 'object') return raw as SnapshotData;
   try {
-    return JSON.parse(raw as string) as SnapshotData;
+    const parsed: unknown = JSON.parse(raw as string);
+    return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as SnapshotData)
+      : {};
   } catch {
     return {};
   }

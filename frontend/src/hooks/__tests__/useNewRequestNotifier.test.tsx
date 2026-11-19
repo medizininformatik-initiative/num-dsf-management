@@ -84,6 +84,16 @@ describe('useNewRequestNotifier', () => {
     expect(toastInfo).toHaveBeenCalledTimes(1);
   });
 
+  it('falls back to the request id when the snapshot is not an object', async () => {
+    reply(req('r1'));
+    const qc = setup();
+    await loaded(qc);
+    reply(req('r1'), { ...req('r2'), snapshot_json: 'null' as unknown as null });
+    await refetch(qc);
+    await waitFor(() => expect(toastInfo).toHaveBeenCalledTimes(1));
+    expect(toastInfo.mock.calls[0][0]).toBe('New approval request: r2');
+  });
+
   it('aggregates several new ids into one toast', async () => {
     reply(req('r1'));
     const qc = setup();

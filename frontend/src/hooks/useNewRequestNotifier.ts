@@ -45,7 +45,9 @@ function writeSeen(key: string, ids: Set<string>): void {
 /** Friendliest label of a request: organisation name, else identifier. */
 function requestLabel(request: PendingRequest): string {
   const org = parseSnapshot(request.snapshot_json).organization;
-  return org?.name?.trim() || org?.identifier?.trim() || request.id;
+  const name = typeof org?.name === 'string' ? org.name.trim() : '';
+  const identifier = typeof org?.identifier === 'string' ? org.identifier.trim() : '';
+  return name || identifier || request.id;
 }
 
 export function useNewRequestNotifier(): void {
