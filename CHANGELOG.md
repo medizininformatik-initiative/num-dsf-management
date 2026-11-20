@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.11](https://github.com/medizininformatik-initiative/num-dsf-management/compare/v0.1.10...v0.1.11) (2026-11-20)
+
+
+### Bug Fixes
+
+* **security:** bump nginx base images to 1.30.7 (CVE-2026-123007) ([fbbfb8a](https://github.com/medizininformatik-initiative/num-dsf-management/commit/fbbfb8a834a605afda7437d306a99c200425403f))
+
 ## [0.1.10](https://github.com/medizininformatik-initiative/num-dsf-management/compare/v0.1.9...v0.1.10) (2026-11-20)
 
 
