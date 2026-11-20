@@ -21,7 +21,7 @@ RUN npm ci || (npm cache clean --force && npm ci)
 COPY . .
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS prod
+FROM ghcr.io/nginx/nginx-unprivileged:1.30.7-alpine AS prod
 WORKDIR /usr/share/nginx/html
 COPY --from=build /app/dist .
 COPY nginx-frontend.conf /etc/nginx/conf.d/default.conf
