@@ -229,10 +229,22 @@ describe('forced TOTP enrolment for certificate admins', () => {
   });
 
   it('writes the enrolment steps to the audit log', async () => {
-    const rows = await db('audit_logs').where({ user_email: adminEmail, operation: 'TOTP_SETUP' });
-    const actions = rows.map(
-      (r) => (typeof r.diff_json === 'string' ? JSON.parse(r.diff_json) : r.diff_json).action,
-    );
+    // The route writes audit rows fire-and-forget, so the last one may land
+    // just after the response; poll briefly instead of reading once.
+    const readActions = async (): Promise<string[]> => {
+      const rows = await db('audit_logs').where({
+        user_email: adminEmail,
+        operation: 'TOTP_SETUP',
+      });
+      return rows.map(
+        (r) => (typeof r.diff_json === 'string' ? JSON.parse(r.diff_json) : r.diff_json).action,
+      );
+    };
+    let actions = await readActions();
+    for (let i = 0; i < 20 && !actions.includes('enrolled'); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      actions = await readActions();
+    }
     expect(actions).toEqual(
       expect.arrayContaining(['started', 'resumed', 'restarted', 'enrolled']),
     );
