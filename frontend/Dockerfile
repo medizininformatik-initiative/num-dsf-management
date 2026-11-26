@@ -1,4 +1,4 @@
-FROM node:20-alpine AS dev
+FROM node:26-alpine AS dev
 WORKDIR /app
 COPY package*.json ./
 # npm 10 sometimes fails a fresh install with EEXIST/ENOENT in its cache; retry once with a clean cache.
@@ -7,7 +7,7 @@ COPY . .
 EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
-FROM node:20-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 ARG VITE_API_URL=/api/v1
 ARG VITE_DSF_ENVIRONMENT=PRODUCTION
