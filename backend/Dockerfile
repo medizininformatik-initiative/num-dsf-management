@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:26-alpine AS base
 WORKDIR /app
 COPY package*.json ./
 
@@ -15,7 +15,7 @@ COPY . .
 RUN npm run build
 RUN npm prune --omit=dev
 
-FROM node:20-alpine AS prod
+FROM node:26-alpine AS prod
 ENV NODE_ENV=production
 RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
