@@ -54,7 +54,7 @@ services:
     restart: unless-stopped
 
   db:
-    image: mysql:8.0
+    image: mysql:8.3
     platform: linux/amd64
     # log-bin-trust-function-creators allows non-SUPER users (the `dsf`
     # account) to apply migrations that create TRIGGERs (migrations 013 and
