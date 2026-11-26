@@ -47,7 +47,7 @@
     "@vitest/coverage-v8": "^4.1.12",
     "autoprefixer": "^10.7.0",
     "axe-playwright": "^2.2.2",
-    "better-npm-audit": "^3.11.0",
+    "better-npm-audit": "^4.2.1",
     "bundlesize2": "^0.0.35",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^5.2.0",
