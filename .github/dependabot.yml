@@ -50,3 +50,25 @@ updates:
       github-actions:
         patterns:
           - '*'
+
+  # Base images of the Dockerfiles (nginx, node).
+  - package-ecosystem: docker
+    directories: [/backend, /frontend, /nginx]
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    groups:
+      docker-images:
+        update-types: [minor, patch]
+
+  # image: lines of the compose files (release run kit, DSF e2e stack).
+  - package-ecosystem: docker-compose
+    directories: [/, /scripts/dsf-e2e]
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    groups:
+      compose-images:
+        update-types: [minor, patch]
