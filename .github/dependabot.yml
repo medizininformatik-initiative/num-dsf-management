@@ -1,8 +1,8 @@
 version: 2
-# Minor and patch updates arrive grouped, one pull request per directory.
-# Major updates arrive in a second grouped pull request per directory. It is
-# a to-do list for planned migrations, not something to merge as is.
-# Groups only apply to version updates; security updates stay separate.
+# Version updates cover minor and patch releases only, grouped into one pull
+# request per directory. Major releases are migrations and are planned by hand
+# (npm outdated, release notes). Security alerts, npm audit and dependency
+# review in CI still report vulnerable packages of any version.
 updates:
   - package-ecosystem: npm
     directory: /backend
@@ -15,8 +15,9 @@ updates:
     groups:
       backend-dependencies:
         update-types: [minor, patch]
-      backend-major:
-        update-types: [major]
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: npm
     directory: /frontend
@@ -29,20 +30,8 @@ updates:
     groups:
       frontend-dependencies:
         update-types: [minor, patch]
-      frontend-major:
-        update-types: [major]
-    # React 18 and React Router v6 are fixed by the stack decision; moving
-    # them is a planned migration, not a dependency update.
     ignore:
-      - dependency-name: react
-        update-types: [version-update:semver-major]
-      - dependency-name: react-dom
-        update-types: [version-update:semver-major]
-      - dependency-name: '@types/react'
-        update-types: [version-update:semver-major]
-      - dependency-name: '@types/react-dom'
-        update-types: [version-update:semver-major]
-      - dependency-name: react-router-dom
+      - dependency-name: '*'
         update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
@@ -66,8 +55,9 @@ updates:
     groups:
       docker-images:
         update-types: [minor, patch]
-      docker-images-major:
-        update-types: [major]
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
 
   # image: lines of the compose files (release run kit, DSF e2e stack).
   - package-ecosystem: docker-compose
@@ -79,5 +69,6 @@ updates:
     groups:
       compose-images:
         update-types: [minor, patch]
-      compose-images-major:
-        update-types: [major]
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
